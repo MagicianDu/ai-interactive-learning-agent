@@ -24,15 +24,15 @@ describe("codex-manual workflow", () => {
 
     await expect(workflow.runNext("hash-table-manual")).resolves.toMatchObject({
       status: "manual_action_required",
-      roleId: "source-ingest",
-      artifactId: "source-ingest",
-      promptPath: expect.stringContaining("manual-requests/source-ingest.md")
+      roleId: "corpus-ingest",
+      artifactId: "source-map",
+      promptPath: expect.stringContaining("manual-requests/source-map.md")
     });
 
-    await expect(stat(artifactPath("source-ingest.draft.json"))).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(stat(artifactPath("source-map.draft.json"))).rejects.toMatchObject({ code: "ENOENT" });
 
-    const prompt = await readFile(path.join(path.dirname(artifactPath("x")), "..", "manual-requests", "source-ingest.md"), "utf8");
-    expect(prompt).toContain("source-ingest");
+    const prompt = await readFile(path.join(path.dirname(artifactPath("x")), "..", "manual-requests", "source-map.md"), "utf8");
+    expect(prompt).toContain("source-map");
     expect(prompt).toContain("哈希表");
     expect(prompt).toContain("npm run agent:submit");
   });
@@ -48,13 +48,13 @@ describe("codex-manual workflow", () => {
     const service = new ManualSubmissionService(root);
     const result = await service.submit({
       runId: config.runId,
-      artifactId: "source-ingest",
+      artifactId: "source-map",
       filePath: outputPath
     });
 
-    expect(result).toMatchObject({ status: "artifact_submitted", artifactId: "source-ingest", version: "v1" });
-    await expect(readFile(path.join(runPath, "artifacts", "source-ingest.v1.json"), "utf8")).resolves.toContain("哈希表");
-    await expect(readFile(path.join(runPath, "artifacts", "source-ingest.draft.json"), "utf8")).resolves.toContain("zh-CN");
+    expect(result).toMatchObject({ status: "artifact_submitted", artifactId: "source-map", version: "v1" });
+    await expect(readFile(path.join(runPath, "artifacts", "source-map.v1.json"), "utf8")).resolves.toContain("哈希表");
+    await expect(readFile(path.join(runPath, "artifacts", "source-map.draft.json"), "utf8")).resolves.toContain("zh-CN");
   });
 
   test("submitting a revised upstream artifact invalidates downstream drafts", async () => {
@@ -114,13 +114,34 @@ function baseConfig(): RunConfig {
     runId: "hash-table-manual",
     topic: "哈希表",
     source: { type: "topic", value: "哈希表" },
+    sources: [
+      {
+        id: "source-001",
+        type: "topic",
+        title: "哈希表",
+        value: "哈希表",
+        language: "zh-CN"
+      }
+    ],
     audience: "具备基础技术背景的中文学习者",
+    userLearningProfile: {
+      level: "basic",
+      readingHabit: "visual_first",
+      goal: "understand",
+      preferredPageCountPerUnit: 10
+    },
+    curriculumPlanningMode: "hybrid",
+    coveragePolicy: {
+      requiredCoverage: "core_concepts",
+      allowOmission: true,
+      omissionRules: ["topic-only runs may omit source coverage beyond generated concept anchors"]
+    },
     outputLanguage: "zh-CN",
     targetOutput: "web_deck",
     pageCount: { target: 8, min: 6, max: 10 },
     runtime: { adapter: "codex-manual", mode: "interactive" },
     models: { defaultModel: { provider: "codex", model: "manual-codex-session" } },
     modelFallbackPolicy: "require_approval",
-    approvalGates: ["learning-architecture", "lesson", "critic-report", "publish-package"]
+    approvalGates: ["source-map", "concept-map", "curriculum-plan", "learning-architecture", "lesson", "critic-report", "publish-package"]
   };
 }

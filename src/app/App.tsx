@@ -18,8 +18,8 @@ const lessons = [
 ];
 
 export function App() {
-  const [selectedLessonId, setSelectedLessonId] = useState(hashTableLesson.id);
-  const selectedLesson = lessons.find((lesson) => lesson.id === selectedLessonId)?.lesson ?? hashTableLesson;
+  const [selectedLessonId, setSelectedLessonId] = useState(databaseIndexLesson.id);
+  const selectedLesson = lessons.find((lesson) => lesson.id === selectedLessonId)?.lesson ?? databaseIndexLesson;
 
   return (
     <div className="min-h-screen bg-slate-950">

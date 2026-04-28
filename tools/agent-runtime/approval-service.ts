@@ -32,6 +32,9 @@ const supportedDecisions = new Set<ApprovalDecision>([
   "rejected"
 ]);
 const approvalGateArtifactIds: Record<ApprovalGateId, string> = {
+  "source-map": "source-map",
+  "concept-map": "concept-map",
+  "curriculum-plan": "curriculum-plan",
   "learning-architecture": "learning-architecture",
   lesson: "lesson",
   "critic-report": "critic-report",

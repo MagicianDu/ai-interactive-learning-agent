@@ -1,6 +1,9 @@
 import type { ApprovalGateId } from "../types.js";
 
 export type RoleId =
+  | "corpus-ingest"
+  | "concept-mapper"
+  | "curriculum-planner"
   | "source-ingest"
   | "learning-architecture"
   | "visual-pedagogy"
@@ -11,6 +14,9 @@ export type RoleId =
   | "publish-package";
 
 export type WorkflowArtifactId =
+  | "source-map"
+  | "concept-map"
+  | "curriculum-plan"
   | "source-ingest"
   | "learning-architecture"
   | "visual-plan"
@@ -28,10 +34,24 @@ export type RoleStep = {
 };
 
 export const roleSequence: readonly RoleStep[] = [
-  { roleId: "source-ingest", artifactId: "source-ingest" },
+  { roleId: "corpus-ingest", artifactId: "source-map", createsGate: "source-map" },
+  {
+    roleId: "concept-mapper",
+    artifactId: "concept-map",
+    requiredApprovedGateBefore: "source-map",
+    createsGate: "concept-map"
+  },
+  {
+    roleId: "curriculum-planner",
+    artifactId: "curriculum-plan",
+    requiredApprovedGateBefore: "concept-map",
+    createsGate: "curriculum-plan"
+  },
+  { roleId: "source-ingest", artifactId: "source-ingest", requiredApprovedGateBefore: "curriculum-plan" },
   {
     roleId: "learning-architecture",
     artifactId: "learning-architecture",
+    requiredApprovedGateBefore: "curriculum-plan",
     createsGate: "learning-architecture"
   },
   {

@@ -14,6 +14,9 @@ import type { ArtifactVersion } from "./artifact-store.js";
 import type { ApprovalGateId, CliInitArgs } from "./types.js";
 
 const gateToArtifact: Record<ApprovalGateId, string> = {
+  "source-map": "source-map",
+  "concept-map": "concept-map",
+  "curriculum-plan": "curriculum-plan",
   "learning-architecture": "learning-architecture",
   lesson: "lesson",
   "critic-report": "critic-report",

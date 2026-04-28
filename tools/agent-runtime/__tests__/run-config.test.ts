@@ -8,14 +8,35 @@ function baseConfig(overrides: Partial<RunConfig> = {}): RunConfig {
     runId: "database-index-001",
     topic: "数据库索引",
     source: { type: "topic", value: "数据库索引" },
+    sources: [
+      {
+        id: "source-001",
+        type: "topic",
+        title: "数据库索引",
+        value: "数据库索引",
+        language: "zh-CN"
+      }
+    ],
     audience: "learners",
+    userLearningProfile: {
+      level: "basic",
+      readingHabit: "visual_first",
+      goal: "understand",
+      preferredPageCountPerUnit: 10
+    },
+    curriculumPlanningMode: "hybrid",
+    coveragePolicy: {
+      requiredCoverage: "core_concepts",
+      allowOmission: true,
+      omissionRules: ["topic-only runs may omit source coverage beyond generated concept anchors"]
+    },
     outputLanguage: "zh-CN",
     targetOutput: "web_deck",
     pageCount: { target: 10, min: 8, max: 12 },
     runtime: { adapter: "mock", mode: "interactive" },
     models: { defaultModel: { provider: "mock", model: "mock", temperature: 0.2 } },
     modelFallbackPolicy: "require_approval",
-    approvalGates: ["learning-architecture", "lesson", "critic-report", "publish-package"],
+    approvalGates: ["source-map", "concept-map", "curriculum-plan", "learning-architecture", "lesson", "critic-report", "publish-package"],
     ...overrides
   };
 }
@@ -48,6 +69,27 @@ describe("run config", () => {
       validateRunConfig({
         runId: "bad",
         topic: "",
+        sources: [
+          {
+            id: "source-001",
+            type: "topic",
+            title: "bad",
+            value: "x",
+            language: "zh-CN"
+          }
+        ],
+        userLearningProfile: {
+          level: "basic",
+          readingHabit: "visual_first",
+          goal: "understand",
+          preferredPageCountPerUnit: 10
+        },
+        curriculumPlanningMode: "hybrid",
+        coveragePolicy: {
+          requiredCoverage: "core_concepts",
+          allowOmission: true,
+          omissionRules: []
+        },
         source: { type: "topic", value: "x" },
         audience: "learners",
         outputLanguage: "zh-CN",
@@ -56,7 +98,7 @@ describe("run config", () => {
         runtime: { adapter: "mock", mode: "interactive" },
         models: { defaultModel: { provider: "mock", model: "mock", temperature: 0.2 } },
         modelFallbackPolicy: "require_approval",
-        approvalGates: ["learning-architecture", "lesson", "critic-report", "publish-package"]
+        approvalGates: ["source-map", "concept-map", "curriculum-plan", "learning-architecture", "lesson", "critic-report", "publish-package"]
       })
     ).toThrow(/topic is required/);
   });

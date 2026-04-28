@@ -37,6 +37,7 @@ You are executing one role in the AI Interactive Learning Agent workflow.
 
 - Role ID: ${roleId}
 - Output artifact ID: ${artifactId}
+${roleSpecificInstructions(roleId, artifactId)}
 
 ## Instructions
 
@@ -49,5 +50,34 @@ npm run agent:submit -- --run ${config.runId} --artifact ${artifactId} --file <j
 \`\`\`
 
 Do not approve the artifact automatically. After submission, inspect the versioned artifact under \`runs/${config.runId}/artifacts/\` and use the normal approval or revision gate.
+`;
+}
+
+function roleSpecificInstructions(roleId: string, artifactId: string): string {
+  if (artifactId === "source-map") {
+    return `- Output Contract: SourceMap JSON
+- Required fields: corpusId, sources, structure, anchors, extractionNotes
+- Every source-derived item must have a SourceAnchor.
+- For topic-only sources, create an anchor such as \`source-001:topic\`.
+`;
+  }
+
+  if (artifactId === "concept-map") {
+    return `- Output Contract: ConceptMap JSON
+- Required fields: concepts, dependencies, misconceptions, examples
+- Every concept, edge, misconception, and example must include sourceAnchorIds.
+- Mark inferred concepts with inferred: true when appropriate.
+`;
+  }
+
+  if (artifactId === "curriculum-plan") {
+    return `- Output Contract: CurriculumPlan JSON
+- Required fields: mode, userProfile, coveragePolicy, units, sourceCoverage, conceptCoverage, rationale
+- Use the selected curriculumPlanningMode from the run config.
+- Preserve preferredPageCountPerUnit when defining each unit targetPageCount.
+`;
+  }
+
+  return `- Output Contract: return a valid JSON object for artifact ${artifactId}.
 `;
 }

@@ -18,14 +18,35 @@ function baseConfig(overrides: Partial<RunConfig> = {}): RunConfig {
     runId: "database-index-001",
     topic: "为什么数据库索引能让查询更快",
     source: { type: "topic", value: "为什么数据库索引能让查询更快" },
+    sources: [
+      {
+        id: "source-001",
+        type: "topic",
+        title: "为什么数据库索引能让查询更快",
+        value: "为什么数据库索引能让查询更快",
+        language: "zh-CN"
+      }
+    ],
     audience: "具备基础 SQL 经验的学习者",
+    userLearningProfile: {
+      level: "basic",
+      readingHabit: "visual_first",
+      goal: "understand",
+      preferredPageCountPerUnit: 10
+    },
+    curriculumPlanningMode: "hybrid",
+    coveragePolicy: {
+      requiredCoverage: "core_concepts",
+      allowOmission: true,
+      omissionRules: ["topic-only runs may omit source coverage beyond generated concept anchors"]
+    },
     outputLanguage: "zh-CN",
     targetOutput: "web_deck",
     pageCount: { target: 10, min: 8, max: 12 },
     runtime: { adapter: "mock", mode: "interactive" },
     models: { defaultModel: { provider: "mock", model: "mock-learning-agent", temperature: 0.2 } },
     modelFallbackPolicy: "require_approval",
-    approvalGates: ["learning-architecture", "lesson", "critic-report", "publish-package"],
+    approvalGates: ["source-map", "concept-map", "curriculum-plan", "learning-architecture", "lesson", "critic-report", "publish-package"],
     ...overrides
   };
 }
@@ -40,6 +61,44 @@ async function createHarness(config: RunConfig = baseConfig()) {
   const workflow = new AgentWorkflow(runStore, artifactStore, approvalService, new MockRuntimeAdapter());
 
   return { workspaceRoot, runPath, runStore, artifactStore, approvalService, workflow };
+}
+
+async function approveCorpusGates(
+  workflow: AgentWorkflow,
+  approvalService: ApprovalService,
+  runId: string,
+  gates: ApprovalGateId[] = ["source-map", "concept-map", "curriculum-plan"]
+): Promise<void> {
+  for (const gate of gates) {
+    await expect(workflow.runNext(runId)).resolves.toMatchObject({
+      status: "artifact_written",
+      artifactId: gate
+    });
+    await expect(workflow.runNext(runId)).resolves.toEqual({
+      status: "approval_required",
+      requiredGate: gate
+    });
+    await approveGate(approvalService, runId, gate);
+  }
+}
+
+async function advanceToLearningArchitecture(
+  workflow: AgentWorkflow,
+  approvalService: ApprovalService,
+  runId: string
+): Promise<void> {
+  await approveCorpusGates(workflow, approvalService, runId);
+  await expect(workflow.runNext(runId)).resolves.toMatchObject({
+    status: "artifact_written",
+    artifactId: "source-ingest",
+    version: "v1"
+  });
+  await expect(workflow.runNext(runId)).resolves.toEqual({
+    status: "artifact_written",
+    artifactId: "learning-architecture",
+    version: "v1",
+    createsGate: "learning-architecture"
+  });
 }
 
 async function approveGate(
@@ -62,11 +121,48 @@ afterEach(async () => {
 });
 
 describe("AgentWorkflow", () => {
-  test("writes source-ingest, then learning-architecture, then stops for learning-architecture approval", async () => {
-    const { artifactStore, workflow } = await createHarness();
+  test("runs corpus planning gates, writes source-ingest and learning-architecture", async () => {
+    const { approvalService, artifactStore, workflow } = await createHarness();
+    const runId = "database-index-001";
 
-    const first = await workflow.runNext("database-index-001");
-    expect(first).toEqual({
+    await expect(workflow.runNext(runId)).resolves.toMatchObject({
+      status: "artifact_written",
+      artifactId: "source-map",
+      version: "v1",
+      createsGate: "source-map"
+    });
+    await expect(workflow.runNext(runId)).resolves.toEqual({
+      status: "approval_required",
+      requiredGate: "source-map"
+    });
+    await approveGate(approvalService, runId, "source-map");
+
+    await expect(workflow.runNext(runId)).resolves.toMatchObject({
+      status: "artifact_written",
+      artifactId: "concept-map",
+      version: "v1",
+      createsGate: "concept-map"
+    });
+    await expect(workflow.runNext(runId)).resolves.toEqual({
+      status: "approval_required",
+      requiredGate: "concept-map"
+    });
+    await approveGate(approvalService, runId, "concept-map");
+
+    await expect(workflow.runNext(runId)).resolves.toMatchObject({
+      status: "artifact_written",
+      artifactId: "curriculum-plan",
+      version: "v1",
+      createsGate: "curriculum-plan"
+    });
+    await expect(workflow.runNext(runId)).resolves.toEqual({
+      status: "approval_required",
+      requiredGate: "curriculum-plan"
+    });
+    await approveGate(approvalService, runId, "curriculum-plan");
+
+    const sourceIngest = await workflow.runNext(runId);
+    expect(sourceIngest).toMatchObject({
       status: "artifact_written",
       artifactId: "source-ingest",
       version: "v1"
@@ -76,8 +172,8 @@ describe("AgentWorkflow", () => {
       concepts: expect.arrayContaining(["全表扫描", "索引查找", "选择性"])
     });
 
-    const second = await workflow.runNext("database-index-001");
-    expect(second).toEqual({
+    const learningArchitecture = await workflow.runNext(runId);
+    expect(learningArchitecture).toMatchObject({
       status: "artifact_written",
       artifactId: "learning-architecture",
       version: "v1",
@@ -88,25 +184,32 @@ describe("AgentWorkflow", () => {
       pageSequence: expect.arrayContaining(["问题场景：1000 万行查询"])
     });
 
-    await expect(workflow.runNext("database-index-001")).resolves.toEqual({
+    await expect(workflow.runNext(runId)).resolves.toEqual({
       status: "approval_required",
       requiredGate: "learning-architecture"
     });
   });
 
   test("learning-architecture preserves requested page count", async () => {
-    const { artifactStore, workflow } = await createHarness(
+    const { artifactStore, approvalService, workflow } = await createHarness(
       baseConfig({
         runId: "hash-table-8-pages",
         topic: "哈希表",
         source: { type: "topic", value: "哈希表" },
-        pageCount: { target: 8, min: 6, max: 10 }
+        pageCount: { target: 8, min: 6, max: 10 },
+        sources: [
+          {
+            id: "source-001",
+            type: "topic",
+            title: "哈希表",
+            value: "哈希表",
+            language: "zh-CN"
+          }
+        ]
       })
     );
 
-    await workflow.runNext("hash-table-8-pages");
-    await workflow.runNext("hash-table-8-pages");
-
+    await advanceToLearningArchitecture(workflow, approvalService, "hash-table-8-pages");
     await expect(artifactStore.readDraft("learning-architecture")).resolves.toMatchObject({
       pageCount: { planned: 8, target: 8 },
       pageSequence: expect.arrayContaining(["问题场景：1000 万行查询"])
@@ -117,12 +220,12 @@ describe("AgentWorkflow", () => {
 
   test("writes visual-plan after learning-architecture is approved through ApprovalService", async () => {
     const { approvalService, workflow } = await createHarness();
+    const runId = "database-index-001";
 
-    await workflow.runNext("database-index-001");
-    await workflow.runNext("database-index-001");
-    await approveGate(approvalService, "database-index-001", "learning-architecture");
+    await advanceToLearningArchitecture(workflow, approvalService, runId);
+    await approveGate(approvalService, runId, "learning-architecture");
 
-    await expect(workflow.runNext("database-index-001")).resolves.toEqual({
+    await expect(workflow.runNext(runId)).resolves.toEqual({
       status: "artifact_written",
       artifactId: "visual-plan",
       version: "v1"
@@ -133,17 +236,7 @@ describe("AgentWorkflow", () => {
     const { approvalService, workflow } = await createHarness();
     const runId = "database-index-001";
 
-    await expect(workflow.runNext(runId)).resolves.toEqual({
-      status: "artifact_written",
-      artifactId: "source-ingest",
-      version: "v1"
-    });
-    await expect(workflow.runNext(runId)).resolves.toEqual({
-      status: "artifact_written",
-      artifactId: "learning-architecture",
-      version: "v1",
-      createsGate: "learning-architecture"
-    });
+    await advanceToLearningArchitecture(workflow, approvalService, runId);
     await approvalService.approve({
       gate: "learning-architecture",
       runId,
@@ -169,8 +262,7 @@ describe("AgentWorkflow", () => {
     const { approvalService, runPath, workflow } = await createHarness();
     const runId = "database-index-001";
 
-    await workflow.runNext(runId);
-    await workflow.runNext(runId);
+    await advanceToLearningArchitecture(workflow, approvalService, runId);
     await approveGate(approvalService, runId, "learning-architecture");
     await expect(workflow.runNext(runId)).resolves.toEqual({
       status: "artifact_written",
@@ -223,16 +315,16 @@ describe("AgentWorkflow", () => {
 
   test("requires approval when learning-architecture approval points to an older artifact version", async () => {
     const { approvalService, artifactStore, workflow } = await createHarness();
+    const runId = "database-index-001";
 
-    await workflow.runNext("database-index-001");
-    await workflow.runNext("database-index-001");
-    await approveGate(approvalService, "database-index-001", "learning-architecture", "v1");
+    await advanceToLearningArchitecture(workflow, approvalService, runId);
+    await approveGate(approvalService, runId, "learning-architecture", "v1");
     await artifactStore.writeDraft("learning-architecture", {
       pageSequence: ["重写后的学习路径"],
       reason: "A later draft invalidates the earlier approval."
     });
 
-    await expect(workflow.runNext("database-index-001")).resolves.toEqual({
+    await expect(workflow.runNext(runId)).resolves.toEqual({
       status: "approval_required",
       requiredGate: "learning-architecture"
     });
@@ -240,20 +332,20 @@ describe("AgentWorkflow", () => {
 
   test("regenerates learning-architecture when a later revision request exists for the current version", async () => {
     const { approvalService, workflow } = await createHarness();
+    const runId = "database-index-001";
 
-    await workflow.runNext("database-index-001");
-    await workflow.runNext("database-index-001");
-    await approveGate(approvalService, "database-index-001", "learning-architecture", "v1");
+    await advanceToLearningArchitecture(workflow, approvalService, runId);
+    await approveGate(approvalService, runId, "learning-architecture", "v1");
     await approvalService.approve({
       gate: "learning-architecture",
-      runId: "database-index-001",
+      runId,
       artifactId: "learning-architecture",
       version: "v1",
       decision: "revision_requested",
       operatorNotes: "The approved architecture needs another revision."
     });
 
-    await expect(workflow.runNext("database-index-001")).resolves.toEqual({
+    await expect(workflow.runNext(runId)).resolves.toEqual({
       status: "artifact_written",
       artifactId: "learning-architecture",
       version: "v2",
@@ -263,12 +355,12 @@ describe("AgentWorkflow", () => {
 
   test("regenerates learning-architecture when it has only a current revision decision record", async () => {
     const { approvalService, runPath, workflow } = await createHarness();
+    const runId = "database-index-001";
 
-    await workflow.runNext("database-index-001");
-    await workflow.runNext("database-index-001");
+    await advanceToLearningArchitecture(workflow, approvalService, runId);
     await approvalService.approve({
       gate: "learning-architecture",
-      runId: "database-index-001",
+      runId,
       artifactId: "learning-architecture",
       version: "v1",
       decision: "revision_requested",
@@ -279,7 +371,7 @@ describe("AgentWorkflow", () => {
     await expect(stat(path.join(runPath, "approvals", "learning-architecture.approved.json"))).rejects.toMatchObject({
       code: "ENOENT"
     });
-    await expect(workflow.runNext("database-index-001")).resolves.toEqual({
+    await expect(workflow.runNext(runId)).resolves.toEqual({
       status: "artifact_written",
       artifactId: "learning-architecture",
       version: "v2",
