@@ -1,0 +1,333 @@
+{
+  "id": "database-index-speed",
+  "title": "Why database indexes make queries faster",
+  "audience": "Learners who understand basic database tables and simple SQL SELECT queries.",
+  "prerequisites": [
+    "A table is made of rows and columns.",
+    "A WHERE clause filters rows.",
+    "A database may inspect rows to answer a query."
+  ],
+  "learningObjectives": [
+    "Explain why a full table scan becomes expensive as a table grows.",
+    "Describe how an index reduces the search space for selective queries.",
+    "Predict when a query can use an index lookup versus a full scan.",
+    "Identify tradeoffs of indexes, including write overhead and storage cost.",
+    "Apply index reasoning to a new query or schema situation."
+  ],
+  "pages": [
+    {
+      "id": "p01-problem-10m-rows",
+      "type": "problem_scene",
+      "title": "The 10 million row question",
+      "learningGoal": "Feel the cost difference between looking everywhere and narrowing the search.",
+      "narrative": "A users table has 10 million rows. The product team asks for one user's order history by email. Without help, the database may need to inspect row after row until it finds the match.",
+      "visualSpec": {
+        "kind": "table",
+        "description": "A long table strip with one highlighted target row buried among many muted rows.",
+        "keyElements": [
+          "10,000,000 rows label",
+          "target email row",
+          "scanner moving row by row",
+          "work counter"
+        ],
+        "states": [
+          "unknown target location",
+          "scan begins",
+          "many rows inspected",
+          "target found"
+        ]
+      },
+      "assessmentSpec": {
+        "kind": "prediction",
+        "prompt": "If there is no index on email, what is the worst-case number of rows the database may inspect?",
+        "options": [
+          "1 row",
+          "About log2(10,000,000) rows",
+          "Up to 10,000,000 rows",
+          "Only rows with matching email domain"
+        ],
+        "correctAnswer": "Up to 10,000,000 rows"
+      },
+      "feedbackSpec": {
+        "correctFeedback": "Yes. Without a useful access path, the database may need to check every row in the table.",
+        "incorrectFeedback": "The tempting assumption is that the database somehow jumps to the right row. Without an index or another access path, it does not know where that row is."
+      }
+    },
+    {
+      "id": "p02-book-index-intuition",
+      "type": "intuition_visual",
+      "title": "A book index is a shortcut",
+      "learningGoal": "Use a familiar index to understand search space reduction.",
+      "narrative": "Finding a term by reading every page is slow. A book index gives an ordered list of terms and page numbers, so you first search the small organized structure, then jump to the right page.",
+      "visualSpec": {
+        "kind": "diagram",
+        "description": "Side-by-side comparison: page-by-page reading versus index lookup then jump.",
+        "keyElements": [
+          "book pages",
+          "back-of-book index",
+          "term entry",
+          "page jump arrow",
+          "reduced search space label"
+        ]
+      }
+    },
+    {
+      "id": "p03-table-vs-index-structure",
+      "type": "structure_diagram",
+      "title": "Table rows versus index structure",
+      "learningGoal": "See that an index is a separate organized structure pointing back to rows.",
+      "narrative": "The table stores full rows. The index stores selected key values in a searchable order, with pointers to matching rows. The database can search the smaller organized structure first.",
+      "visualSpec": {
+        "kind": "tree",
+        "description": "A simplified B+ tree index beside a row table, with leaf entries pointing to table rows.",
+        "keyElements": [
+          "root node",
+          "branch nodes",
+          "leaf key ranges",
+          "row pointers",
+          "table heap or clustered rows"
+        ]
+      }
+    },
+    {
+      "id": "p04-full-table-scan",
+      "type": "process_animation",
+      "title": "Full table scan: inspect candidates one by one",
+      "learningGoal": "Understand the mechanism and cost of scanning.",
+      "narrative": "A full scan reads table rows and tests the condition against each row. This is reasonable for tiny tables or broad queries, but expensive when the table is large and the result is narrow.",
+      "visualSpec": {
+        "kind": "animation",
+        "description": "Rows light up sequentially while a WHERE predicate checks each candidate.",
+        "keyElements": [
+          "row stream",
+          "WHERE email = target@example.com",
+          "checked rows counter",
+          "matched row"
+        ],
+        "states": [
+          "start",
+          "checking",
+          "many misses",
+          "match found",
+          "scan complete"
+        ]
+      }
+    },
+    {
+      "id": "p05-indexed-lookup",
+      "type": "process_animation",
+      "title": "Indexed lookup: narrow, then fetch",
+      "learningGoal": "Understand how an index changes the path to the result.",
+      "narrative": "With a useful index, the database searches the ordered key structure, lands near the matching key, and follows pointers to rows. It does not need to test every row.",
+      "visualSpec": {
+        "kind": "animation",
+        "description": "Traversal from root to branch to leaf, then pointer jump to a row.",
+        "keyElements": [
+          "root comparison",
+          "branch range choice",
+          "leaf key match",
+          "row pointer jump",
+          "small inspected set"
+        ],
+        "states": [
+          "start at root",
+          "choose branch",
+          "find leaf range",
+          "fetch row",
+          "return result"
+        ]
+      }
+    },
+    {
+      "id": "p06-query-path-visualizer",
+      "type": "interactive_model",
+      "title": "Choose a query path",
+      "learningGoal": "Predict whether a query uses a full scan or an index lookup.",
+      "narrative": "Different WHERE clauses create different access paths. An index on email helps equality search by email. It does not automatically help every condition.",
+      "visualSpec": {
+        "kind": "flow",
+        "description": "A query planner decision flow leading to either index lookup or full table scan.",
+        "keyElements": [
+          "available indexes",
+          "query condition",
+          "selectivity",
+          "chosen path",
+          "feedback explanation"
+        ]
+      },
+      "interactionSpec": {
+        "kind": "choice",
+        "learnerAction": "Select from several query conditions, then predict whether the query uses the email index.",
+        "expectedObservation": "The visual path changes between full scan, index lookup, and partial usefulness.",
+        "cognitivePurpose": "Build the rule that indexes help when the query condition matches the indexed keys with useful selectivity."
+      },
+      "feedbackSpec": {
+        "correctFeedback": "This path matches the index structure, so the database can reduce the search space before touching table rows.",
+        "incorrectFeedback": "The missing step is matching the query condition to the index key. An index on one column does not make unrelated predicates searchable."
+      }
+    },
+    {
+      "id": "p07-indexes-always-help",
+      "type": "misconception_check",
+      "title": "Misconception: indexes always help",
+      "learningGoal": "Understand that indexes have benefits and costs.",
+      "narrative": "Indexes can speed up reads, but every insert, update, and delete may also need to maintain the index. Indexes also consume storage. A low-selectivity or unused index can be a net cost.",
+      "visualSpec": {
+        "kind": "diagram",
+        "description": "A balance diagram comparing read shortcut against write maintenance and storage.",
+        "keyElements": [
+          "read benefit",
+          "write overhead",
+          "storage overhead",
+          "selectivity",
+          "workload mix"
+        ]
+      },
+      "interactionSpec": {
+        "kind": "choice",
+        "learnerAction": "Choose whether to add an index for several workload scenarios.",
+        "expectedObservation": "Some scenarios benefit, while broad filters and write-heavy workloads may not.",
+        "cognitivePurpose": "Replace the simple rule 'add indexes everywhere' with workload-aware reasoning."
+      },
+      "assessmentSpec": {
+        "kind": "multiple_choice",
+        "prompt": "Which case is least likely to benefit from adding a new index?",
+        "options": [
+          "Frequent lookup by unique email",
+          "Rare report filtering a tiny table",
+          "Frequent lookup by order_id",
+          "Selective query on a large table"
+        ],
+        "correctAnswer": "Rare report filtering a tiny table"
+      },
+      "feedbackSpec": {
+        "correctFeedback": "Right. If the table is tiny or the query is rare, the saved read work may not justify maintenance and storage cost.",
+        "incorrectFeedback": "Indexes are not free. Ask whether the query is frequent, selective, and expensive enough to justify the extra structure."
+      }
+    },
+    {
+      "id": "p08-sql-walkthrough",
+      "type": "code_walkthrough",
+      "title": "From mental model to SQL",
+      "learningGoal": "Connect index intuition to simple SQL examples.",
+      "narrative": "A CREATE INDEX statement builds a search structure for chosen columns. Composite index order matters because the structure is sorted first by the leftmost column.",
+      "visualSpec": {
+        "kind": "table",
+        "description": "SQL snippets paired with planner path labels.",
+        "keyElements": [
+          "CREATE INDEX users_email_idx ON users(email)",
+          "WHERE email = ?",
+          "CREATE INDEX orders_user_status_idx ON orders(user_id, status)",
+          "leftmost prefix note"
+        ]
+      },
+      "assessmentSpec": {
+        "kind": "prediction",
+        "prompt": "Given an index on (user_id, status), which query is most likely to use the leading part of the index well?",
+        "options": [
+          "WHERE status = 'paid'",
+          "WHERE user_id = 42",
+          "WHERE created_at > '2026-01-01'",
+          "WHERE total > 100"
+        ],
+        "correctAnswer": "WHERE user_id = 42"
+      },
+      "feedbackSpec": {
+        "correctFeedback": "Correct. The composite index is ordered first by user_id, so filtering by user_id can navigate the leading key.",
+        "incorrectFeedback": "Composite index order matters. An index on (user_id, status) is not the same as an index on status alone."
+      }
+    },
+    {
+      "id": "p09-transfer-cache-lookup",
+      "type": "transfer_challenge",
+      "title": "Transfer: choosing an access path",
+      "learningGoal": "Apply index reasoning to a related system design situation.",
+      "narrative": "A service stores millions of cached objects. You often need to find all objects for one customer. Should you add a lookup structure by customer_id?",
+      "visualSpec": {
+        "kind": "architecture",
+        "description": "Cache objects with optional secondary lookup from customer_id to object ids.",
+        "keyElements": [
+          "cache objects",
+          "customer_id",
+          "secondary lookup map",
+          "read path",
+          "write maintenance"
+        ]
+      },
+      "assessmentSpec": {
+        "kind": "transfer",
+        "prompt": "Decide whether a customer_id lookup helps, and explain the read benefit and write/storage cost.",
+        "correctAnswer": "It helps if customer lookups are frequent and selective enough; it costs extra maintenance when cached objects are added, changed, or removed."
+      },
+      "feedbackSpec": {
+        "correctFeedback": "Good transfer. The same mental model applies: build a smaller organized access path when repeated lookups justify its maintenance cost.",
+        "incorrectFeedback": "Focus on the same three questions: does the lookup match the access pattern, does it reduce the search space, and is the maintenance cost justified?"
+      }
+    },
+    {
+      "id": "p10-summary",
+      "type": "summary_card",
+      "title": "The durable model",
+      "learningGoal": "Compress the lesson into recallable rules.",
+      "narrative": "An index is an extra organized access path. It makes some reads faster by reducing the search space, but it has write and storage costs. The right question is not 'Do indexes help?' but 'Does this index match this workload?'",
+      "visualSpec": {
+        "kind": "diagram",
+        "description": "Summary card with four linked rules.",
+        "keyElements": [
+          "full scan checks many rows",
+          "index lookup narrows first",
+          "selectivity matters",
+          "writes maintain indexes",
+          "composite order matters"
+        ]
+      }
+    }
+  ],
+  "misconceptions": [
+    {
+      "id": "m01-indexes-always-help",
+      "statement": "Indexes always make queries faster.",
+      "correction": "Indexes speed up queries only when they match the access pattern and reduce enough read work to justify storage and write maintenance."
+    },
+    {
+      "id": "m02-any-index-helps-any-query",
+      "statement": "Any index can help any WHERE clause.",
+      "correction": "The query condition must align with the indexed key or leading part of a composite index."
+    },
+    {
+      "id": "m03-index-removes-row-access",
+      "statement": "An index means the database never reads table rows.",
+      "correction": "Many indexes help find row locations first; the database may still fetch table rows to return needed columns."
+    }
+  ],
+  "transferTasks": [
+    {
+      "id": "t01-cache-customer-lookup",
+      "prompt": "A cache has millions of objects and frequent lookups by customer_id. Decide whether to add a secondary lookup and explain the tradeoff.",
+      "targetMentalModel": "Use a maintained access path when repeated selective lookup saves more read work than it costs in writes and storage."
+    }
+  ],
+  "summary": [
+    "A full table scan tests many rows because it has no shortcut to the target.",
+    "An index is a separate organized access path over selected key values.",
+    "A useful index reduces search space before row access.",
+    "Selectivity and query/index alignment determine whether the index helps.",
+    "Composite index order matters because the structure is sorted by leading keys first.",
+    "Indexes trade read speed for write maintenance and storage overhead."
+  ],
+  "implementationNotes": {
+    "status": "design_only",
+    "doNotImplementYet": true,
+    "requiredInteractions": [
+      "query path visualizer",
+      "index tradeoff checker"
+    ],
+    "requiredAssessments": [
+      "multiple choice quiz",
+      "prediction task",
+      "misconception check",
+      "transfer challenge"
+    ]
+  }
+}
+

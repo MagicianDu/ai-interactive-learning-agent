@@ -1,0 +1,409 @@
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+
+import { afterEach, describe, expect, test } from "vitest";
+
+import { MockRuntimeAdapter } from "../adapters/mock-adapter.js";
+import { ApprovalService } from "../approval-service.js";
+import { ArtifactStore, type ArtifactVersion } from "../artifact-store.js";
+import { RunStore } from "../run-store.js";
+import type { ApprovalGateId, RunConfig } from "../types.js";
+import { AgentWorkflow } from "../workflow/agent-workflow.js";
+
+const tempRoots: string[] = [];
+
+function baseConfig(overrides: Partial<RunConfig> = {}): RunConfig {
+  return {
+    runId: "database-index-001",
+    topic: "为什么数据库索引能让查询更快",
+    source: { type: "topic", value: "为什么数据库索引能让查询更快" },
+    audience: "具备基础 SQL 经验的学习者",
+    outputLanguage: "zh-CN",
+    targetOutput: "web_deck",
+    pageCount: { target: 10, min: 8, max: 12 },
+    runtime: { adapter: "mock", mode: "interactive" },
+    models: { defaultModel: { provider: "mock", model: "mock-learning-agent", temperature: 0.2 } },
+    modelFallbackPolicy: "require_approval",
+    approvalGates: ["learning-architecture", "lesson", "critic-report", "publish-package"],
+    ...overrides
+  };
+}
+
+async function createHarness(config: RunConfig = baseConfig()) {
+  const workspaceRoot = await mkdtemp(path.join(tmpdir(), "agent-runtime-workflow-"));
+  tempRoots.push(workspaceRoot);
+  const runStore = new RunStore(workspaceRoot);
+  const runPath = await runStore.createRun(config);
+  const artifactStore = new ArtifactStore(runPath);
+  const approvalService = new ApprovalService(runPath, artifactStore);
+  const workflow = new AgentWorkflow(runStore, artifactStore, approvalService, new MockRuntimeAdapter());
+
+  return { workspaceRoot, runPath, runStore, artifactStore, approvalService, workflow };
+}
+
+async function approveGate(
+  approvalService: ApprovalService,
+  runId: string,
+  gate: ApprovalGateId,
+  version: ArtifactVersion = "v1"
+): Promise<void> {
+  await approvalService.approve({
+    gate,
+    runId,
+    artifactId: gate,
+    version,
+    decision: "approved"
+  });
+}
+
+afterEach(async () => {
+  await Promise.all(tempRoots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
+});
+
+describe("AgentWorkflow", () => {
+  test("writes source-ingest, then learning-architecture, then stops for learning-architecture approval", async () => {
+    const { artifactStore, workflow } = await createHarness();
+
+    const first = await workflow.runNext("database-index-001");
+    expect(first).toEqual({
+      status: "artifact_written",
+      artifactId: "source-ingest",
+      version: "v1"
+    });
+    await expect(artifactStore.readDraft("source-ingest")).resolves.toMatchObject({
+      language: "zh-CN",
+      concepts: expect.arrayContaining(["全表扫描", "索引查找", "选择性"])
+    });
+
+    const second = await workflow.runNext("database-index-001");
+    expect(second).toEqual({
+      status: "artifact_written",
+      artifactId: "learning-architecture",
+      version: "v1",
+      createsGate: "learning-architecture"
+    });
+    await expect(artifactStore.readDraft("learning-architecture")).resolves.toMatchObject({
+      pageCount: { planned: 10, target: 10 },
+      pageSequence: expect.arrayContaining(["问题场景：1000 万行查询"])
+    });
+
+    await expect(workflow.runNext("database-index-001")).resolves.toEqual({
+      status: "approval_required",
+      requiredGate: "learning-architecture"
+    });
+  });
+
+  test("learning-architecture preserves requested page count", async () => {
+    const { artifactStore, workflow } = await createHarness(
+      baseConfig({
+        runId: "hash-table-8-pages",
+        topic: "哈希表",
+        source: { type: "topic", value: "哈希表" },
+        pageCount: { target: 8, min: 6, max: 10 }
+      })
+    );
+
+    await workflow.runNext("hash-table-8-pages");
+    await workflow.runNext("hash-table-8-pages");
+
+    await expect(artifactStore.readDraft("learning-architecture")).resolves.toMatchObject({
+      pageCount: { planned: 8, target: 8 },
+      pageSequence: expect.arrayContaining(["问题场景：1000 万行查询"])
+    });
+    const artifact = await artifactStore.readDraft<{ pageSequence: string[] }>("learning-architecture");
+    expect(artifact.pageSequence).toHaveLength(8);
+  });
+
+  test("writes visual-plan after learning-architecture is approved through ApprovalService", async () => {
+    const { approvalService, workflow } = await createHarness();
+
+    await workflow.runNext("database-index-001");
+    await workflow.runNext("database-index-001");
+    await approveGate(approvalService, "database-index-001", "learning-architecture");
+
+    await expect(workflow.runNext("database-index-001")).resolves.toEqual({
+      status: "artifact_written",
+      artifactId: "visual-plan",
+      version: "v1"
+    });
+  });
+
+  test("regenerates current gate artifact when revision is requested for the current version", async () => {
+    const { approvalService, workflow } = await createHarness();
+    const runId = "database-index-001";
+
+    await expect(workflow.runNext(runId)).resolves.toEqual({
+      status: "artifact_written",
+      artifactId: "source-ingest",
+      version: "v1"
+    });
+    await expect(workflow.runNext(runId)).resolves.toEqual({
+      status: "artifact_written",
+      artifactId: "learning-architecture",
+      version: "v1",
+      createsGate: "learning-architecture"
+    });
+    await approvalService.approve({
+      gate: "learning-architecture",
+      runId,
+      artifactId: "learning-architecture",
+      version: "v1",
+      decision: "revision_requested",
+      operatorNotes: "Need a stronger problem-first path."
+    });
+
+    await expect(workflow.runNext(runId)).resolves.toEqual({
+      status: "artifact_written",
+      artifactId: "learning-architecture",
+      version: "v2",
+      createsGate: "learning-architecture"
+    });
+    await expect(workflow.runNext(runId)).resolves.toEqual({
+      status: "approval_required",
+      requiredGate: "learning-architecture"
+    });
+  });
+
+  test("invalidates downstream drafts when a revised upstream gate is regenerated", async () => {
+    const { approvalService, runPath, workflow } = await createHarness();
+    const runId = "database-index-001";
+
+    await workflow.runNext(runId);
+    await workflow.runNext(runId);
+    await approveGate(approvalService, runId, "learning-architecture");
+    await expect(workflow.runNext(runId)).resolves.toEqual({
+      status: "artifact_written",
+      artifactId: "visual-plan",
+      version: "v1"
+    });
+    await expect(workflow.runNext(runId)).resolves.toEqual({
+      status: "artifact_written",
+      artifactId: "interaction-plan",
+      version: "v1"
+    });
+
+    await approvalService.approve({
+      gate: "learning-architecture",
+      runId,
+      artifactId: "learning-architecture",
+      version: "v1",
+      decision: "revision_requested",
+      operatorNotes: "The approved architecture needs another revision."
+    });
+
+    await expect(workflow.runNext(runId)).resolves.toEqual({
+      status: "artifact_written",
+      artifactId: "learning-architecture",
+      version: "v2",
+      createsGate: "learning-architecture"
+    });
+
+    await expect(stat(path.join(runPath, "artifacts", "source-ingest.draft.json"))).resolves.toBeTruthy();
+    await expect(stat(path.join(runPath, "artifacts", "visual-plan.draft.json"))).rejects.toMatchObject({
+      code: "ENOENT"
+    });
+    await expect(stat(path.join(runPath, "artifacts", "visual-plan.v1.json"))).rejects.toMatchObject({
+      code: "ENOENT"
+    });
+    await expect(stat(path.join(runPath, "artifacts", "interaction-plan.draft.json"))).rejects.toMatchObject({
+      code: "ENOENT"
+    });
+    await expect(stat(path.join(runPath, "artifacts", "interaction-plan.v1.json"))).rejects.toMatchObject({
+      code: "ENOENT"
+    });
+
+    await approveGate(approvalService, runId, "learning-architecture", "v2");
+    await expect(workflow.runNext(runId)).resolves.toEqual({
+      status: "artifact_written",
+      artifactId: "visual-plan",
+      version: "v1"
+    });
+  });
+
+  test("requires approval when learning-architecture approval points to an older artifact version", async () => {
+    const { approvalService, artifactStore, workflow } = await createHarness();
+
+    await workflow.runNext("database-index-001");
+    await workflow.runNext("database-index-001");
+    await approveGate(approvalService, "database-index-001", "learning-architecture", "v1");
+    await artifactStore.writeDraft("learning-architecture", {
+      pageSequence: ["重写后的学习路径"],
+      reason: "A later draft invalidates the earlier approval."
+    });
+
+    await expect(workflow.runNext("database-index-001")).resolves.toEqual({
+      status: "approval_required",
+      requiredGate: "learning-architecture"
+    });
+  });
+
+  test("regenerates learning-architecture when a later revision request exists for the current version", async () => {
+    const { approvalService, workflow } = await createHarness();
+
+    await workflow.runNext("database-index-001");
+    await workflow.runNext("database-index-001");
+    await approveGate(approvalService, "database-index-001", "learning-architecture", "v1");
+    await approvalService.approve({
+      gate: "learning-architecture",
+      runId: "database-index-001",
+      artifactId: "learning-architecture",
+      version: "v1",
+      decision: "revision_requested",
+      operatorNotes: "The approved architecture needs another revision."
+    });
+
+    await expect(workflow.runNext("database-index-001")).resolves.toEqual({
+      status: "artifact_written",
+      artifactId: "learning-architecture",
+      version: "v2",
+      createsGate: "learning-architecture"
+    });
+  });
+
+  test("regenerates learning-architecture when it has only a current revision decision record", async () => {
+    const { approvalService, runPath, workflow } = await createHarness();
+
+    await workflow.runNext("database-index-001");
+    await workflow.runNext("database-index-001");
+    await approvalService.approve({
+      gate: "learning-architecture",
+      runId: "database-index-001",
+      artifactId: "learning-architecture",
+      version: "v1",
+      decision: "revision_requested",
+      operatorNotes: "Need clearer problem-first sequence."
+    });
+
+    await expect(stat(path.join(runPath, "approvals", "learning-architecture.decision.json"))).resolves.toBeTruthy();
+    await expect(stat(path.join(runPath, "approvals", "learning-architecture.approved.json"))).rejects.toMatchObject({
+      code: "ENOENT"
+    });
+    await expect(workflow.runNext("database-index-001")).resolves.toEqual({
+      status: "artifact_written",
+      artifactId: "learning-architecture",
+      version: "v2",
+      createsGate: "learning-architecture"
+    });
+  });
+
+  test("returns complete when all artifacts and required approvals are present", async () => {
+    const { approvalService, workflow } = await createHarness();
+    const runId = "database-index-001";
+    let lastResult = await workflow.runNext(runId);
+    let guard = 0;
+
+    while (lastResult.status !== "complete" && guard < 20) {
+      guard += 1;
+      if (lastResult.status === "approval_required") {
+        await approveGate(approvalService, runId, lastResult.requiredGate);
+      }
+      lastResult = await workflow.runNext(runId);
+    }
+
+    expect(lastResult).toEqual({ status: "complete" });
+    expect(guard).toBeLessThan(20);
+  });
+
+  test("mock lesson-assembly writes a promotion-ready lesson object using target page count", async () => {
+    const { approvalService, artifactStore, workflow } = await createHarness(
+      baseConfig({ pageCount: { target: 8, min: 6, max: 10 } })
+    );
+    const runId = "database-index-001";
+    let lastResult = await workflow.runNext(runId);
+    let guard = 0;
+
+    while (!(lastResult.status === "artifact_written" && lastResult.artifactId === "lesson") && guard < 20) {
+      guard += 1;
+      if (lastResult.status === "approval_required") {
+        await approveGate(approvalService, runId, lastResult.requiredGate);
+      }
+      lastResult = await workflow.runNext(runId);
+    }
+
+    expect(lastResult).toMatchObject({
+      status: "artifact_written",
+      artifactId: "lesson",
+      createsGate: "lesson"
+    });
+    await expect(artifactStore.readDraft("lesson")).resolves.toMatchObject({
+      id: "database-index-lesson",
+      title: expect.stringContaining("数据库索引"),
+      audience: "具备基础 SQL 经验的学习者",
+      config: {
+        targetPageCount: 8,
+        minPageCount: 6,
+        maxPageCount: 10
+      },
+      prerequisites: expect.arrayContaining(["会读简单 SELECT 查询"]),
+      learningObjectives: expect.arrayContaining(["解释索引如何减少查询需要检查的数据范围"]),
+      misconceptions: [
+        expect.objectContaining({
+          id: expect.any(String),
+          statement: expect.any(String),
+          correction: expect.any(String)
+        }),
+        expect.any(Object),
+        expect.any(Object)
+      ],
+      transferTasks: [
+        expect.objectContaining({
+          id: expect.any(String),
+          prompt: expect.any(String),
+          targetMentalModel: expect.any(String)
+        }),
+        expect.any(Object)
+      ],
+      summary: expect.arrayContaining(["索引通过缩小搜索空间提升读取效率"])
+    });
+    const lesson = await artifactStore.readDraft<{ pages: Array<Record<string, unknown>>; targetPageCount?: unknown }>(
+      "lesson"
+    );
+    const allowedPageTypes = new Set([
+      "problem_scene",
+      "intuition_visual",
+      "structure_diagram",
+      "process_animation",
+      "interactive_model",
+      "code_walkthrough",
+      "quiz",
+      "misconception_check",
+      "transfer_challenge",
+      "summary_card"
+    ]);
+    expect("targetPageCount" in lesson).toBe(false);
+    expect(lesson.pages).toHaveLength(8);
+    lesson.pages.forEach((page) => {
+      expect(page).toMatchObject({
+        id: expect.any(String),
+        type: expect.any(String),
+        title: expect.any(String),
+        learningGoal: expect.any(String),
+        narrative: expect.any(String)
+      });
+      expect(allowedPageTypes.has(String(page.type))).toBe(true);
+    });
+  });
+
+  test("rejects unsafe runId through RunStore before reading outside runs", async () => {
+    const workspaceRoot = await mkdtemp(path.join(tmpdir(), "agent-runtime-workflow-"));
+    tempRoots.push(workspaceRoot);
+    const outsideRunPath = path.join(workspaceRoot, "outside");
+    await mkdir(outsideRunPath, { recursive: true });
+    await writeFile(path.join(outsideRunPath, "run.config.json"), `${JSON.stringify(baseConfig())}\n`);
+
+    const runPath = await new RunStore(workspaceRoot).createRun(baseConfig());
+    const artifactStore = new ArtifactStore(runPath);
+    const workflow = new AgentWorkflow(
+      new RunStore(workspaceRoot),
+      artifactStore,
+      new ApprovalService(runPath, artifactStore),
+      new MockRuntimeAdapter()
+    );
+
+    await expect(workflow.runNext("../outside")).rejects.toThrow(/runId must match/);
+    await expect(readFile(path.join(outsideRunPath, "run.config.json"), "utf8")).resolves.toContain(
+      "database-index-001"
+    );
+  });
+});

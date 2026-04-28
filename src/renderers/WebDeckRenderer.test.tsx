@@ -1,0 +1,35 @@
+import { render, screen } from "@testing-library/react";
+
+import { databaseIndexLesson } from "../lessons/database-index/lesson";
+import type { Lesson } from "../schemas/lesson.schema";
+import { WebDeckRenderer } from "./WebDeckRenderer";
+
+describe("WebDeckRenderer", () => {
+  test("renders the database index lesson with its actual 10 page count", () => {
+    render(<WebDeckRenderer lesson={databaseIndexLesson} />);
+
+    expect(databaseIndexLesson.pages).toHaveLength(10);
+    expect(
+      screen.getByRole("heading", { level: 2, name: "问题引入：为什么全表扫描慢？" }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("第 1 / 10 页")).toHaveLength(2);
+  });
+
+  test("renders a shorter lesson with a matching configured target count", () => {
+    const shorterLesson: Lesson = {
+      ...databaseIndexLesson,
+      id: "database-index-shorter-test",
+      config: {
+        ...databaseIndexLesson.config,
+        targetPageCount: 6,
+      },
+      pages: databaseIndexLesson.pages.slice(0, 6),
+    };
+
+    render(<WebDeckRenderer lesson={shorterLesson} />);
+
+    expect(screen.getAllByText("第 1 / 6 页")).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "跳转到第 6 页" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "跳转到第 7 页" })).not.toBeInTheDocument();
+  });
+});
