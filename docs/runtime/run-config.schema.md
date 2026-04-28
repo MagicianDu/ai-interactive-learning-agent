@@ -6,7 +6,7 @@ A run config is the portable contract for one learning-experience generation run
 
 The config keeps the workflow independent of a single agent environment. Codex, Claude Code, Gemini CLI, an MCP server, or a custom runner should be able to read the same run config and produce the same artifact sequence, even if their execution mechanics differ.
 
-The mock local runner now implements the current Codex-first path through TypeScript CLI and orchestration code. Real model adapters and the MCP server remain future interfaces that should reuse this same run config contract.
+The local runner now implements the current Codex-first path through TypeScript CLI and orchestration code. It supports deterministic `mock` execution and operator-driven `codex-manual` execution. Real provider API adapters and the MCP server remain future interfaces that should reuse this same run config contract.
 
 ## Database Index Run Example
 
@@ -209,13 +209,10 @@ Required shape:
 }
 ```
 
-Current CLI-executed `adapter` value:
+Current CLI-executed `adapter` values:
 
 - `mock`: deterministic local runner adapter used by the CLI.
-
-Accepted but not separately executed today:
-
-- `codex-manual`: reserved config value for manual Codex-mediated runs, but the CLI currently constructs `MockRuntimeAdapter` unconditionally and does not yet provide a distinct `codex-manual` executor.
+- `codex-manual`: operator-driven Codex mode. The CLI writes a role prompt under `runs/<run-id>/manual-requests/`, returns `manual_action_required`, and expects the operator to submit generated JSON with `npm run agent:submit`.
 
 Future-facing adapter values may include real provider-backed or environment-specific adapters such as `openai`, `anthropic`, `gemini`, or `custom`. These require implementation and provider validation before use.
 
@@ -227,7 +224,7 @@ Recommended `mode` values:
 
 ### Current Implementation Note
 
-The first implemented interface is a Codex-first local runner using the deterministic mock adapter. It uses the same run config contract and stores state under `runs/<run-id>/`. Real model adapters and the MCP server remain future work; the MCP server should wrap the same runtime core rather than duplicating orchestration logic.
+The first implemented interface is a Codex-first local runner using `mock` and `codex-manual` adapters. It uses the same run config contract and stores state under `runs/<run-id>/`. Real provider API adapters and the MCP server remain future work; the MCP server should wrap the same runtime core rather than duplicating orchestration logic.
 
 ### `models`
 
@@ -285,7 +282,7 @@ Future provider-backed examples may add real model ids and role overrides after 
 
 Model reference fields:
 
-- `provider`: Current runnable provider is `mock`. Future real-provider values may include `openai`, `anthropic`, `google`, `local`, or `custom` after the matching adapter exists.
+- `provider`: Current runnable provider is `mock` for deterministic runs. `codex-manual` may use a descriptive provider/model pair such as `codex` / `manual-codex-session` because the active Codex session performs the generation. Future real-provider values may include `openai`, `anthropic`, `google`, `local`, or `custom` after the matching adapter exists.
 - `model`: Provider-specific model name.
 - `reasoningEffort`: Optional value of `low`, `medium`, or `high`.
 - `temperature`: Optional numeric generation setting.

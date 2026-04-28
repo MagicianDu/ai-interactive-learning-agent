@@ -6,7 +6,7 @@ A runtime adapter maps the portable learning-agent workflow into a concrete exec
 
 Adapters are responsible for executing role requests, honoring or reporting model selections, reading and writing file artifacts, surfacing approval gates, and recording runtime events. They should not redefine the lesson schema, role contracts, or artifact contracts.
 
-The current implementation includes a deterministic local `mock` adapter used by the CLI runner. `codex-manual` is an accepted/reserved run-config value, but the CLI does not yet execute it through a separate adapter. Real model adapters and an MCP server remain future work and should wrap the same runtime core instead of duplicating orchestration logic.
+The current implementation includes two local CLI adapters: deterministic `mock` execution and operator-driven `codex-manual` execution. `codex-manual` does not call an external model API; it writes a role prompt for the active Codex session, pauses, and waits for the operator to submit the generated JSON artifact. Real provider adapters and an MCP server remain future work and should wrap the same runtime core instead of duplicating orchestration logic.
 
 ## Conceptual TypeScript Shape
 
@@ -69,7 +69,7 @@ This shape is conceptual. Future implementation may adapt names and transport de
 
 ### Mock
 
-`mock` is the only adapter currently executed by the CLI. It is deterministic, writes Chinese-first artifacts, preserves the requested page count, and exists to make the artifact, approval, resume, and promotion workflow testable before real model execution is added.
+`mock` is the deterministic adapter currently used for automated local verification. It writes Chinese-first artifacts, preserves the requested page count, and exists to make the artifact, approval, resume, and promotion workflow testable before real provider execution is added.
 
 Expected behavior:
 
@@ -81,7 +81,19 @@ Expected behavior:
 
 ### Codex Manual
 
-`codex-manual` is an accepted/reserved config value for a future operator-driven Codex execution mode. The current CLI still constructs `MockRuntimeAdapter` and does not yet dispatch a distinct Codex executor for this value.
+`codex-manual` is implemented as an operator-driven Codex execution mode. When a role is due, the CLI writes a durable prompt under `runs/<run-id>/manual-requests/<artifact-id>.md` and returns `manual_action_required` instead of writing a draft artifact. Codex then produces a JSON file and submits it through:
+
+```bash
+npm run agent:submit -- --run <run-id> --artifact <artifact-id> --file <json-file>
+```
+
+Expected behavior:
+
+- Generate role-specific prompts from the run config.
+- Preserve the same artifact names, versioning, and approval gates as `mock`.
+- Keep the operator in control of inspecting and approving submitted artifacts.
+- Avoid hidden chat state by writing prompts and submitted artifacts to disk.
+- Report manual work as `manual_action_required`, not as a completed artifact.
 
 ### Codex
 
@@ -161,7 +173,7 @@ Recommended use:
 | Adapter | Subagents | Skills | Tool calls | File artifacts | Recommended use |
 | --- | --- | --- | --- | --- | --- |
 | Mock | Not applicable. | Not applicable. | Not applicable. | Implemented. | Current CLI runner, tests, deterministic demos. |
-| Codex manual | Reserved; not a distinct CLI executor yet. | Reserved. | Reserved. | Required by contract. | Future operator-driven Codex runs. |
+| Codex manual | Uses the current Codex session/operator. | Strong support through project and installed skills. | Uses local shell/file tooling through the operator. | Implemented through prompts plus `agent:submit`. | Current human-in-the-loop real content generation. |
 | Codex | Supported when environment provides subagent or parallel-agent mechanisms; otherwise roles run sequentially in session. | Strong support through project and installed skills. | Strong support for shell, file edits, browser checks, and local verification. | Strong support; required for this project. | Future interactive repository work and model-backed role execution. |
 | Claude Code | Supported through Claude Code task patterns when available. | Supported through Claude Code conventions and project instructions. | Strong support in environments configured for local tools. | Strong support; must follow the same artifact names. | Alternative runtime, critique, revision, Anthropic-model-led runs. |
 | Gemini CLI | Environment-dependent. | Limited or environment-dependent. | Environment-dependent. | Required for compatibility; adapter should refuse runs it cannot write. | Focused generation, critique, model-diversity checks, batch role execution. |
@@ -193,7 +205,7 @@ Runtime selection and model selection are separate axes. For example:
 ## Non-Goals
 
 - Runtime adapters do not replace Codex, Claude Code, Gemini CLI, or other agent environments.
-- Real model adapters are not implemented yet.
+- Real provider API adapters are not implemented yet.
 - Adapters do not change the lesson object contract per runtime.
 - Adapters do not make hidden chat history the source of truth.
 - Adapters do not require every runtime to support subagents, skills, or tool calls equally.

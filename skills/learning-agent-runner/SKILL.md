@@ -11,7 +11,7 @@ Use this skill when the user asks Codex to generate a learning lesson, run the m
 
 - Output language: `zh-CN`
 - Target output: `web_deck`
-- Runtime adapter: `mock` unless the user explicitly asks for another configured adapter
+- Runtime adapter: `mock` unless the user explicitly asks for `codex-manual` or another configured adapter
 - Preserve the user's requested page count
 
 ## Workflow
@@ -28,7 +28,15 @@ npm run agent:init -- --topic "<topic>" --pages <count> --language zh-CN
 npm run agent:run -- --run <run-id>
 ```
 
-3. Treat either of these results as an approval gate signal:
+3. If the run uses `codex-manual` and returns `manual_action_required`, open the generated prompt at `promptPath`, produce the requested JSON artifact, and submit it:
+
+```bash
+npm run agent:submit -- --run <run-id> --artifact <artifact-id> --file <json-file>
+```
+
+Then continue with `agent:run` or `agent:resume`. Do not mark a manual artifact approved until the submitted versioned artifact has been inspected under `runs/<run-id>/artifacts/`.
+
+4. Treat either of these results as an approval gate signal:
 
 - `artifact_written` with `createsGate`
 - `approval_required`
@@ -41,35 +49,35 @@ runs/<run-id>/artifacts/
 
 Read the exact draft or versioned artifact for the required gate before asking the user to approve or revise it. Use the exact artifact `<version>` returned by the runtime output or recorded for the draft, not a hard-coded `v1`. Do not skip this inspection.
 
-4. Ask the user whether to approve the artifact or request a revision. Summarize the artifact version, gate, and any material concerns.
+5. Ask the user whether to approve the artifact or request a revision. Summarize the artifact version, gate, and any material concerns.
 
-5. Approve an acceptable artifact:
+6. Approve an acceptable artifact:
 
 ```bash
 npm run agent:approve -- --run <run-id> --gate <gate-id> --version <version> --notes "<notes>"
 ```
 
-6. Request revision when the artifact should not pass the gate:
+7. Request revision when the artifact should not pass the gate:
 
 ```bash
 npm run agent:revise -- --run <run-id> --gate <gate-id> --version <version> --notes "<requested changes>"
 ```
 
-7. Resume after approval or revision. Continue running or resuming until the next gated artifact is written or `approval_required` is returned:
+8. Resume after approval or revision. Continue running or resuming until the next gated artifact is written, `manual_action_required` is returned, or `approval_required` is returned:
 
 ```bash
 npm run agent:resume -- --run <run-id>
 ```
 
-8. Repeat gate inspection, approval, or revision through the lesson gate. Inspect and approve the `lesson` artifact before promotion.
+9. Repeat manual submission, gate inspection, approval, or revision through the lesson gate. Inspect and approve the `lesson` artifact before promotion.
 
-9. Promote only after the lesson artifact has been approved:
+10. Promote only after the lesson artifact has been approved:
 
 ```bash
 npm run agent:promote -- --run <run-id>
 ```
 
-10. Verify the project:
+11. Verify the project:
 
 ```bash
 npm run typecheck
@@ -87,3 +95,4 @@ npm run build
 - Do not promote draft lessons; promote approved lesson artifacts only.
 - Do not approve an artifact without inspecting the relevant file under `runs/<run-id>/artifacts/`.
 - Do not assume one `resume` reaches the lesson gate; continue until the runtime reports the next gate or completes.
+- Do not treat `manual_action_required` as a completed artifact; submit JSON with `agent:submit` first.

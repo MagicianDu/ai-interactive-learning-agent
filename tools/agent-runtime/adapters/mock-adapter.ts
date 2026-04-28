@@ -1,14 +1,36 @@
+import type { ArtifactVersion } from "../artifact-store.js";
 import type { RunConfig } from "../types.js";
 import type { RoleId, WorkflowArtifactId } from "../workflow/role-sequence.js";
 
 export type RuntimeAdapter = {
-  executeRole(config: RunConfig, roleId: RoleId, artifactId: WorkflowArtifactId): Promise<unknown>;
+  executeRole(context: RuntimeAdapterContext): Promise<RuntimeAdapterResult>;
 };
 
+export type RuntimeAdapterContext = {
+  config: RunConfig;
+  runPath: string;
+  roleId: RoleId;
+  artifactId: WorkflowArtifactId;
+};
+
+export type RuntimeAdapterResult =
+  | {
+      kind: "artifact";
+      payload: unknown;
+    }
+  | {
+      kind: "manual_action_required";
+      roleId: RoleId;
+      artifactId: WorkflowArtifactId;
+      promptPath: string;
+      expectedVersion?: ArtifactVersion;
+      message: string;
+    };
+
 export class MockRuntimeAdapter implements RuntimeAdapter {
-  async executeRole(config: RunConfig, roleId: RoleId, artifactId: WorkflowArtifactId): Promise<unknown> {
+  async executeRole({ config, roleId, artifactId }: RuntimeAdapterContext): Promise<RuntimeAdapterResult> {
     if (roleId === "source-ingest") {
-      return {
+      return artifactResult({
         artifactId,
         roleId,
         language: "zh-CN",
@@ -18,11 +40,11 @@ export class MockRuntimeAdapter implements RuntimeAdapter {
         examples: ["在 1000 万行订单表中查找某个用户的订单", "比较无索引扫描和按 user_id 索引查找"],
         misconceptions: ["索引总是让所有查询更快", "建越多索引越好", "复合索引中的列顺序不重要"],
         candidateInteractions: ["选择查询条件并观察扫描路径", "判断是否值得为某个场景添加索引"]
-      };
+      });
     }
 
     if (roleId === "learning-architecture") {
-      return {
+      return artifactResult({
         artifactId,
         roleId,
         language: "zh-CN",
@@ -39,11 +61,11 @@ export class MockRuntimeAdapter implements RuntimeAdapter {
           "说明索引带来的写入和存储代价"
         ],
         pageSequence: buildPageSequence(config.pageCount.target)
-      };
+      });
     }
 
     if (roleId === "lesson-assembly" && artifactId === "lesson") {
-      return {
+      return artifactResult({
         id: "database-index-lesson",
         title: "为什么数据库索引能让查询更快",
         audience: config.audience,
@@ -91,18 +113,25 @@ export class MockRuntimeAdapter implements RuntimeAdapter {
           }
         ],
         summary: ["索引通过缩小搜索空间提升读取效率", "高选择性条件更容易从索引获益", "索引会增加写入维护和存储成本"]
-      };
+      });
     }
 
-    return {
+    return artifactResult({
       artifactId,
       roleId,
       language: "zh-CN",
       topic: config.topic,
       status: "mocked",
       notes: `${roleId} 已生成 ${artifactId} 的占位草稿。`
-    };
+    });
   }
+}
+
+function artifactResult(payload: unknown): RuntimeAdapterResult {
+  return {
+    kind: "artifact",
+    payload
+  };
 }
 
 function buildPageSequence(targetPageCount: number): string[] {

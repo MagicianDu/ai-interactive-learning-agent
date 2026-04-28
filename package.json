@@ -16,6 +16,7 @@
     "agent:init": "tsx tools/agent-runtime/cli.ts init",
     "agent:status": "tsx tools/agent-runtime/cli.ts status",
     "agent:run": "tsx tools/agent-runtime/cli.ts run",
+    "agent:submit": "tsx tools/agent-runtime/cli.ts submit",
     "agent:approve": "tsx tools/agent-runtime/cli.ts approve",
     "agent:revise": "tsx tools/agent-runtime/cli.ts revise",
     "agent:resume": "tsx tools/agent-runtime/cli.ts resume",

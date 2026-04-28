@@ -3,8 +3,10 @@ import {
   AgentWorkflow,
   ApprovalService,
   ArtifactStore,
+  CodexManualAdapter,
   createRunConfigFromArgs,
   LessonPromotionService,
+  ManualSubmissionService,
   MockRuntimeAdapter,
   RunStore
 } from "./index.js";
@@ -19,13 +21,14 @@ const gateToArtifact: Record<ApprovalGateId, string> = {
 };
 
 type CliOptions = Record<string, string | undefined>;
-type CliCommand = "init" | "status" | "run" | "resume" | "approve" | "revise" | "promote";
+type CliCommand = "init" | "status" | "run" | "resume" | "submit" | "approve" | "revise" | "promote";
 
 const commandAllowedFlags: Record<CliCommand, ReadonlySet<string>> = {
   init: new Set(["topic", "pages", "language", "adapter", "run"]),
   status: new Set(["run"]),
   run: new Set(["run"]),
   resume: new Set(["run"]),
+  submit: new Set(["run", "artifact", "file"]),
   approve: new Set(["run", "gate", "version", "notes"]),
   revise: new Set(["run", "gate", "version", "notes"]),
   promote: new Set(["run"])
@@ -64,6 +67,11 @@ async function main(): Promise<void> {
       return;
     }
 
+    if (command === "submit") {
+      await submitManualArtifact(options);
+      return;
+    }
+
     if (command === "approve" || command === "revise") {
       await decideApproval(command, options);
       return;
@@ -87,7 +95,7 @@ function normalizeCommand(command: string | undefined): string {
 }
 
 function isSupportedCommand(command: string): command is CliCommand {
-  return ["init", "status", "run", "resume", "approve", "revise", "promote"].includes(command);
+  return ["init", "status", "run", "resume", "submit", "approve", "revise", "promote"].includes(command);
 }
 
 function parseOptions(args: string[], allowedFlags: ReadonlySet<string>): CliOptions {
@@ -159,8 +167,19 @@ async function printStatus(options: CliOptions): Promise<void> {
 
 async function runNext(options: CliOptions): Promise<void> {
   const runId = requireOption(options, "run");
-  const workflow = createWorkflow(runId);
+  const workflow = await createWorkflow(runId);
   const result = await workflow.runNext(runId);
+
+  printJson(result);
+}
+
+async function submitManualArtifact(options: CliOptions): Promise<void> {
+  const service = new ManualSubmissionService();
+  const result = await service.submit({
+    runId: requireOption(options, "run"),
+    artifactId: requireOption(options, "artifact"),
+    filePath: requireOption(options, "file")
+  });
 
   printJson(result);
 }
@@ -201,13 +220,15 @@ async function promoteLesson(options: CliOptions): Promise<void> {
   });
 }
 
-function createWorkflow(runId: string): AgentWorkflow {
+async function createWorkflow(runId: string): Promise<AgentWorkflow> {
   const runStore = new RunStore();
   const runPath = runStore.getRunPath(runId);
   const artifactStore = new ArtifactStore(runPath);
   const approvalService = new ApprovalService(runPath, artifactStore);
+  const config = await runStore.readConfig(runId);
+  const adapter = config.runtime.adapter === "codex-manual" ? new CodexManualAdapter() : new MockRuntimeAdapter();
 
-  return new AgentWorkflow(runStore, artifactStore, approvalService, new MockRuntimeAdapter());
+  return new AgentWorkflow(runStore, artifactStore, approvalService, adapter);
 }
 
 function requireOption(options: CliOptions, key: string): string {
@@ -237,10 +258,11 @@ function printHelp(): void {
   console.log(`AI Interactive Learning Agent runtime ${agentRuntimeVersion}`);
   console.log("Commands:");
   console.log("  help");
-  console.log("  init --topic <topic> --pages <count> [--language zh-CN] [--adapter mock] [--run <id>]");
+  console.log("  init --topic <topic> --pages <count> [--language zh-CN] [--adapter mock|codex-manual] [--run <id>]");
   console.log("  status --run <id>");
   console.log("  run --run <id>");
   console.log("  resume --run <id>");
+  console.log("  submit --run <id> --artifact <artifact-id> --file <json-file>");
   console.log("  approve --run <id> --gate <gate> [--version v1] [--notes text]");
   console.log("  revise --run <id> --gate <gate> [--version v1] --notes <text>");
   console.log("  promote --run <id>");
