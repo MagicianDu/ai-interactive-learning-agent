@@ -52,6 +52,24 @@ describe("run config", () => {
     expect(config.runtime.adapter).toBe("mock");
   });
 
+  test("supports natural-language entry aliases for Codex and Claude/OpenClaw", () => {
+    const codexConfig = createRunConfigFromArgs({ topic: "哈希表", pages: "10", adapter: "codex" });
+    const claudeConfig = createRunConfigFromArgs({ topic: "哈希表", pages: "10", adapter: "claude" });
+    const openclawConfig = createRunConfigFromArgs({ topic: "哈希表", pages: "10", adapter: "openclaw" });
+
+    expect(codexConfig.runtime.adapter).toBe("codex-manual");
+    expect(codexConfig.models.defaultModel.provider).toBe("codex");
+    expect(codexConfig.models.defaultModel.model).toBe("manual-codex-session");
+
+    expect(claudeConfig.runtime.adapter).toBe("codex-manual");
+    expect(claudeConfig.models.defaultModel.provider).toBe("claude");
+    expect(claudeConfig.models.defaultModel.model).toBe("manual-claude-session");
+
+    expect(openclawConfig.runtime.adapter).toBe("codex-manual");
+    expect(openclawConfig.models.defaultModel.provider).toBe("openclaw");
+    expect(openclawConfig.models.defaultModel.model).toBe("manual-openclaw-session");
+  });
+
   test("rejects invalid page count", () => {
     expect(() =>
       createRunConfigFromArgs({

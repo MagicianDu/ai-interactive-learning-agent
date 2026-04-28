@@ -76,6 +76,8 @@ const defaultApprovalGates: ApprovalGateId[] = [
   "publish-package"
 ];
 
+const operatorAdapters = new Set(["codex", "codex-manual", "claude", "claude-code", "openclaw", "openclaw-cli"]);
+
 const topicSlugMap: Record<string, string> = {
   哈希表: "hash-table",
   数据库索引: "database-index"
@@ -92,9 +94,13 @@ export function createRunConfigFromArgs(args: CliInitArgs): RunConfig {
     throw new AgentRuntimeError("pages must be between 1 and 40", "INVALID_RUN_CONFIG");
   }
   const outputLanguage = args.language?.trim() || "zh-CN";
+  const requestedAdapter = (args.adapter || "mock").trim().toLowerCase();
+  const adapter = normalizeAdapter(requestedAdapter);
+  const manualAdapterId = manualAdapterHint(requestedAdapter);
+  const provider = adapter === "mock" ? "mock" : manualAdapterId;
+  const model = adapter === "mock" ? "mock-learning-agent" : `manual-${manualAdapterId}-session`;
 
   const runId = args.run?.trim() || `${slugifyTopic(topic)}-001`;
-  const adapter = normalizeAdapter(args.adapter);
 
   return validateRunConfig({
     runId,
@@ -135,8 +141,8 @@ export function createRunConfigFromArgs(args: CliInitArgs): RunConfig {
     },
     models: {
       defaultModel: {
-        provider: adapter === "mock" ? "mock" : "configured-provider",
-        model: adapter === "mock" ? "mock-learning-agent" : "configured-model",
+        provider,
+        model,
         reasoningEffort: "medium",
         temperature: 0.3
       }
@@ -216,11 +222,28 @@ export function validateRunConfig(config: RunConfig): RunConfig {
 }
 
 function normalizeAdapter(adapter?: string): RuntimeAdapterId {
-  const normalized = (adapter || "mock").trim();
-  if (normalized === "mock" || normalized === "codex-manual") {
+  const normalized = (adapter || "mock").trim().toLowerCase();
+  if (normalized === "mock") {
     return normalized;
   }
+  if (operatorAdapters.has(normalized)) {
+    return "codex-manual";
+  }
   throw new AgentRuntimeError(`unsupported adapter: ${normalized}`, "UNSUPPORTED_ADAPTER");
+}
+
+function manualAdapterHint(adapter: string): string {
+  const normalized = adapter.toLowerCase();
+  if (normalized === "claude" || normalized === "claude-code") {
+    return "claude";
+  }
+  if (normalized === "openclaw" || normalized === "openclaw-cli") {
+    return "openclaw";
+  }
+  if (normalized === "codex" || normalized === "codex-manual") {
+    return "codex";
+  }
+  return "codex";
 }
 
 function slugifyTopic(topic: string): string {

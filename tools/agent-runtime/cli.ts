@@ -261,7 +261,9 @@ function printHelp(): void {
   console.log(`AI Interactive Learning Agent runtime ${agentRuntimeVersion}`);
   console.log("Commands:");
   console.log("  help");
-  console.log("  init --topic <topic> --pages <count> [--language zh-CN] [--adapter mock|codex-manual] [--run <id>]");
+  console.log(
+    "  init --topic <topic> --pages <count> [--language zh-CN] [--adapter mock|codex|claude|openclaw|codex-manual] [--run <id>]"
+  );
   console.log("  status --run <id>");
   console.log("  run --run <id>");
   console.log("  resume --run <id>");

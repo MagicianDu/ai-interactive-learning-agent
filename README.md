@@ -45,13 +45,22 @@ npm run agent:promote -- --run hash-table-001
 
 The runner stores durable state under `runs/<run-id>/` and is designed so a future MCP server can reuse the same runtime core.
 
-To use the current Codex session as the content generator, initialize with `--adapter codex-manual`. In this mode `run` creates a role prompt under `runs/<run-id>/manual-requests/` and pauses. Codex should answer that prompt by writing a JSON file, then submit it back into the versioned artifact store:
+To use an operator session (Codex, Claude, or future OpenClaw) as the content generator, initialize with one of:
+
+- `--adapter codex`
+- `--adapter claude`
+- `--adapter openclaw`
+- `--adapter codex-manual` (legacy alias)
+
+In this mode `run` creates a role prompt under `runs/<run-id>/manual-requests/` and pauses. The model/provider session should answer the prompt by writing a JSON file, then submit it back into the versioned artifact store:
 
 ```bash
-npm run agent:init -- --topic "哈希表" --pages 8 --language zh-CN --adapter codex-manual --run hash-table-manual
-npm run agent:run -- --run hash-table-manual
-# read runs/hash-table-manual/manual-requests/source-ingest.md
-npm run agent:submit -- --run hash-table-manual --artifact source-ingest --file <json-file>
+npm run agent:init -- --topic "哈希表" --pages 8 --language zh-CN --adapter codex --run hash-table-codex
+npm run agent:init -- --topic "哈希表" --pages 8 --language zh-CN --adapter claude --run hash-table-claude
+npm run agent:init -- --topic "哈希表" --pages 8 --language zh-CN --adapter openclaw --run hash-table-openclaw
+npm run agent:run -- --run hash-table-claude
+# read runs/hash-table-claude/manual-requests/source-ingest.md
+npm run agent:submit -- --run hash-table-claude --artifact source-ingest --file <json-file>
 ```
 
 After submission, continue with the same `run` / inspect / approve / revise loop. `codex-manual` does not call an external model API; it gives Codex a durable prompt and keeps artifact state on disk.

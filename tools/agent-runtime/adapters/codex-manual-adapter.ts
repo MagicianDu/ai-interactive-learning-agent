@@ -14,15 +14,16 @@ export class CodexManualAdapter implements RuntimeAdapter {
       roleId: context.roleId,
       artifactId: context.artifactId,
       promptPath,
-      message: `Codex manual step prepared for ${context.roleId}. Generate JSON and submit it with npm run agent:submit.`
+      message: `${runtimeEntryLabel(context.config.runtime.adapter, context.config.models?.defaultModel?.provider)} manual step prepared for ${context.roleId}. Generate JSON and submit it with npm run agent:submit.`
     };
   }
 }
 
 function renderPrompt({ config, roleId, artifactId }: RuntimeAdapterContext): string {
+  const modelHint = runtimeEntryLabel(config.runtime.adapter, config.models.defaultModel.provider);
   return `# Codex Manual Role Request
 
-You are executing one role in the AI Interactive Learning Agent workflow.
+You are executing one role in the AI Interactive Learning Agent workflow via ${modelHint}.
 
 ## Run
 
@@ -42,6 +43,7 @@ ${roleSpecificInstructions(roleId, artifactId)}
 ## Instructions
 
 Generate one valid JSON object for the output artifact. Keep the content Chinese-first unless the run config explicitly says otherwise. Preserve the requested page count where the role plans or assembles lesson pages.
+This is a natural-language workflow: you can reason in Chinese or English, then output only the JSON artifact.
 
 After writing the JSON object to a temporary file, submit it with:
 
@@ -51,6 +53,23 @@ npm run agent:submit -- --run ${config.runId} --artifact ${artifactId} --file <j
 
 Do not approve the artifact automatically. After submission, inspect the versioned artifact under \`runs/${config.runId}/artifacts/\` and use the normal approval or revision gate.
 `;
+}
+
+function runtimeEntryLabel(adapterId: string, provider: string): string {
+  const normalizedProvider = provider.toLowerCase();
+  if (normalizedProvider === "claude") {
+    return "Claude-compatible operator session";
+  }
+  if (normalizedProvider === "openclaw") {
+    return "OpenClaw-compatible operator session";
+  }
+  if (normalizedProvider === "codex") {
+    return "Codex-compatible operator session";
+  }
+  if (adapterId === "mock") {
+    return "mock runner";
+  }
+  return `${normalizedProvider || adapterId}-compatible operator session`;
 }
 
 function roleSpecificInstructions(roleId: string, artifactId: string): string {
