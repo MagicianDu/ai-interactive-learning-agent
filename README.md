@@ -179,6 +179,7 @@ The first sample lesson is **数据库索引为什么更快**.
 - Default lesson size: 10 pages
 - The renderer and schema support variable page counts using `lesson.config.targetPageCount` and `lesson.pages.length`
 - The lesson includes visual explanations, query-path interaction, index-tradeoff interaction, quizzes, misconception checks, transfer work, and a summary card
+- Course-pack view supports multiple learning product forms: Web Deck, 知识地图, 练习, 教师, 实验, and 导师
 
 ## Extend With A New Lesson
 

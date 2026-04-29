@@ -4,7 +4,19 @@ import { CourseShell } from "../components/course/CourseShell";
 import { coursePackRegistry } from "../course-packs/registry";
 import { lessonRegistry } from "../lessons/registry";
 import { CanvasMapRenderer } from "../renderers/CanvasMapRenderer";
+import { LearningProductRenderer, type LearningProductMode } from "../renderers/LearningProductRenderer";
 import { WebDeckRenderer } from "../renderers/WebDeckRenderer";
+
+type CourseView = "deck" | "map" | LearningProductMode;
+
+const courseViews: Array<{ id: CourseView; label: string }> = [
+  { id: "deck", label: "Web Deck" },
+  { id: "map", label: "知识地图" },
+  { id: "assessment", label: "练习" },
+  { id: "teacher", label: "教师" },
+  { id: "playground", label: "实验" },
+  { id: "tutor", label: "导师" }
+];
 
 export function App() {
   const defaultLesson = lessonRegistry[0];
@@ -12,7 +24,7 @@ export function App() {
   const defaultCoursePackLessonId = defaultCoursePack?.coursePack.units.find((unit) => unit.lessonId)?.lessonId;
   const [selectedCoursePackId, setSelectedCoursePackId] = useState(defaultCoursePack?.id ?? "");
   const [selectedLessonId, setSelectedLessonId] = useState(defaultCoursePackLessonId ?? defaultLesson?.id ?? "");
-  const [courseView, setCourseView] = useState<"deck" | "map">("deck");
+  const [courseView, setCourseView] = useState<CourseView>("deck");
   const selectedLesson = lessonRegistry.find((lesson) => lesson.id === selectedLessonId)?.lesson ?? defaultLesson?.lesson;
   const selectedCoursePack = coursePackRegistry.find((entry) => entry.id === selectedCoursePackId)?.coursePack;
   const selectedCoursePackUnits =
@@ -78,20 +90,16 @@ export function App() {
             </label>
             {selectedCoursePack ? (
               <div className="flex rounded-md border border-slate-700 bg-slate-900 p-1 text-sm">
-                <button
-                  className={`rounded px-3 py-1.5 font-semibold ${courseView === "deck" ? "bg-sky-600 text-white" : "text-slate-300"}`}
-                  onClick={() => setCourseView("deck")}
-                  type="button"
-                >
-                  Web Deck
-                </button>
-                <button
-                  className={`rounded px-3 py-1.5 font-semibold ${courseView === "map" ? "bg-sky-600 text-white" : "text-slate-300"}`}
-                  onClick={() => setCourseView("map")}
-                  type="button"
-                >
-                  知识地图
-                </button>
+                {courseViews.map((view) => (
+                  <button
+                    className={`rounded px-3 py-1.5 font-semibold ${courseView === view.id ? "bg-sky-600 text-white" : "text-slate-300"}`}
+                    key={view.id}
+                    onClick={() => setCourseView(view.id)}
+                    type="button"
+                  >
+                    {view.label}
+                  </button>
+                ))}
               </div>
             ) : null}
           </div>
@@ -114,6 +122,8 @@ export function App() {
           }}
           selectedLessonId={selectedLessonId}
         />
+      ) : courseView === "assessment" || courseView === "teacher" || courseView === "playground" || courseView === "tutor" ? (
+        <LearningProductRenderer lesson={selectedLesson} mode={courseView} />
       ) : (
         <WebDeckRenderer lesson={selectedLesson} />
       )}
