@@ -17,6 +17,9 @@ describe("LearningAgentRuntimeTools", () => {
         "learning_agent.plan_run",
         "learning_agent.init_from_plan",
         "learning_agent.status",
+        "learning_agent.run_until_gate",
+        "learning_agent.list_artifacts",
+        "learning_agent.read_artifact",
         "learning_agent.submit_artifact",
         "learning_agent.approve_gate",
         "learning_agent.revise_gate",
@@ -35,7 +38,8 @@ describe("LearningAgentRuntimeTools", () => {
 
     const planResult = await tools.callTool("learning_agent.plan_run", {
       request: "用哈希表生成 8 页中文课，面向有基础编程经验但缺少数据结构心智模型的学习者。",
-      runId: "mcp-nl-plan"
+      runId: "mcp-nl-plan",
+      adapter: "mock"
     });
     const initResult = await tools.callTool("learning_agent.init_from_plan", {
       runId: "mcp-nl-plan",
@@ -56,6 +60,9 @@ describe("LearningAgentRuntimeTools", () => {
     });
     await expect(readFile(path.join(root, "runs", "mcp-nl-plan", "run.plan.json"), "utf8")).resolves.toContain(
       "\"status\": \"approved\""
+    );
+    await expect(readFile(path.join(root, "runs", "mcp-nl-plan", "run.config.json"), "utf8")).resolves.toContain(
+      "\"adapter\": \"mock\""
     );
   });
 
@@ -124,6 +131,58 @@ describe("LearningAgentRuntimeTools", () => {
     const result = await tools.callTool("learning_agent.run_next", { runId: "mcp-smoke" });
 
     expect(result).toMatchObject({ status: "artifact_written", artifactId: "source-map" });
+  });
+
+  test("advances a run until the next approval gate and exposes generated artifacts", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
+    const tools = new LearningAgentRuntimeTools(root);
+    await tools.callTool("learning_agent.init_run", {
+      topic: "哈希表",
+      unitPages: "8",
+      language: "zh-CN",
+      adapter: "mock",
+      run: "mcp-loop"
+    });
+
+    const runResult = await tools.callTool("learning_agent.run_until_gate", {
+      runId: "mcp-loop",
+      maxSteps: 5
+    });
+    const artifacts = await tools.callTool("learning_agent.list_artifacts", { runId: "mcp-loop" });
+    const sourceMap = await tools.callTool("learning_agent.read_artifact", {
+      runId: "mcp-loop",
+      artifactId: "source-map",
+      version: "v1"
+    });
+
+    expect(runResult).toMatchObject({
+      status: "run_advanced",
+      runId: "mcp-loop",
+      finalStatus: "approval_required",
+      requiredGate: "source-map",
+      steps: [
+        expect.objectContaining({ status: "artifact_written", artifactId: "source-map" }),
+        expect.objectContaining({ status: "approval_required", requiredGate: "source-map" })
+      ]
+    });
+    expect(artifacts).toMatchObject({
+      runId: "mcp-loop",
+      artifacts: expect.arrayContaining([
+        expect.objectContaining({
+          artifactId: "source-map",
+          versions: expect.arrayContaining(["v1"]),
+          aliases: expect.arrayContaining(["draft"])
+        })
+      ])
+    });
+    expect(sourceMap).toMatchObject({
+      artifactId: "source-map",
+      version: "v1",
+      payload: expect.objectContaining({
+        artifactId: "source-map",
+        anchors: expect.any(Array)
+      })
+    });
   });
 
   test("promotes an approved lesson through tool handlers", async () => {

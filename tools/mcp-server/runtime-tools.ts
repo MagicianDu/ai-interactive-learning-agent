@@ -1,3 +1,6 @@
+import { readdir } from "node:fs/promises";
+import path from "node:path";
+
 import {
   AgentWorkflow,
   ApprovalService,
@@ -46,6 +49,12 @@ export class LearningAgentRuntimeTools {
         return this.initFromPlan(input);
       case "learning_agent.status":
         return this.status(input);
+      case "learning_agent.run_until_gate":
+        return this.runUntilGate(input);
+      case "learning_agent.list_artifacts":
+        return this.listArtifacts(input);
+      case "learning_agent.read_artifact":
+        return this.readArtifact(input);
       case "learning_agent.submit_artifact":
         return this.submitArtifact(input);
       case "learning_agent.approve_gate":
@@ -103,7 +112,10 @@ export class LearningAgentRuntimeTools {
   private async planRun(input: unknown): Promise<unknown> {
     const options = expectRecord(input);
     const service = new RunPlanService(this.workspaceRoot);
-    const plan = service.createPlan(requiredString(options, "request"), { runId: optionalString(options.runId) });
+    const plan = service.createPlan(requiredString(options, "request"), {
+      runId: optionalString(options.runId),
+      adapter: optionalString(options.adapter)
+    });
     const planPath = await service.writePlan(plan);
     return {
       status: "plan_written",
@@ -144,6 +156,90 @@ export class LearningAgentRuntimeTools {
       coursePack: config.coursePack,
       selectedUnit: config.selectedUnit
     };
+  }
+
+  private async runUntilGate(input: unknown): Promise<unknown> {
+    const options = expectRecord(input);
+    const runId = requiredString(options, "runId");
+    const maxSteps = optionalNumber(options.maxSteps) ?? 20;
+    if (!Number.isInteger(maxSteps) || maxSteps < 1 || maxSteps > 100) {
+      throw new Error("maxSteps must be an integer between 1 and 100");
+    }
+
+    const workflow = await this.createWorkflow(runId);
+    const steps = [];
+
+    for (let index = 0; index < maxSteps; index += 1) {
+      const step = await workflow.runNext(runId);
+      steps.push(step);
+      if (step.status !== "artifact_written") {
+        break;
+      }
+    }
+
+    const lastStep = steps.at(-1) ?? { status: "complete" as const };
+    return {
+      status: "run_advanced",
+      runId,
+      steps,
+      finalStatus: lastStep.status,
+      ...(lastStep.status === "approval_required" ? { requiredGate: lastStep.requiredGate } : {}),
+      ...(lastStep.status === "manual_action_required"
+        ? { manualAction: { roleId: lastStep.roleId, artifactId: lastStep.artifactId, promptPath: lastStep.promptPath } }
+        : {})
+    };
+  }
+
+  private async listArtifacts(input: unknown): Promise<unknown> {
+    const runId = requiredString(expectRecord(input), "runId");
+    const artifactsPath = path.join(this.runStore.getRunPath(runId), "artifacts");
+    const entries = await readdir(artifactsPath).catch((error: unknown) => {
+      if (typeof error === "object" && error !== null && "code" in error && error.code === "ENOENT") {
+        return [];
+      }
+      throw error;
+    });
+    const artifacts = new Map<string, { artifactId: string; versions: string[]; aliases: string[] }>();
+
+    for (const entry of entries) {
+      const parsed = /^(?<artifactId>[a-z][a-z0-9-]{0,63})\.(?<suffix>v[1-9][0-9]*|draft|approved)\.json$/u.exec(entry)?.groups;
+      if (!parsed?.artifactId || !parsed.suffix) {
+        continue;
+      }
+      const record = artifacts.get(parsed.artifactId) ?? { artifactId: parsed.artifactId, versions: [], aliases: [] };
+      if (/^v/u.test(parsed.suffix)) {
+        record.versions.push(parsed.suffix);
+      } else {
+        record.aliases.push(parsed.suffix);
+      }
+      artifacts.set(parsed.artifactId, record);
+    }
+
+    return {
+      runId,
+      artifacts: Array.from(artifacts.values())
+        .map((artifact) => ({
+          artifactId: artifact.artifactId,
+          versions: artifact.versions.sort(compareVersions),
+          aliases: artifact.aliases.sort()
+        }))
+        .sort((left, right) => left.artifactId.localeCompare(right.artifactId))
+    };
+  }
+
+  private async readArtifact(input: unknown): Promise<unknown> {
+    const options = expectRecord(input);
+    const runId = requiredString(options, "runId");
+    const artifactId = requiredString(options, "artifactId");
+    const version = optionalString(options.version);
+    const artifactStore = new ArtifactStore(this.runStore.getRunPath(runId));
+    if (version) {
+      const payload = await artifactStore.readVersion(artifactId, toArtifactVersion(version));
+      return { runId, artifactId, version, payload };
+    }
+
+    const payload = await artifactStore.readDraft(artifactId);
+    return { runId, artifactId, version: "draft", payload };
   }
 
   private async submitArtifact(input: unknown): Promise<unknown> {
@@ -226,6 +322,9 @@ function isLearningAgentToolName(name: string): name is LearningAgentToolName {
     "learning_agent.plan_run",
     "learning_agent.init_from_plan",
     "learning_agent.status",
+    "learning_agent.run_until_gate",
+    "learning_agent.list_artifacts",
+    "learning_agent.read_artifact",
     "learning_agent.submit_artifact",
     "learning_agent.approve_gate",
     "learning_agent.revise_gate",
@@ -235,6 +334,10 @@ function isLearningAgentToolName(name: string): name is LearningAgentToolName {
     "learning_agent.promote_units",
     "learning_agent.promote_lesson"
   ].includes(name);
+}
+
+function compareVersions(left: string, right: string): number {
+  return Number(left.slice(1)) - Number(right.slice(1));
 }
 
 function expectRecord(value: unknown): Record<string, unknown> {

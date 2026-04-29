@@ -52,6 +52,17 @@ describe("RunPlanService", () => {
     });
   });
 
+  test("allows adapter override for automated natural-language smoke runs", () => {
+    const service = new RunPlanService("/workspace");
+    const plan = service.createPlan("用哈希表生成 8 页中文课，面向中文学习者。", {
+      runId: "hash-plan",
+      adapter: "mock"
+    });
+
+    expect(plan.initArgs.adapter).toBe("mock");
+    expect(plan.summary).toContain("adapter=mock");
+  });
+
   test("requires approval before initializing a run from a plan", async () => {
     const workspaceRoot = await mkdtemp(path.join(tmpdir(), "learning-agent-plan-"));
     const service = new RunPlanService(workspaceRoot);

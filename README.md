@@ -114,6 +114,9 @@ It exposes stable tool names such as:
 - `learning_agent.plan_run`
 - `learning_agent.init_from_plan`
 - `learning_agent.status`
+- `learning_agent.run_until_gate`
+- `learning_agent.list_artifacts`
+- `learning_agent.read_artifact`
 - `learning_agent.run_next`
 - `learning_agent.submit_artifact`
 - `learning_agent.approve_gate`
@@ -133,7 +136,7 @@ printf '%s\n' \
   | npm run mcp
 ```
 
-This is the intended bridge for Codex, Claude, and future OpenClaw-style operator sessions: the chat agent can translate user intent into `plan_run`, show the review items, then call `init_from_plan` and continue with `run_next`, approvals, course orchestration, and promotion.
+This is the intended bridge for Codex, Claude, and future OpenClaw-style operator sessions: the chat agent can translate user intent into `plan_run`, show the review items, then call `init_from_plan`, `run_until_gate`, `read_artifact`, approvals, course orchestration, and promotion.
 
 Client setup examples live in `docs/runtime/mcp-client-setup.md`.
 

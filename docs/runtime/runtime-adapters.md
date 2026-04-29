@@ -15,6 +15,9 @@ learning_agent.init_run
 learning_agent.plan_run
 learning_agent.init_from_plan
 learning_agent.status
+learning_agent.run_until_gate
+learning_agent.list_artifacts
+learning_agent.read_artifact
 learning_agent.submit_artifact
 learning_agent.approve_gate
 learning_agent.revise_gate

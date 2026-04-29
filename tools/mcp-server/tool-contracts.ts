@@ -3,6 +3,9 @@ export type LearningAgentToolName =
   | "learning_agent.plan_run"
   | "learning_agent.init_from_plan"
   | "learning_agent.status"
+  | "learning_agent.run_until_gate"
+  | "learning_agent.list_artifacts"
+  | "learning_agent.read_artifact"
   | "learning_agent.submit_artifact"
   | "learning_agent.approve_gate"
   | "learning_agent.revise_gate"
@@ -53,7 +56,7 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
   {
     name: "learning_agent.plan_run",
     description: "Create a reviewable run plan from a Chinese natural-language learning request.",
-    inputSchema: objectSchema({ request: stringSchema, runId: stringSchema }, ["request"])
+    inputSchema: objectSchema({ request: stringSchema, runId: stringSchema, adapter: stringSchema }, ["request"])
   },
   {
     name: "learning_agent.init_from_plan",
@@ -64,6 +67,24 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
     name: "learning_agent.status",
     description: "Read run config and status-relevant metadata.",
     inputSchema: objectSchema({ runId: stringSchema }, ["runId"])
+  },
+  {
+    name: "learning_agent.run_until_gate",
+    description: "Advance a run until it reaches an approval gate, manual action, completion, or step limit.",
+    inputSchema: objectSchema({ runId: stringSchema, maxSteps: numberSchema }, ["runId"])
+  },
+  {
+    name: "learning_agent.list_artifacts",
+    description: "List artifact versions and draft/approved aliases for a run.",
+    inputSchema: objectSchema({ runId: stringSchema }, ["runId"])
+  },
+  {
+    name: "learning_agent.read_artifact",
+    description: "Read a run artifact by version, or read the draft when version is omitted.",
+    inputSchema: objectSchema({ runId: stringSchema, artifactId: stringSchema, version: stringSchema }, [
+      "runId",
+      "artifactId"
+    ])
   },
   {
     name: "learning_agent.submit_artifact",

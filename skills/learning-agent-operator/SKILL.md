@@ -67,6 +67,8 @@ MCP-ready equivalent:
 ```json
 {"method":"tools/call","params":{"name":"learning_agent.plan_run","arguments":{"request":"<Chinese natural-language course request>","runId":"<run-id>"}}}
 {"method":"tools/call","params":{"name":"learning_agent.init_from_plan","arguments":{"runId":"<run-id>","approve":true}}}
+{"method":"tools/call","params":{"name":"learning_agent.run_until_gate","arguments":{"runId":"<run-id>","maxSteps":20}}}
+{"method":"tools/call","params":{"name":"learning_agent.read_artifact","arguments":{"runId":"<run-id>","artifactId":"source-map","version":"v1"}}}
 ```
 
 2. Initialize the run directly when the user has already supplied exact flags:

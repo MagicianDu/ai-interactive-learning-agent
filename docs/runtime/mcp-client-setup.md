@@ -74,8 +74,10 @@ Claude Desktop commonly uses a JSON config shape:
 printf '%s\n' \
   '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"manual-smoke","version":"0.0.0"}}}' \
   '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
-  '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"learning_agent.plan_run","arguments":{"request":"用哈希表生成 8 页中文课，面向有基础编程经验但缺少数据结构心智模型的学习者。","runId":"mcp-jsonrpc-smoke"}}}' \
+  '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"learning_agent.plan_run","arguments":{"request":"用哈希表生成 8 页中文课，面向有基础编程经验但缺少数据结构心智模型的学习者。","runId":"mcp-jsonrpc-smoke","adapter":"mock"}}}' \
   '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"learning_agent.init_from_plan","arguments":{"runId":"mcp-jsonrpc-smoke","approve":true}}}' \
+  '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"learning_agent.run_until_gate","arguments":{"runId":"mcp-jsonrpc-smoke","maxSteps":5}}}' \
+  '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"learning_agent.read_artifact","arguments":{"runId":"mcp-jsonrpc-smoke","artifactId":"source-map","version":"v1"}}}' \
   | npm run mcp
 ```
 
@@ -84,6 +86,8 @@ Expected result:
 - `tools/list` includes `learning_agent.plan_run` and `learning_agent.init_from_plan`.
 - `plan_run` writes `runs/mcp-jsonrpc-smoke/run.plan.json`.
 - `init_from_plan` writes `runs/mcp-jsonrpc-smoke/run.config.json`.
+- `run_until_gate` advances to the first approval gate. The smoke uses `adapter: "mock"` so it can produce local artifacts without a manual Codex role prompt.
+- `read_artifact` returns the generated `source-map.v1.json` payload.
 
 Remove the smoke run after verification:
 

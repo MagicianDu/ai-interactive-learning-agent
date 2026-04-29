@@ -14,7 +14,7 @@ export type RunIntent = {
   unitPages: number;
   strategy: CoursePackStrategy;
   planningMode: CurriculumPlanningMode;
-  adapter: "codex";
+  adapter: string;
   audience?: string;
 };
 

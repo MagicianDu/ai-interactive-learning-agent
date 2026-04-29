@@ -23,6 +23,7 @@ export type RunPlan = {
 
 export type CreateRunPlanOptions = {
   runId?: string;
+  adapter?: string;
   now?: Date;
 };
 
@@ -43,7 +44,11 @@ export class RunPlanService {
 
   createPlan(request: string, options: CreateRunPlanOptions = {}): RunPlan {
     const intent = parseRunIntent(request);
-    const initArgs = toInitArgs(intent);
+    const plannedIntent: RunIntent = {
+      ...intent,
+      adapter: options.adapter ?? intent.adapter
+    };
+    const initArgs = toInitArgs(plannedIntent);
     const provisionalConfig = createRunConfigFromArgs({
       ...initArgs,
       run: options.runId
@@ -58,11 +63,11 @@ export class RunPlanService {
       schemaVersion: 1,
       runId,
       status: "draft",
-      rawRequest: intent.rawRequest,
-      intent,
+      rawRequest: plannedIntent.rawRequest,
+      intent: plannedIntent,
       initArgs: plannedInitArgs,
-      summary: buildSummary(intent, runId),
-      reviewItems: buildReviewItems(intent),
+      summary: buildSummary(plannedIntent, runId),
+      reviewItems: buildReviewItems(plannedIntent),
       createdAt: (options.now || new Date()).toISOString()
     };
   }
