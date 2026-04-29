@@ -30,7 +30,8 @@
     "agent:run-units": "tsx tools/agent-runtime/cli.ts run-units",
     "agent:promote-units": "tsx tools/agent-runtime/cli.ts promote-units",
     "agent:course": "tsx tools/agent-runtime/cli.ts course",
-    "mcp": "tsx tools/mcp-server/index.ts"
+    "mcp": "tsx tools/mcp-server/index.ts",
+    "seed:check": "tsx scripts/beta-seed-check.ts"
   },
   "dependencies": {
     "framer-motion": "^12.0.0",
