@@ -117,7 +117,7 @@ learning_agent.promote_units
 
 This is the intended Codex/Claude control loop: the chat agent interprets the user's natural language request, shows gated artifacts for review, then advances or revises the runtime through MCP calls.
 
-`learning_agent.beta_status` is the preferred status primitive for interactive clients. It is intentionally smaller than `read_artifact`; use it to decide the next action, then use `read_artifact` only for the specific gated artifact being reviewed.
+`learning_agent.beta_status` is the preferred status primitive for interactive clients. It is intentionally smaller than `read_artifact`; use it to decide the next action, then use `read_artifact` only for the specific gated artifact being reviewed. Clients should prefer the structured `operatorHints.nextToolCalls` and `operatorHints.reviewQueue` fields over parsing the human-readable `nextActions` text.
 
 `learning_agent.list_units` and `learning_agent.run_course` return summarized source mapping fields instead of the full `sourceAnchorIds` list:
 

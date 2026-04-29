@@ -94,7 +94,7 @@ npm run agent:run -- --run agentic-design-book-unit-overview
 
 After each child run has an approved `lesson`, `agent:promote-units` promotes those lessons and writes a frontend-discoverable course pack manifest under `src/course-packs/<run-id>/coursePack.ts`.
 
-`agent:beta-status` summarizes parent artifacts, approved gates, current review gates, child unit runs, and suggested next actions without returning the full source anchor payload. It is the preferred status check for natural-language operators and MCP clients.
+`agent:beta-status` summarizes parent artifacts, approved gates, current review gates, child unit runs, and suggested next actions without returning the full source anchor payload. It also returns `operatorHints.reviewQueue` and `operatorHints.nextToolCalls`, so natural-language operators can call the next MCP tool without parsing free-form text.
 
 For real source smoke tests, keep promoted lessons from copyrighted books or private documents out of commits unless they are intentionally publishable examples. The durable verification evidence can remain in ignored `runs/<run-id>/` artifacts.
 

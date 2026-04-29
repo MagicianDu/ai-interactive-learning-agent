@@ -72,8 +72,20 @@ describe("BetaStatusService", () => {
         nextActions: [expect.stringContaining("Review curriculum-plan")]
       },
       artifacts: expect.arrayContaining([
-        expect.objectContaining({ artifactId: "source-map", draftVersion: "v1", approvedVersion: "v1", approved: true }),
-        expect.objectContaining({ artifactId: "curriculum-plan", draftVersion: "v1", approved: false })
+        expect.objectContaining({
+          artifactId: "source-map",
+          draftVersion: "v1",
+          draftPath: "runs/agentic-parent/artifacts/source-map.v1.json",
+          approvedVersion: "v1",
+          approvedPath: "runs/agentic-parent/artifacts/source-map.v1.json",
+          approved: true
+        }),
+        expect.objectContaining({
+          artifactId: "curriculum-plan",
+          draftVersion: "v1",
+          draftPath: "runs/agentic-parent/artifacts/curriculum-plan.v1.json",
+          approved: false
+        })
       ]),
       childRuns: [
         expect.objectContaining({
@@ -84,7 +96,42 @@ describe("BetaStatusService", () => {
           approvedGates: [],
           nextActions: [expect.stringContaining("Review learning-architecture")]
         })
-      ]
+      ],
+      operatorHints: {
+        readyToPromote: false,
+        reviewQueue: [
+          expect.objectContaining({
+            runId: "agentic-parent",
+            scope: "parent",
+            gate: "curriculum-plan",
+            artifactId: "curriculum-plan",
+            version: "v1",
+            artifactPath: "runs/agentic-parent/artifacts/curriculum-plan.v1.json",
+            readArtifact: expect.objectContaining({
+              toolName: "learning_agent.read_artifact",
+              input: { runId: "agentic-parent", artifactId: "curriculum-plan", version: "v1" }
+            }),
+            approveGate: expect.objectContaining({
+              toolName: "learning_agent.approve_gate",
+              input: { runId: "agentic-parent", gate: "curriculum-plan", version: "v1" }
+            })
+          }),
+          expect.objectContaining({
+            runId: "agentic-parent-unit-overview",
+            scope: "child",
+            gate: "learning-architecture",
+            artifactId: "learning-architecture",
+            version: "v1",
+            artifactPath: "runs/agentic-parent-unit-overview/artifacts/learning-architecture.v1.json"
+          })
+        ],
+        nextToolCalls: [
+          expect.objectContaining({
+            toolName: "learning_agent.read_artifact",
+            input: { runId: "agentic-parent", artifactId: "curriculum-plan", version: "v1" }
+          })
+        ]
+      }
     });
     expect(JSON.stringify(status).length).toBeLessThan(15000);
   });

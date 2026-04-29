@@ -33,6 +33,8 @@ For book, paper, patent, blog, documentation, and folder-backed runs, the defaul
 ## Operator Rules
 
 - Use `beta_status` to decide the next action.
+- Prefer `operatorHints.nextToolCalls[0]` over parsing `nextActions` prose.
+- Use `operatorHints.reviewQueue` to locate the exact run, gate, artifact id, version, and artifact path under review.
 - Use `read_artifact` only for the specific artifact under review.
 - Approve an exact version such as `v1`; do not approve an implicit draft.
 - Revise instead of approving when source extraction warnings, weak concept coverage, or poor pedagogy affect downstream lessons.

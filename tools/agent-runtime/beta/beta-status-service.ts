@@ -17,7 +17,9 @@ type GateArtifactId =
 export type BetaArtifactStatus = {
   artifactId: GateArtifactId;
   draftVersion?: string;
+  draftPath?: string;
   approvedVersion?: string;
+  approvedPath?: string;
   approved: boolean;
 };
 
@@ -36,6 +38,30 @@ export type BetaChildRunStatus = {
   nextActions: string[];
 };
 
+export type BetaToolCallHint = {
+  toolName: string;
+  input: Record<string, string | number | boolean>;
+  reason: string;
+};
+
+export type BetaReviewItem = {
+  runId: string;
+  scope: "parent" | "child";
+  gate: ApprovalGateId;
+  artifactId: GateArtifactId;
+  version: string;
+  artifactPath: string;
+  readArtifact: BetaToolCallHint;
+  approveGate: BetaToolCallHint;
+  reviseGate: BetaToolCallHint;
+};
+
+export type BetaOperatorHints = {
+  reviewQueue: BetaReviewItem[];
+  nextToolCalls: BetaToolCallHint[];
+  readyToPromote: boolean;
+};
+
 export type BetaRunStatus = {
   status: "beta_status";
   runId: string;
@@ -45,6 +71,7 @@ export type BetaRunStatus = {
   parent: BetaRunGateStatus;
   artifacts: BetaArtifactStatus[];
   childRuns: BetaChildRunStatus[];
+  operatorHints: BetaOperatorHints;
 };
 
 const gateOrder: ApprovalGateId[] = [
@@ -76,9 +103,14 @@ export class BetaStatusService {
 
   async getStatus(runId: string): Promise<BetaRunStatus> {
     const config = await this.runStore.readConfig(runId);
-    const artifacts = await collectArtifactStatuses(this.runStore.getRunPath(runId));
+    const artifacts = await collectArtifactStatuses(this.runStore.getRunPath(runId), this.workspaceRoot);
     const artifactById = new Map(artifacts.map((artifact) => [artifact.artifactId, artifact]));
-    const childRuns = await this.collectChildRuns(runId);
+    const parent = summarizeGateStatus(runId, artifactById, "parent");
+    const childCollection = await this.collectChildRuns(runId);
+    const reviewQueue = [
+      buildReviewItem(runId, "parent", parent.currentGate, artifactById),
+      ...childCollection.reviewQueue
+    ].filter((item): item is BetaReviewItem => Boolean(item));
 
     return {
       status: "beta_status",
@@ -86,15 +118,25 @@ export class BetaStatusService {
       topic: config.topic,
       sourceKind: config.sourceKind,
       outputLanguage: config.outputLanguage,
-      parent: summarizeGateStatus(runId, artifactById, "parent"),
+      parent,
       artifacts,
-      childRuns
+      childRuns: childCollection.childRuns,
+      operatorHints: {
+        reviewQueue,
+        nextToolCalls: buildOperatorToolHints(runId, parent, childCollection.childRuns, reviewQueue),
+        readyToPromote: childCollection.readyToPromote
+      }
     };
   }
 
-  private async collectChildRuns(parentRunId: string): Promise<BetaChildRunStatus[]> {
+  private async collectChildRuns(parentRunId: string): Promise<{
+    childRuns: BetaChildRunStatus[];
+    reviewQueue: BetaReviewItem[];
+    readyToPromote: boolean;
+  }> {
     const runIds = await this.runStore.listRunIds();
     const childRuns: BetaChildRunStatus[] = [];
+    const reviewQueue: BetaReviewItem[] = [];
 
     for (const runId of runIds) {
       let config: RunConfig;
@@ -111,9 +153,13 @@ export class BetaStatusService {
         continue;
       }
 
-      const artifacts = await collectArtifactStatuses(this.runStore.getRunPath(runId));
+      const artifacts = await collectArtifactStatuses(this.runStore.getRunPath(runId), this.workspaceRoot);
       const artifactById = new Map(artifacts.map((artifact) => [artifact.artifactId, artifact]));
       const gateStatus = summarizeGateStatus(runId, artifactById, "child");
+      const reviewItem = buildReviewItem(runId, "child", gateStatus.currentGate, artifactById);
+      if (reviewItem) {
+        reviewQueue.push(reviewItem);
+      }
       childRuns.push({
         runId,
         unitId: config.selectedUnit.id,
@@ -124,11 +170,17 @@ export class BetaStatusService {
       });
     }
 
-    return childRuns.sort((left, right) => (left.unitId ?? left.runId).localeCompare(right.unitId ?? right.runId));
+    const sortedChildRuns = childRuns.sort((left, right) => (left.unitId ?? left.runId).localeCompare(right.unitId ?? right.runId));
+    return {
+      childRuns: sortedChildRuns,
+      reviewQueue: reviewQueue.sort((left, right) => left.runId.localeCompare(right.runId)),
+      readyToPromote:
+        sortedChildRuns.length > 0 && sortedChildRuns.every((childRun) => childRun.approvedGates.includes("critic-report"))
+    };
   }
 }
 
-async function collectArtifactStatuses(runPath: string): Promise<BetaArtifactStatus[]> {
+async function collectArtifactStatuses(runPath: string, workspaceRoot: string): Promise<BetaArtifactStatus[]> {
   const artifactsPath = path.join(runPath, "artifacts");
   const approvalsPath = path.join(runPath, "approvals");
   const entries = await readDirIfExists(artifactsPath);
@@ -160,14 +212,108 @@ async function collectArtifactStatuses(runPath: string): Promise<BetaArtifactSta
       const artifactId = gateToArtifact[gate];
       const versions = (versionsByArtifact.get(artifactId) ?? []).sort(compareVersions);
       const approvedVersion = await readApprovedVersion(approvalsPath, gate, artifactId);
+      const draftVersion = hasDraft.has(artifactId) ? versions.at(-1) : undefined;
       return {
         artifactId,
-        ...(hasDraft.has(artifactId) && versions.at(-1) ? { draftVersion: versions.at(-1) } : {}),
-        ...(approvedVersion ? { approvedVersion } : {}),
+        ...(draftVersion ? { draftVersion, draftPath: relativeArtifactPath(workspaceRoot, runPath, artifactId, draftVersion) } : {}),
+        ...(approvedVersion
+          ? { approvedVersion, approvedPath: relativeArtifactPath(workspaceRoot, runPath, artifactId, approvedVersion) }
+          : {}),
         approved: Boolean(approvedVersion)
       };
     })
   );
+}
+
+function buildReviewItem(
+  runId: string,
+  scope: "parent" | "child",
+  currentGate: ApprovalGateId | undefined,
+  artifactById: Map<GateArtifactId, BetaArtifactStatus>
+): BetaReviewItem | undefined {
+  if (!currentGate) {
+    return undefined;
+  }
+
+  const artifactId = gateToArtifact[currentGate];
+  const artifact = artifactById.get(artifactId);
+  if (!artifact?.draftVersion || !artifact.draftPath) {
+    return undefined;
+  }
+
+  return {
+    runId,
+    scope,
+    gate: currentGate,
+    artifactId,
+    version: artifact.draftVersion,
+    artifactPath: artifact.draftPath,
+    readArtifact: {
+      toolName: "learning_agent.read_artifact",
+      input: { runId, artifactId, version: artifact.draftVersion },
+      reason: `Read ${currentGate} ${artifact.draftVersion} before approval.`
+    },
+    approveGate: {
+      toolName: "learning_agent.approve_gate",
+      input: { runId, gate: currentGate, version: artifact.draftVersion },
+      reason: `Approve ${currentGate} only after review.`
+    },
+    reviseGate: {
+      toolName: "learning_agent.revise_gate",
+      input: { runId, gate: currentGate, version: artifact.draftVersion, notes: "<revision notes>" },
+      reason: `Request revision if ${currentGate} is not acceptable.`
+    }
+  };
+}
+
+function buildOperatorToolHints(
+  parentRunId: string,
+  parent: BetaRunGateStatus,
+  childRuns: BetaChildRunStatus[],
+  reviewQueue: BetaReviewItem[]
+): BetaToolCallHint[] {
+  const firstReview = reviewQueue.at(0);
+  if (firstReview) {
+    return [firstReview.readArtifact];
+  }
+
+  if (!parent.approvedGates.includes("source-map") || parent.currentGate) {
+    return [
+      {
+        toolName: "learning_agent.run_until_gate",
+        input: { runId: parentRunId, maxSteps: 20 },
+        reason: "Advance the parent run to the next artifact or approval gate."
+      }
+    ];
+  }
+
+  if (parent.approvedGates.includes("curriculum-plan")) {
+    if (childRuns.length > 0 && childRuns.every((childRun) => childRun.approvedGates.includes("critic-report"))) {
+      return [
+        {
+          toolName: "learning_agent.promote_units",
+          input: { runId: parentRunId, unitSelector: "all" },
+          reason: "All child critic reports are approved, so the course pack can be promoted."
+        }
+      ];
+    }
+
+    return [
+      {
+        toolName: "learning_agent.run_course",
+        input: { runId: parentRunId, unitSelector: "all", maxSteps: 20 },
+        reason: "Create or advance child unit runs."
+      }
+    ];
+  }
+
+  return [
+    {
+      toolName: "learning_agent.run_until_gate",
+      input: { runId: parentRunId, maxSteps: 20 },
+      reason: "Continue parent planning gates."
+    }
+  ];
 }
 
 function summarizeGateStatus(
@@ -260,6 +406,18 @@ function compareVersions(left: string, right: string): number {
 
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function relativeArtifactPath(
+  workspaceRoot: string,
+  runPath: string,
+  artifactId: GateArtifactId,
+  version: string
+): string {
+  return path
+    .relative(workspaceRoot, path.join(runPath, "artifacts", `${artifactId}.${version}.json`))
+    .split(path.sep)
+    .join("/");
 }
 
 function isFileNotFound(error: unknown): boolean {

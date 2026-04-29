@@ -139,6 +139,22 @@ describe("LearningAgentRuntimeTools", () => {
       parent: {
         currentGate: "source-map",
         nextActions: [expect.stringContaining("Review source-map")]
+      },
+      operatorHints: {
+        reviewQueue: [
+          expect.objectContaining({
+            gate: "source-map",
+            version: "v1",
+            artifactPath: "runs/mcp-smoke/artifacts/source-map.v1.json"
+          })
+        ],
+        nextToolCalls: [
+          expect.objectContaining({
+            toolName: "learning_agent.read_artifact",
+            input: { runId: "mcp-smoke", artifactId: "source-map", version: "v1" }
+          })
+        ],
+        readyToPromote: false
       }
     });
     expect(JSON.stringify(betaStatus).length).toBeLessThan(15000);
