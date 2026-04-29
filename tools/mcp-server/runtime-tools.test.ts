@@ -14,6 +14,8 @@ describe("LearningAgentRuntimeTools", () => {
     expect(learningAgentToolContracts.map((tool) => tool.name)).toEqual(
       expect.arrayContaining([
         "learning_agent.init_run",
+        "learning_agent.plan_run",
+        "learning_agent.init_from_plan",
         "learning_agent.status",
         "learning_agent.submit_artifact",
         "learning_agent.approve_gate",
@@ -24,6 +26,36 @@ describe("LearningAgentRuntimeTools", () => {
         "learning_agent.promote_units",
         "learning_agent.promote_lesson"
       ])
+    );
+  });
+
+  test("plans and initializes a run from natural language through tool handlers", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
+    const tools = new LearningAgentRuntimeTools(root);
+
+    const planResult = await tools.callTool("learning_agent.plan_run", {
+      request: "用哈希表生成 8 页中文课，面向有基础编程经验但缺少数据结构心智模型的学习者。",
+      runId: "mcp-nl-plan"
+    });
+    const initResult = await tools.callTool("learning_agent.init_from_plan", {
+      runId: "mcp-nl-plan",
+      approve: true
+    });
+    const statusResult = await tools.callTool("learning_agent.status", { runId: "mcp-nl-plan" });
+
+    expect(planResult).toMatchObject({
+      status: "plan_written",
+      runId: "mcp-nl-plan",
+      summary: expect.arrayContaining(["unitPages=8", "language=zh-CN"])
+    });
+    expect(initResult).toMatchObject({ status: "initialized", runId: "mcp-nl-plan" });
+    expect(statusResult).toMatchObject({
+      runId: "mcp-nl-plan",
+      topic: "哈希表",
+      pageCount: { target: 8 }
+    });
+    await expect(readFile(path.join(root, "runs", "mcp-nl-plan", "run.plan.json"), "utf8")).resolves.toContain(
+      "\"status\": \"approved\""
     );
   });
 

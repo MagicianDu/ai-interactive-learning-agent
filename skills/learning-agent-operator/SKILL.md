@@ -62,6 +62,13 @@ npm run agent:init-from-plan -- --run <run-id> --approve true
 
 Use `--approve true` only after the plan has been reviewed. For stricter operation, edit the plan file to set `"status": "approved"` and then omit the shortcut.
 
+MCP-ready equivalent:
+
+```json
+{"tool":"learning_agent.plan_run","input":{"request":"<Chinese natural-language course request>","runId":"<run-id>"}}
+{"tool":"learning_agent.init_from_plan","input":{"runId":"<run-id>","approve":true}}
+```
+
 2. Initialize the run directly when the user has already supplied exact flags:
 
 ```bash

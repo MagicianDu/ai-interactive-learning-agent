@@ -12,6 +12,8 @@ Current MCP-ready tool names:
 
 ```text
 learning_agent.init_run
+learning_agent.plan_run
+learning_agent.init_from_plan
 learning_agent.status
 learning_agent.submit_artifact
 learning_agent.approve_gate
@@ -22,6 +24,8 @@ learning_agent.run_course
 learning_agent.promote_units
 learning_agent.promote_lesson
 ```
+
+`learning_agent.plan_run` is the natural-language entrypoint for Codex/Claude-style operation. It writes `runs/<run-id>/run.plan.json` from a Chinese request and returns review items. `learning_agent.init_from_plan` initializes the run after the operator approves the plan. Structured `init_run` remains available for scripts and tests.
 
 ## Conceptual TypeScript Shape
 

@@ -1,5 +1,7 @@
 export type LearningAgentToolName =
   | "learning_agent.init_run"
+  | "learning_agent.plan_run"
+  | "learning_agent.init_from_plan"
   | "learning_agent.status"
   | "learning_agent.submit_artifact"
   | "learning_agent.approve_gate"
@@ -47,6 +49,16 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
       adapter: stringSchema,
       run: stringSchema
     })
+  },
+  {
+    name: "learning_agent.plan_run",
+    description: "Create a reviewable run plan from a Chinese natural-language learning request.",
+    inputSchema: objectSchema({ request: stringSchema, runId: stringSchema }, ["request"])
+  },
+  {
+    name: "learning_agent.init_from_plan",
+    description: "Approve optionally and initialize a learning-agent run from a previously written run plan.",
+    inputSchema: objectSchema({ runId: stringSchema, approve: booleanSchema }, ["runId"])
   },
   {
     name: "learning_agent.status",

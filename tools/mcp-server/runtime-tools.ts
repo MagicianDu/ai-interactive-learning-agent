@@ -8,6 +8,7 @@ import {
   LessonPromotionService,
   ManualSubmissionService,
   MockRuntimeAdapter,
+  RunPlanService,
   RunStore
 } from "../agent-runtime/index.js";
 import type { ArtifactVersion } from "../agent-runtime/artifact-store.js";
@@ -39,6 +40,10 @@ export class LearningAgentRuntimeTools {
     switch (name) {
       case "learning_agent.init_run":
         return this.initRun(input);
+      case "learning_agent.plan_run":
+        return this.planRun(input);
+      case "learning_agent.init_from_plan":
+        return this.initFromPlan(input);
       case "learning_agent.status":
         return this.status(input);
       case "learning_agent.submit_artifact":
@@ -92,6 +97,38 @@ export class LearningAgentRuntimeTools {
       pageCount: config.pageCount,
       coursePack: config.coursePack,
       runPath
+    };
+  }
+
+  private async planRun(input: unknown): Promise<unknown> {
+    const options = expectRecord(input);
+    const service = new RunPlanService(this.workspaceRoot);
+    const plan = service.createPlan(requiredString(options, "request"), { runId: optionalString(options.runId) });
+    const planPath = await service.writePlan(plan);
+    return {
+      status: "plan_written",
+      runId: plan.runId,
+      planPath,
+      summary: plan.summary,
+      reviewItems: plan.reviewItems
+    };
+  }
+
+  private async initFromPlan(input: unknown): Promise<unknown> {
+    const options = expectRecord(input);
+    const result = await new RunPlanService(this.workspaceRoot).initializeRunFromPlan(requiredString(options, "runId"), {
+      approve: optionalBoolean(options.approve) ?? false
+    });
+    return {
+      status: result.status,
+      runId: result.runId,
+      runPath: result.runPath,
+      planPath: result.planPath,
+      topic: result.config.topic,
+      sourceKind: result.config.sourceKind,
+      outputLanguage: result.config.outputLanguage,
+      pageCount: result.config.pageCount,
+      coursePack: result.config.coursePack
     };
   }
 
@@ -186,6 +223,8 @@ export class LearningAgentRuntimeTools {
 function isLearningAgentToolName(name: string): name is LearningAgentToolName {
   return [
     "learning_agent.init_run",
+    "learning_agent.plan_run",
+    "learning_agent.init_from_plan",
     "learning_agent.status",
     "learning_agent.submit_artifact",
     "learning_agent.approve_gate",
