@@ -45,7 +45,7 @@ export function CourseShell({ coursePack, units, selectedLessonId, onSelectLesso
   );
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-slate-900 shadow-sm">
+    <section className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-4 text-slate-900 shadow-sm">
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.45fr)]">
         <div className="min-w-0">
           <div className="flex items-start gap-3">

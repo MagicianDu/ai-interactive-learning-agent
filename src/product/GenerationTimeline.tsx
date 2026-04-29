@@ -46,7 +46,7 @@ export function GenerationTimeline({ status }: GenerationTimelineProps) {
               <p className="break-words text-xs leading-5 text-slate-600">Gate: {stage.gate}</p>
               {isActive && stage.gate === "child-runs" && nextToolCall ? (
                 <div className="rounded-md bg-white p-2 text-xs leading-5 text-sky-800">
-                  <p className="font-bold">下一步：{nextToolCall.toolName}</p>
+                  <p className="break-words font-bold">下一步：{nextToolCall.toolName}</p>
                   <p className="mt-1 text-slate-600">{nextToolCall.reason}</p>
                 </div>
               ) : null}

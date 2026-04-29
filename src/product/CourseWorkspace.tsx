@@ -46,16 +46,16 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
   return (
     <div className="min-h-screen bg-[#f4f7fb]">
       <div className="mx-auto grid max-w-7xl gap-4 px-4 py-4 text-slate-950 sm:px-8 lg:px-10">
-        <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.35fr)_minmax(18rem,0.35fr)] lg:items-center">
-          <div>
+        <div className="grid min-w-0 gap-3 overflow-hidden rounded-lg border border-slate-200 bg-white p-3 shadow-sm lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.35fr)_minmax(18rem,0.35fr)] lg:items-center">
+          <div className="min-w-0">
             <p className="text-xs font-bold uppercase text-slate-500">当前课程</p>
             <h2 className="mt-1 truncate text-lg font-bold text-slate-950">{selectedLesson.title}</h2>
           </div>
           {coursePacks.length > 0 && (
-            <label className="grid gap-1 text-sm font-semibold text-slate-700">
+            <label className="grid min-w-0 gap-1 text-sm font-semibold text-slate-700">
               学习项目
               <select
-                className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-950 outline-none focus:border-sky-400"
+                className="h-10 w-full min-w-0 max-w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-950 outline-none focus:border-sky-400"
                 value={selectedCoursePackId}
                 onChange={(event) => {
                   const nextCoursePack = coursePacks.find((entry) => entry.id === event.target.value)?.coursePack;
@@ -75,10 +75,10 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
               </select>
             </label>
           )}
-          <label className="grid gap-1 text-sm font-semibold text-slate-700">
+          <label className="grid min-w-0 gap-1 text-sm font-semibold text-slate-700">
             课程单元
             <select
-              className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-950 outline-none focus:border-sky-400"
+              className="h-10 w-full min-w-0 max-w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-950 outline-none focus:border-sky-400"
               value={selectedLessonId}
               onChange={(event) => setSelectedLessonId(event.target.value)}
             >

@@ -11,7 +11,7 @@ export function CourseHero({ title, sourceKind, strategy, unitCount, generatedCo
   const progress = unitCount > 0 ? Math.round((generatedCount / unitCount) * 100) : 0;
 
   return (
-    <section className="grid gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+    <section className="grid min-w-0 gap-4 overflow-hidden rounded-lg border border-slate-200 bg-white p-5 shadow-sm lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
       <div className="min-w-0">
         <p className="text-xs font-bold uppercase text-slate-500">学习项目工作台</p>
         <h1 className="mt-1 truncate text-2xl font-bold text-slate-950">{title}</h1>
@@ -25,7 +25,7 @@ export function CourseHero({ title, sourceKind, strategy, unitCount, generatedCo
         </div>
       </div>
 
-      <div className="grid min-w-56 gap-3 rounded-lg bg-slate-50 p-4">
+      <div className="grid min-w-0 gap-3 rounded-lg bg-slate-50 p-4 sm:min-w-56">
         <div className="flex items-end justify-between gap-3">
           <div>
             <p className="text-2xl font-bold text-slate-950">{generatedCount}/{unitCount}</p>
