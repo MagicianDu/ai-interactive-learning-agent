@@ -7,6 +7,8 @@ import { CanvasMapRenderer } from "../renderers/CanvasMapRenderer";
 import { LearningProductRenderer } from "../renderers/LearningProductRenderer";
 import { WebDeckRenderer } from "../renderers/WebDeckRenderer";
 import { CourseHero } from "./CourseHero";
+import { demoBetaStatus } from "./demoBetaStatus";
+import { GenerationTimeline } from "./GenerationTimeline";
 import { ProductModeTabs, productModeTabs, type CourseView } from "./ProductModeTabs";
 
 type CourseWorkspaceProps = {
@@ -98,6 +100,8 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
             unitCount={selectedCoursePackUnits.length}
           />
         ) : null}
+
+        <GenerationTimeline status={demoBetaStatus} />
 
         <ProductModeTabs onChange={setCourseView} value={courseView} />
 
