@@ -16,11 +16,23 @@ describe("LearningProductRenderer", () => {
     expect(screen.getByText(databaseIndexLesson.transferTasks[0]!.prompt)).toBeInTheDocument();
   });
 
+  test("assessment mode provides answer feedback", async () => {
+    const user = userEvent.setup();
+    render(<LearningProductRenderer lesson={databaseIndexLesson} mode="assessment" />);
+    const firstAssessment = databaseIndexLesson.pages.find((page) => page.assessmentSpec?.options?.length);
+    const firstOption = firstAssessment?.assessmentSpec?.options?.[0];
+
+    await user.click(screen.getByRole("button", { name: firstOption }));
+
+    expect(screen.getByText(/反馈：回答正确|反馈：继续调整心智模型/)).toBeInTheDocument();
+    expect(screen.getByText(/为什么：/)).toBeInTheDocument();
+  });
+
   test("renders teacher mode with objectives, pacing, questions, and misconceptions", () => {
     render(<LearningProductRenderer lesson={databaseIndexLesson} mode="teacher" />);
 
     expect(screen.getByRole("heading", { name: "教师模式" })).toBeInTheDocument();
-    expect(screen.getByText("建议节奏")).toBeInTheDocument();
+    expect(screen.getByText(/建议节奏/)).toBeInTheDocument();
     expect(screen.getByText(databaseIndexLesson.learningObjectives[0]!)).toBeInTheDocument();
     expect(screen.getByText(databaseIndexLesson.misconceptions[0]!.correction)).toBeInTheDocument();
   });
