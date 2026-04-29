@@ -10,7 +10,16 @@ const checks: Check[] = [
   {
     name: "product-and-mcp-tests",
     command: "npm",
-    args: ["run", "test", "--", "src/product", "src/renderers", "src/components/course", "tools/mcp-server/json-rpc-server.test.ts"]
+    args: [
+      "run",
+      "test",
+      "--",
+      "src/product",
+      "src/renderers",
+      "src/components/course",
+      "tools/mcp-server/json-rpc-server.test.ts",
+      "scripts/codex-mcp-config.test.ts"
+    ]
   },
   { name: "typecheck", command: "npm", args: ["run", "typecheck"] },
   { name: "build", command: "npm", args: ["run", "build"] },

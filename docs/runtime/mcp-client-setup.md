@@ -34,10 +34,17 @@ The server supports:
 
 ## Codex Configuration Shape
 
+Preferred local install:
+
+```bash
+npm run codex:mcp:install
+npm run codex:mcp:check
+```
+
 If the Codex environment uses TOML-style MCP server config, use:
 
 ```toml
-[mcp_servers.learning-agent]
+[mcp_servers.learningAgent]
 command = "npm"
 args = ["run", "mcp"]
 cwd = "/Users/dm/Documents/the learning agent"
@@ -46,7 +53,7 @@ cwd = "/Users/dm/Documents/the learning agent"
 If the Codex environment manages MCP servers through the app UI, add a stdio server with:
 
 ```text
-Name: learning-agent
+Name: learningAgent
 Command: npm
 Arguments: run mcp
 Working directory: /Users/dm/Documents/the learning agent

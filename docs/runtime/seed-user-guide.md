@@ -33,6 +33,15 @@ AI Interactive Learning Agent 把书籍、论文、专利、博客、笔记和�
 npm run mcp
 ```
 
+Codex 本地安装：
+
+```bash
+npm run codex:mcp:install
+npm run codex:mcp:check
+```
+
+安装后需要重启 Codex 或打开新会话，才能加载 `learningAgent` MCP 服务。完整试用流程见 `docs/runtime/codex-mcp-trial.md`。
+
 查看工具清单：
 
 ```bash

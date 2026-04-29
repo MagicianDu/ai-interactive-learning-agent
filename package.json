@@ -31,6 +31,8 @@
     "agent:promote-units": "tsx tools/agent-runtime/cli.ts promote-units",
     "agent:course": "tsx tools/agent-runtime/cli.ts course",
     "mcp": "tsx tools/mcp-server/index.ts",
+    "codex:mcp:install": "tsx scripts/install-codex-mcp.ts --install",
+    "codex:mcp:check": "tsx scripts/install-codex-mcp.ts --check",
     "seed:check": "tsx scripts/beta-seed-check.ts"
   },
   "dependencies": {
