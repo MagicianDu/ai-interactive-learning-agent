@@ -78,8 +78,8 @@ describe("CourseShell", () => {
     expect(screen.getByText("overview_plus_topic")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /总览课/ })).toBeEnabled();
     expect(screen.getByRole("button", { name: /路由与任务分派/ })).toBeDisabled();
-    expect(screen.getByText("已生成")).toBeInTheDocument();
-    expect(screen.getByText("待生成")).toBeInTheDocument();
+    expect(screen.getAllByText("已生成").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("待生成").length).toBeGreaterThan(0);
     expect(screen.getByText("来源覆盖")).toBeInTheDocument();
     expect(screen.getByText("概念覆盖")).toBeInTheDocument();
     expect(screen.getByText("source-001:chapter-02")).toBeInTheDocument();

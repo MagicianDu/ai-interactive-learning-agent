@@ -53,8 +53,9 @@ export function CourseShell({ coursePack, units, selectedLessonId, onSelectLesso
               <Layers3 aria-hidden="true" className="size-5" />
             </span>
             <div className="min-w-0">
-              <p className="text-xs font-bold uppercase text-slate-500">课程包</p>
+              <p className="text-xs font-bold uppercase text-slate-500">学习项目</p>
               <h1 className="mt-1 truncate text-xl font-bold text-slate-950">{coursePack.title}</h1>
+              <p className="mt-2 text-sm leading-6 text-slate-600">先用总览课建立全局地图，再进入核心 topic。</p>
               <div className="mt-2 flex flex-wrap gap-2 text-xs font-semibold text-slate-600">
                 {coursePack.sourceKind ? <span className="rounded-full bg-white px-2 py-1">{coursePack.sourceKind}</span> : null}
                 {coursePack.strategy ? <span className="rounded-full bg-white px-2 py-1">{coursePack.strategy}</span> : null}
@@ -102,7 +103,7 @@ export function CourseShell({ coursePack, units, selectedLessonId, onSelectLesso
                   onClick={() => setGenerationFilter("generated")}
                   type="button"
                 >
-                  有课件
+                  已生成
                 </button>
                 <button
                   aria-label="待生成"
@@ -115,7 +116,7 @@ export function CourseShell({ coursePack, units, selectedLessonId, onSelectLesso
                   onClick={() => setGenerationFilter("pending")}
                   type="button"
                 >
-                  待生成单元
+                  待生成
                 </button>
               </div>
             </div>
