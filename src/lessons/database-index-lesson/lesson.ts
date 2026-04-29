@@ -5,9 +5,9 @@ export const generatedLesson = {
   title: "为什么数据库索引能让查询更快",
   audience: "具备基础技术背景、希望通过中文互动课程建立心智模型的学习者。",
   config: {
-    targetPageCount: 10,
-    minPageCount: 8,
-    maxPageCount: 12
+    targetPageCount: 12,
+    minPageCount: 10,
+    maxPageCount: 14
   },
   prerequisites: [
     "会读简单 SELECT 查询",
@@ -89,6 +89,20 @@ export const generatedLesson = {
       title: "可迁移心智模型",
       learningGoal: "压缩索引决策规则",
       narrative: "索引用额外结构换取更小的搜索空间，但要支付维护成本。"
+    },
+    {
+      id: "page-11",
+      type: "problem_scene",
+      title: "1000 万行里找一条记录",
+      learningGoal: "感受无索引查询的搜索压力",
+      narrative: "先从慢查询问题出发，而不是直接定义索引。"
+    },
+    {
+      id: "page-12",
+      type: "intuition_visual",
+      title: "有目录和没有目录的书",
+      learningGoal: "建立索引缩小查找范围的直觉",
+      narrative: "目录让读者跳到相关页，索引让数据库跳到相关范围。"
     }
   ],
   misconceptions: [

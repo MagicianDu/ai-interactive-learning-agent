@@ -17,6 +17,7 @@ describe("corpus run config", () => {
       {
         id: "source-001",
         type: "topic",
+        kind: "unknown",
         title: "哈希表",
         value: "哈希表",
         language: "zh-CN"
@@ -29,6 +30,13 @@ describe("corpus run config", () => {
       preferredPageCountPerUnit: 8
     });
     expect(config.curriculumPlanningMode).toBe("hybrid");
+    expect(config.coursePack).toMatchObject({
+      strategy: "overview_plus_topic",
+      includeOverview: true,
+      preserveSourceMapping: true,
+      unitPageCount: 8,
+      outputProducts: ["web_lesson", "assessment"]
+    });
     expect(config.coveragePolicy).toEqual({
       requiredCoverage: "core_concepts",
       allowOmission: true,
@@ -36,10 +44,71 @@ describe("corpus run config", () => {
     });
   });
 
+  test("creates a source-grounded course-pack config from a local file source", () => {
+    const config = createRunConfigFromArgs({
+      sourceFile: "/tmp/Agentic_Design_Patterns.pdf",
+      sourceKind: "book",
+      sourceTitle: "Agentic Design Patterns",
+      unitPages: "12",
+      run: "agentic-design-book"
+    });
+
+    expect(config.topic).toBe("Agentic Design Patterns");
+    expect(config.source).toEqual({
+      type: "file",
+      value: "/tmp/Agentic_Design_Patterns.pdf",
+      label: "Agentic Design Patterns"
+    });
+    expect(config.sourceKind).toBe("book");
+    expect(config.sources).toEqual([
+      {
+        id: "source-001",
+        type: "file",
+        kind: "book",
+        title: "Agentic Design Patterns",
+        value: "/tmp/Agentic_Design_Patterns.pdf",
+        uri: "/tmp/Agentic_Design_Patterns.pdf",
+        language: "zh-CN"
+      }
+    ]);
+    expect(config.coursePack).toMatchObject({
+      strategy: "overview_plus_topic",
+      includeOverview: true,
+      preserveSourceMapping: true,
+      unitPageCount: 12
+    });
+    expect(config.coveragePolicy).toMatchObject({
+      requiredCoverage: "goal_relevant"
+    });
+  });
+
   test("validates supported curriculum planning modes", () => {
     expect(() =>
       validateRunConfig(baseConfig({ curriculumPlanningMode: "random_walk" } as unknown as Partial<RunConfig>))
     ).toThrow(/curriculumPlanningMode/);
+  });
+
+  test("preserves topic-guided user constraints for course-pack planning", () => {
+    const config = createRunConfigFromArgs({
+      sourceUrl: "https://example.com/agentic-design-patterns",
+      sourceKind: "blog",
+      sourceTitle: "Agentic Design Patterns",
+      planningMode: "topic_guided",
+      strategy: "overview_plus_topic",
+      unitPages: "10",
+      units: "5",
+      topics: "routing,tool use,memory",
+      chapters: "part 1,part 2",
+      run: "agentic-blog-course"
+    });
+
+    expect(config.curriculumPlanningMode).toBe("topic_guided");
+    expect(config.coursePack).toMatchObject({
+      strategy: "overview_plus_topic",
+      preferredUnitCount: 5,
+      selectedTopics: ["routing", "tool use", "memory"],
+      selectedChapters: ["part 1", "part 2"]
+    });
   });
 
   test("validates user learning profile fields", () => {

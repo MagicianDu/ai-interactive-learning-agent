@@ -1,5 +1,15 @@
 import { AgentRuntimeError } from "./errors.js";
-import type { CoveragePolicy, CurriculumPlanningMode, SourceRecord, UserLearningProfile } from "./corpus-types.js";
+import path from "node:path";
+
+import type {
+  CoursePackConfig,
+  CoursePackStrategy,
+  CoveragePolicy,
+  CurriculumPlanningMode,
+  SourceMaterialKind,
+  SourceRecord,
+  UserLearningProfile
+} from "./corpus-types.js";
 import type { ApprovalGateId, CliInitArgs, RunConfig, RuntimeAdapterId } from "./types.js";
 
 const safeRunIdPattern = /^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/;
@@ -18,11 +28,30 @@ const allowedModelFallbackPolicies = new Set<RunConfig["modelFallbackPolicy"]>([
   "use_default",
   "fail"
 ]);
-const allowedSourceTypes = new Set(["topic", "text", "file", "url"]);
+const allowedSourceTypes = new Set(["topic", "text", "file", "folder", "url"]);
 const allowedSourceRecordTypes = new Set<SourceRecord["type"]>(["topic", "text", "file", "folder", "url"]);
+const allowedSourceMaterialKinds = new Set<SourceMaterialKind>([
+  "book",
+  "paper",
+  "patent",
+  "blog",
+  "documentation",
+  "notes",
+  "course",
+  "mixed",
+  "unknown"
+]);
 const allowedCurriculumPlanningModes = new Set<CurriculumPlanningMode>([
   "chapter_guided",
+  "topic_guided",
   "concept_guided",
+  "task_guided",
+  "hybrid"
+]);
+const allowedCoursePackStrategies = new Set<CoursePackStrategy>([
+  "overview_plus_topic",
+  "chapter_guided",
+  "topic_guided",
   "task_guided",
   "hybrid"
 ]);
@@ -83,17 +112,27 @@ const topicSlugMap: Record<string, string> = {
   数据库索引: "database-index"
 };
 
+type SingleSourceType = "topic" | "text" | "file" | "folder" | "url";
+
+type ResolvedSourceInput = {
+  type: SingleSourceType;
+  value: string;
+  title: string;
+};
+
 export function createRunConfigFromArgs(args: CliInitArgs): RunConfig {
-  const topic = args.topic?.trim();
+  const outputLanguage = args.language?.trim() || "zh-CN";
+  const sourceInput = resolveSourceInput(args, outputLanguage);
+  const topic = args.topic?.trim() || args.sourceTitle?.trim() || sourceInput.title;
+
   if (!topic) {
-    throw new AgentRuntimeError("topic is required", "INVALID_RUN_CONFIG");
+    throw new AgentRuntimeError("topic or source is required", "INVALID_RUN_CONFIG");
   }
 
-  const targetPages = Number(args.pages ?? "10");
+  const targetPages = Number(args.unitPages ?? args.pages ?? "10");
   if (!Number.isInteger(targetPages) || targetPages < 1 || targetPages > 40) {
     throw new AgentRuntimeError("pages must be between 1 and 40", "INVALID_RUN_CONFIG");
   }
-  const outputLanguage = args.language?.trim() || "zh-CN";
   const requestedAdapter = (args.adapter || "mock").trim().toLowerCase();
   const adapter = normalizeAdapter(requestedAdapter);
   const manualAdapterId = manualAdapterHint(requestedAdapter);
@@ -101,33 +140,40 @@ export function createRunConfigFromArgs(args: CliInitArgs): RunConfig {
   const model = adapter === "mock" ? "mock-learning-agent" : `manual-${manualAdapterId}-session`;
 
   const runId = args.run?.trim() || `${slugifyTopic(topic)}-001`;
+  const sourceKind = normalizeSourceKind(args.sourceKind, sourceInput);
+  const planningMode = normalizePlanningMode(args.planningMode);
+  const strategy = normalizeCoursePackStrategy(args.strategy);
+  const preferredUnitCount = parseOptionalPositiveInteger(args.units, "units", 20);
+  const selectedChapters = parseList(args.chapters);
+  const selectedTopics = parseList(args.topics);
+  const coursePack = buildCoursePackConfig({
+    strategy,
+    targetPages,
+    preferredUnitCount,
+    selectedChapters,
+    selectedTopics
+  });
 
   return validateRunConfig({
     runId,
     topic,
-    source: { type: "topic", value: topic },
-    sources: [
-      {
-        id: "source-001",
-        type: "topic",
-        title: topic,
-        value: topic,
-        language: outputLanguage
-      }
-    ],
-    audience: "具备基础技术背景、希望通过中文互动课程建立心智模型的学习者。",
+    source: {
+      type: sourceInput.type,
+      value: sourceInput.value,
+      label: sourceInput.title
+    },
+    sourceKind,
+    sources: [toSourceRecord(sourceInput, sourceKind, outputLanguage)],
+    audience: args.audience?.trim() || "具备基础技术背景、希望通过中文互动课程建立心智模型的学习者。",
     userLearningProfile: {
       level: "basic",
       readingHabit: "visual_first",
       goal: "understand",
       preferredPageCountPerUnit: targetPages
     },
-    curriculumPlanningMode: "hybrid",
-    coveragePolicy: {
-      requiredCoverage: "core_concepts",
-      allowOmission: true,
-      omissionRules: ["topic-only runs may omit source coverage beyond generated concept anchors"]
-    },
+    curriculumPlanningMode: planningMode,
+    coveragePolicy: buildDefaultCoveragePolicy(sourceInput.type, strategy),
+    coursePack,
     outputLanguage,
     targetOutput: "web_deck",
     pageCount: {
@@ -152,6 +198,198 @@ export function createRunConfigFromArgs(args: CliInitArgs): RunConfig {
   });
 }
 
+function resolveSourceInput(args: CliInitArgs, language: string): ResolvedSourceInput {
+  const explicitSources: ResolvedSourceInput[] = [];
+
+  if (args.sourceFile?.trim()) {
+    explicitSources.push({
+      type: "file",
+      value: args.sourceFile.trim(),
+      title: args.sourceTitle?.trim() || deriveTitleFromSource(args.sourceFile.trim(), "file")
+    });
+  }
+  if (args.sourceFolder?.trim()) {
+    explicitSources.push({
+      type: "folder",
+      value: args.sourceFolder.trim(),
+      title: args.sourceTitle?.trim() || deriveTitleFromSource(args.sourceFolder.trim(), "folder")
+    });
+  }
+  if (args.sourceUrl?.trim()) {
+    explicitSources.push({
+      type: "url",
+      value: args.sourceUrl.trim(),
+      title: args.sourceTitle?.trim() || deriveTitleFromSource(args.sourceUrl.trim(), "url")
+    });
+  }
+  if (args.sourceText?.trim()) {
+    explicitSources.push({
+      type: "text",
+      value: args.sourceText.trim(),
+      title: args.sourceTitle?.trim() || args.topic?.trim() || `${language} pasted source`
+    });
+  }
+
+  if (explicitSources.length > 1) {
+    throw new AgentRuntimeError("only one explicit source is supported by init; use mixed source config for multi-source runs", "INVALID_RUN_CONFIG");
+  }
+  if (explicitSources.length === 1) {
+    return explicitSources[0];
+  }
+
+  const topic = args.topic?.trim();
+  if (!topic) {
+    throw new AgentRuntimeError("topic or source is required", "INVALID_RUN_CONFIG");
+  }
+  return {
+    type: "topic",
+    value: topic,
+    title: args.sourceTitle?.trim() || topic
+  };
+}
+
+function deriveTitleFromSource(value: string, type: SingleSourceType): string {
+  if (type === "url") {
+    try {
+      const url = new URL(value);
+      const leaf = url.pathname.split("/").filter(Boolean).at(-1);
+      return decodeURIComponent(leaf || url.hostname);
+    } catch {
+      return value;
+    }
+  }
+  if (type === "file" || type === "folder") {
+    const baseName = path.basename(value).replace(/\.[^.]+$/u, "");
+    return baseName || value;
+  }
+  return value.slice(0, 80) || "source";
+}
+
+function normalizeSourceKind(kind: string | undefined, source: ResolvedSourceInput): SourceMaterialKind {
+  const normalized = kind?.trim().toLowerCase();
+  if (normalized) {
+    if (!allowedSourceMaterialKinds.has(normalized as SourceMaterialKind)) {
+      throw new AgentRuntimeError(
+        "sourceKind must be book, paper, patent, blog, documentation, notes, course, mixed, or unknown",
+        "INVALID_RUN_CONFIG"
+      );
+    }
+    return normalized as SourceMaterialKind;
+  }
+
+  if (source.type === "topic") {
+    return "unknown";
+  }
+  if (source.type === "url" && /blog|post|article/u.test(source.value.toLowerCase())) {
+    return "blog";
+  }
+  return "unknown";
+}
+
+function normalizePlanningMode(mode: string | undefined): CurriculumPlanningMode {
+  const normalized = mode?.trim().toLowerCase() || "hybrid";
+  if (!allowedCurriculumPlanningModes.has(normalized as CurriculumPlanningMode)) {
+    throw new AgentRuntimeError(
+      "planningMode must be chapter_guided, topic_guided, concept_guided, task_guided, or hybrid",
+      "INVALID_RUN_CONFIG"
+    );
+  }
+  return normalized as CurriculumPlanningMode;
+}
+
+function normalizeCoursePackStrategy(strategy: string | undefined): CoursePackStrategy {
+  const normalized = strategy?.trim().toLowerCase() || "overview_plus_topic";
+  if (!allowedCoursePackStrategies.has(normalized as CoursePackStrategy)) {
+    throw new AgentRuntimeError(
+      "strategy must be overview_plus_topic, chapter_guided, topic_guided, task_guided, or hybrid",
+      "INVALID_RUN_CONFIG"
+    );
+  }
+  return normalized as CoursePackStrategy;
+}
+
+function parseOptionalPositiveInteger(value: string | undefined, fieldName: string, max: number): number | undefined {
+  if (value === undefined || value.trim() === "") {
+    return undefined;
+  }
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > max) {
+    throw new AgentRuntimeError(`${fieldName} must be an integer between 1 and ${max}`, "INVALID_RUN_CONFIG");
+  }
+  return parsed;
+}
+
+function parseList(value: string | undefined): string[] | undefined {
+  const items = value
+    ?.split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return items && items.length > 0 ? items : undefined;
+}
+
+function buildCoursePackConfig({
+  strategy,
+  targetPages,
+  preferredUnitCount,
+  selectedChapters,
+  selectedTopics
+}: {
+  strategy: CoursePackStrategy;
+  targetPages: number;
+  preferredUnitCount?: number;
+  selectedChapters?: string[];
+  selectedTopics?: string[];
+}): CoursePackConfig {
+  return {
+    strategy,
+    includeOverview: strategy === "overview_plus_topic" || strategy === "hybrid",
+    preserveSourceMapping: true,
+    unitPageCount: targetPages,
+    preferredUnitCount,
+    selectedChapters,
+    selectedTopics,
+    outputProducts: ["web_lesson", "assessment"]
+  };
+}
+
+function buildDefaultCoveragePolicy(sourceType: SingleSourceType, strategy: CoursePackStrategy): CoveragePolicy {
+  if (sourceType === "topic") {
+    return {
+      requiredCoverage: "core_concepts",
+      allowOmission: true,
+      omissionRules: ["topic-only runs may omit source coverage beyond generated concept anchors"]
+    };
+  }
+
+  return {
+    requiredCoverage: strategy === "chapter_guided" ? "selected_sections" : "goal_relevant",
+    allowOmission: true,
+    omissionRules: [
+      "source-grounded runs must preserve source anchors for omitted or deferred sections",
+      "overview_plus_topic runs should create an overview unit before topic-focused units"
+    ]
+  };
+}
+
+function toSourceRecord(source: ResolvedSourceInput, sourceKind: SourceMaterialKind, language: string): SourceRecord {
+  const record: SourceRecord = {
+    id: "source-001",
+    type: source.type,
+    kind: sourceKind,
+    title: source.title,
+    language
+  };
+
+  if (source.type === "topic" || source.type === "text") {
+    record.value = source.value;
+  } else {
+    record.uri = source.value;
+    record.value = source.value;
+  }
+
+  return record;
+}
+
 export function validateRunConfig(config: RunConfig): RunConfig {
   if (!isNonEmptyString(config.runId)) {
     throw new AgentRuntimeError("runId is required", "INVALID_RUN_CONFIG");
@@ -169,6 +407,9 @@ export function validateRunConfig(config: RunConfig): RunConfig {
     throw new AgentRuntimeError("targetOutput must be one of the supported lesson outputs", "INVALID_RUN_CONFIG");
   }
   validateSource(config.source);
+  if (config.sourceKind !== undefined && !allowedSourceMaterialKinds.has(config.sourceKind)) {
+    throw new AgentRuntimeError("sourceKind is invalid", "INVALID_RUN_CONFIG");
+  }
   if (!config.pageCount) {
     throw new AgentRuntimeError("pageCount is required", "INVALID_RUN_CONFIG");
   }
@@ -205,11 +446,13 @@ export function validateRunConfig(config: RunConfig): RunConfig {
   validateUserLearningProfile(config.userLearningProfile);
   if (!allowedCurriculumPlanningModes.has(config.curriculumPlanningMode)) {
     throw new AgentRuntimeError(
-      "curriculumPlanningMode must be chapter_guided, concept_guided, task_guided, or hybrid",
+      "curriculumPlanningMode must be chapter_guided, topic_guided, concept_guided, task_guided, or hybrid",
       "INVALID_RUN_CONFIG"
     );
   }
   validateCoveragePolicy(config.coveragePolicy);
+  validateCoursePack(config.coursePack);
+  validateSelectedUnit(config.selectedUnit);
   if (!Array.isArray(config.approvalGates)) {
     throw new AgentRuntimeError("approvalGates must be an array of canonical gate ids", "INVALID_RUN_CONFIG");
   }
@@ -219,6 +462,50 @@ export function validateRunConfig(config: RunConfig): RunConfig {
     }
   }
   return config;
+}
+
+function validateSelectedUnit(unit: RunConfig["selectedUnit"]): void {
+  if (unit === undefined) {
+    return;
+  }
+  if (!isRecord(unit) || Array.isArray(unit)) {
+    throw new AgentRuntimeError("selectedUnit must be an object", "INVALID_RUN_CONFIG");
+  }
+  if (
+    !isNonEmptyString(unit.id) ||
+    !isNonEmptyString(unit.title) ||
+    !isNonEmptyString(unit.kind) ||
+    !isNonEmptyString(unit.purpose) ||
+    !isNonEmptyString(unit.parentRunId)
+  ) {
+    throw new AgentRuntimeError("selectedUnit is missing required strings", "INVALID_RUN_CONFIG");
+  }
+  if (!["overview", "chapter", "topic", "task", "hybrid"].includes(unit.kind)) {
+    throw new AgentRuntimeError("selectedUnit.kind is invalid", "INVALID_RUN_CONFIG");
+  }
+  if (!Number.isInteger(unit.targetPageCount) || unit.targetPageCount < 1 || unit.targetPageCount > 40) {
+    throw new AgentRuntimeError("selectedUnit.targetPageCount must be an integer between 1 and 40", "INVALID_RUN_CONFIG");
+  }
+  if (!isStringArray(unit.sourceAnchorIds)) {
+    throw new AgentRuntimeError("selectedUnit.sourceAnchorIds must be strings", "INVALID_RUN_CONFIG");
+  }
+  if (unit.sourceNodeIds !== undefined && !isStringArray(unit.sourceNodeIds)) {
+    throw new AgentRuntimeError("selectedUnit.sourceNodeIds must be strings", "INVALID_RUN_CONFIG");
+  }
+  if (unit.chapterRefs !== undefined && !isStringArray(unit.chapterRefs)) {
+    throw new AgentRuntimeError("selectedUnit.chapterRefs must be strings", "INVALID_RUN_CONFIG");
+  }
+  if (!isStringArray(unit.conceptIds)) {
+    throw new AgentRuntimeError("selectedUnit.conceptIds must be strings", "INVALID_RUN_CONFIG");
+  }
+  if (
+    !Array.isArray(unit.outputProducts) ||
+    !unit.outputProducts.every((product) =>
+      ["web_lesson", "whiteboard_map", "playground", "assessment", "teacher_notes"].includes(product)
+    )
+  ) {
+    throw new AgentRuntimeError("selectedUnit.outputProducts contains unsupported products", "INVALID_RUN_CONFIG");
+  }
 }
 
 function normalizeAdapter(adapter?: string): RuntimeAdapterId {
@@ -303,6 +590,9 @@ function validateSources(sources: RunConfig["sources"]): void {
     if (!allowedSourceRecordTypes.has(source.type)) {
       throw new AgentRuntimeError(`${path}.type must be topic, text, file, folder, or url`, "INVALID_RUN_CONFIG");
     }
+    if (source.kind !== undefined && !allowedSourceMaterialKinds.has(source.kind)) {
+      throw new AgentRuntimeError(`${path}.kind is invalid`, "INVALID_RUN_CONFIG");
+    }
     if (!isNonEmptyString(source.title)) {
       throw new AgentRuntimeError(`${path}.title is required`, "INVALID_RUN_CONFIG");
     }
@@ -362,6 +652,47 @@ function validateCoveragePolicy(policy: CoveragePolicy): void {
   }
 }
 
+function validateCoursePack(coursePack: CoursePackConfig | undefined): void {
+  if (coursePack === undefined) {
+    return;
+  }
+  if (!isRecord(coursePack) || Array.isArray(coursePack)) {
+    throw new AgentRuntimeError("coursePack must be an object", "INVALID_RUN_CONFIG");
+  }
+  if (!allowedCoursePackStrategies.has(coursePack.strategy)) {
+    throw new AgentRuntimeError("coursePack.strategy is invalid", "INVALID_RUN_CONFIG");
+  }
+  if (typeof coursePack.includeOverview !== "boolean") {
+    throw new AgentRuntimeError("coursePack.includeOverview must be boolean", "INVALID_RUN_CONFIG");
+  }
+  if (typeof coursePack.preserveSourceMapping !== "boolean") {
+    throw new AgentRuntimeError("coursePack.preserveSourceMapping must be boolean", "INVALID_RUN_CONFIG");
+  }
+  if (!Number.isInteger(coursePack.unitPageCount) || coursePack.unitPageCount < 1 || coursePack.unitPageCount > 40) {
+    throw new AgentRuntimeError("coursePack.unitPageCount must be an integer between 1 and 40", "INVALID_RUN_CONFIG");
+  }
+  if (
+    coursePack.preferredUnitCount !== undefined &&
+    (!Number.isInteger(coursePack.preferredUnitCount) || coursePack.preferredUnitCount < 1 || coursePack.preferredUnitCount > 20)
+  ) {
+    throw new AgentRuntimeError("coursePack.preferredUnitCount must be an integer between 1 and 20", "INVALID_RUN_CONFIG");
+  }
+  if (coursePack.selectedChapters !== undefined && !isStringArray(coursePack.selectedChapters)) {
+    throw new AgentRuntimeError("coursePack.selectedChapters must be strings", "INVALID_RUN_CONFIG");
+  }
+  if (coursePack.selectedTopics !== undefined && !isStringArray(coursePack.selectedTopics)) {
+    throw new AgentRuntimeError("coursePack.selectedTopics must be strings", "INVALID_RUN_CONFIG");
+  }
+  if (
+    !Array.isArray(coursePack.outputProducts) ||
+    !coursePack.outputProducts.every((product) =>
+      ["web_lesson", "whiteboard_map", "playground", "assessment", "teacher_notes"].includes(product)
+    )
+  ) {
+    throw new AgentRuntimeError("coursePack.outputProducts contains unsupported products", "INVALID_RUN_CONFIG");
+  }
+}
+
 function validateRoleModels(roleModels: RunConfig["models"]["roleModels"]): void {
   if (roleModels === undefined) {
     return;
@@ -385,11 +716,15 @@ function validateRoleModels(roleModels: RunConfig["models"]["roleModels"]): void
 
 function validateSingleSource(source: { type: unknown; value: unknown }, path: string): void {
   if (!allowedSourceTypes.has(String(source.type))) {
-    throw new AgentRuntimeError(`${path}.type must be topic, text, file, or url`, "INVALID_RUN_CONFIG");
+    throw new AgentRuntimeError(`${path}.type must be topic, text, file, folder, or url`, "INVALID_RUN_CONFIG");
   }
   if (!isNonEmptyString(source.value)) {
     throw new AgentRuntimeError(`${path}.value is required`, "INVALID_RUN_CONFIG");
   }
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
 function isNonEmptyString(value: unknown): value is string {

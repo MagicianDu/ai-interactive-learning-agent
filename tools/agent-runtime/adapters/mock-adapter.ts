@@ -1,4 +1,5 @@
 import type { ArtifactVersion } from "../artifact-store.js";
+import type { LearningUnitPlan } from "../corpus-types.js";
 import type { RunConfig } from "../types.js";
 import type { RoleId, WorkflowArtifactId } from "../workflow/role-sequence.js";
 
@@ -114,6 +115,8 @@ export class MockRuntimeAdapter implements RuntimeAdapter {
 
     if (roleId === "curriculum-planner" && artifactId === "curriculum-plan") {
       const sourceAnchorIds = config.sources.map((source) => `${source.id}:topic`);
+      const units = buildMockCourseUnits(config, sourceAnchorIds);
+      const allUnitIds = units.map((unit) => unit.id);
       return artifactResult({
         artifactId,
         roleId,
@@ -122,40 +125,58 @@ export class MockRuntimeAdapter implements RuntimeAdapter {
         mode: config.curriculumPlanningMode,
         userProfile: config.userLearningProfile,
         coveragePolicy: config.coveragePolicy,
-        units: [
-          {
-            id: "unit-001",
-            title: `${config.topic}：建立可迁移心智模型`,
-            purpose: "用一个交互式 web lesson 建立核心概念、误区和迁移能力。",
-            targetPageCount: config.userLearningProfile.preferredPageCountPerUnit ?? config.pageCount.target,
-            sourceAnchorIds,
-            conceptIds: ["hash-function", "collision", "load-factor"],
-            outputProducts: ["web_lesson", "assessment"]
-          }
-        ],
+        coursePack: {
+          id: `${config.runId}-course-pack`,
+          title: `${config.topic}：课程包`,
+          sourceKind: config.sourceKind ?? "unknown",
+          strategy: config.coursePack?.strategy ?? "overview_plus_topic",
+          audience: config.audience,
+          language: config.outputLanguage,
+          overviewUnitId: units.find((unit) => unit.kind === "overview")?.id,
+          units,
+          sourceCoverage: config.sources.map((source) => ({
+            sourceNodeId: `${source.id}:root`,
+            status: "covered",
+            unitIds: allUnitIds
+          })),
+          conceptCoverage: ["hash-function", "collision", "load-factor"].map((conceptId) => ({
+            conceptId,
+            status: "covered",
+            unitIds: allUnitIds
+          })),
+          chapterMapping: config.sources.map((source) => ({
+            chapterId: `${source.id}:root`,
+            title: source.title,
+            unitIds: allUnitIds,
+            anchorIds: sourceAnchorIds
+          }))
+        },
+        units,
         sourceCoverage: config.sources.map((source) => ({
           sourceNodeId: `${source.id}:root`,
           status: "covered",
-          unitIds: ["unit-001"]
+          unitIds: allUnitIds
         })),
         conceptCoverage: [
-          { conceptId: "hash-function", status: "covered", unitIds: ["unit-001"] },
-          { conceptId: "collision", status: "covered", unitIds: ["unit-001"] },
-          { conceptId: "load-factor", status: "covered", unitIds: ["unit-001"] }
+          { conceptId: "hash-function", status: "covered", unitIds: allUnitIds },
+          { conceptId: "collision", status: "covered", unitIds: allUnitIds },
+          { conceptId: "load-factor", status: "covered", unitIds: allUnitIds }
         ],
         rationale: [
-          "Topic-only source uses hybrid mode with a source map and pedagogical concept map.",
-          "One 8-page web lesson is enough for the current user-requested scope."
+          "默认采用 overview_plus_topic：先给总览课，再按核心 topic 拆分学习单元。",
+          "课程包保留 source/chapter 映射，后续每个 unit 可独立生成 Web Deck。"
         ]
       });
     }
 
     if (roleId === "source-ingest") {
+      const selectedUnit = config.selectedUnit;
       return artifactResult({
         artifactId,
         roleId,
         language: "zh-CN",
-        topic: config.topic,
+        topic: selectedUnit?.title ?? config.topic,
+        selectedUnit,
         concepts: ["全表扫描", "索引查找", "选择性", "B+树直觉", "复合索引顺序", "写入与存储成本"],
         dependencies: ["基础 SQL 查询", "表、行、列的概念"],
         examples: ["在 1000 万行订单表中查找某个用户的订单", "比较无索引扫描和按 user_id 索引查找"],
@@ -165,11 +186,13 @@ export class MockRuntimeAdapter implements RuntimeAdapter {
     }
 
     if (roleId === "learning-architecture") {
+      const selectedUnit = config.selectedUnit;
       return artifactResult({
         artifactId,
         roleId,
         language: "zh-CN",
         audience: config.audience,
+        selectedUnit,
         pageCount: {
           ...config.pageCount,
           planned: config.pageCount.target
@@ -181,20 +204,31 @@ export class MockRuntimeAdapter implements RuntimeAdapter {
           "判断某个查询条件是否可能利用索引",
           "说明索引带来的写入和存储代价"
         ],
-        pageSequence: buildPageSequence(config.pageCount.target)
+        pageSequence: buildPageSequence(config.pageCount.target, selectedUnit?.title)
       });
     }
 
     if (roleId === "lesson-assembly" && artifactId === "lesson") {
+      const selectedUnit = config.selectedUnit;
       return artifactResult({
-        id: "database-index-lesson",
-        title: "为什么数据库索引能让查询更快",
+        id: selectedUnit ? config.runId : "database-index-lesson",
+        title: selectedUnit?.title ?? "为什么数据库索引能让查询更快",
         audience: config.audience,
         config: {
           targetPageCount: config.pageCount.target,
           minPageCount: config.pageCount.min,
           maxPageCount: config.pageCount.max
         },
+        sourceContext: selectedUnit
+          ? {
+              parentRunId: selectedUnit.parentRunId,
+              parentCoursePackId: selectedUnit.parentCoursePackId,
+              unitId: selectedUnit.id,
+              sourceAnchorIds: selectedUnit.sourceAnchorIds,
+              chapterRefs: selectedUnit.chapterRefs,
+              conceptIds: selectedUnit.conceptIds
+            }
+          : undefined,
         language: "zh-CN",
         prerequisites: ["会读简单 SELECT 查询", "理解表、行、列的基本关系"],
         learningObjectives: [
@@ -248,6 +282,49 @@ export class MockRuntimeAdapter implements RuntimeAdapter {
   }
 }
 
+function buildMockCourseUnits(config: RunConfig, sourceAnchorIds: string[]): LearningUnitPlan[] {
+  const unitPageCount = config.coursePack?.unitPageCount ?? config.userLearningProfile.preferredPageCountPerUnit ?? config.pageCount.target;
+  const outputProducts: LearningUnitPlan["outputProducts"] = config.coursePack?.outputProducts ?? ["web_lesson", "assessment"];
+  const requestedTopicLabels = config.coursePack?.selectedTopics;
+  const defaultTopicLabels = ["核心机制", "常见误区", "迁移应用"];
+  const topicLabels = requestedTopicLabels && requestedTopicLabels.length > 0 ? requestedTopicLabels : defaultTopicLabels;
+  const preferredUnitCount = config.coursePack?.preferredUnitCount ?? (config.coursePack?.includeOverview === false ? 3 : 4);
+  const units: LearningUnitPlan[] = [];
+
+  if (config.coursePack?.includeOverview !== false) {
+    units.push({
+      id: "unit-overview",
+      title: `${config.topic}：总览课`,
+      kind: "overview",
+      purpose: "先建立资料全局地图、核心问题和后续 topic 拆分方式。",
+      targetPageCount: unitPageCount,
+      sourceAnchorIds,
+      sourceNodeIds: config.sources.map((source) => `${source.id}:root`),
+      chapterRefs: config.coursePack?.selectedChapters,
+      conceptIds: ["hash-function", "collision", "load-factor"],
+      outputProducts
+    });
+  }
+
+  const remainingSlots = Math.max(1, preferredUnitCount - units.length);
+  for (const [index, label] of topicLabels.slice(0, remainingSlots).entries()) {
+    units.push({
+      id: `unit-topic-${String(index + 1).padStart(2, "0")}`,
+      title: `${config.topic}：${label}`,
+      kind: "topic",
+      purpose: "围绕一个核心 topic 建立可操作的心智模型、误区检查和迁移任务。",
+      targetPageCount: unitPageCount,
+      sourceAnchorIds,
+      sourceNodeIds: config.sources.map((source) => `${source.id}:root`),
+      chapterRefs: config.coursePack?.selectedChapters,
+      conceptIds: ["hash-function", "collision", "load-factor"],
+      outputProducts
+    });
+  }
+
+  return units;
+}
+
 function artifactResult(payload: unknown): RuntimeAdapterResult {
   return {
     kind: "artifact",
@@ -255,7 +332,7 @@ function artifactResult(payload: unknown): RuntimeAdapterResult {
   };
 }
 
-function buildPageSequence(targetPageCount: number): string[] {
+function buildPageSequence(targetPageCount: number, selectedUnitTitle?: string): string[] {
   const baseSequence = [
     "问题场景：1000 万行查询",
     "直觉：有目录和没有目录的书",
@@ -269,7 +346,10 @@ function buildPageSequence(targetPageCount: number): string[] {
     "总结卡片"
   ];
 
-  return Array.from({ length: targetPageCount }, (_, index) => baseSequence[index % baseSequence.length]);
+  return Array.from({ length: targetPageCount }, (_, index) => {
+    const title = baseSequence[index % baseSequence.length];
+    return selectedUnitTitle ? `${selectedUnitTitle} / ${title}` : title;
+  });
 }
 
 function buildLessonPages(targetPageCount: number): Array<{

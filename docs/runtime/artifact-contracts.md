@@ -13,6 +13,9 @@ runs/
   database-index-001/
     run.config.json
     approvals/
+      source-map.approved.json
+      concept-map.approved.json
+      curriculum-plan.approved.json
       learning-architecture.approved.json
       lesson.approved.json
       critic-report.approved.json
@@ -74,6 +77,15 @@ For an exact versioned file to count as approved, it must match the `approvedArt
 | File | Purpose |
 | --- | --- |
 | `run.config.json` | Source of truth for topic, source, audience, page count, runtime, models, and approval gates. |
+| `artifacts/source-map.vN.json` | Source structure, anchors, chapter/section/claim nodes, and extraction notes for a source or corpus. |
+| `artifacts/source-map.draft.json` | Optional alias for the latest source-map draft. |
+| `artifacts/source-map.approved.json` | Optional alias for the approved source-map artifact. |
+| `artifacts/concept-map.vN.json` | Concepts, dependencies, examples, misconceptions, and source anchor links extracted from the source map. |
+| `artifacts/concept-map.draft.json` | Optional alias for the latest concept-map draft. |
+| `artifacts/concept-map.approved.json` | Optional alias for the approved concept-map artifact. |
+| `artifacts/curriculum-plan.vN.json` | Course-pack strategy, overview/topic/chapter unit plan, source coverage, concept coverage, and rationale. |
+| `artifacts/curriculum-plan.draft.json` | Optional alias for the latest curriculum-plan draft. |
+| `artifacts/curriculum-plan.approved.json` | Optional alias for the approved curriculum-plan artifact. |
 | `artifacts/source-ingest.vN.json` | Concepts, dependencies, examples, misconceptions, and candidate interactions extracted from source. |
 | `artifacts/source-ingest.draft.json` | Optional alias for the latest source-ingest draft. |
 | `artifacts/learning-architecture.vN.json` | Audience assumptions, prerequisites, objectives, planned page count, and page sequence. |
@@ -101,16 +113,85 @@ For an exact versioned file to count as approved, it must match the `approvedArt
 
 ## Canonical Approval Gates
 
-Phase 0 uses four canonical approval gate ids. Each gate approves an exact versioned artifact.
+Phase 0 uses seven canonical approval gate ids. Each gate approves an exact versioned artifact.
 
 | Gate id | Approval file | Approved artifact |
 | --- | --- | --- |
+| `source-map` | `approvals/source-map.approved.json` | `artifacts/source-map.vN.json`; may update `artifacts/source-map.approved.json` |
+| `concept-map` | `approvals/concept-map.approved.json` | `artifacts/concept-map.vN.json`; may update `artifacts/concept-map.approved.json` |
+| `curriculum-plan` | `approvals/curriculum-plan.approved.json` | `artifacts/curriculum-plan.vN.json`; may update `artifacts/curriculum-plan.approved.json` |
 | `learning-architecture` | `approvals/learning-architecture.approved.json` | `artifacts/learning-architecture.vN.json`; may update `artifacts/learning-architecture.approved.json` |
 | `lesson` | `approvals/lesson.approved.json` | `artifacts/lesson.vN.json`; may update `artifacts/lesson.approved.json` |
 | `critic-report` | `approvals/critic-report.approved.json` | `artifacts/critic-report.vN.json`; may update `artifacts/critic-report.approved.json` |
 | `publish-package` | `approvals/publish-package.approved.json` | `artifacts/publish-package.vN.json`; may update `artifacts/publish-package.approved.json` |
 
-Other artifacts may still be reviewed by the operator, but they are not canonical approval gate ids in Phase 0 unless a later orchestration contract adds them.
+Other artifacts may still be reviewed by the operator, but these seven ids are the canonical Phase 0 approval gates unless a later orchestration contract expands them.
+
+## Course Pack Planning
+
+For source-backed runs, `curriculum-plan` should include a `coursePack` object. The default strategy is `overview_plus_topic`: create one overview unit, then split core topic units while preserving the original source mapping.
+
+Minimal shape:
+
+```json
+{
+  "coursePack": {
+    "id": "agentic-design-book-course-pack",
+    "title": "Agentic Design Patterns：课程包",
+    "sourceKind": "book",
+    "strategy": "overview_plus_topic",
+    "overviewUnitId": "unit-overview",
+    "units": [
+      {
+        "id": "unit-overview",
+        "title": "总览课",
+        "kind": "overview",
+        "targetPageCount": 12,
+        "sourceAnchorIds": ["source-001:chapter-01"],
+        "chapterRefs": ["Chapter 1"],
+        "conceptIds": ["routing", "planning"],
+        "outputProducts": ["web_lesson", "assessment"]
+      }
+    ],
+    "chapterMapping": [
+      {
+        "chapterId": "source-001:chapter-01",
+        "title": "Chapter 1",
+        "unitIds": ["unit-overview"],
+        "anchorIds": ["source-001:chapter-01"]
+      }
+    ]
+  }
+}
+```
+
+After approval, a runtime may either:
+
+- select one unit into `run.config.json:selectedUnit`, invalidate artifacts after `curriculum-plan`, and continue the same run; or
+- spawn child runs for one or all units, seeding the approved `source-map`, `concept-map`, and `curriculum-plan` so each child run starts from unit-level learning design.
+
+Current CLI commands:
+
+```bash
+npm run agent:units -- --run <run-id>
+npm run agent:select-unit -- --run <run-id> --unit <unit-id>
+npm run agent:course -- --run <run-id> --all true
+npm run agent:spawn-units -- --run <run-id> --all true
+npm run agent:run-units -- --run <run-id> --all true
+npm run agent:promote-units -- --run <run-id> --all true
+```
+
+`course` is the high-level orchestration command for Codex-style natural language control. It ensures selected child runs exist, advances them until the next non-draft-writing boundary, and returns next actions.
+
+`run-units` advances each child run until the first non-draft-writing boundary: `manual_action_required`, `approval_required`, `complete`, or a configured step limit.
+
+`promote-units` expects each selected child run to have an approved `lesson`. It promotes those lessons and writes:
+
+```text
+src/course-packs/<run-id>/coursePack.ts
+```
+
+The frontend course pack registry auto-discovers this manifest and maps unit entries to promoted lessons.
 
 ## Promotion Path
 

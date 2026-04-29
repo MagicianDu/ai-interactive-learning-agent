@@ -5,6 +5,7 @@ import {
   ArtifactStore,
   CodexManualAdapter,
   createRunConfigFromArgs,
+  CoursePackService,
   LessonPromotionService,
   ManualSubmissionService,
   MockRuntimeAdapter,
@@ -24,17 +25,56 @@ const gateToArtifact: Record<ApprovalGateId, string> = {
 };
 
 type CliOptions = Record<string, string | undefined>;
-type CliCommand = "init" | "status" | "run" | "resume" | "submit" | "approve" | "revise" | "promote";
+type CliCommand =
+  | "init"
+  | "status"
+  | "run"
+  | "resume"
+  | "submit"
+  | "approve"
+  | "revise"
+  | "promote"
+  | "units"
+  | "select-unit"
+  | "spawn-units"
+  | "run-units"
+  | "promote-units"
+  | "course";
 
 const commandAllowedFlags: Record<CliCommand, ReadonlySet<string>> = {
-  init: new Set(["topic", "pages", "language", "adapter", "run"]),
+  init: new Set([
+    "topic",
+    "pages",
+    "unit-pages",
+    "source-file",
+    "source-folder",
+    "source-url",
+    "source-text",
+    "source-kind",
+    "source-title",
+    "planning-mode",
+    "strategy",
+    "units",
+    "chapters",
+    "topics",
+    "audience",
+    "language",
+    "adapter",
+    "run"
+  ]),
   status: new Set(["run"]),
   run: new Set(["run"]),
   resume: new Set(["run"]),
   submit: new Set(["run", "artifact", "file"]),
   approve: new Set(["run", "gate", "version", "notes"]),
   revise: new Set(["run", "gate", "version", "notes"]),
-  promote: new Set(["run"])
+  promote: new Set(["run"]),
+  units: new Set(["run"]),
+  "select-unit": new Set(["run", "unit"]),
+  "spawn-units": new Set(["run", "unit", "all"]),
+  "run-units": new Set(["run", "unit", "all", "max-steps"]),
+  "promote-units": new Set(["run", "unit", "all"]),
+  course: new Set(["run", "unit", "all", "max-steps", "promote"])
 };
 
 async function main(): Promise<void> {
@@ -84,6 +124,36 @@ async function main(): Promise<void> {
       await promoteLesson(options);
       return;
     }
+
+    if (command === "units") {
+      await listUnits(options);
+      return;
+    }
+
+    if (command === "select-unit") {
+      await selectUnit(options);
+      return;
+    }
+
+    if (command === "spawn-units") {
+      await spawnUnitRuns(options);
+      return;
+    }
+
+    if (command === "run-units") {
+      await runUnitRuns(options);
+      return;
+    }
+
+    if (command === "promote-units") {
+      await promoteUnitRuns(options);
+      return;
+    }
+
+    if (command === "course") {
+      await orchestrateCourse(options);
+      return;
+    }
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;
@@ -98,7 +168,22 @@ function normalizeCommand(command: string | undefined): string {
 }
 
 function isSupportedCommand(command: string): command is CliCommand {
-  return ["init", "status", "run", "resume", "submit", "approve", "revise", "promote"].includes(command);
+  return [
+    "init",
+    "status",
+    "run",
+    "resume",
+    "submit",
+    "approve",
+    "revise",
+    "promote",
+    "units",
+    "select-unit",
+    "spawn-units",
+    "run-units",
+    "promote-units",
+    "course"
+  ].includes(command);
 }
 
 function parseOptions(args: string[], allowedFlags: ReadonlySet<string>): CliOptions {
@@ -134,23 +219,18 @@ function parseOptions(args: string[], allowedFlags: ReadonlySet<string>): CliOpt
 }
 
 async function initRun(options: CliOptions): Promise<void> {
-  if (!options.topic) {
-    throw new Error("--topic is required");
-  }
-  if (!options.pages) {
-    throw new Error("--pages is required");
-  }
-
   const runStore = new RunStore();
-  const config = createRunConfigFromArgs(options as CliInitArgs);
+  const config = createRunConfigFromArgs(toInitArgs(options));
   const runPath = await runStore.createRun(config);
 
   printJson({
     status: "initialized",
     runId: config.runId,
     topic: config.topic,
+    sourceKind: config.sourceKind,
     outputLanguage: config.outputLanguage,
     pageCount: config.pageCount,
+    coursePack: config.coursePack,
     runPath
   });
 }
@@ -163,8 +243,10 @@ async function printStatus(options: CliOptions): Promise<void> {
   printJson({
     runId: config.runId,
     topic: config.topic,
+    sourceKind: config.sourceKind,
     outputLanguage: config.outputLanguage,
-    pageCount: config.pageCount
+    pageCount: config.pageCount,
+    coursePack: config.coursePack
   });
 }
 
@@ -223,6 +305,70 @@ async function promoteLesson(options: CliOptions): Promise<void> {
   });
 }
 
+async function listUnits(options: CliOptions): Promise<void> {
+  const runId = requireOption(options, "run");
+  const service = new CoursePackService();
+  const units = await service.listUnits(runId);
+
+  printJson({
+    runId,
+    units
+  });
+}
+
+async function selectUnit(options: CliOptions): Promise<void> {
+  const runId = requireOption(options, "run");
+  const unitId = requireOption(options, "unit");
+  const service = new CoursePackService();
+  const result = await service.selectUnit(runId, unitId);
+
+  printJson(result);
+}
+
+async function spawnUnitRuns(options: CliOptions): Promise<void> {
+  const runId = requireOption(options, "run");
+  const selector = options.all === "true" ? "all" : requireOption(options, "unit");
+  const service = new CoursePackService();
+  const result = await service.spawnUnitRuns(runId, selector);
+
+  printJson(result);
+}
+
+async function runUnitRuns(options: CliOptions): Promise<void> {
+  const runId = requireOption(options, "run");
+  const selector = options.all === "true" ? "all" : requireOption(options, "unit");
+  const maxSteps = Number(options["max-steps"] ?? "20");
+  const service = new CoursePackService();
+  const result = await service.runUnitRuns(runId, selector, maxSteps);
+
+  printJson(result);
+}
+
+async function promoteUnitRuns(options: CliOptions): Promise<void> {
+  const runId = requireOption(options, "run");
+  const selector = options.all === "true" ? "all" : requireOption(options, "unit");
+  const service = new CoursePackService();
+  const result = await service.promoteUnitRuns(runId, selector);
+
+  printJson(result);
+}
+
+async function orchestrateCourse(options: CliOptions): Promise<void> {
+  const runId = requireOption(options, "run");
+  const selector = options.all === "true" ? "all" : options.unit?.trim() || "all";
+  const maxSteps = Number(options["max-steps"] ?? "20");
+  const promote = options.promote === "true";
+  const service = new CoursePackService();
+  const result = await service.orchestrateCourse({
+    runId,
+    unitSelector: selector,
+    maxSteps,
+    promote
+  });
+
+  printJson(result);
+}
+
 async function createWorkflow(runId: string): Promise<AgentWorkflow> {
   const runStore = new RunStore();
   const runPath = runStore.getRunPath(runId);
@@ -257,12 +403,35 @@ function toArtifactVersion(version: string): ArtifactVersion {
   return version as ArtifactVersion;
 }
 
+function toInitArgs(options: CliOptions): CliInitArgs {
+  return {
+    topic: options.topic,
+    pages: options.pages,
+    unitPages: options["unit-pages"],
+    sourceFile: options["source-file"],
+    sourceFolder: options["source-folder"],
+    sourceUrl: options["source-url"],
+    sourceText: options["source-text"],
+    sourceKind: options["source-kind"],
+    sourceTitle: options["source-title"],
+    planningMode: options["planning-mode"],
+    strategy: options.strategy,
+    units: options.units,
+    chapters: options.chapters,
+    topics: options.topics,
+    audience: options.audience,
+    language: options.language,
+    adapter: options.adapter,
+    run: options.run
+  };
+}
+
 function printHelp(): void {
   console.log(`AI Interactive Learning Agent runtime ${agentRuntimeVersion}`);
   console.log("Commands:");
   console.log("  help");
   console.log(
-    "  init --topic <topic> --pages <count> [--language zh-CN] [--adapter mock|codex|claude|openclaw|codex-manual] [--run <id>]"
+    "  init [--topic <topic>] [--source-file <path>|--source-folder <path>|--source-url <url>|--source-text <text>] [--source-kind book|paper|patent|blog|documentation|notes|course|unknown] [--unit-pages <count>] [--strategy overview_plus_topic|chapter_guided|topic_guided|task_guided|hybrid] [--planning-mode chapter_guided|topic_guided|task_guided|hybrid] [--language zh-CN] [--adapter mock|codex|claude|openclaw|codex-manual] [--run <id>]"
   );
   console.log("  status --run <id>");
   console.log("  run --run <id>");
@@ -271,6 +440,12 @@ function printHelp(): void {
   console.log("  approve --run <id> --gate <gate> [--version v1] [--notes text]");
   console.log("  revise --run <id> --gate <gate> [--version v1] --notes <text>");
   console.log("  promote --run <id>");
+  console.log("  units --run <id>");
+  console.log("  select-unit --run <id> --unit <unit-id>");
+  console.log("  spawn-units --run <id> (--unit <unit-id>|--all true)");
+  console.log("  run-units --run <id> (--unit <unit-id>|--all true) [--max-steps 20]");
+  console.log("  promote-units --run <id> (--unit <unit-id>|--all true)");
+  console.log("  course --run <id> [--unit <unit-id>|--all true] [--max-steps 20] [--promote true]");
 }
 
 function printJson(value: unknown): void {

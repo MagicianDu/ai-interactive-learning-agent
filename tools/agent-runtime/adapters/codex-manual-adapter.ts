@@ -29,10 +29,28 @@ You are executing one role in the AI Interactive Learning Agent workflow via ${m
 
 - Run ID: ${config.runId}
 - Topic: ${config.topic}
+- Source kind: ${config.sourceKind ?? "unknown"}
 - Audience: ${config.audience}
 - Output language: ${config.outputLanguage}
 - Target output: ${config.targetOutput}
-- Requested page count: ${config.pageCount.target}
+- Requested page count per unit: ${config.coursePack?.unitPageCount ?? config.pageCount.target}
+- Curriculum planning mode: ${config.curriculumPlanningMode}
+- Course pack strategy: ${config.coursePack?.strategy ?? "single_lesson"}
+- Include overview unit: ${String(config.coursePack?.includeOverview ?? false)}
+- Preserve source/chapter mapping: ${String(config.coursePack?.preserveSourceMapping ?? false)}
+
+## Sources
+
+\`\`\`json
+${JSON.stringify(config.sources, null, 2)}
+\`\`\`
+
+${config.selectedUnit ? `## Selected Learning Unit
+
+\`\`\`json
+${JSON.stringify(config.selectedUnit, null, 2)}
+\`\`\`
+` : ""}
 
 ## Role
 
@@ -42,7 +60,7 @@ ${roleSpecificInstructions(roleId, artifactId)}
 
 ## Instructions
 
-Generate one valid JSON object for the output artifact. Keep the content Chinese-first unless the run config explicitly says otherwise. Preserve the requested page count where the role plans or assembles lesson pages.
+Generate one valid JSON object for the output artifact. Keep the content Chinese-first unless the run config explicitly says otherwise. For source-backed runs, keep source anchors and chapter/section mappings instead of compressing the whole source into one short lesson. If a selected learning unit is present, generate only for that unit and use its source anchors, concept ids, chapter refs, and targetPageCount. Preserve the requested per-unit page count where the role plans or assembles lesson pages.
 This is a natural-language workflow: you can reason in Chinese or English, then output only the JSON artifact.
 
 After writing the JSON object to a temporary file, submit it with:
@@ -93,7 +111,9 @@ function roleSpecificInstructions(roleId: string, artifactId: string): string {
     return `- Output Contract: CurriculumPlan JSON
 - Required fields: mode, userProfile, coveragePolicy, units, sourceCoverage, conceptCoverage, rationale
 - Use the selected curriculumPlanningMode from the run config.
-- Preserve preferredPageCountPerUnit when defining each unit targetPageCount.
+- Default strategy is overview_plus_topic when configured: create one overview unit first, then topic-focused units.
+- Preserve preferredPageCountPerUnit / coursePack.unitPageCount when defining each unit targetPageCount.
+- Preserve original chapter, section, claim, or source-node references in each unit even when the teaching sequence is topic-guided.
 `;
   }
 

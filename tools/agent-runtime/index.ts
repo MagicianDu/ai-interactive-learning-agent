@@ -4,6 +4,7 @@ export { CodexManualAdapter } from "./adapters/codex-manual-adapter.js";
 export { MockRuntimeAdapter } from "./adapters/mock-adapter.js";
 export { ApprovalService } from "./approval-service.js";
 export { ArtifactStore } from "./artifact-store.js";
+export { CoursePackService } from "./course-pack-service.js";
 export { ManualSubmissionService } from "./manual-submission-service.js";
 export { LessonPromotionService } from "./promotion/lesson-promotion-service.js";
 export { createRunConfigFromArgs, validateRunConfig } from "./run-config.js";

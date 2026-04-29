@@ -29,6 +29,45 @@ npm run agent:run -- --run hash-table-001
 npm run agent:resume -- --run hash-table-001
 ```
 
+For source-backed runs, initialize with a file, folder, URL, or pasted text. The default strategy is **overview + topic-guided units**: first create an overview learning unit, then split core topics while preserving chapter/section/source anchors.
+
+```bash
+npm run agent:init -- \
+  --source-file "/path/to/source.pdf" \
+  --source-kind book \
+  --source-title "Agentic Design Patterns" \
+  --unit-pages 12 \
+  --strategy overview_plus_topic \
+  --adapter codex \
+  --run agentic-design-book
+```
+
+`--unit-pages` and the legacy `--pages` flag mean pages per learning unit, not total pages for an entire book, paper, patent, or blog series.
+
+After `curriculum-plan` is approved, inspect or select generated learning units:
+
+```bash
+npm run agent:units -- --run agentic-design-book
+npm run agent:select-unit -- --run agentic-design-book --unit unit-overview
+npm run agent:run -- --run agentic-design-book
+```
+
+For batch work, spawn one child run per unit. The child runs reuse the approved source-map, concept-map, and curriculum-plan, then continue from unit-level learning design:
+
+```bash
+npm run agent:course -- --run agentic-design-book --all true
+npm run agent:spawn-units -- --run agentic-design-book --all true
+npm run agent:run-units -- --run agentic-design-book --all true
+npm run agent:promote-units -- --run agentic-design-book --all true
+npm run agent:run -- --run agentic-design-book-unit-overview
+```
+
+`agent:course` is the high-level Codex-facing command. It ensures selected unit child runs exist, advances them to the next manual/approval boundary, and returns next actions. Lower-level commands remain available when you need precise control.
+
+`agent:run-units` advances each child run until it reaches a manual role request, an approval gate, completion, or the configured step limit. Use `--unit <unit-id>` instead of `--all true` to advance only one unit.
+
+After each child run has an approved `lesson`, `agent:promote-units` promotes those lessons and writes a frontend-discoverable course pack manifest under `src/course-packs/<run-id>/coursePack.ts`.
+
 Repeat `npm run agent:run -- --run <run-id>` or `npm run agent:resume -- --run <run-id>` until the runtime writes a gated artifact or returns `approval_required`. Inspect the artifact under `runs/<run-id>/artifacts/`, then approve or revise using the exact `<version>` returned by the runtime:
 
 ```bash
@@ -59,8 +98,8 @@ npm run agent:init -- --topic "哈希表" --pages 8 --language zh-CN --adapter c
 npm run agent:init -- --topic "哈希表" --pages 8 --language zh-CN --adapter claude --run hash-table-claude
 npm run agent:init -- --topic "哈希表" --pages 8 --language zh-CN --adapter openclaw --run hash-table-openclaw
 npm run agent:run -- --run hash-table-claude
-# read runs/hash-table-claude/manual-requests/source-ingest.md
-npm run agent:submit -- --run hash-table-claude --artifact source-ingest --file <json-file>
+# read runs/hash-table-claude/manual-requests/source-map.md
+npm run agent:submit -- --run hash-table-claude --artifact source-map --file <json-file>
 ```
 
 After submission, continue with the same `run` / inspect / approve / revise loop. `codex-manual` does not call an external model API; it gives Codex a durable prompt and keeps artifact state on disk.
@@ -87,7 +126,9 @@ The first sample lesson is **数据库索引为什么更快**.
 
 ## Extend With A New Lesson
 
-1. Create a structured lesson object under `src/lessons/<lesson-id>/lesson.ts`.
+Promoted lessons under `src/lessons/<lesson-id>/lesson.ts` are auto-discovered by `src/lessons/registry.ts` and appear in the frontend lesson selector.
+
+1. Create or promote a structured lesson object under `src/lessons/<lesson-id>/lesson.ts`.
 2. Set `config.targetPageCount`, `config.minPageCount`, and `config.maxPageCount`.
 3. Add pages using the types in `src/schemas/lesson.schema.ts`.
 4. Reuse deck, visual, interaction, and assessment components from `src/components/`.

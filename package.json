@@ -20,7 +20,13 @@
     "agent:approve": "tsx tools/agent-runtime/cli.ts approve",
     "agent:revise": "tsx tools/agent-runtime/cli.ts revise",
     "agent:resume": "tsx tools/agent-runtime/cli.ts resume",
-    "agent:promote": "tsx tools/agent-runtime/cli.ts promote"
+    "agent:promote": "tsx tools/agent-runtime/cli.ts promote",
+    "agent:units": "tsx tools/agent-runtime/cli.ts units",
+    "agent:select-unit": "tsx tools/agent-runtime/cli.ts select-unit",
+    "agent:spawn-units": "tsx tools/agent-runtime/cli.ts spawn-units",
+    "agent:run-units": "tsx tools/agent-runtime/cli.ts run-units",
+    "agent:promote-units": "tsx tools/agent-runtime/cli.ts promote-units",
+    "agent:course": "tsx tools/agent-runtime/cli.ts course"
   },
   "dependencies": {
     "framer-motion": "^12.0.0",
