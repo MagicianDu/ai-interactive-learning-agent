@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
 import type {
@@ -79,6 +79,21 @@ async function normalizeFileSource(source: SourceRecord): Promise<NormalizedSour
     }
   }
 
+  if ([".html", ".htm"].includes(extension)) {
+    try {
+      return normalizeTextSource(source, htmlToPlainText(await readFile(filePath, "utf8")));
+    } catch {
+      return buildDocument(source, [fileAnchor(source)], [], [
+        {
+          sourceId: source.id,
+          code: "file-read-failed",
+          message: `Could not read HTML file: ${filePath}`,
+          severity: "warning"
+        }
+      ]);
+    }
+  }
+
   if (extension === ".pdf") {
     return buildDocument(source, [
       createSourceAnchor({
@@ -107,55 +122,115 @@ async function normalizeFileSource(source: SourceRecord): Promise<NormalizedSour
   ]);
 }
 
-function normalizeFolderSource(source: SourceRecord): NormalizedSourceDocument {
-  return buildDocument(source, [fileAnchor(source)], [], [
-    {
-      sourceId: source.id,
-      code: "folder-expansion-unavailable",
-      message: "Folder source expansion is not implemented in this slice.",
-      severity: "warning"
+async function normalizeFolderSource(source: SourceRecord): Promise<NormalizedSourceDocument> {
+  const folderPath = source.uri ?? source.value ?? "";
+  let files: Array<{ filePath: string; relativePath: string }>;
+  try {
+    files = await collectFolderFiles(folderPath);
+  } catch {
+    return buildDocument(source, [fileAnchor(source)], [], [
+      {
+        sourceId: source.id,
+        code: "folder-read-failed",
+        message: `Could not read folder: ${folderPath}`,
+        severity: "warning"
+      }
+    ]);
+  }
+
+  const childDocuments: NormalizedSourceDocument[] = [];
+  const extractionWarnings: ExtractionWarning[] = [];
+
+  for (const file of files) {
+    const extension = path.extname(file.filePath).toLowerCase();
+    if (!isSupportedFolderFile(extension)) {
+      extractionWarnings.push({
+        sourceId: source.id,
+        code: "unsupported-folder-file",
+        message: `Skipped unsupported folder file: ${file.relativePath}`,
+        severity: "warning"
+      });
+      continue;
     }
-  ]);
+
+    const childSource: SourceRecord = {
+      ...source,
+      id: `${source.id}-${slugify(file.relativePath)}`,
+      type: "file",
+      title: file.relativePath,
+      uri: file.filePath,
+      value: file.filePath,
+      metadata: {
+        ...(source.metadata ?? {}),
+        parentSourceId: source.id,
+        relativePath: file.relativePath
+      }
+    };
+    childDocuments.push(await normalizeFileSource(childSource));
+  }
+
+  const childRootIds = childDocuments
+    .map((document) => document.nodes.find((node) => node.id.endsWith(":root"))?.id)
+    .filter((id): id is string => Boolean(id));
+  const anchors = childDocuments.flatMap((document) => document.anchors);
+  const rootNode: SourceStructureNode = {
+    id: `${source.id}:root`,
+    sourceId: source.id,
+    type: "document",
+    title: source.title,
+    anchorIds: anchors.map((anchor) => anchor.anchorId),
+    children: childRootIds
+  };
+
+  if (childDocuments.length === 0) {
+    extractionWarnings.push({
+      sourceId: source.id,
+      code: "folder-no-supported-files",
+      message: `No supported text, markdown, HTML, or PDF files were found in folder: ${folderPath}`,
+      severity: "warning"
+    });
+  }
+
+  return {
+    source,
+    nodes: [rootNode, ...childDocuments.flatMap((document) => document.nodes)],
+    anchors,
+    extractionWarnings: [...extractionWarnings, ...childDocuments.flatMap((document) => document.extractionWarnings)]
+  };
 }
 
-function normalizeUrlSource(source: SourceRecord): NormalizedSourceDocument {
-  const anchor = createSourceAnchor({
-    sourceId: source.id,
-    label: source.title,
-    locator: { kind: "url_fragment", url: source.uri ?? source.value ?? source.title },
-    notes: "URL content was not fetched by the local normalizer."
-  });
-  return buildDocument(source, [anchor], [], [
-    {
-      sourceId: source.id,
-      code: "url-fetch-unavailable",
-      message: "URL fetch and HTML extraction are not implemented in this slice.",
-      severity: "warning"
+async function normalizeUrlSource(source: SourceRecord): Promise<NormalizedSourceDocument> {
+  const url = source.uri ?? source.value ?? source.title;
+  try {
+    const response = await fetchWithTimeout(url);
+    const contentType = response.headers.get("content-type") ?? source.contentType ?? "";
+    const body = await response.text();
+    if (/html|xml/u.test(contentType) || /<h[1-6]|<p[\s>]/iu.test(body)) {
+      return normalizeTextSource(source, htmlToPlainText(body));
     }
-  ]);
+    return normalizeTextSource(source, body);
+  } catch {
+    const anchor = createSourceAnchor({
+      sourceId: source.id,
+      label: source.title,
+      locator: { kind: "url_fragment", url },
+      notes: "URL content could not be fetched by the local normalizer."
+    });
+    return buildDocument(source, [anchor], [], [
+      {
+        sourceId: source.id,
+        code: "url-fetch-failed",
+        message: `Could not fetch URL content: ${url}`,
+        severity: "warning"
+      }
+    ]);
+  }
 }
 
 function normalizeTextSource(source: SourceRecord, text: string): NormalizedSourceDocument {
   const anchors = extractTextAnchors(source, text);
   if (anchors.length > 0) {
     return buildDocument(source, anchors, [], []);
-  }
-
-  const paragraphAnchors = text
-    .split(/\n\s*\n/gu)
-    .map((paragraph) => paragraph.trim())
-    .filter(Boolean)
-    .map((paragraph, index) =>
-      createSourceAnchor({
-        sourceId: source.id,
-        label: `Paragraph ${index + 1}`,
-        locator: { kind: "paragraph", paragraphId: String(index + 1) },
-        quote: paragraph.slice(0, 240)
-      })
-    );
-
-  if (paragraphAnchors.length > 0) {
-    return buildDocument(source, paragraphAnchors, [], []);
   }
 
   return buildDocument(source, [fileAnchor(source)], [], [
@@ -171,6 +246,7 @@ function normalizeTextSource(source: SourceRecord, text: string): NormalizedSour
 function extractTextAnchors(source: SourceRecord, text: string): SourceAnchor[] {
   const anchors: SourceAnchor[] = [];
   const headingStack: string[] = [];
+  let paragraphCount = 0;
 
   for (const line of text.split(/\r?\n/u)) {
     const trimmed = line.trim();
@@ -208,7 +284,33 @@ function extractTextAnchors(source: SourceRecord, text: string): SourceAnchor[] 
       continue;
     }
 
-    if (isPaperSectionHeading(trimmed)) {
+    const figure = trimmed.match(/^(?:Figure|Fig\.?|图|附图)\s*(\d+)[:：.\s]/iu);
+    if (figure?.[1]) {
+      anchors.push(
+        createSourceAnchor({
+          sourceId: source.id,
+          label: `Figure ${figure[1]}`,
+          locator: { kind: "figure", figureNumber: figure[1] },
+          quote: trimmed.slice(0, 240)
+        })
+      );
+      continue;
+    }
+
+    const table = trimmed.match(/^(?:Table|表)\s*(\d+)[:：.\s]/iu);
+    if (table?.[1]) {
+      anchors.push(
+        createSourceAnchor({
+          sourceId: source.id,
+          label: `Table ${table[1]}`,
+          locator: { kind: "table", tableNumber: table[1] },
+          quote: trimmed.slice(0, 240)
+        })
+      );
+      continue;
+    }
+
+    if (isSectionHeading(trimmed)) {
       anchors.push(
         createSourceAnchor({
           sourceId: source.id,
@@ -217,10 +319,94 @@ function extractTextAnchors(source: SourceRecord, text: string): SourceAnchor[] 
           quote: trimmed
         })
       );
+      continue;
     }
+
+    paragraphCount += 1;
+    anchors.push(
+      createSourceAnchor({
+        sourceId: source.id,
+        label: `Paragraph ${paragraphCount}`,
+        locator: { kind: "paragraph", paragraphId: String(paragraphCount) },
+        quote: trimmed.slice(0, 240)
+      })
+    );
   }
 
   return anchors;
+}
+
+async function collectFolderFiles(folderPath: string, currentPath = folderPath): Promise<Array<{ filePath: string; relativePath: string }>> {
+  const entries = await readdir(currentPath, { withFileTypes: true });
+  const files: Array<{ filePath: string; relativePath: string }> = [];
+
+  for (const entry of entries) {
+    if (entry.name.startsWith(".")) {
+      continue;
+    }
+    const entryPath = path.join(currentPath, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...(await collectFolderFiles(folderPath, entryPath)));
+      continue;
+    }
+    if (!entry.isFile()) {
+      continue;
+    }
+    files.push({
+      filePath: entryPath,
+      relativePath: path.relative(folderPath, entryPath).split(path.sep).join("/")
+    });
+  }
+
+  return files.sort((left, right) => left.relativePath.localeCompare(right.relativePath));
+}
+
+function isSupportedFolderFile(extension: string): boolean {
+  return [".txt", ".md", ".markdown", ".html", ".htm", ".pdf"].includes(extension);
+}
+
+function htmlToPlainText(html: string): string {
+  return decodeHtmlEntities(
+    html
+      .replace(/<script[\s\S]*?<\/script>/giu, "\n")
+      .replace(/<style[\s\S]*?<\/style>/giu, "\n")
+      .replace(/<h1[^>]*>([\s\S]*?)<\/h1>/giu, "\n# $1\n")
+      .replace(/<h2[^>]*>([\s\S]*?)<\/h2>/giu, "\n## $1\n")
+      .replace(/<h3[^>]*>([\s\S]*?)<\/h3>/giu, "\n### $1\n")
+      .replace(/<h4[^>]*>([\s\S]*?)<\/h4>/giu, "\n#### $1\n")
+      .replace(/<h5[^>]*>([\s\S]*?)<\/h5>/giu, "\n##### $1\n")
+      .replace(/<h6[^>]*>([\s\S]*?)<\/h6>/giu, "\n###### $1\n")
+      .replace(/<\/(?:p|li|div|section|article)>/giu, "\n")
+      .replace(/<br\s*\/?>/giu, "\n")
+      .replace(/<[^>]+>/gu, "")
+      .replace(/[ \t]+\n/gu, "\n")
+      .replace(/\n{3,}/gu, "\n\n")
+      .trim()
+  );
+}
+
+function decodeHtmlEntities(value: string): string {
+  return value
+    .replace(/&nbsp;/gu, " ")
+    .replace(/&amp;/gu, "&")
+    .replace(/&lt;/gu, "<")
+    .replace(/&gt;/gu, ">")
+    .replace(/&quot;/gu, '"')
+    .replace(/&#39;/gu, "'");
+}
+
+async function fetchWithTimeout(url: string): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) {
+      throw new Error(`URL returned HTTP ${response.status}`);
+    }
+    return response;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function buildDocument(
@@ -263,10 +449,10 @@ function fileAnchor(source: SourceRecord): SourceAnchor {
   });
 }
 
-function isPaperSectionHeading(value: string): boolean {
-  return /^(abstract|introduction|method|methods|experiment|experiments|results|discussion|limitations|conclusion|摘要|引言|方法|实验|结果|讨论|局限|结论)$/iu.test(
+function isSectionHeading(value: string): boolean {
+  return /^(abstract|introduction|method|methods|experiment|experiments|results|discussion|limitations|references|conclusion|摘要|引言|方法|实验|结果|讨论|局限|参考文献|结论|背景技术|现有技术|具体实施方式|实施例\s*\d*)$/iu.test(
     value
-  );
+  ) || /^(?:chapter\s+\d+|第\s*[一二三四五六七八九十\d]+\s*[章节部篇].*)$/iu.test(value);
 }
 
 function nodeTypeForAnchor(anchor: SourceAnchor): SourceStructureNode["type"] {

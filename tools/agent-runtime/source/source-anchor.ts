@@ -21,7 +21,26 @@ const chineseSlugMap: Record<string, string> = {
   九: "jiu",
   十: "shi",
   章: "zhang",
-  节: "jie"
+  节: "jie",
+  总: "zong",
+  览: "lan",
+  博: "bo",
+  客: "ke",
+  标: "biao",
+  题: "ti",
+  设: "she",
+  计: "ji",
+  细: "xi",
+  估: "gu",
+  评: "ping",
+  文: "wen",
+  档: "dang",
+  操: "cao",
+  作: "zuo",
+  步: "bu",
+  骤: "zhou",
+  工: "gong",
+  流: "liu"
 };
 
 export function createSourceAnchor(input: CreateSourceAnchorInput): SourceAnchor {

@@ -165,7 +165,18 @@ Minimal shape:
 }
 ```
 
-`source-map` artifacts should also include `extractionWarnings` whenever source fidelity is limited. Examples include unavailable PDF text extraction, unsupported file formats, URL fetch failures, or folder expansion gaps. Warnings must be explicit so downstream curriculum and lesson artifacts can distinguish source-backed facts from placeholders or inferred teaching structure.
+`source-map` artifacts should also include `extractionWarnings` whenever source fidelity is limited. Examples include unavailable PDF text extraction, unsupported file formats, URL fetch failures, or skipped folder files. Warnings must be explicit so downstream curriculum and lesson artifacts can distinguish source-backed facts from placeholders or inferred teaching structure.
+
+The local source normalizer currently supports:
+
+- topic anchors for topic-only runs
+- text and markdown headings plus paragraph anchors
+- paper sections such as abstract, method, results, limitations, references, figures, and tables
+- patent claims, figures, background/prior-art headings, implementation headings, and embodiment headings when present in text
+- local HTML heading and paragraph extraction
+- URL HTML/text fetch when the runtime can access the URL
+- folder expansion for supported `.txt`, `.md`, `.markdown`, `.html`, `.htm`, and `.pdf` files, with explicit warnings for unsupported child files
+- PDF page-level fallback anchors when full text extraction is unavailable
 
 After approval, a runtime may either:
 

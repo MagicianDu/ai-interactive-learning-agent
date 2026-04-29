@@ -1,4 +1,4 @@
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -34,6 +34,32 @@ describe("source normalizer", () => {
       ])
     );
     expect(normalized.extractionWarnings).toEqual([]);
+  });
+
+  test("adds paragraph anchors under heading-based text sources", async () => {
+    const normalized = await normalizeSourceRecord({
+      id: "source-001",
+      type: "text",
+      kind: "book",
+      title: "系统设计",
+      value: "# 第一章 可控系统\n智能体系统需要中间产物。\n\n## 审核点\n审核点让错误更早暴露。",
+      language: "zh-CN"
+    });
+
+    expect(normalized.anchors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          anchorId: "source-001:paragraph-1",
+          locator: { kind: "paragraph", paragraphId: "1" },
+          quote: "智能体系统需要中间产物。"
+        }),
+        expect.objectContaining({
+          anchorId: "source-001:paragraph-2",
+          locator: { kind: "paragraph", paragraphId: "2" },
+          quote: "审核点让错误更早暴露。"
+        })
+      ])
+    );
   });
 
   test("extracts patent claim anchors from pasted patent text", async () => {
@@ -73,6 +99,26 @@ describe("source normalizer", () => {
     );
   });
 
+  test("extracts figures, tables, limitations, and references from paper text", async () => {
+    const normalized = await normalizeSourceRecord({
+      id: "source-001",
+      type: "text",
+      kind: "paper",
+      title: "Agent Evaluation",
+      value: "Abstract\nWe evaluate agents.\n\nFigure 1: Agent loop.\n\nTable 2. Ablation results.\n\nLimitations\nSmall benchmark.\n\nReferences\n[1] Prior work.",
+      language: "zh-CN"
+    });
+
+    expect(normalized.anchors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ anchorId: "source-001:figure-1", locator: { kind: "figure", figureNumber: "1" } }),
+        expect.objectContaining({ anchorId: "source-001:table-2", locator: { kind: "table", tableNumber: "2" } }),
+        expect.objectContaining({ anchorId: "source-001:limitations" }),
+        expect.objectContaining({ anchorId: "source-001:references" })
+      ])
+    );
+  });
+
   test("reads local markdown files and records source nodes", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "learning-agent-source-"));
     const filePath = path.join(root, "notes.md");
@@ -89,6 +135,84 @@ describe("source normalizer", () => {
     });
 
     expect(normalized.anchors.map((anchor) => anchor.anchorId)).toContain("source-001:di-yi-zhang");
+    expect(normalized.extractionWarnings).toEqual([]);
+  });
+
+  test("expands folders into supported child source documents", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-folder-source-"));
+    await mkdir(path.join(root, "notes"));
+    await writeFile(path.join(root, "notes", "overview.md"), "# 总览\n资料拆成课程包。", "utf8");
+    await writeFile(path.join(root, "blog.html"), "<h1>博客标题</h1><p>第一段。</p><h2>设计细节</h2><p>第二段。</p>", "utf8");
+    await writeFile(path.join(root, "image.png"), "not text", "utf8");
+
+    const normalized = await normalizeSourceRecord({
+      id: "source-001",
+      type: "folder",
+      kind: "mixed",
+      title: "资料夹",
+      uri: root,
+      value: root,
+      language: "zh-CN"
+    });
+
+    expect(normalized.nodes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "source-001:root", children: expect.arrayContaining(["source-001-notes-overview-md:root", "source-001-blog-html:root"]) }),
+        expect.objectContaining({ id: "source-001-notes-overview-md:zong-lan" }),
+        expect.objectContaining({ id: "source-001-blog-html:bo-ke-biao-ti" }),
+        expect.objectContaining({ id: "source-001-blog-html:she-ji-xi-jie" })
+      ])
+    );
+    expect(normalized.extractionWarnings).toEqual([
+      expect.objectContaining({ code: "unsupported-folder-file", severity: "warning" })
+    ]);
+  });
+
+  test("extracts headings and paragraphs from local HTML files", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-html-source-"));
+    const filePath = path.join(root, "post.html");
+    await writeFile(filePath, "<article><h1>RAG 工作流</h1><p>先检索再生成。</p><h2>评估</h2><p>检查引用。</p></article>", "utf8");
+
+    const normalized = await normalizeSourceRecord({
+      id: "source-001",
+      type: "file",
+      kind: "blog",
+      title: "RAG post",
+      uri: filePath,
+      value: filePath,
+      language: "zh-CN"
+    });
+
+    expect(normalized.anchors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ anchorId: "source-001:rag-gong-zuo-liu" }),
+        expect.objectContaining({ anchorId: "source-001:ping-gu" }),
+        expect.objectContaining({ anchorId: "source-001:paragraph-1", quote: "先检索再生成。" }),
+        expect.objectContaining({ anchorId: "source-001:paragraph-2", quote: "检查引用。" })
+      ])
+    );
+  });
+
+  test("fetches HTML URL sources into heading and paragraph anchors", async () => {
+    const html = encodeURIComponent("<main><h1>文档标题</h1><p>第一段。</p><h2>操作步骤</h2><p>第二段。</p></main>");
+    const normalized = await normalizeSourceRecord({
+      id: "source-001",
+      type: "url",
+      kind: "documentation",
+      title: "在线文档",
+      uri: `data:text/html,${html}`,
+      value: `data:text/html,${html}`,
+      language: "zh-CN"
+    });
+
+    expect(normalized.anchors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ anchorId: "source-001:wen-dang-biao-ti" }),
+        expect.objectContaining({ anchorId: "source-001:cao-zuo-bu-zhou" }),
+        expect.objectContaining({ anchorId: "source-001:paragraph-1", quote: "第一段。" }),
+        expect.objectContaining({ anchorId: "source-001:paragraph-2", quote: "第二段。" })
+      ])
+    );
     expect(normalized.extractionWarnings).toEqual([]);
   });
 
