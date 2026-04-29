@@ -89,6 +89,28 @@ Expected result:
 - `run_until_gate` advances to the first approval gate. The smoke uses `adapter: "mock"` so it can produce local artifacts without a manual Codex role prompt.
 - `read_artifact` returns the generated `source-map.v1.json` payload.
 
+For a source-backed course-pack flow, the MCP client should call the same high-level tools in this order:
+
+```text
+learning_agent.plan_run
+learning_agent.init_from_plan
+learning_agent.run_until_gate
+learning_agent.approve_gate for source-map
+learning_agent.run_until_gate
+learning_agent.approve_gate for concept-map
+learning_agent.run_until_gate
+learning_agent.approve_gate for curriculum-plan
+learning_agent.run_course
+learning_agent.approve_gate for each child learning-architecture
+learning_agent.run_course
+learning_agent.approve_gate for each child lesson
+learning_agent.run_course
+learning_agent.approve_gate for each child critic-report
+learning_agent.promote_units
+```
+
+This is the intended Codex/Claude control loop: the chat agent interprets the user's natural language request, shows gated artifacts for review, then advances or revises the runtime through MCP calls.
+
 Remove the smoke run after verification:
 
 ```bash

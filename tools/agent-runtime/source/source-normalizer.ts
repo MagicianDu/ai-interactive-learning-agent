@@ -1,5 +1,7 @@
+import { execFile as execFileCallback } from "node:child_process";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
+import { promisify } from "node:util";
 
 import type {
   ExtractionWarning,
@@ -9,6 +11,15 @@ import type {
   SourceStructureNode
 } from "../corpus-types.js";
 import { createSourceAnchor, slugify } from "./source-anchor.js";
+
+const execFile = promisify(execFileCallback);
+const pdfExtractionTimeoutMs = 15000;
+const pdfExtractionMaxBuffer = 20 * 1024 * 1024;
+
+type PdfTextPage = {
+  page: number;
+  text: string;
+};
 
 export type NormalizedSources = {
   structure: SourceStructureNode[];
@@ -95,6 +106,11 @@ async function normalizeFileSource(source: SourceRecord): Promise<NormalizedSour
   }
 
   if (extension === ".pdf") {
+    const pages = await extractPdfTextPages(filePath);
+    if (pages.some((page) => page.text.trim().length > 0)) {
+      return normalizePdfSource(source, pages);
+    }
+
     return buildDocument(source, [
       createSourceAnchor({
         sourceId: source.id,
@@ -120,6 +136,164 @@ async function normalizeFileSource(source: SourceRecord): Promise<NormalizedSour
       severity: "warning"
     }
   ]);
+}
+
+function normalizePdfSource(source: SourceRecord, pages: PdfTextPage[]): NormalizedSourceDocument {
+  const anchors: SourceAnchor[] = [];
+
+  for (const page of pages) {
+    const cleanedPageText = normalizeExtractedText(page.text);
+    if (!cleanedPageText) {
+      continue;
+    }
+
+    anchors.push(
+      createSourceAnchor({
+        sourceId: source.id,
+        label: `Page ${page.page}`,
+        locator: { kind: "page", page: page.page },
+        quote: cleanedPageText.slice(0, 240),
+        notes: "Extracted from PDF text."
+      })
+    );
+
+    splitPdfParagraphs(cleanedPageText).forEach((paragraph, index) => {
+      anchors.push(
+        createSourceAnchor({
+          sourceId: source.id,
+          label: `Page ${page.page} Paragraph ${index + 1}`,
+          locator: { kind: "paragraph", paragraphId: `page-${page.page}-${index + 1}` },
+          quote: paragraph.slice(0, 240),
+          notes: `Extracted from PDF page ${page.page}.`
+        })
+      );
+    });
+  }
+
+  return buildDocument(source, anchors, [], []);
+}
+
+async function extractPdfTextPages(filePath: string): Promise<PdfTextPage[]> {
+  const pythonPages = await extractPdfTextWithPython(filePath);
+  if (pythonPages.some((page) => page.text.trim().length > 0)) {
+    return pythonPages;
+  }
+
+  return extractPdfTextWithLiteralFallback(filePath);
+}
+
+async function extractPdfTextWithPython(filePath: string): Promise<PdfTextPage[]> {
+  const script = [
+    "import json, sys",
+    "from pypdf import PdfReader",
+    "reader = PdfReader(sys.argv[1])",
+    "pages = []",
+    "for index, page in enumerate(reader.pages):",
+    "    text = (page.extract_text() or '').strip()",
+    "    pages.append({'page': index + 1, 'text': text[:2000]})",
+    "print(json.dumps(pages, ensure_ascii=False))"
+  ].join("\n");
+
+  try {
+    const { stdout } = await execFile("python3", ["-c", script, filePath], {
+      timeout: pdfExtractionTimeoutMs,
+      maxBuffer: pdfExtractionMaxBuffer
+    });
+    const parsed = JSON.parse(stdout) as unknown;
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    return parsed.flatMap((item) => {
+      if (!isRecord(item) || typeof item.page !== "number" || typeof item.text !== "string") {
+        return [];
+      }
+      if (!isReadableExtractedText(item.text)) {
+        return [];
+      }
+      return [{ page: item.page, text: item.text }];
+    });
+  } catch {
+    return [];
+  }
+}
+
+async function extractPdfTextWithLiteralFallback(filePath: string): Promise<PdfTextPage[]> {
+  let rawPdf: string;
+  try {
+    rawPdf = await readFile(filePath, "binary");
+  } catch {
+    return [];
+  }
+
+  const literals = [...rawPdf.matchAll(/\(((?:\\.|[^\\()])*)\)\s*Tj/gu)].map((match) => decodePdfLiteral(match[1] ?? ""));
+  const text = normalizeExtractedText(literals.join("\n"));
+  return isReadableExtractedText(text) ? [{ page: 1, text }] : [];
+}
+
+function decodePdfLiteral(value: string): string {
+  return value
+    .replace(/\\n/gu, "\n")
+    .replace(/\\r/gu, "\n")
+    .replace(/\\t/gu, "\t")
+    .replace(/\\\(/gu, "(")
+    .replace(/\\\)/gu, ")")
+    .replace(/\\\\/gu, "\\");
+}
+
+function normalizeExtractedText(value: string): string {
+  return value
+    .split("\u0000")
+    .join("")
+    .replace(/[ \t]+\n/gu, "\n")
+    .replace(/\n{3,}/gu, "\n\n")
+    .replace(/[ \t]{2,}/gu, " ")
+    .trim();
+}
+
+function splitPdfParagraphs(text: string): string[] {
+  const paragraphBlocks = text
+    .split(/\n{2,}/u)
+    .map((paragraph) => paragraph.replace(/\s+/gu, " ").trim())
+    .filter(Boolean);
+  const mergedParagraphs: string[] = [];
+  for (const paragraph of paragraphBlocks) {
+    const previous = mergedParagraphs.at(-1);
+    if (previous && shouldMergePdfParagraphFragment(previous, paragraph)) {
+      mergedParagraphs[mergedParagraphs.length - 1] = `${previous} ${paragraph}`.replace(/\s+/gu, " ").trim();
+      continue;
+    }
+    mergedParagraphs.push(paragraph);
+  }
+  return mergedParagraphs.length > 0 ? mergedParagraphs : [text];
+}
+
+function shouldMergePdfParagraphFragment(previous: string, current: string): boolean {
+  const previousLooksOpen = !/[.!?。！？]$/u.test(previous) && previous.length < 320;
+  const currentLooksLikeFragment = current.length < 48 || /^[a-z,;:)\]}]/u.test(current);
+  return previousLooksOpen || currentLooksLikeFragment;
+}
+
+function isReadableExtractedText(value: string): boolean {
+  const normalized = normalizeExtractedText(value);
+  if (normalized.length < 12) {
+    return false;
+  }
+
+  const visibleChars = Array.from(normalized).filter((char) => !/\s/u.test(char));
+  if (visibleChars.length === 0) {
+    return false;
+  }
+
+  const readableChars = visibleChars.filter(isReadableTextChar);
+  return readableChars.length / visibleChars.length >= 0.7;
+}
+
+function isReadableTextChar(char: string): boolean {
+  return /[A-Za-z0-9\u3400-\u9fff]/u.test(char) || ".,;:!?\"'()[]{}<>/@#%&+=_*|\\-".includes(char);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 async function normalizeFolderSource(source: SourceRecord): Promise<NormalizedSourceDocument> {

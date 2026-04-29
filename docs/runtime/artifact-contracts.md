@@ -176,7 +176,8 @@ The local source normalizer currently supports:
 - local HTML heading and paragraph extraction
 - URL HTML/text fetch when the runtime can access the URL
 - folder expansion for supported `.txt`, `.md`, `.markdown`, `.html`, `.htm`, and `.pdf` files, with explicit warnings for unsupported child files
-- PDF page-level fallback anchors when full text extraction is unavailable
+- PDF page and paragraph anchors through local `python3` + `pypdf` when available, with paragraph-fragment merging for readable evidence anchors
+- PDF page-level fallback anchors with an explicit `pdf-text-extraction-unavailable` warning when full text extraction is unavailable
 
 After approval, a runtime may either:
 

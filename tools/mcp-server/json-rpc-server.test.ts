@@ -1,4 +1,4 @@
-import { mkdtemp, readFile } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -105,6 +105,90 @@ describe("MCP JSON-RPC server", () => {
     );
   });
 
+  test("runs a source-backed course pack from natural language to promoted units through MCP JSON-RPC", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-rpc-e2e-"));
+    const sourcePath = path.join(root, "agentic-notes.md");
+    await writeFile(
+      sourcePath,
+      "# 第一章 总览\n智能体系统需要任务分解、工具调用和审核点。\n\n## 工具使用\n工具扩大动作空间，但结果必须验证。\n\n## 多智能体审核\n多智能体适合边界清晰且中间产物可审查的任务。",
+      "utf8"
+    );
+    const tools = new LearningAgentRuntimeTools(root);
+    const runId = "rpc-course-e2e";
+
+    await callMcpTool(tools, "learning_agent.plan_run", {
+      request: `用 "${sourcePath}" 这本书生成中文课程：先做总览课，再按核心 topic 拆课。每个单元 8 页，面向有基础编程经验但缺少智能体系统心智模型的中文学习者。`,
+      runId,
+      adapter: "mock"
+    });
+    await callMcpTool(tools, "learning_agent.init_from_plan", { runId, approve: true });
+
+    for (const gate of ["source-map", "concept-map", "curriculum-plan"]) {
+      const result = await callMcpTool(tools, "learning_agent.run_until_gate", { runId, maxSteps: 10 });
+      expect(result).toMatchObject({ finalStatus: "approval_required", requiredGate: gate });
+      await callMcpTool(tools, "learning_agent.approve_gate", { runId, gate, version: "v1" });
+    }
+
+    const units = await callMcpTool(tools, "learning_agent.list_units", { runId });
+    expect(units).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "unit-overview", targetPageCount: 8 }),
+        expect.objectContaining({ id: "unit-topic-01", targetPageCount: 8 })
+      ])
+    );
+
+    const firstCourseRun = expectRecordResponse(
+      await callMcpTool(tools, "learning_agent.run_course", { runId, unitSelector: "all", maxSteps: 20 })
+    );
+    expect(firstCourseRun).toMatchObject({ status: "course_orchestrated", parentRunId: runId });
+    for (const childRun of expectRecordArray(firstCourseRun.childRuns)) {
+      expect(childRun).toMatchObject({ finalStatus: "approval_required" });
+      await callMcpTool(tools, "learning_agent.approve_gate", {
+        runId: expectString(childRun.runId),
+        gate: "learning-architecture",
+        version: "v1"
+      });
+    }
+
+    const secondCourseRun = expectRecordResponse(
+      await callMcpTool(tools, "learning_agent.run_course", { runId, unitSelector: "all", maxSteps: 20 })
+    );
+    for (const childRun of expectRecordArray(secondCourseRun.childRuns)) {
+      expect(childRun).toMatchObject({ finalStatus: "approval_required" });
+      await callMcpTool(tools, "learning_agent.approve_gate", {
+        runId: expectString(childRun.runId),
+        gate: "lesson",
+        version: "v1"
+      });
+    }
+
+    const thirdCourseRun = expectRecordResponse(
+      await callMcpTool(tools, "learning_agent.run_course", { runId, unitSelector: "all", maxSteps: 20 })
+    );
+    for (const childRun of expectRecordArray(thirdCourseRun.childRuns)) {
+      expect(childRun).toMatchObject({ finalStatus: "approval_required" });
+      await callMcpTool(tools, "learning_agent.approve_gate", {
+        runId: expectString(childRun.runId),
+        gate: "critic-report",
+        version: "v1"
+      });
+    }
+
+    const promoted = await callMcpTool(tools, "learning_agent.promote_units", { runId, unitSelector: "all" });
+
+    expect(promoted).toMatchObject({
+      status: "unit_runs_promoted",
+      parentRunId: runId,
+      childRuns: expect.arrayContaining([
+        expect.objectContaining({ unitId: "unit-overview", lessonId: `${runId}-unit-overview` }),
+        expect.objectContaining({ unitId: "unit-topic-01", lessonId: `${runId}-unit-topic-01` })
+      ])
+    });
+    await expect(readFile(path.join(root, "src", "course-packs", runId, "coursePack.ts"), "utf8")).resolves.toContain(
+      "unit-overview"
+    );
+  });
+
   test("serializes one stdio JSON-RPC line response", async () => {
     const tools = new LearningAgentRuntimeTools(await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-rpc-")));
 
@@ -127,4 +211,46 @@ function parseToolContent(response: unknown): unknown {
     throw new Error("expected text tool content");
   }
   return JSON.parse(text) as unknown;
+}
+
+async function callMcpTool(
+  tools: LearningAgentRuntimeTools,
+  name: string,
+  args: Record<string, unknown>
+): Promise<unknown> {
+  const response = await handleMcpRequest(
+    {
+      jsonrpc: "2.0",
+      id: name,
+      method: "tools/call",
+      params: {
+        name,
+        arguments: args
+      }
+    },
+    tools
+  );
+
+  return parseToolContent(response);
+}
+
+function expectRecordResponse(value: unknown): Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error("expected object response");
+  }
+  return value as Record<string, unknown>;
+}
+
+function expectRecordArray(value: unknown): Array<Record<string, unknown>> {
+  if (!Array.isArray(value) || !value.every((item) => typeof item === "object" && item !== null && !Array.isArray(item))) {
+    throw new Error("expected record array");
+  }
+  return value as Array<Record<string, unknown>>;
+}
+
+function expectString(value: unknown): string {
+  if (typeof value !== "string") {
+    throw new Error("expected string");
+  }
+  return value;
 }

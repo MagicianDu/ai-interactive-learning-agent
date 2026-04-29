@@ -1,6 +1,7 @@
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { deflateSync } from "node:zlib";
 
 import { describe, expect, test } from "vitest";
 
@@ -241,6 +242,92 @@ describe("source normalizer", () => {
     ]);
   });
 
+  test("extracts page and paragraph anchors from readable PDF files", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-pdf-source-"));
+    const filePath = path.join(root, "book.pdf");
+    await writeFile(filePath, minimalPdfWithText("Agentic loop uses tools and feedback."), "binary");
+
+    const normalized = await normalizeSourceRecord({
+      id: "source-001",
+      type: "file",
+      kind: "book",
+      title: "Book",
+      uri: filePath,
+      value: filePath,
+      language: "zh-CN"
+    });
+
+    expect(normalized.anchors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          anchorId: "source-001:page-1",
+          locator: { kind: "page", page: 1 },
+          quote: expect.stringContaining("Agentic loop")
+        }),
+        expect.objectContaining({
+          anchorId: "source-001:paragraph-page-1-1",
+          locator: { kind: "paragraph", paragraphId: "page-1-1" },
+          quote: "Agentic loop uses tools and feedback."
+        })
+      ])
+    );
+    expect(normalized.extractionWarnings).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: "pdf-text-extraction-unavailable" })])
+    );
+  });
+
+  test("extracts readable text from compressed PDF streams through the Python extractor", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-compressed-pdf-source-"));
+    const filePath = path.join(root, "compressed-book.pdf");
+    await writeFile(filePath, compressedPdfWithText("Compressed PDF text requires pypdf extraction."), "binary");
+
+    const normalized = await normalizeSourceRecord({
+      id: "source-001",
+      type: "file",
+      kind: "book",
+      title: "Compressed Book",
+      uri: filePath,
+      value: filePath,
+      language: "zh-CN"
+    });
+
+    expect(normalized.anchors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          anchorId: "source-001:paragraph-page-1-1",
+          quote: "Compressed PDF text requires pypdf extraction."
+        })
+      ])
+    );
+    expect(normalized.extractionWarnings).toEqual([]);
+  });
+
+  test("merges PDF line-fragment paragraphs into readable evidence anchors", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-fragmented-pdf-source-"));
+    const filePath = path.join(root, "fragmented-book.pdf");
+    await writeFile(filePath, compressedPdfWithText("The system will\n\ndefine\n\nour\n\ntomorrow through reliable agent loops."), "binary");
+
+    const normalized = await normalizeSourceRecord({
+      id: "source-001",
+      type: "file",
+      kind: "book",
+      title: "Fragmented Book",
+      uri: filePath,
+      value: filePath,
+      language: "zh-CN"
+    });
+
+    expect(normalized.anchors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          anchorId: "source-001:paragraph-page-1-1",
+          quote: "The system will define our tomorrow through reliable agent loops."
+        })
+      ])
+    );
+    expect(normalized.anchors.filter((anchor) => anchor.locator.kind === "paragraph")).toHaveLength(1);
+  });
+
   test("normalizes multiple sources into a source-map payload", async () => {
     const result = await normalizeSources([
       {
@@ -268,3 +355,42 @@ describe("source normalizer", () => {
     expect(result.extractionWarnings).toEqual([]);
   });
 });
+
+function minimalPdfWithText(text: string): string {
+  const stream = `BT /F1 12 Tf 72 720 Td (${escapePdfText(text)}) Tj ET`;
+  return pdfWithContentStream(stream);
+}
+
+function compressedPdfWithText(text: string): string {
+  const stream = `BT /F1 12 Tf 72 720 Td (${escapePdfText(text)}) Tj ET`;
+  const compressedStream = deflateSync(Buffer.from(stream, "binary")).toString("binary");
+  return pdfWithContentStream(compressedStream, "/Filter /FlateDecode ");
+}
+
+function pdfWithContentStream(stream: string, streamOptions = ""): string {
+  const objects = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    `<< ${streamOptions}/Length ${Buffer.byteLength(stream, "binary")} >>\nstream\n${stream}\nendstream`
+  ];
+  let pdf = "%PDF-1.4\n";
+  const offsets = [0];
+  for (const [index, object] of objects.entries()) {
+    offsets.push(Buffer.byteLength(pdf, "binary"));
+    pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
+  }
+  const xrefOffset = Buffer.byteLength(pdf, "binary");
+  pdf += `xref\n0 ${objects.length + 1}\n`;
+  pdf += "0000000000 65535 f \n";
+  for (const offset of offsets.slice(1)) {
+    pdf += `${String(offset).padStart(10, "0")} 00000 n \n`;
+  }
+  pdf += `trailer\n<< /Root 1 0 R /Size ${objects.length + 1} >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
+  return pdf;
+}
+
+function escapePdfText(value: string): string {
+  return value.replace(/[\\()]/gu, "\\$&");
+}

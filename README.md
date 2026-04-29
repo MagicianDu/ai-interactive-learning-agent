@@ -60,6 +60,8 @@ npm run agent:init -- \
 
 `--unit-pages` and the legacy `--pages` flag mean pages per learning unit, not total pages for an entire book, paper, patent, or blog series.
 
+PDF sources are normalized into page and paragraph anchors when local `python3` can import `pypdf`. If text extraction is unavailable, the runtime emits an explicit `pdf-text-extraction-unavailable` warning and creates a page-level placeholder anchor instead of pretending the source was fully read.
+
 After `curriculum-plan` is approved, inspect or select generated learning units:
 
 ```bash
@@ -83,6 +85,8 @@ npm run agent:run -- --run agentic-design-book-unit-overview
 `agent:run-units` advances each child run until it reaches a manual role request, an approval gate, completion, or the configured step limit. Use `--unit <unit-id>` instead of `--all true` to advance only one unit.
 
 After each child run has an approved `lesson`, `agent:promote-units` promotes those lessons and writes a frontend-discoverable course pack manifest under `src/course-packs/<run-id>/coursePack.ts`.
+
+For real source smoke tests, keep promoted lessons from copyrighted books or private documents out of commits unless they are intentionally publishable examples. The durable verification evidence can remain in ignored `runs/<run-id>/` artifacts.
 
 Repeat `npm run agent:run -- --run <run-id>` or `npm run agent:resume -- --run <run-id>` until the runtime writes a gated artifact or returns `approval_required`. Inspect the artifact under `runs/<run-id>/artifacts/`, then approve or revise using the exact `<version>` returned by the runtime:
 
