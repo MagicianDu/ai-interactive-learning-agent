@@ -10,6 +10,7 @@ import { CourseHero } from "./CourseHero";
 import { demoBetaStatus } from "./demoBetaStatus";
 import { GenerationTimeline } from "./GenerationTimeline";
 import { ProductModeTabs, productModeTabs, type CourseView } from "./ProductModeTabs";
+import { ShareExportPanel } from "./ShareExportPanel";
 
 type CourseWorkspaceProps = {
   lessons: LessonRegistryEntry[];
@@ -101,7 +102,14 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
           />
         ) : null}
 
-        <GenerationTimeline status={demoBetaStatus} />
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,0.36fr)]">
+          <GenerationTimeline status={demoBetaStatus} />
+          <ShareExportPanel
+            courseTitle={selectedCoursePack?.title}
+            lessonJson={selectedLesson}
+            lessonTitle={selectedLesson.title}
+          />
+        </div>
 
         <ProductModeTabs onChange={setCourseView} value={courseView} />
 
