@@ -10,6 +10,48 @@ export type SourceRecord = {
   metadata?: Record<string, string | number | boolean>;
 };
 
+export type SourceAnchorLocator =
+  | { kind: "page"; page: number; section?: string }
+  | { kind: "heading"; headingPath: string[] }
+  | { kind: "paragraph"; paragraphId: string }
+  | { kind: "range"; start: string; end: string }
+  | { kind: "claim"; claimNumber: string }
+  | { kind: "figure"; figureNumber: string }
+  | { kind: "table"; tableNumber: string }
+  | { kind: "url_fragment"; url: string; fragment?: string };
+
+export type SourceAnchor = {
+  sourceId: string;
+  anchorId: string;
+  label: string;
+  locator: SourceAnchorLocator;
+  quote?: string;
+  notes?: string;
+};
+
+export type SourceStructureNode = {
+  id: string;
+  sourceId: string;
+  type: "document" | "chapter" | "section" | "paragraph" | "claim" | "figure" | "table" | "url";
+  title: string;
+  anchorIds: string[];
+  children: string[];
+};
+
+export type ExtractionWarning = {
+  sourceId: string;
+  code: string;
+  message: string;
+  severity: "info" | "warning" | "error";
+};
+
+export type NormalizedSourceDocument = {
+  source: SourceRecord;
+  nodes: SourceStructureNode[];
+  anchors: SourceAnchor[];
+  extractionWarnings: ExtractionWarning[];
+};
+
 export type SourceMaterialKind =
   | "book"
   | "paper"

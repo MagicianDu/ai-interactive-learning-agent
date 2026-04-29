@@ -93,9 +93,14 @@ function runtimeEntryLabel(adapterId: string, provider: string): string {
 function roleSpecificInstructions(roleId: string, artifactId: string): string {
   if (artifactId === "source-map") {
     return `- Output Contract: SourceMap JSON
-- Required fields: corpusId, sources, structure, anchors, extractionNotes
+- Required fields: corpusId, sources, structure, anchors, extractionNotes, extractionWarnings
 - Every source-derived item must have a SourceAnchor.
 - For topic-only sources, create an anchor such as \`source-001:topic\`.
+- For books, preserve page/heading/chapter anchors when available.
+- For papers, preserve abstract, method, experiment, result, limitation, and citation-related anchors when present.
+- For patents, preserve claim, figure, embodiment, and prior-art anchors when present.
+- For blogs and docs, preserve heading hierarchy and URL anchors.
+- If extraction fidelity is limited, record it in extractionWarnings instead of silently dropping source regions.
 `;
   }
 

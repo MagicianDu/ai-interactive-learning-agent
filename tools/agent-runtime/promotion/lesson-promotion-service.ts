@@ -2,6 +2,10 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { AgentRuntimeError } from "../errors.js";
+import { validateChineseFirstLesson } from "../quality/chinese-first-validator.js";
+import { validateLessonQuality } from "../quality/lesson-quality-validator.js";
+import type { QualityIssue } from "../quality/validation-result.js";
+import { validateSourceGrounding } from "../quality/source-grounding-validator.js";
 import { RunStore } from "../run-store.js";
 
 type LessonLike = {
@@ -95,9 +99,11 @@ export class LessonPromotionService {
 
   async promote(runId: string): Promise<PromotionResult> {
     const runPath = this.runStore.getRunPath(runId);
+    const config = await this.runStore.readConfig(runId);
     const rawLesson = await readFile(path.join(runPath, "artifacts", "lesson.approved.json"), "utf8");
     const lesson = parseLesson(rawLesson);
     validateLesson(lesson);
+    enforceQualityGates(lesson, config);
 
     const lessonsRoot = path.join(this.workspaceRoot, "src", "lessons");
     const lessonDir = assertSafeChildPath(lessonsRoot, lesson.id);
@@ -111,6 +117,22 @@ export class LessonPromotionService {
       lessonPath
     };
   }
+}
+
+function enforceQualityGates(lesson: LessonLike, config: Awaited<ReturnType<RunStore["readConfig"]>>): void {
+  const issues = [
+    ...validateLessonQuality(lesson).issues,
+    ...validateChineseFirstLesson(lesson).issues,
+    ...validateSourceGrounding(lesson, config).issues
+  ].filter((issue) => issue.severity === "error");
+
+  if (issues.length > 0) {
+    throw new AgentRuntimeError(`quality gate failed:\n${formatQualityIssues(issues)}`, "INVALID_LESSON");
+  }
+}
+
+function formatQualityIssues(issues: QualityIssue[]): string {
+  return issues.map((issue) => `- [${issue.rule}] ${issue.path}: ${issue.message}`).join("\n");
 }
 
 function parseLesson(rawLesson: string): unknown {

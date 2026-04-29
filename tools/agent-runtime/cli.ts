@@ -9,6 +9,7 @@ import {
   LessonPromotionService,
   ManualSubmissionService,
   MockRuntimeAdapter,
+  RunPlanService,
   RunStore
 } from "./index.js";
 import type { ArtifactVersion } from "./artifact-store.js";
@@ -26,6 +27,8 @@ const gateToArtifact: Record<ApprovalGateId, string> = {
 
 type CliOptions = Record<string, string | undefined>;
 type CliCommand =
+  | "plan"
+  | "init-from-plan"
   | "init"
   | "status"
   | "run"
@@ -42,6 +45,8 @@ type CliCommand =
   | "course";
 
 const commandAllowedFlags: Record<CliCommand, ReadonlySet<string>> = {
+  plan: new Set(["request", "run"]),
+  "init-from-plan": new Set(["run", "approve"]),
   init: new Set([
     "topic",
     "pages",
@@ -97,6 +102,16 @@ async function main(): Promise<void> {
 
     if (command === "init") {
       await initRun(options);
+      return;
+    }
+
+    if (command === "plan") {
+      await createRunPlan(options);
+      return;
+    }
+
+    if (command === "init-from-plan") {
+      await initRunFromPlan(options);
       return;
     }
 
@@ -170,6 +185,8 @@ function normalizeCommand(command: string | undefined): string {
 function isSupportedCommand(command: string): command is CliCommand {
   return [
     "init",
+    "plan",
+    "init-from-plan",
     "status",
     "run",
     "resume",
@@ -184,6 +201,38 @@ function isSupportedCommand(command: string): command is CliCommand {
     "promote-units",
     "course"
   ].includes(command);
+}
+
+async function createRunPlan(options: CliOptions): Promise<void> {
+  const service = new RunPlanService();
+  const plan = service.createPlan(requireOption(options, "request"), { runId: options.run });
+  const planPath = await service.writePlan(plan);
+
+  printJson({
+    status: "plan_written",
+    runId: plan.runId,
+    planPath,
+    summary: plan.summary,
+    reviewItems: plan.reviewItems
+  });
+}
+
+async function initRunFromPlan(options: CliOptions): Promise<void> {
+  const service = new RunPlanService();
+  const result = await service.initializeRunFromPlan(requireOption(options, "run"), {
+    approve: options.approve === "true"
+  });
+
+  printJson({
+    status: result.status,
+    runId: result.runId,
+    runPath: result.runPath,
+    planPath: result.planPath,
+    topic: result.config.topic,
+    sourceKind: result.config.sourceKind,
+    pageCount: result.config.pageCount,
+    coursePack: result.config.coursePack
+  });
 }
 
 function parseOptions(args: string[], allowedFlags: ReadonlySet<string>): CliOptions {
@@ -430,6 +479,8 @@ function printHelp(): void {
   console.log(`AI Interactive Learning Agent runtime ${agentRuntimeVersion}`);
   console.log("Commands:");
   console.log("  help");
+  console.log("  plan --request <Chinese natural-language request> [--run <id>]");
+  console.log("  init-from-plan --run <id> [--approve true]");
   console.log(
     "  init [--topic <topic>] [--source-file <path>|--source-folder <path>|--source-url <url>|--source-text <text>] [--source-kind book|paper|patent|blog|documentation|notes|course|unknown] [--unit-pages <count>] [--strategy overview_plus_topic|chapter_guided|topic_guided|task_guided|hybrid] [--planning-mode chapter_guided|topic_guided|task_guided|hybrid] [--language zh-CN] [--adapter mock|codex|claude|openclaw|codex-manual] [--run <id>]"
   );

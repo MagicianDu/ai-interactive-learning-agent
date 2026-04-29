@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   BarChart3,
   BookOpen,
@@ -36,6 +36,32 @@ export function DeckShell({ lesson, renderPage }: DeckShellProps) {
     const lastIndex = Math.max(total - 1, 0);
     setCurrentIndex(Math.min(Math.max(index, 0), lastIndex));
   };
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target;
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
+        (target instanceof HTMLElement && target.isContentEditable)
+      ) {
+        return;
+      }
+
+      if (event.key === "ArrowRight") {
+        event.preventDefault();
+        setCurrentIndex((current) => Math.min(current + 1, Math.max(total - 1, 0)));
+      }
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        setCurrentIndex((current) => Math.max(current - 1, 0));
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [total]);
 
   const canGoBack = total > 0 && displayedIndex > 0;
   const canGoForward = total > 0 && displayedIndex < total - 1;

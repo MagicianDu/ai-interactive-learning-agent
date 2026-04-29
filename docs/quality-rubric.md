@@ -49,3 +49,19 @@ Use this checklist before marking a lesson ready for implementation or release.
 - Navigation works.
 - Diagrams and interactions render on laptop and tablet widths.
 
+## Automated Promotion Gates
+
+Promotion from `runs/<run-id>/artifacts/lesson.approved.json` into `src/lessons/<lesson-id>/lesson.ts` must fail when a lesson does not satisfy core product quality.
+
+Blocking rules include:
+
+- Page count matches `config.targetPageCount`.
+- Required learning experience elements are present: problem scene, interactive model, misconception check, transfer challenge or transfer task, and summary card or summary payload.
+- At least three visual explanations are present.
+- At least two meaningful interactions are present.
+- At least two assessment or checkpoint pages include explanatory feedback.
+- Interactions include learner action, expected observation, cognitive purpose, and explanatory option feedback.
+- Learner-facing text is Chinese-first by default.
+- Source-backed lessons include source anchors through `sourceContext.sourceAnchorIds` or equivalent explicit source anchor fields.
+
+The automated gate is a minimum bar. Passing it does not replace human review of technical accuracy, learning flow, visual clarity, or source coverage.

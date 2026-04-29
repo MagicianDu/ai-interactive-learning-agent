@@ -1,24 +1,26 @@
 import { useState } from "react";
 
+import { CourseShell } from "../components/course/CourseShell";
 import { coursePackRegistry } from "../course-packs/registry";
 import { lessonRegistry } from "../lessons/registry";
+import { CanvasMapRenderer } from "../renderers/CanvasMapRenderer";
 import { WebDeckRenderer } from "../renderers/WebDeckRenderer";
 
 export function App() {
   const defaultLesson = lessonRegistry[0];
   const defaultCoursePack = coursePackRegistry[0];
-  const defaultCoursePackLessonId = defaultCoursePack?.coursePack.units[0]?.lessonId;
+  const defaultCoursePackLessonId = defaultCoursePack?.coursePack.units.find((unit) => unit.lessonId)?.lessonId;
   const [selectedCoursePackId, setSelectedCoursePackId] = useState(defaultCoursePack?.id ?? "");
   const [selectedLessonId, setSelectedLessonId] = useState(defaultCoursePackLessonId ?? defaultLesson?.id ?? "");
+  const [courseView, setCourseView] = useState<"deck" | "map">("deck");
   const selectedLesson = lessonRegistry.find((lesson) => lesson.id === selectedLessonId)?.lesson ?? defaultLesson?.lesson;
   const selectedCoursePack = coursePackRegistry.find((entry) => entry.id === selectedCoursePackId)?.coursePack;
   const selectedCoursePackUnits =
     selectedCoursePack?.units
       .map((unit) => ({
         unit,
-        lesson: lessonRegistry.find((entry) => entry.id === unit.lessonId)
-      }))
-      .filter((entry) => entry.lesson !== undefined) ?? [];
+        lessonAvailable: Boolean(unit.lessonId && lessonRegistry.some((entry) => entry.id === unit.lessonId))
+      })) ?? [];
 
   if (!selectedLesson) {
     return (
@@ -46,7 +48,7 @@ export function App() {
                   onChange={(event) => {
                     const nextCoursePack = coursePackRegistry.find((entry) => entry.id === event.target.value)?.coursePack;
                     setSelectedCoursePackId(event.target.value);
-                    const firstUnitLessonId = nextCoursePack?.units[0]?.lessonId;
+                    const firstUnitLessonId = nextCoursePack?.units.find((unit) => unit.lessonId)?.lessonId;
                     if (firstUnitLessonId) {
                       setSelectedLessonId(firstUnitLessonId);
                     }
@@ -74,29 +76,47 @@ export function App() {
                 ))}
               </select>
             </label>
+            {selectedCoursePack ? (
+              <div className="flex rounded-md border border-slate-700 bg-slate-900 p-1 text-sm">
+                <button
+                  className={`rounded px-3 py-1.5 font-semibold ${courseView === "deck" ? "bg-sky-600 text-white" : "text-slate-300"}`}
+                  onClick={() => setCourseView("deck")}
+                  type="button"
+                >
+                  Web Deck
+                </button>
+                <button
+                  className={`rounded px-3 py-1.5 font-semibold ${courseView === "map" ? "bg-sky-600 text-white" : "text-slate-300"}`}
+                  onClick={() => setCourseView("map")}
+                  type="button"
+                >
+                  知识地图
+                </button>
+              </div>
+            ) : null}
           </div>
         </div>
-        {selectedCoursePackUnits.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {selectedCoursePackUnits.map(({ unit, lesson }) => (
-              <button
-                key={unit.unitId}
-                className={`min-w-40 rounded-md border px-3 py-2 text-left text-xs transition ${
-                  selectedLessonId === unit.lessonId
-                    ? "border-sky-400 bg-sky-950 text-sky-100"
-                    : "border-slate-800 bg-slate-900 text-slate-300 hover:border-slate-600"
-                }`}
-                type="button"
-                onClick={() => lesson && setSelectedLessonId(unit.lessonId)}
-              >
-                <span className="block text-[11px] uppercase text-slate-500">{unit.kind}</span>
-                <span className="block truncate font-medium">{unit.title}</span>
-              </button>
-            ))}
-          </div>
+        {selectedCoursePack && selectedCoursePackUnits.length > 0 && (
+          <CourseShell
+            coursePack={selectedCoursePack}
+            onSelectLesson={setSelectedLessonId}
+            selectedLessonId={selectedLessonId}
+            units={selectedCoursePackUnits}
+          />
         )}
       </div>
-      <WebDeckRenderer lesson={selectedLesson} />
+      {selectedCoursePack && courseView === "map" ? (
+        <CanvasMapRenderer
+          coursePack={selectedCoursePack}
+          onSelectLesson={(lessonId) => {
+            setSelectedLessonId(lessonId);
+            setCourseView("deck");
+          }}
+          selectedLessonId={selectedLessonId}
+        />
+      ) : (
+        <WebDeckRenderer lesson={selectedLesson} />
+      )}
     </div>
   );
 }

@@ -320,7 +320,15 @@ export class CoursePackService {
     const runIds = await this.runStore.listRunIds();
     const configs: RunConfig[] = [];
     for (const candidateRunId of runIds) {
-      const config = await this.runStore.readConfig(candidateRunId);
+      let config: RunConfig;
+      try {
+        config = await this.runStore.readConfig(candidateRunId);
+      } catch (error) {
+        if (error instanceof AgentRuntimeError && error.code === "INVALID_RUN_CONFIG") {
+          continue;
+        }
+        throw error;
+      }
       if (config.selectedUnit?.parentRunId !== runId) {
         continue;
       }

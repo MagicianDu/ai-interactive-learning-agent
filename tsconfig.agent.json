@@ -14,5 +14,5 @@
     "types": ["node", "vitest/globals"],
     "tsBuildInfoFile": "./node_modules/.cache/tsconfig.agent.tsbuildinfo"
   },
-  "include": ["tools/agent-runtime/**/*.ts"]
+  "include": ["tools/agent-runtime/**/*.ts", "tools/mcp-server/**/*.ts"]
 }

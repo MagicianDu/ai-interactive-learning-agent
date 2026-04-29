@@ -41,6 +41,30 @@ describe("LessonPromotionService", () => {
     await expect(readFile(result.lessonPath, "utf8")).resolves.toContain("targetPageCount: 8");
   });
 
+  test("rejects approved lessons that fail product quality gates", async () => {
+    const root = await createTempRoot();
+    const runStore = new RunStore(root);
+    const config = createRunConfigFromArgs({ topic: "哈希表", pages: "8", run: "hash-table-001" });
+    const runPath = await runStore.createRun(config);
+    const artifacts = new ArtifactStore(runPath);
+    await artifacts.writeDraft("lesson", buildLesson({ targetPageCount: 8, qualityComplete: false }));
+    const approvals = new ApprovalService(runPath, artifacts);
+    await approvals.approve({
+      gate: "lesson",
+      runId: config.runId,
+      artifactId: "lesson",
+      version: "v1",
+      decision: "approved"
+    });
+
+    const service = new LessonPromotionService(root);
+
+    await expect(service.promote(config.runId)).rejects.toThrow(/quality gate failed.*visual-count/s);
+    await expect(stat(path.join(root, "src", "lessons", "hash-table", "lesson.ts"))).rejects.toMatchObject({
+      code: "ENOENT"
+    });
+  });
+
   test("rejects approved lessons whose pages do not match targetPageCount", async () => {
     const root = await createTempRoot();
     const runStore = new RunStore(root);
@@ -165,12 +189,50 @@ async function createTempRoot(): Promise<string> {
 function buildLesson({
   id = "hash-table",
   targetPageCount,
-  actualPageCount = targetPageCount
+  actualPageCount = targetPageCount,
+  qualityComplete = true
 }: {
   id?: string;
   targetPageCount: number;
   actualPageCount?: number;
+  qualityComplete?: boolean;
 }): Record<string, unknown> {
+  if (!qualityComplete) {
+    return {
+      id,
+      title: "哈希表为什么快",
+      audience: "中文学习者",
+      config: {
+        targetPageCount,
+        minPageCount: 6,
+        maxPageCount: 12
+      },
+      prerequisites: [],
+      learningObjectives: ["解释哈希表的访问路径"],
+      pages: Array.from({ length: actualPageCount }, (_, index) => ({
+        id: `p${index + 1}`,
+        type: index === actualPageCount - 1 ? "summary_card" : "problem_scene",
+        title: `第 ${index + 1} 页`,
+        learningGoal: "建立理解",
+        narrative: "中文内容"
+      })),
+      misconceptions: [],
+      transferTasks: [],
+      summary: ["哈希表用 key 定位 bucket。"]
+    };
+  }
+
+  const completePageTypes = [
+    "problem_scene",
+    "intuition_visual",
+    "structure_diagram",
+    "interactive_model",
+    "interactive_model",
+    "quiz",
+    "misconception_check",
+    "summary_card"
+  ];
+
   return {
     id,
     title: "哈希表为什么快",
@@ -182,15 +244,65 @@ function buildLesson({
     },
     prerequisites: [],
     learningObjectives: ["解释哈希表的访问路径"],
-    pages: Array.from({ length: actualPageCount }, (_, index) => ({
-      id: `p${index + 1}`,
-      type: index === actualPageCount - 1 ? "summary_card" : "problem_scene",
-      title: `第 ${index + 1} 页`,
-      learningGoal: "建立理解",
-      narrative: "中文内容"
-    })),
-    misconceptions: [],
-    transferTasks: [],
+    pages: Array.from({ length: actualPageCount }, (_, index) =>
+      buildQualityPage(`p${index + 1}`, completePageTypes[index % completePageTypes.length] ?? "problem_scene")
+    ),
+    misconceptions: [{ id: "m1", statement: "哈希表永远 O(1)", correction: "冲突严重时会变慢。" }],
+    transferTasks: [{ id: "t1", prompt: "迁移到缓存 key 设计", targetMentalModel: "用搜索空间缩小理解加速。" }],
     summary: ["哈希表用 key 定位 bucket。"]
+  };
+}
+
+function buildQualityPage(id: string, type: string): Record<string, unknown> {
+  const base = {
+    id,
+    type,
+    title: `第 ${id.slice(1)} 页`,
+    learningGoal: "建立中文心智模型",
+    narrative: "中文内容"
+  };
+  if (["problem_scene", "intuition_visual", "structure_diagram", "summary_card"].includes(type)) {
+    return {
+      ...base,
+      visualSpec: {
+        kind: "diagram",
+        description: "中文图示",
+        keyElements: ["元素一", "元素二"]
+      }
+    };
+  }
+  if (type === "interactive_model") {
+    return {
+      ...base,
+      interactionSpec: {
+        kind: "choice",
+        learnerAction: "选择一个路径",
+        expectedObservation: "看到访问范围变化",
+        cognitivePurpose: "理解访问路径",
+        options: [
+          {
+            id: "a",
+            label: "选择 A",
+            resultTitle: "索引路径",
+            outcomeId: "indexed",
+            resultTone: "success",
+            explanation: "因为 key 能缩小候选范围。"
+          }
+        ]
+      }
+    };
+  }
+  return {
+    ...base,
+    assessmentSpec: {
+      kind: "multiple_choice",
+      prompt: "哪种情况更适合索引？",
+      options: ["高选择性查询", "全表都要读"],
+      correctAnswer: "高选择性查询"
+    },
+    feedbackSpec: {
+      correctFeedback: "正确，因为候选范围显著缩小。",
+      incorrectFeedback: "不对，这忽略了选择性。"
+    }
   };
 }

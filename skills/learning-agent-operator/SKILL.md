@@ -40,7 +40,29 @@ If the user does not specify planning mode for source-backed material, use:
 
 ## Course Pack Workflow
 
-1. Initialize the run:
+1. Convert natural language into a reviewable run plan:
+
+```bash
+npm run agent:plan -- \
+  --request "<Chinese natural-language course request>" \
+  --run <run-id>
+```
+
+Inspect:
+
+```text
+runs/<run-id>/run.plan.json
+```
+
+Confirm inferred `sourceKind`, `strategy`, `planningMode`, `unitPages`, `audience`, and `adapter`. If the plan is acceptable, initialize from it:
+
+```bash
+npm run agent:init-from-plan -- --run <run-id> --approve true
+```
+
+Use `--approve true` only after the plan has been reviewed. For stricter operation, edit the plan file to set `"status": "approved"` and then omit the shortcut.
+
+2. Initialize the run directly when the user has already supplied exact flags:
 
 ```bash
 npm run agent:init -- \
@@ -60,7 +82,7 @@ For topic-only runs:
 npm run agent:init -- --topic "<topic>" --unit-pages <count> --language zh-CN --adapter codex --run <run-id>
 ```
 
-2. Advance the parent run through source and curriculum gates:
+3. Advance the parent run through source and curriculum gates:
 
 ```bash
 npm run agent:run -- --run <run-id>
@@ -72,7 +94,7 @@ When `manual_action_required` appears, open `promptPath`, generate exactly one v
 npm run agent:submit -- --run <run-id> --artifact <artifact-id> --file <json-file>
 ```
 
-3. Inspect each gate artifact before approval. Use the exact version returned by the runtime:
+4. Inspect each gate artifact before approval. Use the exact version returned by the runtime:
 
 ```bash
 npm run agent:approve -- --run <run-id> --gate <gate-id> --version <version> --notes "<notes>"
@@ -84,7 +106,7 @@ Use revision instead of approval when source coverage, unit plan, lesson quality
 npm run agent:revise -- --run <run-id> --gate <gate-id> --version <version> --notes "<requested changes>"
 ```
 
-4. After `curriculum-plan` is approved, orchestrate unit runs:
+5. After `curriculum-plan` is approved, orchestrate unit runs:
 
 ```bash
 npm run agent:course -- --run <run-id> --all true
@@ -92,13 +114,13 @@ npm run agent:course -- --run <run-id> --all true
 
 This ensures child unit runs exist and advances them until the next manual request, approval gate, completion, or step limit.
 
-5. Complete manual artifacts and approval gates for each child run. Continue:
+6. Complete manual artifacts and approval gates for each child run. Continue:
 
 ```bash
 npm run agent:course -- --run <run-id> --all true
 ```
 
-6. After each child run has an approved `lesson`, promote all unit lessons and write the course pack manifest:
+7. After each child run has an approved `lesson`, promote all unit lessons and write the course pack manifest:
 
 ```bash
 npm run agent:promote-units -- --run <run-id> --all true

@@ -13,7 +13,13 @@ type VisualRendererProps = {
 
 export function VisualRenderer({ title, visualSpec }: VisualRendererProps) {
   if (!visualSpec) {
-    return null;
+    return (
+      <DiagramFrame title={title} description="视觉说明待补充">
+        <p className="text-sm leading-6 text-slate-500">
+          当前页面还没有生成 visualSpec。后续 source-grounded 生成或人工修订应补充图示、流程、结构或状态变化说明。
+        </p>
+      </DiagramFrame>
+    );
   }
 
   switch (visualSpec.component) {

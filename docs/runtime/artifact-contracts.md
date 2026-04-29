@@ -77,7 +77,7 @@ For an exact versioned file to count as approved, it must match the `approvedArt
 | File | Purpose |
 | --- | --- |
 | `run.config.json` | Source of truth for topic, source, audience, page count, runtime, models, and approval gates. |
-| `artifacts/source-map.vN.json` | Source structure, anchors, chapter/section/claim nodes, and extraction notes for a source or corpus. |
+| `artifacts/source-map.vN.json` | Source structure, anchors, chapter/section/claim nodes, extraction notes, and extraction warnings for a source or corpus. |
 | `artifacts/source-map.draft.json` | Optional alias for the latest source-map draft. |
 | `artifacts/source-map.approved.json` | Optional alias for the approved source-map artifact. |
 | `artifacts/concept-map.vN.json` | Concepts, dependencies, examples, misconceptions, and source anchor links extracted from the source map. |
@@ -164,6 +164,8 @@ Minimal shape:
   }
 }
 ```
+
+`source-map` artifacts should also include `extractionWarnings` whenever source fidelity is limited. Examples include unavailable PDF text extraction, unsupported file formats, URL fetch failures, or folder expansion gaps. Warnings must be explicit so downstream curriculum and lesson artifacts can distinguish source-backed facts from placeholders or inferred teaching structure.
 
 After approval, a runtime may either:
 

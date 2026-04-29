@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -113,6 +113,23 @@ describe("CoursePackService", () => {
     expect(second.childRuns).toHaveLength(2);
   });
 
+  test("ignores unrelated legacy runs with stale config schema while finding child runs", async () => {
+    const { root, artifacts, approvals } = await createParentRun();
+    await seedApprovedCorpusPlan(artifacts, approvals, "agentic-parent");
+    await mkdir(path.join(root, "runs", "legacy-run"), { recursive: true });
+    await writeFile(
+      path.join(root, "runs", "legacy-run", "run.config.json"),
+      JSON.stringify({ runId: "legacy-run", topic: "旧运行", sources: [] }),
+      "utf8"
+    );
+
+    const service = new CoursePackService(root);
+    const result = await service.orchestrateCourse({ runId: "agentic-parent", unitSelector: "all", maxSteps: 10 });
+
+    expect(result.status).toBe("course_orchestrated");
+    expect(result.childRuns.map((run) => run.unitId)).toEqual(["unit-overview", "unit-topic-01"]);
+  });
+
   test("orchestrates one selected unit", async () => {
     const { root, artifacts, approvals } = await createParentRun();
     await seedApprovedCorpusPlan(artifacts, approvals, "agentic-parent");
@@ -197,18 +214,84 @@ function buildLesson({
       minPageCount: Math.max(1, targetPageCount - 2),
       maxPageCount: targetPageCount + 2
     },
+    sourceContext: {
+      parentRunId: "agentic-parent",
+      sourceAnchorIds: ["source-001:chapter-01"],
+      conceptIds: ["routing"]
+    },
     prerequisites: [],
     learningObjectives: ["建立该单元的核心心智模型"],
-    pages: Array.from({ length: targetPageCount }, (_, index) => ({
-      id: `p${index + 1}`,
-      type: index === targetPageCount - 1 ? "summary_card" : "problem_scene",
-      title: `第 ${index + 1} 页`,
-      learningGoal: "建立理解",
-      narrative: "中文内容"
-    })),
-    misconceptions: [],
-    transferTasks: [],
+    pages: Array.from({ length: targetPageCount }, (_, index) =>
+      buildQualityPage(`p${index + 1}`, qualityPageTypes[index % qualityPageTypes.length] ?? "problem_scene")
+    ),
+    misconceptions: [{ id: "m1", statement: "学习单元只有定义即可", correction: "需要通过行动、反馈和迁移建立心智模型。" }],
+    transferTasks: [{ id: "t1", prompt: "迁移到新的技术场景", targetMentalModel: "用同一机制解释新问题。" }],
     summary: ["单元总结"]
+  };
+}
+
+const qualityPageTypes = [
+  "problem_scene",
+  "intuition_visual",
+  "structure_diagram",
+  "interactive_model",
+  "interactive_model",
+  "quiz",
+  "misconception_check",
+  "summary_card"
+];
+
+function buildQualityPage(id: string, type: string): Record<string, unknown> {
+  const base = {
+    id,
+    type,
+    title: `第 ${id.slice(1)} 页`,
+    learningGoal: "建立中文心智模型",
+    narrative: "中文内容"
+  };
+  if (["problem_scene", "intuition_visual", "structure_diagram", "summary_card"].includes(type)) {
+    return {
+      ...base,
+      visualSpec: {
+        kind: "diagram",
+        description: "中文图示",
+        keyElements: ["元素一", "元素二"]
+      }
+    };
+  }
+  if (type === "interactive_model") {
+    return {
+      ...base,
+      interactionSpec: {
+        kind: "choice",
+        learnerAction: "选择一个路径",
+        expectedObservation: "看到结构变化",
+        cognitivePurpose: "理解因果关系",
+        options: [
+          {
+            id: "a",
+            label: "选择 A",
+            resultTitle: "路径变化",
+            outcomeId: "path-a",
+            resultTone: "success",
+            explanation: "因为这个选择改变了候选范围。"
+          }
+        ]
+      }
+    };
+  }
+  return {
+    ...base,
+    assessmentSpec: {
+      kind: "multiple_choice",
+      prompt: "哪种判断更符合心智模型？",
+      options: ["关注因果机制", "只背定义"],
+      correctAnswer: "关注因果机制"
+    },
+    feedbackSpec: {
+      correctFeedback: "正确，学习目标是形成可迁移的机制理解。",
+      incorrectFeedback: "不对，只背定义无法支持迁移。"
+    }
   };
 }
 

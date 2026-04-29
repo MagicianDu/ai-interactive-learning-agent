@@ -23,6 +23,22 @@ Open the local Vite URL printed by the dev server, usually `http://localhost:517
 
 The project includes a Codex-first local runner for generating lesson artifacts. The runner is gate-driven: `run` and `resume` may first write non-gated artifacts such as `source-ingest`, then later return either `artifact_written` with `createsGate` or `approval_required` for reviewable gates.
 
+For Codex natural-language operation, first turn the request into a reviewable run plan:
+
+```bash
+npm run agent:plan -- \
+  --request "用 /path/to/source.pdf 这本书生成一套中文课程：先做总览课，再按核心 topic 拆课。每个单元 10 页，面向有基础编程经验但没建立系统心智模型的中文学习者。" \
+  --run agentic-design-plan
+```
+
+This writes `runs/<run-id>/run.plan.json` with inferred source type, source kind, strategy, planning mode, page count per unit, language, adapter, and review items. After inspection, initialize the run from the reviewed plan:
+
+```bash
+npm run agent:init-from-plan -- --run agentic-design-plan --approve true
+```
+
+`--approve true` is a local shortcut for an operator-reviewed plan. For stricter operation, edit `run.plan.json` to set `"status": "approved"` before running `agent:init-from-plan` without the shortcut.
+
 ```bash
 npm run agent:init -- --topic "哈希表" --pages 8 --language zh-CN
 npm run agent:run -- --run hash-table-001
@@ -82,7 +98,28 @@ npm run agent:approve -- --run hash-table-001 --gate lesson --version <version>
 npm run agent:promote -- --run hash-table-001
 ```
 
-The runner stores durable state under `runs/<run-id>/` and is designed so a future MCP server can reuse the same runtime core.
+The runner stores durable state under `runs/<run-id>/`. The MCP-ready tool handler uses the same runtime core instead of duplicating orchestration logic.
+
+## MCP-Ready Tool Handler
+
+The repository includes a thin local tool handler entrypoint for future MCP integration:
+
+```bash
+npm run mcp -- --list-tools
+```
+
+It exposes stable tool names such as:
+
+- `learning_agent.init_run`
+- `learning_agent.status`
+- `learning_agent.run_next`
+- `learning_agent.submit_artifact`
+- `learning_agent.approve_gate`
+- `learning_agent.run_course`
+- `learning_agent.promote_units`
+- `learning_agent.promote_lesson`
+
+The current entrypoint accepts newline-delimited JSON requests on stdin and returns JSON results. It is intentionally thin; tool calls wrap `RunStore`, `AgentWorkflow`, `CoursePackService`, `ManualSubmissionService`, `ApprovalService`, and `LessonPromotionService`.
 
 To use an operator session (Codex, Claude, or future OpenClaw) as the content generator, initialize with one of:
 

@@ -62,4 +62,27 @@ describe("DeckShell", () => {
     expect(screen.getByText("第 2 / 2 页")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "下一页" })).toBeDisabled();
   });
+
+  test("supports arrow-key page navigation", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <DeckShell
+        lesson={twoPageLesson}
+        renderPage={(currentIndex) => (
+          <article>
+            <h2>{twoPageLesson.pages[currentIndex].title}</h2>
+          </article>
+        )}
+      />,
+    );
+
+    await user.keyboard("{ArrowRight}");
+
+    expect(screen.getByRole("heading", { name: "Second page" })).toBeInTheDocument();
+
+    await user.keyboard("{ArrowLeft}");
+
+    expect(screen.getByRole("heading", { name: "First page" })).toBeInTheDocument();
+  });
 });

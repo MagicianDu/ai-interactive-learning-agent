@@ -55,6 +55,15 @@ export function WebDeckRenderer({ lesson }: WebDeckRendererProps) {
                 {page.type === "summary_card" ? (
                   <ConceptCard title="记住这张心智模型卡" items={lesson.summary} />
                 ) : null}
+
+                {!page.interactionSpec && !page.assessmentSpec && !page.code && page.type !== "summary_card" ? (
+                  <div className="rounded-lg border border-dashed border-slate-300 bg-white p-5 text-slate-700">
+                    <p className="text-sm font-semibold text-slate-500">互动或评估待补充</p>
+                    <p className="mt-2 text-sm leading-6">
+                      当前页面还没有生成 interactionSpec、assessmentSpec 或 code。请在后续设计中补充学习者动作、检查题或代码走读。
+                    </p>
+                  </div>
+                ) : null}
               </div>
             </div>
           </DeckPage>

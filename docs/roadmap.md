@@ -1,5 +1,9 @@
 # Roadmap
 
+For the full product delivery path, acceptance goals, and implementation slices, see:
+
+- `docs/superpowers/plans/2026-04-29-full-product-delivery-roadmap.md`
+
 ## Phase 0: Scaffold and Design
 
 - Initialize repository structure.
@@ -36,4 +40,3 @@
 ## Phase 5: Teacher Mode
 
 - Generate instructor notes, pacing guidance, classroom questions, exercises, and review tasks.
-

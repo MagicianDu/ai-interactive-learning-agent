@@ -32,4 +32,28 @@ describe("WebDeckRenderer", () => {
     expect(screen.getByRole("button", { name: "跳转到第 6 页" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "跳转到第 7 页" })).not.toBeInTheDocument();
   });
+
+  test("renders explicit fallback states for incomplete generated page specs", () => {
+    const incompleteLesson: Lesson = {
+      ...databaseIndexLesson,
+      id: "incomplete-generated-test",
+      pages: [
+        {
+          id: "p1",
+          type: "problem_scene",
+          title: "缺少规格的页面",
+          learningGoal: "识别待补充状态",
+          narrative: "这页还没有生成完整规格。"
+        }
+      ],
+      config: {
+        targetPageCount: 1
+      }
+    };
+
+    render(<WebDeckRenderer lesson={incompleteLesson} />);
+
+    expect(screen.getByText("视觉说明待补充")).toBeInTheDocument();
+    expect(screen.getByText("互动或评估待补充")).toBeInTheDocument();
+  });
 });

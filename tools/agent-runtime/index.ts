@@ -6,6 +6,7 @@ export { ApprovalService } from "./approval-service.js";
 export { ArtifactStore } from "./artifact-store.js";
 export { CoursePackService } from "./course-pack-service.js";
 export { ManualSubmissionService } from "./manual-submission-service.js";
+export { RunPlanService } from "./natural-language/run-plan-service.js";
 export { LessonPromotionService } from "./promotion/lesson-promotion-service.js";
 export { createRunConfigFromArgs, validateRunConfig } from "./run-config.js";
 export { RunStore } from "./run-store.js";
