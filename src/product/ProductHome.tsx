@@ -3,6 +3,8 @@ import { useState, type ReactNode } from "react";
 
 import { GuidedStartPanel } from "./GuidedStartPanel";
 import { productCopy } from "./product-copy";
+import { SampleGallery } from "./SampleGallery";
+import type { SampleStory } from "./sampleStories";
 
 type ProductHomeProps = {
   courseCount: number;
@@ -13,6 +15,7 @@ type ProductHomeProps = {
 
 export function ProductHome({ courseCount, lessonCount, onStart, onOpenSamples }: ProductHomeProps) {
   const [showStart, setShowStart] = useState(false);
+  const [selectedStory, setSelectedStory] = useState<SampleStory | undefined>();
 
   return (
     <main className="min-h-screen bg-[#f4f7fb] px-4 py-5 text-slate-950 sm:px-8 lg:px-10">
@@ -76,7 +79,24 @@ export function ProductHome({ courseCount, lessonCount, onStart, onOpenSamples }
           </div>
         </section>
 
-        {showStart ? <GuidedStartPanel /> : null}
+        {showStart ? (
+          <GuidedStartPanel
+            preset={
+              selectedStory
+                ? { promptPreview: selectedStory.examplePrompt, sourceKind: selectedStory.sourceKind }
+                : undefined
+            }
+          />
+        ) : null}
+
+        <SampleGallery
+          onUseStory={(story) => {
+            setSelectedStory(story);
+            setShowStart(true);
+            onStart();
+          }}
+          selectedStoryId={selectedStory?.id}
+        />
       </div>
     </main>
   );

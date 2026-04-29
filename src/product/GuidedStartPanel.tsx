@@ -1,5 +1,5 @@
 import { Copy } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { productCopy } from "./product-copy";
 
@@ -12,6 +12,11 @@ type GuidedStartState = {
   audience: string;
   unitPages: number;
   strategy: Strategy;
+};
+
+export type GuidedStartPreset = {
+  sourceKind?: SourceKind;
+  promptPreview?: string;
 };
 
 const sourceKindLabels: Record<SourceKind, string> = {
@@ -30,7 +35,7 @@ const strategyLabels: Record<Strategy, string> = {
   hybrid: "章节映射 + topic 学习路径"
 };
 
-export function GuidedStartPanel() {
+export function GuidedStartPanel({ preset }: { preset?: GuidedStartPreset }) {
   const [state, setState] = useState<GuidedStartState>({
     sourcePath: "/path/to/source.pdf",
     sourceKind: "book",
@@ -38,6 +43,14 @@ export function GuidedStartPanel() {
     unitPages: 8,
     strategy: "overview_plus_topic"
   });
+
+  useEffect(() => {
+    if (!preset?.sourceKind) {
+      return;
+    }
+
+    setState((current) => ({ ...current, sourceKind: preset.sourceKind ?? current.sourceKind }));
+  }, [preset?.sourceKind]);
 
   const prompt = useMemo(() => buildPrompt(state), [state]);
   const command = useMemo(() => buildCommand(prompt), [prompt]);
@@ -118,6 +131,12 @@ export function GuidedStartPanel() {
 
       <div className="grid gap-3">
         <OutputBlock label="Codex 请求" value={prompt} />
+        {preset?.promptPreview ? (
+          <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm leading-6 text-slate-700">
+            <p className="font-bold text-slate-950">已选择示例</p>
+            <p className="mt-1">{preset.promptPreview}</p>
+          </div>
+        ) : null}
         <OutputBlock label="CLI 命令" value={command} />
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
           <p className="text-sm font-bold text-slate-950">接下来会发生什么</p>
