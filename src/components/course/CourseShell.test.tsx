@@ -48,6 +48,14 @@ const coursePack: CoursePack = {
       unitIds: ["unit-topic-01"],
       anchorIds: ["source-001:chapter-02"]
     }
+  ],
+  sourceCoverage: [
+    { sourceNodeId: "source-001:chapter-01", status: "covered", unitIds: ["unit-overview"] },
+    { sourceNodeId: "source-001:chapter-02", status: "partial", unitIds: ["unit-topic-01"] }
+  ],
+  conceptCoverage: [
+    { conceptId: "routing", status: "covered", unitIds: ["unit-overview", "unit-topic-01"] },
+    { conceptId: "planning", status: "partial", unitIds: ["unit-topic-01"] }
   ]
 };
 
@@ -72,6 +80,10 @@ describe("CourseShell", () => {
     expect(screen.getByRole("button", { name: /路由与任务分派/ })).toBeDisabled();
     expect(screen.getByText("已生成")).toBeInTheDocument();
     expect(screen.getByText("待生成")).toBeInTheDocument();
+    expect(screen.getByText("来源覆盖")).toBeInTheDocument();
+    expect(screen.getByText("概念覆盖")).toBeInTheDocument();
+    expect(screen.getByText("source-001:chapter-02")).toBeInTheDocument();
+    expect(screen.getByText("planning")).toBeInTheDocument();
   });
 
   test("selects generated units and renders source mapping", async () => {
@@ -108,5 +120,28 @@ describe("CourseShell", () => {
 
     expect(screen.getByText("总览课 · 来源锚点")).toBeInTheDocument();
     expect(screen.getByText(/anchors: 1/)).toBeInTheDocument();
+  });
+
+  test("filters units by search text and generation status", async () => {
+    render(
+      <CourseShell
+        coursePack={coursePack}
+        onSelectLesson={() => undefined}
+        selectedLessonId=""
+        units={[
+          { unit: coursePack.units[0]!, lessonAvailable: true },
+          { unit: coursePack.units[1]!, lessonAvailable: false }
+        ]}
+      />
+    );
+
+    await userEvent.type(screen.getByRole("searchbox", { name: "搜索课程单元" }), "路由");
+
+    expect(screen.queryByRole("button", { name: /总览课/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /路由与任务分派/ })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "已生成" }));
+
+    expect(screen.getByText("没有匹配的课程单元")).toBeInTheDocument();
   });
 });
