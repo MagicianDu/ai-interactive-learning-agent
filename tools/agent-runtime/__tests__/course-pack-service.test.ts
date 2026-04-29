@@ -49,6 +49,23 @@ describe("CoursePackService", () => {
     });
   });
 
+  test("summarizes unit source anchors instead of returning full anchor lists", async () => {
+    const { root, artifacts, approvals } = await createParentRun();
+    await seedApprovedCorpusPlan(artifacts, approvals, "agentic-parent", {
+      overviewAnchorIds: Array.from({ length: 80 }, (_, index) => `source-001:paragraph-${index + 1}`)
+    });
+
+    const service = new CoursePackService(root);
+    const units = await service.listUnits("agentic-parent");
+
+    expect(units[0]).toMatchObject({
+      id: "unit-overview",
+      sourceAnchorCount: 80,
+      sourceAnchorSample: ["source-001:paragraph-1", "source-001:paragraph-2", "source-001:paragraph-3"]
+    });
+    expect(units[0]).not.toHaveProperty("sourceAnchorIds");
+  });
+
   test("spawns child runs for all units and seeds approved corpus artifacts", async () => {
     const { root, artifacts, approvals } = await createParentRun();
     await seedApprovedCorpusPlan(artifacts, approvals, "agentic-parent");
@@ -103,6 +120,8 @@ describe("CoursePackService", () => {
     const first = await service.orchestrateCourse({ runId: "agentic-parent", unitSelector: "all", maxSteps: 10 });
     expect(first.status).toBe("course_orchestrated");
     expect(first.spawned.map((run) => run.unitId)).toEqual(["unit-overview", "unit-topic-01"]);
+    expect(first.units[0]).not.toHaveProperty("sourceAnchorIds");
+    expect(first.units[0]).toMatchObject({ sourceAnchorCount: 1, sourceAnchorSample: ["source-001:chapter-01"] });
     expect(first.childRuns.map((run) => run.finalStatus)).toEqual(["approval_required", "approval_required"]);
     expect(first.nextActions).toEqual(
       expect.arrayContaining(["Review and approve/revise learning-architecture for child runs that reached an approval gate."])
@@ -298,7 +317,8 @@ function buildQualityPage(id: string, type: string): Record<string, unknown> {
 async function seedApprovedCorpusPlan(
   artifacts: ArtifactStore,
   approvals: ApprovalService,
-  runId: string
+  runId: string,
+  options: { overviewAnchorIds?: string[] } = {}
 ): Promise<void> {
   await artifacts.writeDraft("source-map", { artifactId: "source-map", anchors: [] });
   await approvals.approve({ gate: "source-map", runId, artifactId: "source-map", version: "v1", decision: "approved" });
@@ -317,7 +337,7 @@ async function seedApprovedCorpusPlan(
           kind: "overview",
           purpose: "建立全局地图",
           targetPageCount: 12,
-          sourceAnchorIds: ["source-001:chapter-01"],
+          sourceAnchorIds: options.overviewAnchorIds ?? ["source-001:chapter-01"],
           sourceNodeIds: ["source-001:root"],
           chapterRefs: ["chapter 1"],
           conceptIds: ["routing"],

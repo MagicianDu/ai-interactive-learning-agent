@@ -132,15 +132,22 @@ describe("MCP JSON-RPC server", () => {
     const units = await callMcpTool(tools, "learning_agent.list_units", { runId });
     expect(units).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ id: "unit-overview", targetPageCount: 8 }),
-        expect.objectContaining({ id: "unit-topic-01", targetPageCount: 8 })
+        expect.objectContaining({ id: "unit-overview", targetPageCount: 8, sourceAnchorCount: expect.any(Number) }),
+        expect.objectContaining({ id: "unit-topic-01", targetPageCount: 8, sourceAnchorCount: expect.any(Number) })
       ])
     );
+    for (const unit of expectRecordArray(units)) {
+      expect(unit).not.toHaveProperty("sourceAnchorIds");
+    }
 
     const firstCourseRun = expectRecordResponse(
       await callMcpTool(tools, "learning_agent.run_course", { runId, unitSelector: "all", maxSteps: 20 })
     );
     expect(firstCourseRun).toMatchObject({ status: "course_orchestrated", parentRunId: runId });
+    for (const unit of expectRecordArray(firstCourseRun.units)) {
+      expect(unit).not.toHaveProperty("sourceAnchorIds");
+      expect(unit).toHaveProperty("sourceAnchorSample");
+    }
     for (const childRun of expectRecordArray(firstCourseRun.childRuns)) {
       expect(childRun).toMatchObject({ finalStatus: "approval_required" });
       await callMcpTool(tools, "learning_agent.approve_gate", {

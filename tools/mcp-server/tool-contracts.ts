@@ -116,7 +116,7 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
   },
   {
     name: "learning_agent.list_units",
-    description: "List units from an approved curriculum plan.",
+    description: "List summarized units from an approved curriculum plan; read curriculum-plan for full source anchors.",
     inputSchema: objectSchema({ runId: stringSchema }, ["runId"])
   },
   {
@@ -126,7 +126,7 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
   },
   {
     name: "learning_agent.run_course",
-    description: "Ensure and advance selected child unit runs for a course pack.",
+    description: "Ensure and advance selected child unit runs for a course pack, returning summarized unit metadata.",
     inputSchema: objectSchema(
       { runId: stringSchema, unitSelector: stringSchema, maxSteps: numberSchema, promote: booleanSchema },
       ["runId"]

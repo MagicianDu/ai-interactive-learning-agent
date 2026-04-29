@@ -111,6 +111,22 @@ learning_agent.promote_units
 
 This is the intended Codex/Claude control loop: the chat agent interprets the user's natural language request, shows gated artifacts for review, then advances or revises the runtime through MCP calls.
 
+`learning_agent.list_units` and `learning_agent.run_course` return summarized source mapping fields instead of the full `sourceAnchorIds` list:
+
+```json
+{
+  "id": "unit-overview",
+  "title": "总览课",
+  "targetPageCount": 8,
+  "sourceAnchorCount": 1582,
+  "sourceAnchorSample": ["source-001:page-1", "source-001:paragraph-page-1-1"],
+  "sourceNodeCount": 481,
+  "sourceNodeSample": ["source-001:root"]
+}
+```
+
+Use `learning_agent.read_artifact` on `curriculum-plan` when the operator needs the complete source anchor list for audit or debugging.
+
 Remove the smoke run after verification:
 
 ```bash

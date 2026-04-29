@@ -26,7 +26,11 @@ export type UnitSummary = {
   title: string;
   kind: string;
   targetPageCount: number;
-  sourceAnchorIds: string[];
+  sourceAnchorCount: number;
+  sourceAnchorSample: string[];
+  sourceNodeCount: number;
+  sourceNodeSample: string[];
+  chapterRefs: string[];
   conceptIds: string[];
 };
 
@@ -103,14 +107,7 @@ export class CoursePackService {
 
   async listUnits(runId: string): Promise<UnitSummary[]> {
     const { units } = await this.readApprovedCurriculumPlan(runId);
-    return units.map((unit) => ({
-      id: unit.id,
-      title: unit.title,
-      kind: unit.kind,
-      targetPageCount: unit.targetPageCount,
-      sourceAnchorIds: unit.sourceAnchorIds,
-      conceptIds: unit.conceptIds
-    }));
+    return units.map(toUnitSummary);
   }
 
   async selectUnit(runId: string, unitId: string): Promise<SelectUnitResult> {
@@ -416,6 +413,21 @@ export class CoursePackService {
       units
     };
   }
+}
+
+function toUnitSummary(unit: LearningUnitPlan): UnitSummary {
+  return {
+    id: unit.id,
+    title: unit.title,
+    kind: unit.kind,
+    targetPageCount: unit.targetPageCount,
+    sourceAnchorCount: unit.sourceAnchorIds.length,
+    sourceAnchorSample: unit.sourceAnchorIds.slice(0, 3),
+    sourceNodeCount: unit.sourceNodeIds?.length ?? 0,
+    sourceNodeSample: unit.sourceNodeIds?.slice(0, 3) ?? [],
+    chapterRefs: unit.chapterRefs?.slice(0, 5) ?? [],
+    conceptIds: unit.conceptIds
+  };
 }
 
 function applySelectedUnit(config: RunConfig, selectedUnit: SelectedLearningUnit): RunConfig {

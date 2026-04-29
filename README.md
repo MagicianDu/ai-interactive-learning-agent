@@ -70,6 +70,8 @@ npm run agent:select-unit -- --run agentic-design-book --unit unit-overview
 npm run agent:run -- --run agentic-design-book
 ```
 
+`agent:units` and `agent:course` return source mapping summaries (`sourceAnchorCount`, `sourceAnchorSample`, `sourceNodeCount`, `sourceNodeSample`) so Codex and MCP clients do not have to render thousands of anchor ids. The full source mapping remains in `runs/<run-id>/artifacts/curriculum-plan.approved.json` and can be read with `learning_agent.read_artifact` when an operator needs to audit coverage.
+
 For batch work, spawn one child run per unit. The child runs reuse the approved source-map, concept-map, and curriculum-plan, then continue from unit-level learning design:
 
 ```bash
@@ -141,6 +143,15 @@ printf '%s\n' \
 ```
 
 This is the intended bridge for Codex, Claude, and future OpenClaw-style operator sessions: the chat agent can translate user intent into `plan_run`, show the review items, then call `init_from_plan`, `run_until_gate`, `read_artifact`, approvals, course orchestration, and promotion.
+
+The recommended Codex interaction pattern is:
+
+1. User describes the source and learning goal in natural language.
+2. Codex calls `learning_agent.plan_run`, then summarizes `reviewItems` before initialization.
+3. Codex calls `learning_agent.init_from_plan` only after operator approval.
+4. Codex alternates `learning_agent.run_until_gate` / `learning_agent.read_artifact` / `learning_agent.approve_gate` through `source-map`, `concept-map`, and `curriculum-plan`.
+5. Codex calls `learning_agent.run_course`, reviews summarized child-run status, and approves or revises each child gate.
+6. Codex calls `learning_agent.promote_units` only after approved child lessons and critic reports.
 
 Client setup examples live in `docs/runtime/mcp-client-setup.md`.
 
