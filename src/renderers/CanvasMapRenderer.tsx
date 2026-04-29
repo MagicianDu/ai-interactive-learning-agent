@@ -1,4 +1,4 @@
-import type { CoursePack } from "../schemas/course-pack.schema";
+import type { CoursePack, CoursePackUnit } from "../schemas/course-pack.schema";
 import { ConceptEdge } from "../components/canvas/ConceptEdge";
 import { ConceptNode } from "../components/canvas/ConceptNode";
 import { MapViewport } from "../components/canvas/MapViewport";
@@ -11,8 +11,10 @@ type CanvasMapRendererProps = {
 
 export function CanvasMapRenderer({ coursePack, selectedLessonId, onSelectLesson }: CanvasMapRendererProps) {
   const conceptIds = collectConceptIds(coursePack);
-  const sourceAnchorIds = Array.from(new Set(coursePack.units.flatMap((unit) => unit.sourceAnchorIds)));
+  const sourceAnchorIds = collectSourceAnchorIds(coursePack);
   const edges = coursePack.units.flatMap((unit) => unit.conceptIds.map((conceptId) => ({ from: unit.title, to: conceptId })));
+  const conceptCoverageById = new Map(coursePack.conceptCoverage?.map((entry) => [entry.conceptId, entry]) ?? []);
+  const sourceCoverageById = new Map(coursePack.sourceCoverage?.map((entry) => [entry.sourceNodeId, entry]) ?? []);
 
   return (
     <MapViewport>
@@ -80,7 +82,31 @@ export function CanvasMapRenderer({ coursePack, selectedLessonId, onSelectLesson
             <h3 className="text-sm font-bold text-slate-700">核心概念</h3>
             <div className="mt-3 grid gap-3">
               {conceptIds.map((conceptId) => (
-                <ConceptNode key={conceptId} meta="concept" title={conceptId} />
+                <ConceptNode key={conceptId} meta="concept" title={conceptId}>
+                  <div className="grid gap-2 text-xs text-slate-600">
+                    <p className="font-semibold">
+                      概念覆盖：{statusLabel(conceptCoverageById.get(conceptId)?.status)}
+                    </p>
+                    <p>关联单元：{relatedUnitTitles(coursePack.units, conceptId)}</p>
+                    {firstGeneratedUnitForConcept(coursePack.units, conceptId) ? (
+                      <button
+                        aria-label={`打开概念 ${conceptId} 对应课程`}
+                        className="w-fit rounded-md bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800"
+                        onClick={() => {
+                          const unit = firstGeneratedUnitForConcept(coursePack.units, conceptId);
+                          if (unit?.lessonId) {
+                            onSelectLesson(unit.lessonId);
+                          }
+                        }}
+                        type="button"
+                      >
+                        打开对应课程
+                      </button>
+                    ) : (
+                      <span className="font-semibold text-slate-500">暂无已生成课程</span>
+                    )}
+                  </div>
+                </ConceptNode>
               ))}
             </div>
           </section>
@@ -89,7 +115,11 @@ export function CanvasMapRenderer({ coursePack, selectedLessonId, onSelectLesson
             <h3 className="text-sm font-bold text-slate-700">来源锚点</h3>
             <div className="mt-3 grid gap-2">
               {sourceAnchorIds.map((anchorId) => (
-                <ConceptNode key={anchorId} meta="source anchor" title={anchorId} tone="source" />
+                <ConceptNode key={anchorId} meta="source anchor" title={anchorId} tone="source">
+                  <p className="text-xs font-semibold text-slate-600">
+                    来源覆盖：{statusLabel(sourceCoverageById.get(anchorId)?.status)}
+                  </p>
+                </ConceptNode>
               ))}
             </div>
           </section>
@@ -103,4 +133,35 @@ function collectConceptIds(coursePack: CoursePack): string[] {
   const fromCoverage = coursePack.conceptCoverage?.map((entry) => entry.conceptId) ?? [];
   const fromUnits = coursePack.units.flatMap((unit) => unit.conceptIds);
   return Array.from(new Set([...fromCoverage, ...fromUnits]));
+}
+
+function collectSourceAnchorIds(coursePack: CoursePack): string[] {
+  const fromCoverage = coursePack.sourceCoverage?.map((entry) => entry.sourceNodeId) ?? [];
+  const fromUnits = coursePack.units.flatMap((unit) => unit.sourceAnchorIds);
+  return Array.from(new Set([...fromCoverage, ...fromUnits]));
+}
+
+function relatedUnitTitles(units: CoursePackUnit[], conceptId: string): string {
+  const titles = units.filter((unit) => unit.conceptIds.includes(conceptId)).map((unit) => unit.title);
+  return titles.length > 0 ? titles.join("、") : "未分配";
+}
+
+function firstGeneratedUnitForConcept(units: CoursePackUnit[], conceptId: string): CoursePackUnit | undefined {
+  return units.find((unit) => unit.conceptIds.includes(conceptId) && unit.lessonId);
+}
+
+function statusLabel(status: "covered" | "partial" | "deferred" | "omitted" | undefined): string {
+  if (status === "covered") {
+    return "已覆盖";
+  }
+  if (status === "partial") {
+    return "部分覆盖";
+  }
+  if (status === "deferred") {
+    return "延后";
+  }
+  if (status === "omitted") {
+    return "省略";
+  }
+  return "未标注";
 }

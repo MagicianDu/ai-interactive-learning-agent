@@ -35,6 +35,10 @@ const coursePack: CoursePack = {
   conceptCoverage: [
     { conceptId: "routing", status: "covered", unitIds: ["unit-overview", "unit-topic-01"] },
     { conceptId: "planning", status: "partial", unitIds: ["unit-overview"] }
+  ],
+  sourceCoverage: [
+    { sourceNodeId: "source-001:chapter-01", status: "covered", unitIds: ["unit-overview"] },
+    { sourceNodeId: "source-001:chapter-02", status: "partial", unitIds: ["unit-topic-01"] }
   ]
 };
 
@@ -48,6 +52,8 @@ describe("CanvasMapRenderer", () => {
     expect(screen.getAllByText("routing").length).toBeGreaterThan(0);
     expect(screen.getAllByText("planning").length).toBeGreaterThan(0);
     expect(screen.getByText("source-001:chapter-01")).toBeInTheDocument();
+    expect(screen.getByText("概念覆盖：部分覆盖")).toBeInTheDocument();
+    expect(screen.getByText("来源覆盖：已覆盖")).toBeInTheDocument();
   });
 
   test("opens generated lesson units from the map", async () => {
@@ -55,6 +61,15 @@ describe("CanvasMapRenderer", () => {
     render(<CanvasMapRenderer coursePack={coursePack} onSelectLesson={onSelectLesson} selectedLessonId="" />);
 
     await userEvent.click(screen.getByRole("button", { name: "打开 总览课" }));
+
+    expect(onSelectLesson).toHaveBeenCalledWith("overview-lesson");
+  });
+
+  test("opens the first generated lesson related to a concept node", async () => {
+    const onSelectLesson = vi.fn();
+    render(<CanvasMapRenderer coursePack={coursePack} onSelectLesson={onSelectLesson} selectedLessonId="" />);
+
+    await userEvent.click(screen.getByRole("button", { name: "打开概念 routing 对应课程" }));
 
     expect(onSelectLesson).toHaveBeenCalledWith("overview-lesson");
   });
