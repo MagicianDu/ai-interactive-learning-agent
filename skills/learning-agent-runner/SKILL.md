@@ -1,11 +1,13 @@
 ---
 name: learning-agent-runner
-description: Use when generating, resuming, approving, revising, or promoting an interactive Chinese learning lesson through the local agent runner.
+description: Use when operating a single interactive Chinese learning lesson through the local agent runner. For books, papers, patents, blogs, folders, or source-backed course packs, use learning-agent-operator instead.
 ---
 
 # Learning Agent Runner
 
-Use this skill when the user asks Codex to generate a learning lesson, run the multi-agent learning workflow, inspect an approval gate, approve or revise artifacts, resume a run, or promote a generated lesson into the Web Deck lesson source.
+Use this skill when the user asks Codex to generate or continue one learning lesson, inspect one lesson approval gate, approve or revise one lesson artifact, resume one run, or promote one generated lesson into the Web Deck lesson source.
+
+For source-backed material such as books, papers, patents, blogs, URLs, folders, or multi-unit course packs, use `learning-agent-operator`.
 
 ## Defaults
 
