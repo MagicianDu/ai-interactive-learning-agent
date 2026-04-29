@@ -65,8 +65,8 @@ Use `--approve true` only after the plan has been reviewed. For stricter operati
 MCP-ready equivalent:
 
 ```json
-{"tool":"learning_agent.plan_run","input":{"request":"<Chinese natural-language course request>","runId":"<run-id>"}}
-{"tool":"learning_agent.init_from_plan","input":{"runId":"<run-id>","approve":true}}
+{"method":"tools/call","params":{"name":"learning_agent.plan_run","arguments":{"request":"<Chinese natural-language course request>","runId":"<run-id>"}}}
+{"method":"tools/call","params":{"name":"learning_agent.init_from_plan","arguments":{"runId":"<run-id>","approve":true}}}
 ```
 
 2. Initialize the run directly when the user has already supplied exact flags:

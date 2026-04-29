@@ -102,7 +102,7 @@ The runner stores durable state under `runs/<run-id>/`. The MCP-ready tool handl
 
 ## MCP-Ready Tool Handler
 
-The repository includes a thin local tool handler entrypoint for future MCP integration:
+The repository includes a local stdio MCP entrypoint:
 
 ```bash
 npm run mcp -- --list-tools
@@ -121,18 +121,21 @@ It exposes stable tool names such as:
 - `learning_agent.promote_units`
 - `learning_agent.promote_lesson`
 
-The current entrypoint accepts newline-delimited JSON requests on stdin and returns JSON results. It is intentionally thin; tool calls wrap `RunPlanService`, `RunStore`, `AgentWorkflow`, `CoursePackService`, `ManualSubmissionService`, `ApprovalService`, and `LessonPromotionService`.
+The current entrypoint accepts newline-delimited JSON-RPC requests on stdin and returns MCP-compatible JSON-RPC responses. It is intentionally thin; tool calls wrap `RunPlanService`, `RunStore`, `AgentWorkflow`, `CoursePackService`, `ManualSubmissionService`, `ApprovalService`, and `LessonPromotionService`.
 
 Natural-language entry is available through the same tool layer:
 
 ```bash
 printf '%s\n' \
-  '{"id":1,"tool":"learning_agent.plan_run","input":{"request":"用哈希表生成 8 页中文课，面向有基础编程经验但缺少数据结构心智模型的学习者。","runId":"hash-table-nl"}}' \
-  '{"id":2,"tool":"learning_agent.init_from_plan","input":{"runId":"hash-table-nl","approve":true}}' \
+  '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"manual-smoke","version":"0.0.0"}}}' \
+  '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"learning_agent.plan_run","arguments":{"request":"用哈希表生成 8 页中文课，面向有基础编程经验但缺少数据结构心智模型的学习者。","runId":"hash-table-nl"}}}' \
+  '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"learning_agent.init_from_plan","arguments":{"runId":"hash-table-nl","approve":true}}}' \
   | npm run mcp
 ```
 
 This is the intended bridge for Codex, Claude, and future OpenClaw-style operator sessions: the chat agent can translate user intent into `plan_run`, show the review items, then call `init_from_plan` and continue with `run_next`, approvals, course orchestration, and promotion.
+
+Client setup examples live in `docs/runtime/mcp-client-setup.md`.
 
 To use an operator session (Codex, Claude, or future OpenClaw) as the content generator, initialize with one of:
 

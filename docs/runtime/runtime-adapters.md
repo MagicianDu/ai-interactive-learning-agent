@@ -6,7 +6,7 @@ A runtime adapter maps the portable learning-agent workflow into a concrete exec
 
 Adapters are responsible for executing role requests, honoring or reporting model selections, reading and writing file artifacts, surfacing approval gates, and recording runtime events. They should not redefine the lesson schema, role contracts, or artifact contracts.
 
-The current implementation includes two local CLI adapters: deterministic `mock` execution and operator-driven `codex-manual` execution. `codex-manual` does not call an external model API; it writes a role prompt for the active Codex session, pauses, and waits for the operator to submit the generated JSON artifact. The repository also includes an MCP-ready tool handler layer under `tools/mcp-server/`; it exposes stable tool contracts and calls the same runtime services as the CLI. A production MCP protocol adapter can wrap that handler without rewriting orchestration logic.
+The current implementation includes two local CLI adapters: deterministic `mock` execution and operator-driven `codex-manual` execution. `codex-manual` does not call an external model API; it writes a role prompt for the active Codex session, pauses, and waits for the operator to submit the generated JSON artifact. The repository also includes a stdio MCP entrypoint under `tools/mcp-server/`; it exposes stable tool contracts over JSON-RPC and calls the same runtime services as the CLI.
 
 Current MCP-ready tool names:
 
