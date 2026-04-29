@@ -39,6 +39,12 @@ npm run agent:init-from-plan -- --run agentic-design-plan --approve true
 
 `--approve true` is a local shortcut for an operator-reviewed plan. For stricter operation, edit `run.plan.json` to set `"status": "approved"` before running `agent:init-from-plan` without the shortcut.
 
+Use the beta operator status command whenever Codex, Claude, or a human operator needs a compact view of where the run is blocked and what to do next:
+
+```bash
+npm run agent:beta-status -- --run agentic-design-plan
+```
+
 ```bash
 npm run agent:init -- --topic "哈希表" --pages 8 --language zh-CN
 npm run agent:run -- --run hash-table-001
@@ -88,6 +94,8 @@ npm run agent:run -- --run agentic-design-book-unit-overview
 
 After each child run has an approved `lesson`, `agent:promote-units` promotes those lessons and writes a frontend-discoverable course pack manifest under `src/course-packs/<run-id>/coursePack.ts`.
 
+`agent:beta-status` summarizes parent artifacts, approved gates, current review gates, child unit runs, and suggested next actions without returning the full source anchor payload. It is the preferred status check for natural-language operators and MCP clients.
+
 For real source smoke tests, keep promoted lessons from copyrighted books or private documents out of commits unless they are intentionally publishable examples. The durable verification evidence can remain in ignored `runs/<run-id>/` artifacts.
 
 Repeat `npm run agent:run -- --run <run-id>` or `npm run agent:resume -- --run <run-id>` until the runtime writes a gated artifact or returns `approval_required`. Inspect the artifact under `runs/<run-id>/artifacts/`, then approve or revise using the exact `<version>` returned by the runtime:
@@ -120,6 +128,7 @@ It exposes stable tool names such as:
 - `learning_agent.plan_run`
 - `learning_agent.init_from_plan`
 - `learning_agent.status`
+- `learning_agent.beta_status`
 - `learning_agent.run_until_gate`
 - `learning_agent.list_artifacts`
 - `learning_agent.read_artifact`
@@ -149,11 +158,13 @@ The recommended Codex interaction pattern is:
 1. User describes the source and learning goal in natural language.
 2. Codex calls `learning_agent.plan_run`, then summarizes `reviewItems` before initialization.
 3. Codex calls `learning_agent.init_from_plan` only after operator approval.
-4. Codex alternates `learning_agent.run_until_gate` / `learning_agent.read_artifact` / `learning_agent.approve_gate` through `source-map`, `concept-map`, and `curriculum-plan`.
-5. Codex calls `learning_agent.run_course`, reviews summarized child-run status, and approves or revises each child gate.
-6. Codex calls `learning_agent.promote_units` only after approved child lessons and critic reports.
+4. Codex calls `learning_agent.beta_status` to inspect current gate state and suggested next actions.
+5. Codex alternates `learning_agent.run_until_gate` / `learning_agent.read_artifact` / `learning_agent.approve_gate` through `source-map`, `concept-map`, and `curriculum-plan`.
+6. Codex calls `learning_agent.run_course`, uses `learning_agent.beta_status` to review summarized child-run state, and approves or revises each child gate.
+7. Codex calls `learning_agent.promote_units` only after approved child lessons and critic reports.
 
 Client setup examples live in `docs/runtime/mcp-client-setup.md`.
+The beta-level operator loop is documented in `docs/runtime/beta-operator-loop.md`.
 
 To use an operator session (Codex, Claude, or future OpenClaw) as the content generator, initialize with one of:
 

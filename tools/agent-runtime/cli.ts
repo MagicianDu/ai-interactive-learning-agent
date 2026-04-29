@@ -3,6 +3,7 @@ import {
   AgentWorkflow,
   ApprovalService,
   ArtifactStore,
+  BetaStatusService,
   CodexManualAdapter,
   createRunConfigFromArgs,
   CoursePackService,
@@ -31,6 +32,7 @@ type CliCommand =
   | "init-from-plan"
   | "init"
   | "status"
+  | "beta-status"
   | "run"
   | "resume"
   | "submit"
@@ -68,6 +70,7 @@ const commandAllowedFlags: Record<CliCommand, ReadonlySet<string>> = {
     "run"
   ]),
   status: new Set(["run"]),
+  "beta-status": new Set(["run"]),
   run: new Set(["run"]),
   resume: new Set(["run"]),
   submit: new Set(["run", "artifact", "file"]),
@@ -117,6 +120,11 @@ async function main(): Promise<void> {
 
     if (command === "status") {
       await printStatus(options);
+      return;
+    }
+
+    if (command === "beta-status") {
+      await printBetaStatus(options);
       return;
     }
 
@@ -188,6 +196,7 @@ function isSupportedCommand(command: string): command is CliCommand {
     "plan",
     "init-from-plan",
     "status",
+    "beta-status",
     "run",
     "resume",
     "submit",
@@ -297,6 +306,13 @@ async function printStatus(options: CliOptions): Promise<void> {
     pageCount: config.pageCount,
     coursePack: config.coursePack
   });
+}
+
+async function printBetaStatus(options: CliOptions): Promise<void> {
+  const runId = requireOption(options, "run");
+  const service = new BetaStatusService();
+
+  printJson(await service.getStatus(runId));
 }
 
 async function runNext(options: CliOptions): Promise<void> {
@@ -485,6 +501,7 @@ function printHelp(): void {
     "  init [--topic <topic>] [--source-file <path>|--source-folder <path>|--source-url <url>|--source-text <text>] [--source-kind book|paper|patent|blog|documentation|notes|course|unknown] [--unit-pages <count>] [--strategy overview_plus_topic|chapter_guided|topic_guided|task_guided|hybrid] [--planning-mode chapter_guided|topic_guided|task_guided|hybrid] [--language zh-CN] [--adapter mock|codex|claude|openclaw|codex-manual] [--run <id>]"
   );
   console.log("  status --run <id>");
+  console.log("  beta-status --run <id>");
   console.log("  run --run <id>");
   console.log("  resume --run <id>");
   console.log("  submit --run <id> --artifact <artifact-id> --file <json-file>");

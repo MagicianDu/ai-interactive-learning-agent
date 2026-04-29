@@ -71,7 +71,9 @@ export class MockRuntimeAdapter implements RuntimeAdapter {
       const sourceAnchorIds = await sourceAnchorIdsForConfig(config);
       const conceptSet = buildMockConceptSet(config, sourceAnchorIds);
       const units = buildMockCourseUnits(config, sourceAnchorIds, conceptSet.conceptIds);
-      const allUnitIds = units.map((unit) => unit.id);
+      const sourceCoverage = buildSourceCoverage(config, units, sourceAnchorIds);
+      const conceptCoverage = buildConceptCoverage(conceptSet.conceptIds, units);
+      const chapterMapping = buildChapterMapping(config, units);
       return artifactResult({
         artifactId,
         roleId,
@@ -89,30 +91,13 @@ export class MockRuntimeAdapter implements RuntimeAdapter {
           language: config.outputLanguage,
           overviewUnitId: units.find((unit) => unit.kind === "overview")?.id,
           units,
-          sourceCoverage: config.sources.map((source) => ({
-            sourceNodeId: `${source.id}:root`,
-            status: "covered",
-            unitIds: allUnitIds
-          })),
-          conceptCoverage: conceptSet.conceptIds.map((conceptId) => ({
-            conceptId,
-            status: "covered",
-            unitIds: allUnitIds
-          })),
-          chapterMapping: config.sources.map((source) => ({
-            chapterId: `${source.id}:root`,
-            title: source.title,
-            unitIds: allUnitIds,
-            anchorIds: sourceAnchorIds
-          }))
+          sourceCoverage,
+          conceptCoverage,
+          chapterMapping
         },
         units,
-        sourceCoverage: config.sources.map((source) => ({
-          sourceNodeId: `${source.id}:root`,
-          status: "covered",
-          unitIds: allUnitIds
-        })),
-        conceptCoverage: conceptSet.conceptIds.map((conceptId) => ({ conceptId, status: "covered", unitIds: allUnitIds })),
+        sourceCoverage,
+        conceptCoverage,
         rationale: [
           "默认采用 overview_plus_topic：先给总览课，再按核心 topic 拆分学习单元。",
           "课程包保留 source/chapter 映射，后续每个 unit 可独立生成 Web Deck。"
@@ -231,7 +216,7 @@ function buildMockCourseUnits(config: RunConfig, sourceAnchorIds: string[], conc
       purpose: "先建立资料全局地图、核心问题和后续 topic 拆分方式。",
       targetPageCount: unitPageCount,
       sourceAnchorIds,
-      sourceNodeIds: config.sources.map((source) => `${source.id}:root`),
+      sourceNodeIds: sourceNodeIdsForAnchors(config, sourceAnchorIds),
       chapterRefs: config.coursePack?.selectedChapters,
       conceptIds,
       outputProducts
@@ -239,22 +224,137 @@ function buildMockCourseUnits(config: RunConfig, sourceAnchorIds: string[], conc
   }
 
   const remainingSlots = Math.max(1, preferredUnitCount - units.length);
-  for (const [index, label] of topicLabels.slice(0, remainingSlots).entries()) {
+  const selectedTopicLabels = topicLabels.slice(0, remainingSlots);
+  for (const [index, label] of selectedTopicLabels.entries()) {
+    const topicSourceAnchorIds = sourceAnchorSliceForTopic(sourceAnchorIds, index, selectedTopicLabels.length);
     units.push({
       id: `unit-topic-${String(index + 1).padStart(2, "0")}`,
       title: `${config.topic}：${label}`,
       kind: "topic",
       purpose: "围绕一个核心 topic 建立可操作的心智模型、误区检查和迁移任务。",
       targetPageCount: unitPageCount,
-      sourceAnchorIds,
-      sourceNodeIds: config.sources.map((source) => `${source.id}:root`),
+      sourceAnchorIds: topicSourceAnchorIds,
+      sourceNodeIds: sourceNodeIdsForAnchors(config, topicSourceAnchorIds),
       chapterRefs: config.coursePack?.selectedChapters,
-      conceptIds,
+      conceptIds: conceptIdsForTopic(conceptIds, index, selectedTopicLabels.length),
       outputProducts
     });
   }
 
   return units;
+}
+
+function buildSourceCoverage(
+  config: RunConfig,
+  units: LearningUnitPlan[],
+  sourceAnchorIds: string[]
+): Array<{ sourceNodeId: string; status: "covered" | "partial" | "deferred" | "omitted"; unitIds: string[]; notes?: string }> {
+  return config.sources.map((source) => {
+    const sourceSpecificAnchors = sourceAnchorIds.filter((anchorId) => anchorBelongsToSource(anchorId, source.id));
+    const unitIds = units
+      .filter((unit) => unit.sourceAnchorIds.some((anchorId) => anchorBelongsToSource(anchorId, source.id)))
+      .map((unit) => unit.id);
+    const coveredAnchors = new Set(
+      units.flatMap((unit) => unit.sourceAnchorIds.filter((anchorId) => anchorBelongsToSource(anchorId, source.id)))
+    );
+    const fullyCovered = sourceSpecificAnchors.every((anchorId) => coveredAnchors.has(anchorId));
+    const status = unitIds.length === 0 ? "omitted" : fullyCovered ? "covered" : "partial";
+
+    return {
+      sourceNodeId: `${source.id}:root`,
+      status,
+      unitIds,
+      ...(status === "partial" ? { notes: "部分来源锚点进入 topic 单元；总览课保留全局映射。" } : {}),
+      ...(status === "omitted" ? { notes: "当前课程计划未覆盖该来源。" } : {})
+    };
+  });
+}
+
+function buildConceptCoverage(
+  conceptIds: string[],
+  units: LearningUnitPlan[]
+): Array<{ conceptId: string; status: "covered" | "partial" | "deferred" | "omitted"; unitIds: string[]; notes?: string }> {
+  return conceptIds.map((conceptId) => {
+    const unitIds = units.filter((unit) => unit.conceptIds.includes(conceptId)).map((unit) => unit.id);
+    return {
+      conceptId,
+      status: unitIds.length > 0 ? "covered" : "omitted",
+      unitIds,
+      ...(unitIds.length === 0 ? { notes: "当前课程计划未覆盖该概念。" } : {})
+    };
+  });
+}
+
+function buildChapterMapping(
+  config: RunConfig,
+  units: LearningUnitPlan[]
+): Array<{ chapterId: string; title: string; unitIds: string[]; anchorIds: string[] }> {
+  return config.sources.map((source) => {
+    const sourceUnitIds = units
+      .filter((unit) => unit.sourceAnchorIds.some((anchorId) => anchorBelongsToSource(anchorId, source.id)))
+      .map((unit) => unit.id);
+    const anchorIds = uniqueStrings(
+      units.flatMap((unit) => unit.sourceAnchorIds.filter((anchorId) => anchorBelongsToSource(anchorId, source.id)))
+    );
+
+    return {
+      chapterId: `${source.id}:root`,
+      title: source.title,
+      unitIds: sourceUnitIds,
+      anchorIds
+    };
+  });
+}
+
+function sourceAnchorSliceForTopic(sourceAnchorIds: string[], topicIndex: number, topicCount: number): string[] {
+  if (sourceAnchorIds.length === 0) {
+    return [];
+  }
+  if (topicCount <= 1) {
+    return [...sourceAnchorIds];
+  }
+  if (sourceAnchorIds.length <= topicCount) {
+    return [sourceAnchorIds[topicIndex % sourceAnchorIds.length] as string];
+  }
+
+  const chunkSize = Math.ceil(sourceAnchorIds.length / topicCount);
+  const start = topicIndex * chunkSize;
+  const chunk = sourceAnchorIds.slice(start, Math.min(sourceAnchorIds.length, start + chunkSize));
+  return chunk.length > 0 ? chunk : [sourceAnchorIds[topicIndex % sourceAnchorIds.length] as string];
+}
+
+function conceptIdsForTopic(conceptIds: string[], topicIndex: number, topicCount: number): string[] {
+  if (conceptIds.length === 0) {
+    return [];
+  }
+  if (topicCount <= 1) {
+    return [...conceptIds];
+  }
+  if (conceptIds.length <= topicCount) {
+    return [conceptIds[topicIndex % conceptIds.length] as string];
+  }
+
+  const chunkSize = Math.ceil(conceptIds.length / topicCount);
+  const start = topicIndex * chunkSize;
+  const chunk = conceptIds.slice(start, Math.min(conceptIds.length, start + chunkSize));
+  return chunk.length > 0 ? chunk : [conceptIds[topicIndex % conceptIds.length] as string];
+}
+
+function sourceNodeIdsForAnchors(config: RunConfig, sourceAnchorIds: string[]): string[] {
+  const sourceIds = uniqueStrings(
+    config.sources
+      .filter((source) => sourceAnchorIds.some((anchorId) => anchorBelongsToSource(anchorId, source.id)))
+      .map((source) => `${source.id}:root`)
+  );
+  return sourceIds.length > 0 ? sourceIds : config.sources.map((source) => `${source.id}:root`);
+}
+
+function anchorBelongsToSource(anchorId: string, sourceId: string): boolean {
+  return anchorId.startsWith(`${sourceId}:`);
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return Array.from(new Set(values));
 }
 
 function artifactResult(payload: unknown): RuntimeAdapterResult {

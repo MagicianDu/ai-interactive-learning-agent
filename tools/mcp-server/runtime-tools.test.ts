@@ -17,6 +17,7 @@ describe("LearningAgentRuntimeTools", () => {
         "learning_agent.plan_run",
         "learning_agent.init_from_plan",
         "learning_agent.status",
+        "learning_agent.beta_status",
         "learning_agent.run_until_gate",
         "learning_agent.list_artifacts",
         "learning_agent.read_artifact",
@@ -129,8 +130,18 @@ describe("LearningAgentRuntimeTools", () => {
     });
 
     const result = await tools.callTool("learning_agent.run_next", { runId: "mcp-smoke" });
+    const betaStatus = await tools.callTool("learning_agent.beta_status", { runId: "mcp-smoke" });
 
     expect(result).toMatchObject({ status: "artifact_written", artifactId: "source-map" });
+    expect(betaStatus).toMatchObject({
+      status: "beta_status",
+      runId: "mcp-smoke",
+      parent: {
+        currentGate: "source-map",
+        nextActions: [expect.stringContaining("Review source-map")]
+      }
+    });
+    expect(JSON.stringify(betaStatus).length).toBeLessThan(15000);
   });
 
   test("advances a run until the next approval gate and exposes generated artifacts", async () => {

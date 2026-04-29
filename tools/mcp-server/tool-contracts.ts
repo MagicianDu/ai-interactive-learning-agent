@@ -3,6 +3,7 @@ export type LearningAgentToolName =
   | "learning_agent.plan_run"
   | "learning_agent.init_from_plan"
   | "learning_agent.status"
+  | "learning_agent.beta_status"
   | "learning_agent.run_until_gate"
   | "learning_agent.list_artifacts"
   | "learning_agent.read_artifact"
@@ -66,6 +67,12 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
   {
     name: "learning_agent.status",
     description: "Read run config and status-relevant metadata.",
+    inputSchema: objectSchema({ runId: stringSchema }, ["runId"])
+  },
+  {
+    name: "learning_agent.beta_status",
+    description:
+      "Read compact beta operator status, including approved gates, current review gates, child unit runs, and suggested next actions.",
     inputSchema: objectSchema({ runId: stringSchema }, ["runId"])
   },
   {

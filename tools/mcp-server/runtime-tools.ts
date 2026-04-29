@@ -5,6 +5,7 @@ import {
   AgentWorkflow,
   ApprovalService,
   ArtifactStore,
+  BetaStatusService,
   CodexManualAdapter,
   CoursePackService,
   createRunConfigFromArgs,
@@ -49,6 +50,8 @@ export class LearningAgentRuntimeTools {
         return this.initFromPlan(input);
       case "learning_agent.status":
         return this.status(input);
+      case "learning_agent.beta_status":
+        return this.betaStatus(input);
       case "learning_agent.run_until_gate":
         return this.runUntilGate(input);
       case "learning_agent.list_artifacts":
@@ -156,6 +159,10 @@ export class LearningAgentRuntimeTools {
       coursePack: config.coursePack,
       selectedUnit: config.selectedUnit
     };
+  }
+
+  private async betaStatus(input: unknown): Promise<unknown> {
+    return new BetaStatusService(this.workspaceRoot).getStatus(requiredString(expectRecord(input), "runId"));
   }
 
   private async runUntilGate(input: unknown): Promise<unknown> {
@@ -322,6 +329,7 @@ function isLearningAgentToolName(name: string): name is LearningAgentToolName {
     "learning_agent.plan_run",
     "learning_agent.init_from_plan",
     "learning_agent.status",
+    "learning_agent.beta_status",
     "learning_agent.run_until_gate",
     "learning_agent.list_artifacts",
     "learning_agent.read_artifact",

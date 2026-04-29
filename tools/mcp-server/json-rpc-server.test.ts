@@ -50,6 +50,7 @@ describe("MCP JSON-RPC server", () => {
         tools: expect.arrayContaining([
           expect.objectContaining({ name: "learning_agent.plan_run" }),
           expect.objectContaining({ name: "learning_agent.init_from_plan" }),
+          expect.objectContaining({ name: "learning_agent.beta_status" }),
           expect.objectContaining({ name: "learning_agent.run_next" })
         ])
       }
@@ -122,6 +123,16 @@ describe("MCP JSON-RPC server", () => {
       adapter: "mock"
     });
     await callMcpTool(tools, "learning_agent.init_from_plan", { runId, approve: true });
+    const initialBetaStatus = await callMcpTool(tools, "learning_agent.beta_status", { runId });
+    expect(initialBetaStatus).toMatchObject({
+      status: "beta_status",
+      runId,
+      parent: {
+        approvedGates: []
+      },
+      childRuns: []
+    });
+    expect(JSON.stringify(initialBetaStatus).length).toBeLessThan(15000);
 
     for (const gate of ["source-map", "concept-map", "curriculum-plan"]) {
       const result = await callMcpTool(tools, "learning_agent.run_until_gate", { runId, maxSteps: 10 });
@@ -143,7 +154,19 @@ describe("MCP JSON-RPC server", () => {
     const firstCourseRun = expectRecordResponse(
       await callMcpTool(tools, "learning_agent.run_course", { runId, unitSelector: "all", maxSteps: 20 })
     );
+    const courseBetaStatus = await callMcpTool(tools, "learning_agent.beta_status", { runId });
     expect(firstCourseRun).toMatchObject({ status: "course_orchestrated", parentRunId: runId });
+    expect(courseBetaStatus).toMatchObject({
+      status: "beta_status",
+      runId,
+      parent: {
+        approvedGates: expect.arrayContaining(["source-map", "concept-map", "curriculum-plan"])
+      },
+      childRuns: expect.arrayContaining([
+        expect.objectContaining({ unitId: "unit-overview", currentGate: "learning-architecture" })
+      ])
+    });
+    expect(JSON.stringify(courseBetaStatus).length).toBeLessThan(15000);
     for (const unit of expectRecordArray(firstCourseRun.units)) {
       expect(unit).not.toHaveProperty("sourceAnchorIds");
       expect(unit).toHaveProperty("sourceAnchorSample");

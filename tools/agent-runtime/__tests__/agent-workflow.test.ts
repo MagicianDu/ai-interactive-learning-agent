@@ -218,6 +218,83 @@ describe("AgentWorkflow", () => {
     expect(artifact.pageSequence).toHaveLength(8);
   });
 
+  test("curriculum-plan gives overview full source coverage and topic units focused source slices", async () => {
+    const sourceText = [
+      "# 第一章 智能体总览",
+      "智能体系统需要围绕目标、观察、计划、行动和反馈建立循环。",
+      "工具调用扩大动作空间，但每次调用都需要可验证结果。",
+      "审核点让多步任务保持质量边界。",
+      "# 第二章 多智能体协作",
+      "拆分任务前要先判断边界是否清晰。",
+      "并行智能体必须通过结构化产物汇合。",
+      "评审步骤用于发现遗漏、冲突和错误假设。",
+      "# 第三章 运行时集成",
+      "MCP 适合把能力暴露给 Codex 或 Claude 这类入口。",
+      "运行状态需要压缩成可读的下一步动作。",
+      "课程单元应保留来源锚点，方便后续复核。"
+    ].join("\n\n");
+    const { approvalService, artifactStore, workflow } = await createHarness(
+      baseConfig({
+        runId: "agentic-course",
+        topic: "Agentic Design Patterns",
+        sourceKind: "book",
+        source: { type: "text", value: sourceText },
+        sources: [
+          {
+            id: "source-001",
+            type: "text",
+            kind: "book",
+            title: "Agentic Design Patterns",
+            value: sourceText,
+            language: "zh-CN"
+          }
+        ],
+        coursePack: {
+          strategy: "overview_plus_topic",
+          includeOverview: true,
+          preserveSourceMapping: true,
+          unitPageCount: 8,
+          preferredUnitCount: 4,
+          selectedTopics: ["执行循环", "工具调用", "多智能体审核"],
+          outputProducts: ["web_lesson", "assessment"]
+        }
+      })
+    );
+
+    await approveCorpusGates(workflow, approvalService, "agentic-course");
+
+    const plan = await artifactStore.readDraft<{
+      coursePack: {
+        units: Array<{ id: string; sourceAnchorIds: string[]; conceptIds: string[] }>;
+        conceptCoverage: Array<{ conceptId: string; unitIds: string[] }>;
+        chapterMapping: Array<{ anchorIds: string[]; unitIds: string[] }>;
+      };
+    }>("curriculum-plan");
+    const units = plan.coursePack.units;
+    const overview = requireUnit(units, "unit-overview");
+    const topic01 = requireUnit(units, "unit-topic-01");
+    const topic02 = requireUnit(units, "unit-topic-02");
+    const topic03 = requireUnit(units, "unit-topic-03");
+
+    expect(overview.sourceAnchorIds.length).toBeGreaterThanOrEqual(12);
+    expect(topic01.sourceAnchorIds.length).toBeGreaterThan(0);
+    expect(topic01.sourceAnchorIds.length).toBeLessThan(overview.sourceAnchorIds.length);
+    expect(topic01.sourceAnchorIds).not.toEqual(topic02.sourceAnchorIds);
+    expect(topic02.sourceAnchorIds).not.toEqual(topic03.sourceAnchorIds);
+    expect(new Set([topic01.conceptIds[0], topic02.conceptIds[0], topic03.conceptIds[0]]).size).toBe(3);
+    expect(plan.coursePack.conceptCoverage).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ conceptId: "agent-loop", unitIds: ["unit-overview", "unit-topic-01"] }),
+        expect.objectContaining({ conceptId: "tool-use", unitIds: ["unit-overview", "unit-topic-02"] }),
+        expect.objectContaining({ conceptId: "multi-agent-review", unitIds: ["unit-overview", "unit-topic-03"] })
+      ])
+    );
+    expect(plan.coursePack.chapterMapping[0]).toMatchObject({
+      unitIds: ["unit-overview", "unit-topic-01", "unit-topic-02", "unit-topic-03"]
+    });
+    expect(plan.coursePack.chapterMapping[0]?.anchorIds).toEqual(overview.sourceAnchorIds);
+  });
+
   test("writes visual-plan after learning-architecture is approved through ApprovalService", async () => {
     const { approvalService, workflow } = await createHarness();
     const runId = "database-index-001";
@@ -534,3 +611,11 @@ describe("AgentWorkflow", () => {
     );
   });
 });
+
+function requireUnit<T extends { id: string }>(units: T[], unitId: string): T {
+  const unit = units.find((candidate) => candidate.id === unitId);
+  if (!unit) {
+    throw new Error(`missing unit ${unitId}`);
+  }
+  return unit;
+}

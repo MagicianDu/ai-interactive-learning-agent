@@ -17,6 +17,7 @@
     "agent:init-from-plan": "tsx tools/agent-runtime/cli.ts init-from-plan",
     "agent:init": "tsx tools/agent-runtime/cli.ts init",
     "agent:status": "tsx tools/agent-runtime/cli.ts status",
+    "agent:beta-status": "tsx tools/agent-runtime/cli.ts beta-status",
     "agent:run": "tsx tools/agent-runtime/cli.ts run",
     "agent:submit": "tsx tools/agent-runtime/cli.ts submit",
     "agent:approve": "tsx tools/agent-runtime/cli.ts approve",

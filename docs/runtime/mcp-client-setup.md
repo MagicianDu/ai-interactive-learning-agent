@@ -76,16 +76,19 @@ printf '%s\n' \
   '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
   '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"learning_agent.plan_run","arguments":{"request":"用哈希表生成 8 页中文课，面向有基础编程经验但缺少数据结构心智模型的学习者。","runId":"mcp-jsonrpc-smoke","adapter":"mock"}}}' \
   '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"learning_agent.init_from_plan","arguments":{"runId":"mcp-jsonrpc-smoke","approve":true}}}' \
-  '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"learning_agent.run_until_gate","arguments":{"runId":"mcp-jsonrpc-smoke","maxSteps":5}}}' \
-  '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"learning_agent.read_artifact","arguments":{"runId":"mcp-jsonrpc-smoke","artifactId":"source-map","version":"v1"}}}' \
+  '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"learning_agent.beta_status","arguments":{"runId":"mcp-jsonrpc-smoke"}}}' \
+  '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"learning_agent.run_until_gate","arguments":{"runId":"mcp-jsonrpc-smoke","maxSteps":5}}}' \
+  '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"learning_agent.read_artifact","arguments":{"runId":"mcp-jsonrpc-smoke","artifactId":"source-map","version":"v1"}}}' \
+  '{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"learning_agent.beta_status","arguments":{"runId":"mcp-jsonrpc-smoke"}}}' \
   | npm run mcp
 ```
 
 Expected result:
 
-- `tools/list` includes `learning_agent.plan_run` and `learning_agent.init_from_plan`.
+- `tools/list` includes `learning_agent.plan_run`, `learning_agent.init_from_plan`, and `learning_agent.beta_status`.
 - `plan_run` writes `runs/mcp-jsonrpc-smoke/run.plan.json`.
 - `init_from_plan` writes `runs/mcp-jsonrpc-smoke/run.config.json`.
+- `beta_status` returns compact parent/child gate state and suggested next actions.
 - `run_until_gate` advances to the first approval gate. The smoke uses `adapter: "mock"` so it can produce local artifacts without a manual Codex role prompt.
 - `read_artifact` returns the generated `source-map.v1.json` payload.
 
@@ -94,13 +97,16 @@ For a source-backed course-pack flow, the MCP client should call the same high-l
 ```text
 learning_agent.plan_run
 learning_agent.init_from_plan
+learning_agent.beta_status
 learning_agent.run_until_gate
 learning_agent.approve_gate for source-map
+learning_agent.beta_status
 learning_agent.run_until_gate
 learning_agent.approve_gate for concept-map
 learning_agent.run_until_gate
 learning_agent.approve_gate for curriculum-plan
 learning_agent.run_course
+learning_agent.beta_status
 learning_agent.approve_gate for each child learning-architecture
 learning_agent.run_course
 learning_agent.approve_gate for each child lesson
@@ -110,6 +116,8 @@ learning_agent.promote_units
 ```
 
 This is the intended Codex/Claude control loop: the chat agent interprets the user's natural language request, shows gated artifacts for review, then advances or revises the runtime through MCP calls.
+
+`learning_agent.beta_status` is the preferred status primitive for interactive clients. It is intentionally smaller than `read_artifact`; use it to decide the next action, then use `read_artifact` only for the specific gated artifact being reviewed.
 
 `learning_agent.list_units` and `learning_agent.run_course` return summarized source mapping fields instead of the full `sourceAnchorIds` list:
 

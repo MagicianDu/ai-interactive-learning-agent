@@ -15,6 +15,7 @@ learning_agent.init_run
 learning_agent.plan_run
 learning_agent.init_from_plan
 learning_agent.status
+learning_agent.beta_status
 learning_agent.run_until_gate
 learning_agent.list_artifacts
 learning_agent.read_artifact
@@ -29,6 +30,8 @@ learning_agent.promote_lesson
 ```
 
 `learning_agent.plan_run` is the natural-language entrypoint for Codex/Claude-style operation. It writes `runs/<run-id>/run.plan.json` from a Chinese request and returns review items. `learning_agent.init_from_plan` initializes the run after the operator approves the plan. Structured `init_run` remains available for scripts and tests.
+
+`learning_agent.beta_status` is the beta-level operator status primitive. It summarizes parent artifacts, approved gates, current review gates, child unit runs, and next actions without returning full source anchors or lesson payloads.
 
 ## Conceptual TypeScript Shape
 
