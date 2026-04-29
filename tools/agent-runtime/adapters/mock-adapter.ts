@@ -1,5 +1,9 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+
 import type { ArtifactVersion } from "../artifact-store.js";
 import type { LearningUnitPlan } from "../corpus-types.js";
+import { buildLessonCriticReport } from "../quality/lesson-critic.js";
 import { normalizeSources } from "../source/source-normalizer.js";
 import type { RunConfig } from "../types.js";
 import type { RoleId, WorkflowArtifactId } from "../workflow/role-sequence.js";
@@ -30,7 +34,7 @@ export type RuntimeAdapterResult =
     };
 
 export class MockRuntimeAdapter implements RuntimeAdapter {
-  async executeRole({ config, roleId, artifactId }: RuntimeAdapterContext): Promise<RuntimeAdapterResult> {
+  async executeRole({ config, runPath, roleId, artifactId }: RuntimeAdapterContext): Promise<RuntimeAdapterResult> {
     if (roleId === "corpus-ingest" && artifactId === "source-map") {
       const normalizedSources = await normalizeSources(config.sources);
       return artifactResult({
@@ -181,6 +185,16 @@ export class MockRuntimeAdapter implements RuntimeAdapter {
         misconceptions: profile.misconceptions,
         transferTasks: profile.transferTasks,
         summary: profile.summary
+      });
+    }
+
+    if (roleId === "lesson-critic" && artifactId === "critic-report") {
+      const rawLesson = await readFile(path.join(runPath, "artifacts", "lesson.approved.json"), "utf8");
+      const lesson = JSON.parse(rawLesson) as unknown;
+      return artifactResult({
+        artifactId,
+        roleId,
+        ...buildLessonCriticReport(lesson, config)
       });
     }
 
@@ -544,14 +558,51 @@ function buildLessonPages(targetPageCount: number, profile: MockLessonProfile): 
   feedbackSpec?: Record<string, unknown>;
 }> {
   const basePages = profile.pageKind === "agentic" ? buildAgenticBasePages() : buildDatabaseIndexBasePages();
+  const selectedPages = selectPagesForTarget(basePages, targetPageCount);
 
   return Array.from({ length: targetPageCount }, (_, index) => {
-    const page = basePages[index % basePages.length];
+    const page = selectedPages[index % selectedPages.length];
     return {
       id: `page-${String(index + 1).padStart(2, "0")}`,
       ...page
     };
   });
+}
+
+function selectPagesForTarget(basePages: MockBasePage[], targetPageCount: number): MockBasePage[] {
+  const summaryPage = basePages.find((page) => page.type === "summary_card") ?? basePages.at(-1);
+  if (!summaryPage || targetPageCount < 1) {
+    return basePages;
+  }
+
+  if (targetPageCount < 8) {
+    return [...basePages.slice(0, Math.max(targetPageCount - 1, 0)), summaryPage];
+  }
+
+  const requiredTypes = ["problem_scene", "intuition_visual", "structure_diagram", "interactive_model", "quiz", "misconception_check"];
+  const requiredPages = requiredTypes.flatMap((type) => {
+    if (type === "interactive_model") {
+      return basePages.filter((page) => page.type === type).slice(0, 2);
+    }
+    const page = basePages.find((candidate) => candidate.type === type);
+    return page ? [page] : [];
+  });
+  const optionalPages = basePages.filter((page) => !requiredPages.includes(page) && page !== summaryPage);
+  const bodyTarget = targetPageCount - 1;
+  const bodyPages = [...requiredPages];
+
+  for (const optionalPage of optionalPages) {
+    if (bodyPages.length >= bodyTarget) {
+      break;
+    }
+    bodyPages.push(optionalPage);
+  }
+
+  while (bodyPages.length < bodyTarget) {
+    bodyPages.push(basePages[bodyPages.length % basePages.length] ?? summaryPage);
+  }
+
+  return [...bodyPages.slice(0, bodyTarget), summaryPage];
 }
 
 function buildDatabaseIndexBasePages(): MockBasePage[] {

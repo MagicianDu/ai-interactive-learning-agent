@@ -258,7 +258,7 @@ function buildQualityPage(id: string, type: string): Record<string, unknown> {
     id,
     type,
     title: `第 ${id.slice(1)} 页`,
-    learningGoal: "建立中文心智模型",
+    learningGoal: id === "p1" ? "解释哈希表的访问路径，建立中文心智模型" : "建立中文心智模型",
     narrative: "中文内容"
   };
   if (["problem_scene", "intuition_visual", "structure_diagram", "summary_card"].includes(type)) {

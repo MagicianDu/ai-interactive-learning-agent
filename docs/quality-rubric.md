@@ -56,12 +56,21 @@ Promotion from `runs/<run-id>/artifacts/lesson.approved.json` into `src/lessons/
 Blocking rules include:
 
 - Page count matches `config.targetPageCount`.
-- Required learning experience elements are present: problem scene, interactive model, misconception check, transfer challenge or transfer task, and summary card or summary payload.
+- Required learning experience elements are present: problem scene, interactive model, quiz/checkpoint, misconception check, transfer challenge or transfer task, and summary card or summary payload.
+- Each learning objective is covered by at least one page title, learning goal, or narrative field.
 - At least three visual explanations are present.
 - At least two meaningful interactions are present.
 - At least two assessment or checkpoint pages include explanatory feedback.
 - Interactions include learner action, expected observation, cognitive purpose, and explanatory option feedback.
 - Learner-facing text is Chinese-first by default.
-- Source-backed lessons include source anchors through `sourceContext.sourceAnchorIds` or equivalent explicit source anchor fields.
+- Source-backed lessons include source anchors through `sourceContext.sourceAnchorIds`, page-level `sourceAnchorIds`, or explicit `grounding.kind` markers for inferred/analogy pages.
+
+The `lesson-critic` runtime step writes a `critic-report` artifact after the approved `lesson` gate. The report contains:
+
+- `status`: `passed` or `revision_required`.
+- `score`: automated score after blocking and warning issues.
+- `checks`: per-validator status for lesson quality, Chinese-first output, and source grounding.
+- `blockingFixes`: issues that must be fixed before release.
+- `optionalImprovements`: warnings that may improve teaching quality but do not block release.
 
 The automated gate is a minimum bar. Passing it does not replace human review of technical accuracy, learning flow, visual clarity, or source coverage.

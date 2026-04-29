@@ -477,6 +477,41 @@ describe("AgentWorkflow", () => {
     });
   });
 
+  test("mock lesson-critic writes a real quality report after lesson approval", async () => {
+    const { approvalService, artifactStore, workflow } = await createHarness(
+      baseConfig({ pageCount: { target: 8, min: 6, max: 10 } })
+    );
+    const runId = "database-index-001";
+    let lastResult = await workflow.runNext(runId);
+    let guard = 0;
+
+    while (!(lastResult.status === "artifact_written" && lastResult.artifactId === "lesson") && guard < 20) {
+      guard += 1;
+      if (lastResult.status === "approval_required") {
+        await approveGate(approvalService, runId, lastResult.requiredGate);
+      }
+      lastResult = await workflow.runNext(runId);
+    }
+    await approveGate(approvalService, runId, "lesson");
+
+    await expect(workflow.runNext(runId)).resolves.toMatchObject({
+      status: "artifact_written",
+      artifactId: "critic-report",
+      createsGate: "critic-report"
+    });
+    await expect(artifactStore.readDraft("critic-report")).resolves.toMatchObject({
+      status: "passed",
+      score: expect.any(Number),
+      blockingFixes: [],
+      optionalImprovements: expect.any(Array),
+      checks: expect.arrayContaining([
+        expect.objectContaining({ name: "lesson-quality", ok: true }),
+        expect.objectContaining({ name: "chinese-first", ok: true }),
+        expect.objectContaining({ name: "source-grounding", ok: true })
+      ])
+    });
+  });
+
   test("rejects unsafe runId through RunStore before reading outside runs", async () => {
     const workspaceRoot = await mkdtemp(path.join(tmpdir(), "agent-runtime-workflow-"));
     tempRoots.push(workspaceRoot);

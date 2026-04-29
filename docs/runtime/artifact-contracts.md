@@ -484,26 +484,28 @@ If a revision is requested, the next agent run should produce a new artifact ver
 ```json
 {
   "artifactId": "critic-report",
-  "artifactVersion": "v1",
-  "runId": "database-index-001",
-  "reviewedArtifact": "artifacts/lesson.v1.json",
-  "score": 86,
-  "strengths": [
-    "The lesson starts with a concrete row-search problem.",
-    "The interaction plan connects query conditions to scan paths."
-  ],
-  "issues": [
+  "roleId": "lesson-critic",
+  "status": "passed",
+  "score": 100,
+  "checks": [
     {
-      "id": "p08-sql-feedback-depth",
-      "severity": "medium",
-      "description": "The SQL walkthrough needs feedback that distinguishes single-column and composite-index behavior."
+      "name": "lesson-quality",
+      "ok": true,
+      "issueCount": 0
+    },
+    {
+      "name": "chinese-first",
+      "ok": true,
+      "issueCount": 0
+    },
+    {
+      "name": "source-grounding",
+      "ok": true,
+      "issueCount": 0
     }
   ],
-  "requiredFixes": [
-    "Add explanatory feedback for composite index order in the SQL walkthrough."
-  ],
-  "optionalImprovements": [
-    "Add a small write-cost animation if the renderer budget allows."
-  ]
+  "blockingFixes": [],
+  "optionalImprovements": [],
+  "summary": "lesson 已通过自动质量门禁，可以进入人工审查或发布流程。"
 }
 ```

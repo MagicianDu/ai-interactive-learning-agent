@@ -58,7 +58,7 @@ function page(
     id,
     type,
     title: `${id} 中文页`,
-    learningGoal: "建立中文心智模型",
+    learningGoal: id === "p1" ? "解释哈希表访问路径，建立中文心智模型" : "建立中文心智模型",
     narrative: "这是一段中文解释。",
     ...(options.visual
       ? {

@@ -241,7 +241,13 @@ function buildQualityLesson(): Record<string, unknown> {
 }
 
 function page(id: string, type: string, kind: "visual" | "interaction" | "assessment"): Record<string, unknown> {
-  const base = { id, type, title: `${id} 中文页`, learningGoal: "建立理解", narrative: "中文内容" };
+  const base = {
+    id,
+    type,
+    title: `${id} 中文页`,
+    learningGoal: id === "p1" ? "解释哈希表访问路径" : "建立理解",
+    narrative: "中文内容"
+  };
   if (kind === "visual") {
     return { ...base, visualSpec: { kind: "diagram", description: "中文图示", keyElements: ["元素一"] } };
   }

@@ -27,6 +27,39 @@ describe("validateLessonQuality", () => {
     );
   });
 
+  test("reports missing required checkpoint page types", () => {
+    const lesson = buildCompleteLesson();
+    lesson.pages = lesson.pages.filter((page) => page.type !== "quiz");
+    lesson.config.targetPageCount = lesson.pages.length;
+
+    const result = validateLessonQuality(lesson);
+
+    expect(result.ok).toBe(false);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ rule: "required-page-type", message: expect.stringContaining("quiz") })
+      ])
+    );
+  });
+
+  test("reports learning objectives with no page coverage", () => {
+    const lesson = buildCompleteLesson();
+    lesson.learningObjectives = ["解释哈希表访问路径", "诊断缓存雪崩"];
+
+    const result = validateLessonQuality(lesson);
+
+    expect(result.ok).toBe(false);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule: "objective-coverage",
+          path: "learningObjectives.1",
+          message: expect.stringContaining("诊断缓存雪崩")
+        })
+      ])
+    );
+  });
+
   test("reports interactions without explanatory feedback", () => {
     const lesson = buildCompleteLesson();
     const interactivePage = lesson.pages.find((page) => page.interactionSpec?.options);

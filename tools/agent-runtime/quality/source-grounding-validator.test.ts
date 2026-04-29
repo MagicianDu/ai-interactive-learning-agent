@@ -33,6 +33,23 @@ describe("validateSourceGrounding", () => {
     expect(result.ok).toBe(true);
   });
 
+  test("accepts source-backed lessons with page-level anchors", () => {
+    const config = createRunConfigFromArgs({
+      sourceFile: "/tmp/book.pdf",
+      sourceKind: "book",
+      sourceTitle: "Book",
+      run: "book-run"
+    });
+    const lesson = buildCompleteLesson();
+    lesson.pages.forEach((page) => {
+      page.sourceAnchorIds = ["source-001:page-1"];
+    });
+
+    const result = validateSourceGrounding(lesson, config);
+
+    expect(result.ok).toBe(true);
+  });
+
   test("reports source-backed lessons without anchors", () => {
     const config = createRunConfigFromArgs({
       sourceFile: "/tmp/book.pdf",
@@ -50,5 +67,28 @@ describe("validateSourceGrounding", () => {
         message: expect.stringContaining("sourceContext.sourceAnchorIds")
       })
     ]);
+  });
+
+  test("reports ungrounded source-backed pages when only some pages carry anchors", () => {
+    const config = createRunConfigFromArgs({
+      sourceFile: "/tmp/book.pdf",
+      sourceKind: "book",
+      sourceTitle: "Book",
+      run: "book-run"
+    });
+    const lesson = buildCompleteLesson();
+    lesson.pages[0].sourceAnchorIds = ["source-001:page-1"];
+
+    const result = validateSourceGrounding(lesson, config);
+
+    expect(result.ok).toBe(false);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule: "source-grounding",
+          path: "pages.p2.sourceAnchorIds"
+        })
+      ])
+    );
   });
 });

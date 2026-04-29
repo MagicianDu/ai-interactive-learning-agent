@@ -1,6 +1,6 @@
 import { isNonEmptyString, isRecord, validationResult, type QualityIssue, type QualityValidationResult } from "./validation-result.js";
 
-const requiredPageTypes = ["problem_scene", "interactive_model", "misconception_check"];
+const requiredPageTypes = ["problem_scene", "interactive_model", "quiz", "misconception_check", "summary_card"];
 
 export function validateLessonQuality(lesson: unknown): QualityValidationResult {
   const issues: QualityIssue[] = [];
@@ -38,6 +38,8 @@ export function validateLessonQuality(lesson: unknown): QualityValidationResult 
       });
     }
   }
+
+  validateObjectiveCoverage(lesson.learningObjectives, pages, issues);
 
   const visualCount = pages.filter((page) => page.visualSpec !== undefined).length;
   if (visualCount < 3) {
@@ -104,6 +106,65 @@ export function validateLessonQuality(lesson: unknown): QualityValidationResult 
   }
 
   return validationResult(issues);
+}
+
+function validateObjectiveCoverage(
+  learningObjectives: unknown,
+  pages: Array<Record<string, unknown>>,
+  issues: QualityIssue[]
+): void {
+  if (!Array.isArray(learningObjectives)) {
+    return;
+  }
+
+  const pageTexts = pages.map((page) =>
+    normalizeText([page.title, page.learningGoal, page.narrative].filter((item) => typeof item === "string").join(" "))
+  );
+
+  learningObjectives.forEach((objective, index) => {
+    if (!isNonEmptyString(objective)) {
+      return;
+    }
+
+    const objectiveText = normalizeText(objective);
+    if (!objectiveText) {
+      return;
+    }
+
+    const tokens = extractCoverageTokens(objectiveText);
+    const covered = pageTexts.some((pageText) => {
+      if (pageText.includes(objectiveText)) {
+        return true;
+      }
+      const hitCount = tokens.filter((token) => pageText.includes(token)).length;
+      return hitCount >= Math.min(2, tokens.length);
+    });
+
+    if (!covered) {
+      issues.push({
+        rule: "objective-coverage",
+        path: `learningObjectives.${index}`,
+        message: `learning objective "${objective}" is not covered by any page title, goal, or narrative`,
+        severity: "error"
+      });
+    }
+  });
+}
+
+function normalizeText(value: string): string {
+  return value.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
+}
+
+function extractCoverageTokens(value: string): string[] {
+  if (value.length <= 2) {
+    return value ? [value] : [];
+  }
+
+  const tokens = new Set<string>();
+  for (let index = 0; index < value.length - 1; index += 1) {
+    tokens.add(value.slice(index, index + 2));
+  }
+  return [...tokens];
 }
 
 function validateInteractionFeedback(page: Record<string, unknown>, issues: QualityIssue[]): void {
