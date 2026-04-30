@@ -19,7 +19,7 @@ npm run dev
 
 Open the local Vite URL printed by the dev server, usually `http://localhost:5173/`.
 
-## Codex Agent Runner
+## Codex Agent Runner (Advanced/operator Local Runner)
 
 The project includes a Codex-first local runner for generating lesson artifacts. The runner is gate-driven: `run` and `resume` may first write non-gated artifacts such as `source-ingest`, then later return either `artifact_written` with `createsGate` or `approval_required` for reviewable gates.
 
@@ -122,7 +122,14 @@ The repository includes a local stdio MCP entrypoint:
 npm run mcp -- --list-tools
 ```
 
-It exposes stable tool names such as:
+Default learner-facing tools:
+
+- `learning_agent.create_learning_project`
+- `learning_agent.publish_learning_course`
+- `learning_agent.get_learning_preview`
+- `learning_agent.generate_quick_preview`
+
+Advanced/operator tools include:
 
 - `learning_agent.init_run`
 - `learning_agent.plan_run`
@@ -141,19 +148,34 @@ It exposes stable tool names such as:
 
 The current entrypoint accepts newline-delimited JSON-RPC requests on stdin and returns MCP-compatible JSON-RPC responses. It is intentionally thin; tool calls wrap `RunPlanService`, `RunStore`, `AgentWorkflow`, `CoursePackService`, `ManualSubmissionService`, `ApprovalService`, and `LessonPromotionService`.
 
-Natural-language entry is available through the same tool layer:
+Default Codex usage should be learner-first. Codex clarifies the learning request, generates a Chinese `coursePack` and `lessons`, calls `learning_agent.publish_learning_course`, then tells the user to run `npm run dev` and open the local page. Do not ask learners to approve `source-map`, `concept-map`, or `curriculum-plan`.
+
+Default trial prompt:
+
+```text
+请使用 learningAgent MCP 服务帮我生成中文学习网页。
+资料是：/absolute/path/to/source.pdf
+我希望先有总览课，再按核心 topic 拆课。每个单元 8 页。
+请先问我最多 3 个你必须知道的问题。明确后，不要让我审批 source-map、concept-map、curriculum-plan 这些内部 artifacts。
+你可以直接生成 course bundle，然后调用 learning_agent.publish_learning_course 发布网页。
+发布后告诉我运行 npm run dev，并说明我应该打开哪个页面查看。
+```
+
+Manual learner-first smoke:
 
 ```bash
 printf '%s\n' \
   '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"manual-smoke","version":"0.0.0"}}}' \
-  '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"learning_agent.plan_run","arguments":{"request":"用哈希表生成 8 页中文课，面向有基础编程经验但缺少数据结构心智模型的学习者。","runId":"hash-table-nl"}}}' \
-  '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"learning_agent.init_from_plan","arguments":{"runId":"hash-table-nl","approve":true}}}' \
+  '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"learning_agent.create_learning_project","arguments":{"request":"请生成哈希表中文学习材料，面向有编程基础的学习者，每个单元 8 页。","runId":"hash-table-nl"}}}' \
+  '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"learning_agent.get_learning_preview","arguments":{"runId":"hash-table-nl"}}}' \
   | npm run mcp
 ```
 
-This is the intended bridge for Codex, Claude, and future OpenClaw-style operator sessions: the chat agent can translate user intent into `plan_run`, show the review items, then call `init_from_plan`, `run_until_gate`, `read_artifact`, approvals, course orchestration, and promotion.
+Quick local preview can use `learning_agent.generate_quick_preview` after `learning_agent.create_learning_project`. It is deterministic smoke for seeing the product shape; final content should normally use Codex-authored `publish_learning_course`.
 
-The recommended Codex interaction pattern is:
+Only when the user explicitly asks for "专家审查模式 / 查看内部 artifacts / 调试生成流程" should Codex use advanced/operator tools such as `plan_run`, `read_artifact`, `approve_gate`, and `run_course`.
+
+The advanced/operator interaction pattern is:
 
 1. User describes the source and learning goal in natural language.
 2. Codex calls `learning_agent.plan_run`, then summarizes `reviewItems` before initialization.

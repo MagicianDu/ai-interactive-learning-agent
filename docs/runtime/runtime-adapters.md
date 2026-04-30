@@ -8,7 +8,16 @@ Adapters are responsible for executing role requests, honoring or reporting mode
 
 The current implementation includes two local CLI adapters: deterministic `mock` execution and operator-driven `codex-manual` execution. `codex-manual` does not call an external model API; it writes a role prompt for the active Codex session, pauses, and waits for the operator to submit the generated JSON artifact. The repository also includes a stdio MCP entrypoint under `tools/mcp-server/`; it exposes stable tool contracts over JSON-RPC and calls the same runtime services as the CLI.
 
-Current MCP-ready tool names:
+Current learner-facing MCP tool names:
+
+```text
+learning_agent.create_learning_project
+learning_agent.publish_learning_course
+learning_agent.get_learning_preview
+learning_agent.generate_quick_preview
+```
+
+Advanced/operator MCP tool names:
 
 ```text
 learning_agent.init_run
@@ -29,7 +38,9 @@ learning_agent.promote_units
 learning_agent.promote_lesson
 ```
 
-`learning_agent.plan_run` is the natural-language entrypoint for Codex/Claude-style operation. It writes `runs/<run-id>/run.plan.json` from a Chinese request and returns review items. `learning_agent.init_from_plan` initializes the run after the operator approves the plan. Structured `init_run` remains available for scripts and tests.
+`learning_agent.create_learning_project` and `learning_agent.publish_learning_course` are the default learner-facing entrypoints for Codex/Claude-style operation. Codex or Claude clarifies the request, authors the Chinese course bundle, then asks MCP to validate and publish it.
+
+`learning_agent.plan_run` is the advanced/operator natural-language entrypoint. It writes `runs/<run-id>/run.plan.json` from a Chinese request and returns review items. `learning_agent.init_from_plan` initializes the run after the operator approves the plan. Structured `init_run` remains available for scripts and tests.
 
 `learning_agent.beta_status` is the beta-level operator status primitive. It summarizes parent artifacts, approved gates, current review gates, child unit runs, and next actions without returning full source anchors or lesson payloads. It also exposes structured `operatorHints` for review queues, exact artifact versions, artifact paths, and recommended next MCP tool calls.
 

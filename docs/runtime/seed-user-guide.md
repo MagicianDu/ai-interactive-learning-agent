@@ -48,11 +48,13 @@ npm run codex:mcp:check
 npm run mcp -- --list-tools
 ```
 
-外部客户端应优先调用 `learning_agent.plan_run`、`learning_agent.init_from_plan`、`learning_agent.beta_status`、`learning_agent.run_until_gate`、`learning_agent.approve_gate`、`learning_agent.run_course` 和 `learning_agent.promote_units`。
+外部客户端应优先调用 learner-facing tools：`learning_agent.create_learning_project`、`learning_agent.publish_learning_course`、`learning_agent.get_learning_preview`。如果只想快速看本地样例，可以调用 `learning_agent.generate_quick_preview`。
 
-## 5. 审核生成产物
+## 5. 专家审查模式
 
-真实资料生成时不要自动通过 review queue。推荐审核顺序：
+默认学习者路径不要让用户审批内部 artifacts。只有当用户明确说“专家审查模式 / 查看内部 artifacts / 调试生成流程”时，才使用 `plan_run`、`read_artifact`、`approve_gate`、`run_course` 这些 advanced/operator tools。
+
+专家审查模式的推荐审核顺序：
 
 1. `source-map`：资料解析和来源锚点是否可信。
 2. `concept-map`：核心概念、依赖和误区是否合理。

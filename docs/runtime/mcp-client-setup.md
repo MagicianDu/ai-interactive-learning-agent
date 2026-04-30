@@ -75,31 +75,52 @@ Claude Desktop commonly uses a JSON config shape:
 }
 ```
 
+## Default Learner-First Tools
+
+Default clients should prefer these learner-facing tools:
+
+```text
+learning_agent.create_learning_project
+learning_agent.publish_learning_course
+learning_agent.get_learning_preview
+learning_agent.generate_quick_preview
+```
+
+The default client flow is:
+
+```text
+Clarify learning request
+  -> create_learning_project
+  -> Codex/Claude generates Chinese coursePack + lessons
+  -> publish_learning_course
+  -> get_learning_preview
+  -> user opens npm run dev
+```
+
+Do not ask learners to approve `source-map`, `concept-map`, or `curriculum-plan`.
+
+Only when the user explicitly asks for "专家审查模式 / 查看内部 artifacts / 调试生成流程" should the client use `plan_run`, `read_artifact`, `approve_gate`, `run_course`, and other advanced/operator tools.
+
 ## Manual JSON-RPC Smoke
 
 ```bash
 printf '%s\n' \
   '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"manual-smoke","version":"0.0.0"}}}' \
   '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
-  '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"learning_agent.plan_run","arguments":{"request":"用哈希表生成 8 页中文课，面向有基础编程经验但缺少数据结构心智模型的学习者。","runId":"mcp-jsonrpc-smoke","adapter":"mock"}}}' \
-  '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"learning_agent.init_from_plan","arguments":{"runId":"mcp-jsonrpc-smoke","approve":true}}}' \
-  '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"learning_agent.beta_status","arguments":{"runId":"mcp-jsonrpc-smoke"}}}' \
-  '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"learning_agent.run_until_gate","arguments":{"runId":"mcp-jsonrpc-smoke","maxSteps":5}}}' \
-  '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"learning_agent.read_artifact","arguments":{"runId":"mcp-jsonrpc-smoke","artifactId":"source-map","version":"v1"}}}' \
-  '{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"learning_agent.beta_status","arguments":{"runId":"mcp-jsonrpc-smoke"}}}' \
+  '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"learning_agent.create_learning_project","arguments":{"request":"请生成哈希表中文学习材料，面向有编程基础的学习者，每个单元 8 页。","runId":"mcp-jsonrpc-smoke"}}}' \
+  '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"learning_agent.get_learning_preview","arguments":{"runId":"mcp-jsonrpc-smoke"}}}' \
   | npm run mcp
 ```
 
 Expected result:
 
-- `tools/list` includes `learning_agent.plan_run`, `learning_agent.init_from_plan`, and `learning_agent.beta_status`.
-- `plan_run` writes `runs/mcp-jsonrpc-smoke/run.plan.json`.
-- `init_from_plan` writes `runs/mcp-jsonrpc-smoke/run.config.json`.
-- `beta_status` returns compact parent/child gate state and suggested next actions.
-- `run_until_gate` advances to the first approval gate. The smoke uses `adapter: "mock"` so it can produce local artifacts without a manual Codex role prompt.
-- `read_artifact` returns the generated `source-map.v1.json` payload.
+- `tools/list` starts with learner-facing tools.
+- `create_learning_project` writes `runs/mcp-jsonrpc-smoke/learner-project.json`.
+- `get_learning_preview` returns `not_published` until a course is published.
 
-For a source-backed course-pack flow, the MCP client should call the same high-level tools in this order:
+## Advanced/operator Mode
+
+For a source-backed expert review flow, the MCP client can call advanced/operator tools in this order:
 
 ```text
 learning_agent.plan_run
@@ -122,7 +143,7 @@ learning_agent.approve_gate for each child critic-report
 learning_agent.promote_units
 ```
 
-This is the intended Codex/Claude control loop: the chat agent interprets the user's natural language request, shows gated artifacts for review, then advances or revises the runtime through MCP calls.
+This is not the default learner flow. It is intended for operators who want to inspect gated artifacts, audit source mapping, or debug generation.
 
 `learning_agent.beta_status` is the preferred status primitive for interactive clients. It is intentionally smaller than `read_artifact`; use it to decide the next action, then use `read_artifact` only for the specific gated artifact being reviewed. Clients should prefer the structured `operatorHints.nextToolCalls` and `operatorHints.reviewQueue` fields over parsing the human-readable `nextActions` text.
 
