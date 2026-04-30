@@ -56,11 +56,26 @@ async function checkCodexMcpServer() {
 
 async function checkMcpToolList() {
   const output = await runCommand("npm", ["run", "mcp", "--", "--list-tools"]);
-  if (!output.includes("learning_agent.plan_run") || !output.includes("learning_agent.beta_status")) {
-    throw new Error("MCP tool list did not include expected learning_agent tools");
+  const requiredTools = [
+    "learning_agent.create_learning_project",
+    "learning_agent.publish_learning_course",
+    "learning_agent.plan_run",
+    "learning_agent.beta_status"
+  ];
+  const missingTools = requiredTools.filter((tool) => !output.includes(tool));
+  if (missingTools.length > 0) {
+    throw new Error(`MCP tool list did not include expected learning_agent tools: ${missingTools.join(", ")}`);
   }
 
-  console.log("[codex:mcp] MCP tool list includes learning_agent.plan_run and learning_agent.beta_status");
+  const firstCreateIndex = output.indexOf("learning_agent.create_learning_project");
+  const firstPlanIndex = output.indexOf("learning_agent.plan_run");
+  if (firstPlanIndex >= 0 && firstCreateIndex > firstPlanIndex) {
+    throw new Error("MCP tool list should show learner-facing tools before advanced/operator tools");
+  }
+
+  console.log(
+    "[codex:mcp] MCP tool list includes learner-facing tools plus learning_agent.plan_run and learning_agent.beta_status"
+  );
 }
 
 function runCommand(command: string, args: string[]): Promise<string> {
