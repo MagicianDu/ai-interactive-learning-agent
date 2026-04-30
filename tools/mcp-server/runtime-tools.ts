@@ -15,6 +15,7 @@ import {
   LearnerProjectService,
   ManualSubmissionService,
   MockRuntimeAdapter,
+  QuickPreviewService,
   RunPlanService,
   RunStore
 } from "../agent-runtime/index.js";
@@ -117,12 +118,10 @@ export class LearningAgentRuntimeTools {
 
   private async generateQuickPreview(input: unknown): Promise<unknown> {
     const options = expectRecord(input);
-    return {
-      status: "quality_blocked",
+    return new QuickPreviewService(this.workspaceRoot).generate({
       runId: requiredString(options, "runId"),
-      userMessage: "quick preview service is not wired yet; use publish_learning_course for Codex-authored bundles.",
-      maxSteps: optionalNumber(options.maxSteps) ?? 20
-    };
+      maxSteps: optionalNumber(options.maxSteps) ?? 80
+    });
   }
 
   private async initRun(input: unknown): Promise<unknown> {
