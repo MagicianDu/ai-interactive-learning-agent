@@ -14,6 +14,9 @@ describe("LearnerProjectService", () => {
     const result = await service.createProject({ request: "我想学习这本书" });
 
     expect(result.status).toBe("clarification_required");
+    if (result.status !== "clarification_required") {
+      throw new Error("expected clarification_required");
+    }
     expect(result.clarificationQuestions).toEqual(
       expect.arrayContaining([expect.stringContaining("资料路径"), expect.stringContaining("面向谁")])
     );

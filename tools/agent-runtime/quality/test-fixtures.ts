@@ -49,6 +49,44 @@ export function buildCompleteLesson(): TestLesson {
   } as TestLesson;
 }
 
+export function publishableLessonFixture({
+  id = "hash-table",
+  targetPageCount = 8,
+  title = "哈希表为什么快"
+}: {
+  id?: string;
+  title?: string;
+  targetPageCount?: number;
+} = {}): TestLesson {
+  const pages = [
+    page("p1", "problem_scene", { visual: true }),
+    page("p2", "intuition_visual", { visual: true }),
+    page("p3", "structure_diagram", { visual: true }),
+    page("p4", "interactive_model", { interaction: true }),
+    page("p5", "interactive_model", { interaction: true }),
+    page("p6", "quiz", { assessment: true }),
+    page("p7", "misconception_check", { assessment: true }),
+    page("p8", "summary_card", { visual: true })
+  ];
+
+  return {
+    id,
+    title,
+    audience: "有编程基础但缺少系统心智模型的中文学习者",
+    config: {
+      targetPageCount,
+      minPageCount: Math.min(6, targetPageCount),
+      maxPageCount: Math.max(10, targetPageCount)
+    },
+    prerequisites: ["会写简单代码"],
+    learningObjectives: ["解释哈希表访问路径"],
+    pages: pages.slice(0, targetPageCount),
+    misconceptions: [{ id: "m1", statement: "哈希表永远 O(1)", correction: "冲突严重时会变慢。" }],
+    transferTasks: [{ id: "t1", prompt: "迁移到缓存 key 设计", targetMentalModel: "用搜索空间缩小解释加速。" }],
+    summary: ["哈希表用 key 缩小搜索空间。"]
+  } as TestLesson;
+}
+
 function page(
   id: string,
   type: string,
