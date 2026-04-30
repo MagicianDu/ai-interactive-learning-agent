@@ -4,6 +4,7 @@ import path from "node:path";
 
 import { describe, expect, test } from "vitest";
 
+import { publishableLessonFixture } from "../agent-runtime/quality/test-fixtures.js";
 import { LearningAgentRuntimeTools } from "./runtime-tools.js";
 import { handleMcpLine, handleMcpRequest } from "./json-rpc-server.js";
 
@@ -53,6 +54,72 @@ describe("MCP JSON-RPC server", () => {
           expect.objectContaining({ name: "learning_agent.beta_status" }),
           expect.objectContaining({ name: "learning_agent.run_next" })
         ])
+      }
+    });
+  });
+
+  test("lists learner-facing tools before advanced operator tools", async () => {
+    const tools = new LearningAgentRuntimeTools(await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-rpc-")));
+
+    const response = await handleMcpRequest({ jsonrpc: "2.0", id: "tools", method: "tools/list" }, tools);
+    const listedTools = (response as { result: { tools: Array<{ name: string; description: string }> } }).result.tools;
+
+    expect(listedTools.slice(0, 4).map((tool) => tool.name)).toEqual([
+      "learning_agent.create_learning_project",
+      "learning_agent.publish_learning_course",
+      "learning_agent.get_learning_preview",
+      "learning_agent.generate_quick_preview"
+    ]);
+    expect(listedTools.find((tool) => tool.name === "learning_agent.approve_gate")?.description).toMatch(
+      /Advanced\/operator tool/
+    );
+  });
+
+  test("publishes a learner-facing course through MCP without artifact approvals", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-learner-mcp-"));
+    const tools = new LearningAgentRuntimeTools(root);
+    const project = await callMcpTool(tools, "learning_agent.create_learning_project", {
+      request: "请生成哈希表中文学习材料，面向有编程基础的学习者，每个单元 8 页。",
+      runId: "learner-hash"
+    });
+
+    expect(project).toMatchObject({ status: "project_ready", runId: "learner-hash" });
+
+    const lesson = publishableLessonFixture({ id: "learner-hash-overview", title: "哈希表：总览课", targetPageCount: 8 });
+    const published = await callMcpTool(tools, "learning_agent.publish_learning_course", {
+      runId: "learner-hash",
+      lessons: [lesson],
+      coursePack: {
+        id: "learner-hash",
+        title: "哈希表：课程包",
+        parentRunId: "learner-hash",
+        sourceKind: "topic",
+        strategy: "overview_plus_topic",
+        units: [
+          {
+            unitId: "unit-overview",
+            title: "哈希表：总览课",
+            kind: "overview",
+            lessonId: "learner-hash-overview",
+            targetPageCount: 8,
+            conceptIds: ["hash-table"]
+          }
+        ]
+      }
+    });
+    const preview = await callMcpTool(tools, "learning_agent.get_learning_preview", { runId: "learner-hash" });
+
+    expect(published).toMatchObject({
+      status: "preview_ready",
+      preview: { devCommand: "npm run dev", localUrl: "http://127.0.0.1:5173/" }
+    });
+    expect(preview).toMatchObject({
+      status: "preview_ready",
+      runId: "learner-hash",
+      preview: {
+        coursePackId: "learner-hash",
+        courseTitle: "哈希表：课程包",
+        lessonCount: 1
       }
     });
   });

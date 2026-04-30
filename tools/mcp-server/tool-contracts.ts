@@ -1,4 +1,8 @@
 export type LearningAgentToolName =
+  | "learning_agent.create_learning_project"
+  | "learning_agent.publish_learning_course"
+  | "learning_agent.get_learning_preview"
+  | "learning_agent.generate_quick_preview"
   | "learning_agent.init_run"
   | "learning_agent.plan_run"
   | "learning_agent.init_from_plan"
@@ -32,11 +36,51 @@ const objectSchema = (properties: Record<string, unknown>, required: string[] = 
 const stringSchema = { type: "string" };
 const booleanSchema = { type: "boolean" };
 const numberSchema = { type: "number" };
+const arraySchema = { type: "array", items: { type: "object" } };
+const looseObjectSchema = { type: "object" };
 
 export const learningAgentToolContracts: LearningAgentToolContract[] = [
   {
+    name: "learning_agent.create_learning_project",
+    description:
+      "Learner-facing tool. Create a Chinese learner brief from a natural-language request and ask only learner-answerable clarification questions.",
+    inputSchema: objectSchema(
+      {
+        request: stringSchema,
+        runId: stringSchema,
+        sourcePath: stringSchema,
+        sourceKind: stringSchema,
+        audience: stringSchema,
+        unitPages: numberSchema,
+        strategy: stringSchema
+      },
+      ["request"]
+    )
+  },
+  {
+    name: "learning_agent.publish_learning_course",
+    description:
+      "Learner-facing tool. Publish a Codex-authored Chinese course bundle directly to the web lesson registry after quality checks.",
+    inputSchema: objectSchema({ runId: stringSchema, coursePack: looseObjectSchema, lessons: arraySchema, publishNotes: stringSchema }, [
+      "runId",
+      "coursePack",
+      "lessons"
+    ])
+  },
+  {
+    name: "learning_agent.get_learning_preview",
+    description: "Learner-facing tool. Return user-readable preview instructions for a published learning course.",
+    inputSchema: objectSchema({ runId: stringSchema }, ["runId"])
+  },
+  {
+    name: "learning_agent.generate_quick_preview",
+    description:
+      "Learner-facing tool. Generate a deterministic local quick preview without asking learners to approve internal artifacts.",
+    inputSchema: objectSchema({ runId: stringSchema, maxSteps: numberSchema }, ["runId"])
+  },
+  {
     name: "learning_agent.init_run",
-    description: "Initialize a learning-agent run from structured run config arguments.",
+    description: "Advanced/operator tool. Initialize a learning-agent run from structured run config arguments.",
     inputSchema: objectSchema({
       topic: stringSchema,
       unitPages: stringSchema,
@@ -56,38 +100,40 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
   },
   {
     name: "learning_agent.plan_run",
-    description: "Create a reviewable run plan from a Chinese natural-language learning request.",
+    description: "Advanced/operator tool. Create a reviewable run plan from a Chinese natural-language learning request.",
     inputSchema: objectSchema({ request: stringSchema, runId: stringSchema, adapter: stringSchema }, ["request"])
   },
   {
     name: "learning_agent.init_from_plan",
-    description: "Approve optionally and initialize a learning-agent run from a previously written run plan.",
+    description:
+      "Advanced/operator tool. Approve optionally and initialize a learning-agent run from a previously written run plan.",
     inputSchema: objectSchema({ runId: stringSchema, approve: booleanSchema }, ["runId"])
   },
   {
     name: "learning_agent.status",
-    description: "Read run config and status-relevant metadata.",
+    description: "Advanced/operator tool. Read run config and status-relevant metadata.",
     inputSchema: objectSchema({ runId: stringSchema }, ["runId"])
   },
   {
     name: "learning_agent.beta_status",
     description:
-      "Read compact beta operator status, including approved gates, current review gates, child unit runs, and suggested next actions.",
+      "Advanced/operator tool. Read compact beta operator status, including approved gates, current review gates, child unit runs, and suggested next actions.",
     inputSchema: objectSchema({ runId: stringSchema }, ["runId"])
   },
   {
     name: "learning_agent.run_until_gate",
-    description: "Advance a run until it reaches an approval gate, manual action, completion, or step limit.",
+    description:
+      "Advanced/operator tool. Advance a run until it reaches an approval gate, manual action, completion, or step limit.",
     inputSchema: objectSchema({ runId: stringSchema, maxSteps: numberSchema }, ["runId"])
   },
   {
     name: "learning_agent.list_artifacts",
-    description: "List artifact versions and draft/approved aliases for a run.",
+    description: "Advanced/operator tool. List artifact versions and draft/approved aliases for a run.",
     inputSchema: objectSchema({ runId: stringSchema }, ["runId"])
   },
   {
     name: "learning_agent.read_artifact",
-    description: "Read a run artifact by version, or read the draft when version is omitted.",
+    description: "Advanced/operator tool. Read a run artifact by version, or read the draft when version is omitted.",
     inputSchema: objectSchema({ runId: stringSchema, artifactId: stringSchema, version: stringSchema }, [
       "runId",
       "artifactId"
@@ -95,7 +141,7 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
   },
   {
     name: "learning_agent.submit_artifact",
-    description: "Submit a JSON artifact file into a run artifact store.",
+    description: "Advanced/operator tool. Submit a JSON artifact file into a run artifact store.",
     inputSchema: objectSchema({ runId: stringSchema, artifactId: stringSchema, filePath: stringSchema }, [
       "runId",
       "artifactId",
@@ -104,7 +150,7 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
   },
   {
     name: "learning_agent.approve_gate",
-    description: "Approve a gate for an exact artifact version.",
+    description: "Advanced/operator tool. Approve a gate for an exact artifact version.",
     inputSchema: objectSchema({ runId: stringSchema, gate: stringSchema, version: stringSchema, notes: stringSchema }, [
       "runId",
       "gate",
@@ -113,7 +159,7 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
   },
   {
     name: "learning_agent.revise_gate",
-    description: "Request revision for a gate and exact artifact version.",
+    description: "Advanced/operator tool. Request revision for a gate and exact artifact version.",
     inputSchema: objectSchema({ runId: stringSchema, gate: stringSchema, version: stringSchema, notes: stringSchema }, [
       "runId",
       "gate",
@@ -123,17 +169,19 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
   },
   {
     name: "learning_agent.list_units",
-    description: "List summarized units from an approved curriculum plan; read curriculum-plan for full source anchors.",
+    description:
+      "Advanced/operator tool. List summarized units from an approved curriculum plan; read curriculum-plan for full source anchors.",
     inputSchema: objectSchema({ runId: stringSchema }, ["runId"])
   },
   {
     name: "learning_agent.run_next",
-    description: "Advance one workflow step for a run.",
+    description: "Advanced/operator tool. Advance one workflow step for a run.",
     inputSchema: objectSchema({ runId: stringSchema }, ["runId"])
   },
   {
     name: "learning_agent.run_course",
-    description: "Ensure and advance selected child unit runs for a course pack, returning summarized unit metadata.",
+    description:
+      "Advanced/operator tool. Ensure and advance selected child unit runs for a course pack, returning summarized unit metadata.",
     inputSchema: objectSchema(
       { runId: stringSchema, unitSelector: stringSchema, maxSteps: numberSchema, promote: booleanSchema },
       ["runId"]
@@ -141,12 +189,12 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
   },
   {
     name: "learning_agent.promote_units",
-    description: "Promote approved child unit lessons and write a course-pack manifest.",
+    description: "Advanced/operator tool. Promote approved child unit lessons and write a course-pack manifest.",
     inputSchema: objectSchema({ runId: stringSchema, unitSelector: stringSchema }, ["runId"])
   },
   {
     name: "learning_agent.promote_lesson",
-    description: "Promote one approved lesson artifact into src/lessons.",
+    description: "Advanced/operator tool. Promote one approved lesson artifact into src/lessons.",
     inputSchema: objectSchema({ runId: stringSchema }, ["runId"])
   }
 ];

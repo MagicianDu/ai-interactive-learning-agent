@@ -10,6 +10,9 @@ import {
   CoursePackService,
   createRunConfigFromArgs,
   LessonPromotionService,
+  LearningCoursePublisher,
+  LearningPreviewService,
+  LearnerProjectService,
   ManualSubmissionService,
   MockRuntimeAdapter,
   RunPlanService,
@@ -42,6 +45,14 @@ export class LearningAgentRuntimeTools {
     }
 
     switch (name) {
+      case "learning_agent.create_learning_project":
+        return this.createLearningProject(input);
+      case "learning_agent.publish_learning_course":
+        return this.publishLearningCourse(input);
+      case "learning_agent.get_learning_preview":
+        return this.getLearningPreview(input);
+      case "learning_agent.generate_quick_preview":
+        return this.generateQuickPreview(input);
       case "learning_agent.init_run":
         return this.initRun(input);
       case "learning_agent.plan_run":
@@ -75,6 +86,43 @@ export class LearningAgentRuntimeTools {
       case "learning_agent.promote_lesson":
         return this.promoteLesson(input);
     }
+  }
+
+  private async createLearningProject(input: unknown): Promise<unknown> {
+    const options = expectRecord(input);
+    return new LearnerProjectService(this.workspaceRoot).createProject({
+      request: requiredString(options, "request"),
+      runId: optionalString(options.runId),
+      sourcePath: optionalString(options.sourcePath),
+      sourceKind: optionalString(options.sourceKind),
+      audience: optionalString(options.audience),
+      unitPages: optionalNumber(options.unitPages),
+      strategy: optionalString(options.strategy)
+    });
+  }
+
+  private async publishLearningCourse(input: unknown): Promise<unknown> {
+    const options = expectRecord(input);
+    return new LearningCoursePublisher(this.workspaceRoot).publish({
+      runId: requiredString(options, "runId"),
+      lessons: requiredArray(options, "lessons"),
+      coursePack: options.coursePack,
+      publishNotes: optionalString(options.publishNotes)
+    });
+  }
+
+  private async getLearningPreview(input: unknown): Promise<unknown> {
+    return new LearningPreviewService(this.workspaceRoot).getPreview(requiredString(expectRecord(input), "runId"));
+  }
+
+  private async generateQuickPreview(input: unknown): Promise<unknown> {
+    const options = expectRecord(input);
+    return {
+      status: "quality_blocked",
+      runId: requiredString(options, "runId"),
+      userMessage: "quick preview service is not wired yet; use publish_learning_course for Codex-authored bundles.",
+      maxSteps: optionalNumber(options.maxSteps) ?? 20
+    };
   }
 
   private async initRun(input: unknown): Promise<unknown> {
@@ -325,6 +373,10 @@ export class LearningAgentRuntimeTools {
 
 function isLearningAgentToolName(name: string): name is LearningAgentToolName {
   return [
+    "learning_agent.create_learning_project",
+    "learning_agent.publish_learning_course",
+    "learning_agent.get_learning_preview",
+    "learning_agent.generate_quick_preview",
     "learning_agent.init_run",
     "learning_agent.plan_run",
     "learning_agent.init_from_plan",
@@ -361,6 +413,14 @@ function requiredString(input: Record<string, unknown>, key: string): string {
     throw new Error(`${key} is required`);
   }
   return value.trim();
+}
+
+function requiredArray(input: Record<string, unknown>, key: string): unknown[] {
+  const value = input[key];
+  if (!Array.isArray(value)) {
+    throw new Error(`${key} must be an array`);
+  }
+  return value;
 }
 
 function optionalString(value: unknown): string | undefined {

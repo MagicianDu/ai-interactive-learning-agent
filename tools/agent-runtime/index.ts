@@ -10,6 +10,7 @@ export { ManualSubmissionService } from "./manual-submission-service.js";
 export { RunPlanService } from "./natural-language/run-plan-service.js";
 export { LessonPromotionService } from "./promotion/lesson-promotion-service.js";
 export { LearningCoursePublisher } from "./learner/learning-course-publisher.js";
+export { LearningPreviewService } from "./learner/learning-preview-service.js";
 export { LearnerProjectService } from "./learner/learner-project-service.js";
 export { createRunConfigFromArgs, validateRunConfig } from "./run-config.js";
 export { RunStore } from "./run-store.js";
