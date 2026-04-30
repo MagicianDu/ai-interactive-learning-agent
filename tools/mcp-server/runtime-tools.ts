@@ -101,7 +101,9 @@ export class LearningAgentRuntimeTools {
       sourceKind: optionalString(options.sourceKind),
       audience: optionalString(options.audience),
       unitPages: optionalNumber(options.unitPages),
-      strategy: optionalString(options.strategy)
+      strategy: optionalString(options.strategy),
+      selectedChapters: optionalStringArray(options.selectedChapters),
+      selectedTopics: optionalStringArray(options.selectedTopics)
     });
   }
 
@@ -437,6 +439,14 @@ function requiredArray(input: Record<string, unknown>, key: string): unknown[] {
 
 function optionalString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+function optionalStringArray(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  const normalized = value.map((item) => (typeof item === "string" ? item.trim() : "")).filter((item) => item.length > 0);
+  return normalized.length > 0 ? normalized : undefined;
 }
 
 function optionalNumber(value: unknown): number | undefined {

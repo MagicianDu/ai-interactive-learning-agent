@@ -46,4 +46,65 @@ describe("LearnerProjectService", () => {
       "有编程基础"
     );
   });
+
+  test("preserves requested chapters and topics in learner brief and Codex instruction", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learner-project-"));
+    const service = new LearnerProjectService(root);
+
+    const result = await service.createProject({
+      request: "请用 /tmp/book.pdf 生成中文学习材料，面向有编程基础的学习者，每个单元 8 页，按章节推进。",
+      runId: "chapter-run",
+      strategy: "chapter_guided",
+      selectedChapters: ["第 1 章", "第 3 章"],
+      selectedTopics: ["planning", "tool use"]
+    });
+
+    expect(result).toMatchObject({
+      status: "project_ready",
+      brief: {
+        strategy: "chapter_guided",
+        selectedChapters: ["第 1 章", "第 3 章"],
+        selectedTopics: ["planning", "tool use"]
+      }
+    });
+    if (result.status !== "project_ready") {
+      throw new Error("expected project_ready");
+    }
+    expect(result.next.codexInstruction).toContain("第 1 章");
+    expect(result.next.codexInstruction).toContain("planning");
+    await expect(readFile(path.join(root, "runs", "chapter-run", "learner-project.json"), "utf8")).resolves.toContain(
+      "selectedChapters"
+    );
+  });
+
+  test("infers chapter-guided strategy from a learner request", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learner-project-"));
+    const service = new LearnerProjectService(root);
+
+    const result = await service.createProject({
+      request: "请用 /tmp/book.pdf 生成中文学习材料，面向中文学习者，每个单元 8 页，按章节推进。第 1 章，第 2 章优先。"
+    });
+
+    expect(result.status).toBe("project_ready");
+    if (result.status !== "project_ready") {
+      throw new Error("expected project_ready");
+    }
+    expect(result.brief.strategy).toBe("chapter_guided");
+    expect(result.next.codexInstruction).toContain("chapter_guided");
+  });
+
+  test("honors explicit strategy tokens in a learner request", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learner-project-"));
+    const service = new LearnerProjectService(root);
+
+    const result = await service.createProject({
+      request: "请用 /tmp/book.pdf 生成中文学习材料，面向中文学习者，每个单元 8 页，strategy=topic_guided。"
+    });
+
+    expect(result.status).toBe("project_ready");
+    if (result.status !== "project_ready") {
+      throw new Error("expected project_ready");
+    }
+    expect(result.brief.strategy).toBe("topic_guided");
+  });
 });

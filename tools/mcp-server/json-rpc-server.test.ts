@@ -75,6 +75,21 @@ describe("MCP JSON-RPC server", () => {
     );
   });
 
+  test("create_learning_project schema exposes chapter and topic selection", async () => {
+    const tools = new LearningAgentRuntimeTools(await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-rpc-")));
+
+    const response = await handleMcpRequest({ jsonrpc: "2.0", id: "tools", method: "tools/list" }, tools);
+    const listedTools = (response as { result: { tools: Array<{ name: string; inputSchema: Record<string, unknown> }> } }).result.tools;
+    const createTool = listedTools.find((tool) => tool.name === "learning_agent.create_learning_project");
+
+    expect(createTool?.inputSchema).toMatchObject({
+      properties: {
+        selectedChapters: { type: "array", items: { type: "string" } },
+        selectedTopics: { type: "array", items: { type: "string" } }
+      }
+    });
+  });
+
   test("publishes a learner-facing course through MCP without artifact approvals", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "learning-agent-learner-mcp-"));
     const tools = new LearningAgentRuntimeTools(root);

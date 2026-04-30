@@ -37,6 +37,7 @@ const objectSchema = (properties: Record<string, unknown>, required: string[] = 
 const stringSchema = { type: "string" };
 const booleanSchema = { type: "boolean" };
 const numberSchema = { type: "number" };
+const stringArraySchema = { type: "array", items: { type: "string" } };
 const arraySchema = { type: "array", items: { type: "object" } };
 const looseObjectSchema = { type: "object" };
 
@@ -53,7 +54,9 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
         sourceKind: stringSchema,
         audience: stringSchema,
         unitPages: numberSchema,
-        strategy: stringSchema
+        strategy: stringSchema,
+        selectedChapters: stringArraySchema,
+        selectedTopics: stringArraySchema
       },
       ["request"]
     )

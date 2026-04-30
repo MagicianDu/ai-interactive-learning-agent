@@ -18,6 +18,7 @@ Acceptance:
 - Lessons include sourceContext.sourceAnchorIds or page-level source anchors.
 - Overview explains the whole book map, not only one chapter.
 - Topic lessons preserve chapter/source mapping.
+- If the user asks for `chapter_guided`, units should follow chapter or section order instead of forced topic grouping.
 
 ## Paper
 
@@ -71,3 +72,4 @@ For all source types:
 - `publish_learning_course` must return `preview_ready`.
 - If source anchors are missing, the expected result is `revision_required`.
 - User feedback should go through `revise_learning_course`, then a revised `publish_learning_course`.
+- `create_learning_project` accepts `strategy`, `selectedChapters`, and `selectedTopics` so Codex can preserve user-specified organization in the learner brief.

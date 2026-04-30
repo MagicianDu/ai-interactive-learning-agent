@@ -28,6 +28,18 @@ Do not ask learners to approve internal artifacts in this default path.
 
 Every `coursePack.units[]` item that has a lesson must reference a matching `lessonId`.
 
+## Course Organization
+
+Respect the learner brief fields:
+
+- `strategy=overview_plus_topic`: create one overview lesson, then core topic lessons.
+- `strategy=chapter_guided`: preserve chapter or section order; use chapter-style units and `chapterRefs`.
+- `strategy=topic_guided`: rebuild lessons from concept clusters while keeping source mapping.
+- `strategy=task_guided`: organize lessons around learner tasks and practice actions.
+- `strategy=hybrid`: create a global overview, then pedagogical topic units with chapter mapping.
+
+If `selectedChapters` or `selectedTopics` is present, treat it as a user constraint, not a suggestion.
+
 ## Lesson Requirements
 
 Each lesson must be Chinese-first and include:

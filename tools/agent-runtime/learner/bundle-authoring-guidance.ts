@@ -9,6 +9,9 @@ export function buildBundleAuthoringGuidance(brief: LearnerBrief): string {
     "请基于 learner brief 和用户资料生成 coursePack 与 lessons，然后调用 learning_agent.publish_learning_course。",
     `目标学习者：${brief.audience ?? "中文学习者"}`,
     `课程组织：${brief.strategy}，每个单元 ${brief.unitPages} 页，输出语言 ${brief.language}。`,
+    strategyInstruction(brief.strategy),
+    brief.selectedChapters?.length ? `指定章节：${brief.selectedChapters.join("、")}。` : undefined,
+    brief.selectedTopics?.length ? `指定 topics：${brief.selectedTopics.join("、")}。` : undefined,
     "生成要求：",
     "1. 所有 learner-facing 文案必须中文优先；技术术语可以保留英文，但解释必须中文。",
     "2. 每个 lesson 必须包含 learningObjectives、prerequisites、pages、misconceptions、transferTasks、summary。",
@@ -19,5 +22,23 @@ export function buildBundleAuthoringGuidance(brief: LearnerBrief): string {
     `7. ${sourceGroundingRule}`,
     "8. coursePack.units 必须引用已生成 lessonId，并保留 sourceAnchorIds、conceptIds、targetPageCount。",
     "9. 发布前自查：如果缺中文、缺互动、缺反馈、缺迁移、缺来源锚点，不要调用 publish，先修订 bundle。"
-  ].join("\n");
+  ]
+    .filter((line): line is string => typeof line === "string")
+    .join("\n");
+}
+
+function strategyInstruction(strategy: string): string {
+  if (strategy === "chapter_guided") {
+    return "拆课要求：按原书章节或小节推进，coursePack.units.kind 优先使用 chapter；每个 unit 保留 chapterRefs 和 sourceAnchorIds。";
+  }
+  if (strategy === "topic_guided") {
+    return "拆课要求：按概念簇重构学习路径，同时保留每个 topic 对应的章节或来源映射。";
+  }
+  if (strategy === "task_guided") {
+    return "拆课要求：按学习者要完成的任务或实践动作组织单元，每个任务仍需标注来源依据。";
+  }
+  if (strategy === "hybrid") {
+    return "拆课要求：先给总览课，再按教学 topic 组织学习路径，同时保留原书章节映射。";
+  }
+  return "拆课要求：先给总览课，再按核心 topic 拆课，并保留章节或来源映射。";
 }

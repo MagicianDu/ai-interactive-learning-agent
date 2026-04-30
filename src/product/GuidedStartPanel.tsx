@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { productCopy } from "./product-copy";
 
 type SourceKind = "book" | "paper" | "patent" | "blog" | "documentation" | "notes";
-type Strategy = "overview_plus_topic" | "chapter_guided" | "topic_guided" | "hybrid";
+type Strategy = "overview_plus_topic" | "chapter_guided" | "topic_guided" | "task_guided" | "hybrid";
 
 type GuidedStartState = {
   sourcePath: string;
@@ -32,7 +32,16 @@ const strategyLabels: Record<Strategy, string> = {
   overview_plus_topic: "总览课 + 核心 topic",
   chapter_guided: "按章节推进",
   topic_guided: "按 topic 推进",
+  task_guided: "按任务推进",
   hybrid: "章节映射 + topic 学习路径"
+};
+
+const strategyPromptLines: Record<Strategy, string> = {
+  overview_plus_topic: "课程组织方式：strategy=overview_plus_topic，先给一个总览课，再按核心 topic 拆课，保留章节映射。",
+  chapter_guided: "课程组织方式：strategy=chapter_guided，按章节推进，每章或每个关键小节生成学习单元，保留章节映射。",
+  topic_guided: "课程组织方式：strategy=topic_guided，按核心 topic 推进，用概念簇重构学习路径，保留来源映射。",
+  task_guided: "课程组织方式：strategy=task_guided，按学习任务推进，把资料重构成可操作的任务、练习和反馈路径。",
+  hybrid: "课程组织方式：strategy=hybrid，先给一个总览课，再按教学 topic 组织路径，同时保留原始章节映射。"
 };
 
 export function GuidedStartPanel({ preset }: { preset?: GuidedStartPreset }) {
@@ -178,9 +187,10 @@ function OutputBlock({ label, value }: { label: string; value: string }) {
 function buildPrompt(state: GuidedStartState): string {
   return [
     `请用这份资料生成一套中文学习材料：${state.sourcePath}`,
-    `资料类型是 ${sourceKindLabels[state.sourceKind]}。先给一个总览课，再按核心 topic 拆课。`,
+    `资料类型是 ${sourceKindLabels[state.sourceKind]}。${strategyPromptLines[state.strategy]}`,
     `每个单元 ${state.unitPages} 页，面向 ${state.audience}。`,
-    "保留来源映射，关键节点先让我审核。遇到 reviewQueue 时不要自动 approve。"
+    "不要让我审批 source-map、concept-map、curriculum-plan 这些内部 artifacts。",
+    "明确需求后，请直接生成 course bundle，并调用 learning_agent.publish_learning_course 发布网页。"
   ].join("\n");
 }
 

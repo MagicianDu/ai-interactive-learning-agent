@@ -67,6 +67,8 @@ type LearnerProjectFile = {
     audience?: string;
     unitPages?: number;
     strategy?: string;
+    selectedChapters?: string[];
+    selectedTopics?: string[];
     language?: string;
   };
 };
@@ -187,6 +189,8 @@ export class LearningCoursePublisher {
       sourceTitle: brief.topic,
       unitPages: String(brief.unitPages ?? 8),
       strategy: brief.strategy,
+      chapters: brief.selectedChapters?.join(","),
+      topics: brief.selectedTopics?.join(","),
       audience: brief.audience,
       language: brief.language,
       adapter: "mock"

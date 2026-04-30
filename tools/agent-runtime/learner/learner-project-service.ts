@@ -11,6 +11,8 @@ export type CreateLearnerProjectInput = {
   audience?: string;
   unitPages?: number;
   strategy?: string;
+  selectedChapters?: string[];
+  selectedTopics?: string[];
 };
 
 export type LearnerBrief = {
@@ -20,6 +22,8 @@ export type LearnerBrief = {
   audience?: string;
   unitPages: number;
   strategy: string;
+  selectedChapters?: string[];
+  selectedTopics?: string[];
   language: "zh-CN";
 };
 
@@ -33,7 +37,7 @@ export type CreateLearnerProjectResult =
   | {
       status: "project_ready";
       runId: string;
-      brief: Required<LearnerBrief>;
+      brief: LearnerBrief;
       next: {
         recommendedTool: "learning_agent.publish_learning_course";
         codexInstruction: string;
@@ -61,7 +65,7 @@ export class LearnerProjectService {
     return {
       status: "project_ready",
       runId,
-      brief: brief as Required<LearnerBrief>,
+      brief,
       next: {
         recommendedTool: "learning_agent.publish_learning_course",
         codexInstruction: buildBundleAuthoringGuidance(brief)
@@ -84,7 +88,9 @@ function buildBrief(input: CreateLearnerProjectInput): LearnerBrief {
     sourceKind: input.sourceKind ?? inferSourceKind(request),
     audience: input.audience ?? inferAudience(request),
     unitPages: input.unitPages ?? inferPages(request) ?? 8,
-    strategy: input.strategy ?? "overview_plus_topic",
+    strategy: input.strategy ?? inferStrategy(request),
+    selectedChapters: normalizeList(input.selectedChapters) ?? inferSelectedChapters(request),
+    selectedTopics: normalizeList(input.selectedTopics) ?? inferSelectedTopics(request),
     language: "zh-CN"
   };
 }
@@ -150,6 +156,51 @@ function inferPages(request: string): number | undefined {
     return undefined;
   }
   return Number(match.groups.pages);
+}
+
+function inferStrategy(request: string): string {
+  const explicitStrategy = /strategy\s*=\s*(?<strategy>overview_plus_topic|chapter_guided|topic_guided|task_guided|hybrid)/iu.exec(
+    request
+  )?.groups?.strategy;
+  if (explicitStrategy) {
+    return explicitStrategy.toLowerCase();
+  }
+  if (/按章节|章节顺序|chapter/iu.test(request)) {
+    return "chapter_guided";
+  }
+  if (/按任务|实践导向|动手|task/iu.test(request)) {
+    return "task_guided";
+  }
+  if (/章节映射|混合|hybrid/iu.test(request)) {
+    return "hybrid";
+  }
+  if (/按\s*topic|核心\s*topic|按主题|topic/iu.test(request)) {
+    return "overview_plus_topic";
+  }
+  return "overview_plus_topic";
+}
+
+function inferSelectedChapters(request: string): string[] | undefined {
+  const chapters = Array.from(request.matchAll(/第\s*[一二三四五六七八九十百0-9]+\s*[章节]/gu))
+    .map((match) => match[0].replace(/\s+/g, " "))
+    .map((value) => value.trim());
+  return normalizeList(chapters);
+}
+
+function inferSelectedTopics(request: string): string[] | undefined {
+  const match = /(?:topics?|主题|topic)\s*[:：]\s*(?<topics>[^。；;\n]+)/iu.exec(request)?.groups?.topics;
+  if (!match) {
+    return undefined;
+  }
+  return normalizeList(match.split(/[，,、]/u));
+}
+
+function normalizeList(values: string[] | undefined): string[] | undefined {
+  if (!values) {
+    return undefined;
+  }
+  const normalized = values.map((value) => value.trim()).filter((value) => value.length > 0);
+  return normalized.length > 0 ? Array.from(new Set(normalized)) : undefined;
 }
 
 function inferTopic(request: string): string | undefined {

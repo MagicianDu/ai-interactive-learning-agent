@@ -15,7 +15,8 @@ npm run codex:mcp:check
 - source path or URL
 - target learner
 - pages per unit
-- preferred structure: overview + topic, chapter-guided, or task-guided
+- preferred structure: overview + topic, chapter-guided, topic-guided, task-guided, or hybrid
+- optional chapter/topic focus, such as "only chapter 1 and 3" or "planning and tool use"
 
 3. Use this default prompt in Codex:
 
@@ -25,6 +26,16 @@ npm run codex:mcp:check
 我希望先有总览课，再按核心 topic 拆课。每个单元 8 页。
 请先问我最多 3 个你必须知道的问题。明确后，不要让我审批内部 artifacts。
 你可以直接生成 course bundle，然后调用 learning_agent.publish_learning_course 发布网页。
+```
+
+Alternative organization prompts:
+
+```text
+strategy=chapter_guided。按章节推进：每章或每个关键小节生成一个学习单元，每个单元 8 页，保留 chapterRefs 和来源锚点。
+```
+
+```text
+strategy=hybrid。先给总览课，再按教学 topic 组织路径，同时保留原书章节映射。
 ```
 
 ## Expected Tool Flow
