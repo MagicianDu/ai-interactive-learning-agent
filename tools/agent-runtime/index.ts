@@ -11,6 +11,7 @@ export { RunPlanService } from "./natural-language/run-plan-service.js";
 export { LessonPromotionService } from "./promotion/lesson-promotion-service.js";
 export { LearningCoursePublisher } from "./learner/learning-course-publisher.js";
 export { LearningPreviewService } from "./learner/learning-preview-service.js";
+export { LearningRevisionService } from "./learner/learning-revision-service.js";
 export { LearnerProjectService } from "./learner/learner-project-service.js";
 export { QuickPreviewService } from "./learner/quick-preview-service.js";
 export { createRunConfigFromArgs, validateRunConfig } from "./run-config.js";

@@ -1,11 +1,15 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { AgentRuntimeError } from "../errors.js";
 import { validateChineseFirstLesson } from "../quality/chinese-first-validator.js";
 import { validateLessonQuality } from "../quality/lesson-quality-validator.js";
+import { validateSourceGrounding } from "../quality/source-grounding-validator.js";
 import type { QualityIssue } from "../quality/validation-result.js";
 import { isNonEmptyString, isRecord, isStringArray } from "../quality/validation-result.js";
+import { createRunConfigFromArgs } from "../run-config.js";
+import { RunStore } from "../run-store.js";
+import type { RunConfig } from "../types.js";
 
 type LessonLike = Record<string, unknown> & {
   id: string;
@@ -53,6 +57,18 @@ export type PublishLearningCourseInput = {
   lessons: unknown[];
   coursePack: unknown;
   publishNotes?: string;
+};
+
+type LearnerProjectFile = {
+  brief?: {
+    topic?: string;
+    sourcePath?: string;
+    sourceKind?: string;
+    audience?: string;
+    unitPages?: number;
+    strategy?: string;
+    language?: string;
+  };
 };
 
 export type PublishLearningCourseResult =
@@ -105,8 +121,9 @@ export class LearningCoursePublisher {
       throw new AgentRuntimeError("lessons must be a non-empty array", "INVALID_LESSON");
     }
     const coursePack = normalizeCoursePack(input.coursePack, input.runId, new Set(lessons.map((lesson) => lesson.id)));
+    const sourceGroundingConfig = await this.resolveSourceGroundingConfig(input.runId);
 
-    const blockingIssues = collectBlockingIssues(lessons);
+    const blockingIssues = collectBlockingIssues(lessons, sourceGroundingConfig);
     if (blockingIssues.length > 0) {
       return {
         status: "revision_required",
@@ -140,6 +157,40 @@ export class LearningCoursePublisher {
         blockingIssueCount: 0
       }
     };
+  }
+
+  private async resolveSourceGroundingConfig(runId: string): Promise<RunConfig | undefined> {
+    try {
+      return await new RunStore(this.workspaceRoot).readConfig(runId);
+    } catch (error) {
+      if (!isFileNotFound(error)) {
+        throw error;
+      }
+    }
+
+    const learnerProject = await readLearnerProject(this.workspaceRoot, runId);
+    const brief = learnerProject?.brief;
+    if (!brief?.sourcePath || brief.sourceKind === "topic") {
+      return undefined;
+    }
+
+    const sourcePath = brief.sourcePath;
+    const isUrl = /^https?:\/\//u.test(sourcePath);
+    const sourceLooksLikeFolder = !isUrl && !/\.[a-z0-9]{1,8}$/iu.test(sourcePath);
+
+    return createRunConfigFromArgs({
+      run: runId,
+      sourceFile: !isUrl && !sourceLooksLikeFolder ? sourcePath : undefined,
+      sourceFolder: sourceLooksLikeFolder ? sourcePath : undefined,
+      sourceUrl: isUrl ? sourcePath : undefined,
+      sourceKind: brief.sourceKind,
+      sourceTitle: brief.topic,
+      unitPages: String(brief.unitPages ?? 8),
+      strategy: brief.strategy,
+      audience: brief.audience,
+      language: brief.language,
+      adapter: "mock"
+    });
   }
 
   private async writeLesson(lesson: LessonLike): Promise<string> {
@@ -190,12 +241,27 @@ export class LearningCoursePublisher {
   }
 }
 
-function collectBlockingIssues(lessons: LessonLike[]): Array<{ lessonId: string; issue: QualityIssue }> {
+function collectBlockingIssues(lessons: LessonLike[], sourceGroundingConfig: RunConfig | undefined): Array<{ lessonId: string; issue: QualityIssue }> {
   return lessons.flatMap((lesson) =>
-    [...validateLessonQuality(lesson).issues, ...validateChineseFirstLesson(lesson).issues]
+    [
+      ...validateLessonQuality(lesson).issues,
+      ...validateChineseFirstLesson(lesson).issues,
+      ...(sourceGroundingConfig ? validateSourceGrounding(lesson, sourceGroundingConfig).issues : [])
+    ]
       .filter((issue) => issue.severity === "error")
       .map((issue) => ({ lessonId: lesson.id, issue }))
   );
+}
+
+async function readLearnerProject(workspaceRoot: string, runId: string): Promise<LearnerProjectFile | undefined> {
+  try {
+    return JSON.parse(await readFile(path.join(workspaceRoot, "runs", runId, "learner-project.json"), "utf8")) as LearnerProjectFile;
+  } catch (error) {
+    if (isFileNotFound(error)) {
+      return undefined;
+    }
+    throw error;
+  }
 }
 
 function normalizeLesson(value: unknown): LessonLike {
@@ -336,6 +402,10 @@ function assertSafeChildPath(parentPath: string, childSegment: string, label: st
 
 function stringOrUndefined(value: unknown): string | undefined {
   return typeof value === "string" && value.trim().length > 0 ? value : undefined;
+}
+
+function isFileNotFound(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "ENOENT";
 }
 
 function compactObject<T extends Record<string, unknown>>(value: T): Record<string, unknown> {

@@ -84,6 +84,7 @@ learning_agent.create_learning_project
 learning_agent.publish_learning_course
 learning_agent.get_learning_preview
 learning_agent.generate_quick_preview
+learning_agent.revise_learning_course
 ```
 
 The default client flow is:
@@ -94,10 +95,12 @@ Clarify learning request
   -> Codex/Claude generates Chinese coursePack + lessons
   -> publish_learning_course
   -> get_learning_preview
+  -> revise_learning_course when the learner asks for changes
   -> user opens npm run dev
 ```
 
 Do not ask learners to approve `source-map`, `concept-map`, or `curriculum-plan`.
+For source-backed projects, `publish_learning_course` enforces source grounding. Lessons should include `sourceContext.sourceAnchorIds` or page-level source anchors unless a page is explicitly marked as inferred or analogy.
 
 Only when the user explicitly asks for "专家审查模式 / 查看内部 artifacts / 调试生成流程" should the client use `plan_run`, `read_artifact`, `approve_gate`, `run_course`, and other advanced/operator tools.
 

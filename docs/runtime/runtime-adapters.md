@@ -15,6 +15,7 @@ learning_agent.create_learning_project
 learning_agent.publish_learning_course
 learning_agent.get_learning_preview
 learning_agent.generate_quick_preview
+learning_agent.revise_learning_course
 ```
 
 Advanced/operator MCP tool names:
@@ -39,6 +40,8 @@ learning_agent.promote_lesson
 ```
 
 `learning_agent.create_learning_project` and `learning_agent.publish_learning_course` are the default learner-facing entrypoints for Codex/Claude-style operation. Codex or Claude clarifies the request, authors the Chinese course bundle, then asks MCP to validate and publish it.
+
+`learning_agent.revise_learning_course` records learner feedback as a durable revision brief. The model-facing client remains responsible for revising the course bundle and calling `publish_learning_course` again. For source-backed projects, the publish step enforces source grounding with lesson-level or page-level source anchors.
 
 `learning_agent.plan_run` is the advanced/operator natural-language entrypoint. It writes `runs/<run-id>/run.plan.json` from a Chinese request and returns review items. `learning_agent.init_from_plan` initializes the run after the operator approves the plan. Structured `init_run` remains available for scripts and tests.
 

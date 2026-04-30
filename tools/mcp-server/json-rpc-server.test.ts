@@ -124,6 +124,26 @@ describe("MCP JSON-RPC server", () => {
     });
   });
 
+  test("records learner feedback through MCP for course revision", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-learner-mcp-"));
+    const tools = new LearningAgentRuntimeTools(root);
+
+    const result = await callMcpTool(tools, "learning_agent.revise_learning_course", {
+      runId: "learner-hash",
+      feedback: "太抽象了，请加代码例子，并把第一个练习拆简单。",
+      focus: "examples"
+    });
+
+    expect(result).toMatchObject({
+      status: "revision_brief_ready",
+      runId: "learner-hash",
+      next: { recommendedTool: "learning_agent.publish_learning_course" }
+    });
+    await expect(readFile(path.join(root, "runs", "learner-hash", "learning-revisions", "revision-001.json"), "utf8")).resolves.toContain(
+      "太抽象了"
+    );
+  });
+
   test("calls natural-language plan and initialization tools through MCP tools/call", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-rpc-"));
     const tools = new LearningAgentRuntimeTools(root);

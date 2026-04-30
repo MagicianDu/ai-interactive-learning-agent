@@ -3,6 +3,7 @@ export type LearningAgentToolName =
   | "learning_agent.publish_learning_course"
   | "learning_agent.get_learning_preview"
   | "learning_agent.generate_quick_preview"
+  | "learning_agent.revise_learning_course"
   | "learning_agent.init_run"
   | "learning_agent.plan_run"
   | "learning_agent.init_from_plan"
@@ -77,6 +78,12 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
     description:
       "Learner-facing tool. Generate a deterministic local quick preview without asking learners to approve internal artifacts.",
     inputSchema: objectSchema({ runId: stringSchema, maxSteps: numberSchema }, ["runId"])
+  },
+  {
+    name: "learning_agent.revise_learning_course",
+    description:
+      "Learner-facing tool. Record learner feedback as a revision brief so Codex can revise and republish the course bundle.",
+    inputSchema: objectSchema({ runId: stringSchema, feedback: stringSchema, focus: stringSchema }, ["runId", "feedback"])
   },
   {
     name: "learning_agent.init_run",

@@ -5,6 +5,7 @@ import path from "node:path";
 import { describe, expect, test } from "vitest";
 
 import { publishableLessonFixture } from "../quality/test-fixtures.js";
+import { LearnerProjectService } from "./learner-project-service.js";
 import { LearningCoursePublisher } from "./learning-course-publisher.js";
 
 describe("LearningCoursePublisher", () => {
@@ -78,6 +79,47 @@ describe("LearningCoursePublisher", () => {
     expect(result.issues.some((issue) => issue.rule === "chinese-first")).toBe(true);
   });
 
+  test("requires source grounding when publishing a source-backed learner project", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-course-publisher-"));
+    const sourcePath = path.join(root, "source.pdf");
+    const publisher = new LearningCoursePublisher(root);
+    await new LearnerProjectService(root).createProject({
+      request: `请用 ${sourcePath} 这本书生成中文学习材料，面向有编程基础的学习者，每个单元 8 页。`,
+      runId: "source-course"
+    });
+
+    const ungrounded = await publisher.publish({
+      runId: "source-course",
+      lessons: [publishableLessonFixture({ id: "source-lesson", title: "资料总览课", targetPageCount: 8 })],
+      coursePack: coursePackFixture("source-course", "source-lesson")
+    });
+
+    expect(ungrounded).toMatchObject({ status: "revision_required", runId: "source-course" });
+    if (ungrounded.status !== "revision_required") {
+      throw new Error("expected revision_required");
+    }
+    expect(ungrounded.issues.some((issue) => issue.rule === "source-grounding")).toBe(true);
+
+    const groundedLesson = {
+      ...publishableLessonFixture({ id: "source-lesson", title: "资料总览课", targetPageCount: 8 }),
+      sourceContext: {
+        sourceAnchorIds: ["source-001:page-1"],
+        sourcePath
+      }
+    };
+
+    const grounded = await publisher.publish({
+      runId: "source-course",
+      lessons: [groundedLesson],
+      coursePack: coursePackFixture("source-course", "source-lesson", ["source-001:page-1"])
+    });
+
+    expect(grounded).toMatchObject({
+      status: "preview_ready",
+      coursePackId: "source-course"
+    });
+  });
+
   test("rejects unsafe lesson and course pack ids before writing files", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "learning-course-publisher-"));
     const publisher = new LearningCoursePublisher(root);
@@ -92,7 +134,7 @@ describe("LearningCoursePublisher", () => {
   });
 });
 
-function coursePackFixture(coursePackId: string, lessonId: string): Record<string, unknown> {
+function coursePackFixture(coursePackId: string, lessonId: string, sourceAnchorIds: string[] = []): Record<string, unknown> {
   return {
     id: coursePackId,
     title: "哈希表：课程包",
@@ -106,6 +148,7 @@ function coursePackFixture(coursePackId: string, lessonId: string): Record<strin
         kind: "overview",
         lessonId,
         targetPageCount: 8,
+        sourceAnchorIds,
         conceptIds: ["hash-table"]
       }
     ]

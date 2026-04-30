@@ -51,6 +51,13 @@
 如果 quick preview 被质量门禁阻断，请告诉我阻塞原因，并建议切换到 Codex-authored publish_learning_course 路径。
 ```
 
+## Learner Feedback -> revise_learning_course
+
+```text
+我已经看了网页，整体太难了。请保留中文解释和来源依据，把第一个单元拆得更慢一点，多加一个代码例子和一个生活化类比。
+请调用 learning_agent.revise_learning_course 记录我的反馈，然后根据 revision brief 修订 course bundle，再调用 learning_agent.publish_learning_course 发布新版网页。
+```
+
 ## Expert Review Mode -> Advanced Tools
 
 ```text

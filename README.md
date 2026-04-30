@@ -128,6 +128,7 @@ Default learner-facing tools:
 - `learning_agent.publish_learning_course`
 - `learning_agent.get_learning_preview`
 - `learning_agent.generate_quick_preview`
+- `learning_agent.revise_learning_course`
 
 Advanced/operator tools include:
 
@@ -172,6 +173,10 @@ printf '%s\n' \
 ```
 
 Quick local preview can use `learning_agent.generate_quick_preview` after `learning_agent.create_learning_project`. It is deterministic smoke for seeing the product shape; final content should normally use Codex-authored `publish_learning_course`.
+
+Learner feedback should use `learning_agent.revise_learning_course`. Codex records the feedback as a revision brief, revises the Chinese `coursePack` and `lessons`, preserves source anchors for source-backed projects, and calls `learning_agent.publish_learning_course` again.
+
+For book, paper, patent, blog, documentation, or notes-backed projects, direct publish now checks source grounding. Lessons must include `sourceContext.sourceAnchorIds` or page-level source anchors unless a page is explicitly marked as inferred or analogy.
 
 Only when the user explicitly asks for "专家审查模式 / 查看内部 artifacts / 调试生成流程" should Codex use advanced/operator tools such as `plan_run`, `read_artifact`, `approve_gate`, and `run_course`.
 

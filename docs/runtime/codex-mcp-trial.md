@@ -48,6 +48,7 @@ Codex 应该优先调用：
 learning_agent.create_learning_project
 learning_agent.publish_learning_course
 learning_agent.get_learning_preview
+learning_agent.revise_learning_course
 ```
 
 如果只是想先看低保真本地样例，Codex 可以调用：
@@ -73,7 +74,17 @@ http://127.0.0.1:5173/
 
 打开页面后，在课程包列表中选择新生成的课程包。如果页面仍显示旧内容，刷新浏览器或重启 Vite dev server。
 
-## 6. 当前 Beta 边界
+## 6. 反馈迭代
+
+用户看到网页后，可以直接用自然语言反馈，例如：
+
+```text
+太难了，请减少术语，多给生活化例子。
+```
+
+Codex 应调用 `learning_agent.revise_learning_course` 记录反馈，读取返回的 revision brief，然后修订 `coursePack` 和 `lessons`，再次调用 `learning_agent.publish_learning_course`。如果原项目来自书籍、论文、专利或博客，修订后的 lesson 必须保留 `sourceContext.sourceAnchorIds` 或页级来源锚点，否则发布会返回 `revision_required`。
+
+## 7. 当前 Beta 边界
 
 - MCP 服务是本地 stdio 服务，不是网络服务。
 - Codex-authored 默认路径由 Codex 理解资料并生成最终 `coursePack` 和 `lessons`，MCP 负责保存、校验、发布。

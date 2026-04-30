@@ -9,7 +9,7 @@ import { MockRuntimeAdapter } from "../adapters/mock-adapter.js";
 import { RunPlanService } from "../natural-language/run-plan-service.js";
 import { RunStore } from "../run-store.js";
 import type { ApprovalGateId } from "../types.js";
-import { AgentWorkflow, type AgentWorkflowResult } from "../workflow/agent-workflow.js";
+import { AgentWorkflow } from "../workflow/agent-workflow.js";
 
 export type GenerateQuickPreviewInput = {
   runId: string;

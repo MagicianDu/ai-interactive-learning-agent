@@ -12,6 +12,7 @@ import {
   LessonPromotionService,
   LearningCoursePublisher,
   LearningPreviewService,
+  LearningRevisionService,
   LearnerProjectService,
   ManualSubmissionService,
   MockRuntimeAdapter,
@@ -54,6 +55,8 @@ export class LearningAgentRuntimeTools {
         return this.getLearningPreview(input);
       case "learning_agent.generate_quick_preview":
         return this.generateQuickPreview(input);
+      case "learning_agent.revise_learning_course":
+        return this.reviseLearningCourse(input);
       case "learning_agent.init_run":
         return this.initRun(input);
       case "learning_agent.plan_run":
@@ -121,6 +124,15 @@ export class LearningAgentRuntimeTools {
     return new QuickPreviewService(this.workspaceRoot).generate({
       runId: requiredString(options, "runId"),
       maxSteps: optionalNumber(options.maxSteps) ?? 80
+    });
+  }
+
+  private async reviseLearningCourse(input: unknown): Promise<unknown> {
+    const options = expectRecord(input);
+    return new LearningRevisionService(this.workspaceRoot).requestRevision({
+      runId: requiredString(options, "runId"),
+      feedback: requiredString(options, "feedback"),
+      focus: optionalString(options.focus)
     });
   }
 
@@ -376,6 +388,7 @@ function isLearningAgentToolName(name: string): name is LearningAgentToolName {
     "learning_agent.publish_learning_course",
     "learning_agent.get_learning_preview",
     "learning_agent.generate_quick_preview",
+    "learning_agent.revise_learning_course",
     "learning_agent.init_run",
     "learning_agent.plan_run",
     "learning_agent.init_from_plan",

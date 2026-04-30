@@ -59,6 +59,7 @@ async function checkMcpToolList() {
   const requiredTools = [
     "learning_agent.create_learning_project",
     "learning_agent.publish_learning_course",
+    "learning_agent.revise_learning_course",
     "learning_agent.plan_run",
     "learning_agent.beta_status"
   ];
