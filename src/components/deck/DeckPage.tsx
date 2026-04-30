@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { HelpCircle, Target } from "lucide-react";
+import { BookOpen, HelpCircle, Target } from "lucide-react";
 
 import type { LessonPage } from "../../schemas/lesson.schema";
 
@@ -25,6 +25,7 @@ const pageTypeLabels: Record<LessonPage["type"], string> = {
 
 export function DeckPage({ page, pageNumber, totalPages, children }: DeckPageProps) {
   const pageType = pageTypeLabels[page.type];
+  const sourceAnchorIds = page.sourceAnchorIds ?? [];
 
   return (
     <article className="mx-auto max-w-[1500px] overflow-hidden rounded-lg border border-line bg-white shadow-lesson">
@@ -58,6 +59,30 @@ export function DeckPage({ page, pageNumber, totalPages, children }: DeckPagePro
       </div>
 
       {children ? <div className="px-5 pb-5 sm:px-7">{children}</div> : null}
+
+      {sourceAnchorIds.length > 0 ? (
+        <section className="mx-5 mb-5 rounded-lg border border-emerald-200 bg-emerald-50/70 px-5 py-4 sm:mx-7">
+          <div className="flex items-center gap-3">
+            <BookOpen aria-hidden="true" className="size-6 shrink-0 text-emerald-700" />
+            <p className="text-base font-bold text-emerald-900">来源依据</p>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {sourceAnchorIds.slice(0, 6).map((anchorId) => (
+              <span
+                className="rounded-md border border-emerald-200 bg-white px-2.5 py-1 text-xs font-semibold text-emerald-800"
+                key={anchorId}
+              >
+                {anchorId}
+              </span>
+            ))}
+            {sourceAnchorIds.length > 6 ? (
+              <span className="rounded-md border border-emerald-200 bg-white px-2.5 py-1 text-xs font-semibold text-emerald-800">
+                +{sourceAnchorIds.length - 6}
+              </span>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
 
       <footer className="mx-5 mb-5 flex items-center gap-4 rounded-lg border border-blue-200 bg-blue-50/70 px-5 py-4 sm:mx-7">
         <Target aria-hidden="true" className="size-9 shrink-0 text-accent" />

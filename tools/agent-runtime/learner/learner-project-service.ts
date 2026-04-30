@@ -1,6 +1,8 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { buildBundleAuthoringGuidance } from "./bundle-authoring-guidance.js";
+
 export type CreateLearnerProjectInput = {
   request: string;
   runId?: string;
@@ -62,7 +64,7 @@ export class LearnerProjectService {
       brief: brief as Required<LearnerBrief>,
       next: {
         recommendedTool: "learning_agent.publish_learning_course",
-        codexInstruction: "请基于 learner brief 和用户资料生成 coursePack 与 lessons，然后调用 learning_agent.publish_learning_course。"
+        codexInstruction: buildBundleAuthoringGuidance(brief)
       }
     };
   }

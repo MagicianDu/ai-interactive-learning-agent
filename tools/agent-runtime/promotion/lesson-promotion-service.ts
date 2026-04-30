@@ -17,6 +17,14 @@ type LessonLike = {
     minPageCount?: number;
     maxPageCount?: number;
   };
+  sourceContext?: {
+    sourcePath?: string;
+    sourceKind?: string;
+    sourceAnchorIds: string[];
+    unitId?: string;
+    chapterRefs?: string[];
+    conceptIds?: string[];
+  };
   prerequisites: string[];
   learningObjectives: string[];
   pages: LessonPageLike[];
@@ -31,6 +39,11 @@ type LessonPageLike = {
   title: string;
   learningGoal: string;
   narrative: string;
+  sourceAnchorIds?: string[];
+  grounding?: {
+    kind: "source" | "inferred" | "analogy";
+    note?: string;
+  };
   visualSpec?: unknown;
   interactionSpec?: unknown;
   assessmentSpec?: unknown;
@@ -87,6 +100,7 @@ const ASSESSMENT_KINDS = new Set([
   "short_answer",
   "transfer"
 ]);
+const GROUNDING_KINDS = new Set(["source", "inferred", "analogy"]);
 
 export class LessonPromotionService {
   private readonly workspaceRoot: string;
@@ -172,6 +186,9 @@ function validateLesson(lesson: unknown): asserts lesson is LessonLike {
   if (!isStringArray(lesson.learningObjectives) || lesson.learningObjectives.length === 0) {
     throw new AgentRuntimeError("approved lesson learningObjectives must include at least one string", "INVALID_LESSON");
   }
+  if (lesson.sourceContext !== undefined) {
+    validateSourceContext(lesson.sourceContext);
+  }
   if (!Array.isArray(lesson.pages) || lesson.pages.length !== targetPageCount) {
     throw new AgentRuntimeError("approved lesson pages length must match targetPageCount", "INVALID_LESSON");
   }
@@ -222,6 +239,48 @@ function validatePage(page: unknown): asserts page is LessonPageLike {
   }
   if (page.code !== undefined) {
     validateCode(page.code);
+  }
+  if (page.sourceAnchorIds !== undefined && !isStringArray(page.sourceAnchorIds)) {
+    throw new AgentRuntimeError("approved lesson page sourceAnchorIds must be strings", "INVALID_LESSON");
+  }
+  if (page.grounding !== undefined) {
+    validateGrounding(page.grounding);
+  }
+}
+
+function validateSourceContext(sourceContext: unknown): asserts sourceContext is NonNullable<LessonLike["sourceContext"]> {
+  if (!isRecord(sourceContext)) {
+    throw new AgentRuntimeError("approved lesson sourceContext must be an object", "INVALID_LESSON");
+  }
+  if (!isStringArray(sourceContext.sourceAnchorIds)) {
+    throw new AgentRuntimeError("approved lesson sourceContext.sourceAnchorIds must be strings", "INVALID_LESSON");
+  }
+  if (sourceContext.sourcePath !== undefined && !isString(sourceContext.sourcePath)) {
+    throw new AgentRuntimeError("approved lesson sourceContext.sourcePath must be a string", "INVALID_LESSON");
+  }
+  if (sourceContext.sourceKind !== undefined && !isString(sourceContext.sourceKind)) {
+    throw new AgentRuntimeError("approved lesson sourceContext.sourceKind must be a string", "INVALID_LESSON");
+  }
+  if (sourceContext.unitId !== undefined && !isString(sourceContext.unitId)) {
+    throw new AgentRuntimeError("approved lesson sourceContext.unitId must be a string", "INVALID_LESSON");
+  }
+  if (sourceContext.chapterRefs !== undefined && !isStringArray(sourceContext.chapterRefs)) {
+    throw new AgentRuntimeError("approved lesson sourceContext.chapterRefs must be strings", "INVALID_LESSON");
+  }
+  if (sourceContext.conceptIds !== undefined && !isStringArray(sourceContext.conceptIds)) {
+    throw new AgentRuntimeError("approved lesson sourceContext.conceptIds must be strings", "INVALID_LESSON");
+  }
+}
+
+function validateGrounding(grounding: unknown): asserts grounding is NonNullable<LessonPageLike["grounding"]> {
+  if (!isRecord(grounding)) {
+    throw new AgentRuntimeError("approved lesson page grounding must be an object", "INVALID_LESSON");
+  }
+  if (!isString(grounding.kind) || !GROUNDING_KINDS.has(grounding.kind)) {
+    throw new AgentRuntimeError("approved lesson page grounding has invalid kind", "INVALID_LESSON");
+  }
+  if (grounding.note !== undefined && !isString(grounding.note)) {
+    throw new AgentRuntimeError("approved lesson page grounding note must be a string", "INVALID_LESSON");
   }
 }
 
@@ -381,6 +440,7 @@ function toSchemaLesson(lesson: LessonLike): Record<string, unknown> {
       minPageCount: lesson.config.minPageCount,
       maxPageCount: lesson.config.maxPageCount
     }),
+    sourceContext: lesson.sourceContext === undefined ? undefined : toSchemaSourceContext(lesson.sourceContext),
     prerequisites: lesson.prerequisites,
     learningObjectives: lesson.learningObjectives,
     pages: lesson.pages.map(toSchemaPage),
@@ -411,11 +471,31 @@ function toSchemaPage(page: LessonPageLike): Record<string, unknown> {
     title: page.title,
     learningGoal: page.learningGoal,
     narrative: page.narrative,
+    sourceAnchorIds: page.sourceAnchorIds,
+    grounding: page.grounding === undefined ? undefined : toSchemaGrounding(page.grounding),
     visualSpec: page.visualSpec === undefined ? undefined : toSchemaVisualSpec(page.visualSpec),
     interactionSpec: page.interactionSpec === undefined ? undefined : toSchemaInteractionSpec(page.interactionSpec),
     assessmentSpec: page.assessmentSpec === undefined ? undefined : toSchemaAssessmentSpec(page.assessmentSpec),
     feedbackSpec: page.feedbackSpec === undefined ? undefined : toSchemaFeedbackSpec(page.feedbackSpec),
     code: page.code === undefined ? undefined : toSchemaCode(page.code)
+  });
+}
+
+function toSchemaSourceContext(sourceContext: NonNullable<LessonLike["sourceContext"]>): Record<string, unknown> {
+  return compactObject({
+    sourcePath: sourceContext.sourcePath,
+    sourceKind: sourceContext.sourceKind,
+    sourceAnchorIds: sourceContext.sourceAnchorIds,
+    unitId: sourceContext.unitId,
+    chapterRefs: sourceContext.chapterRefs,
+    conceptIds: sourceContext.conceptIds
+  });
+}
+
+function toSchemaGrounding(grounding: NonNullable<LessonPageLike["grounding"]>): Record<string, unknown> {
+  return compactObject({
+    kind: grounding.kind,
+    note: grounding.note
   });
 }
 

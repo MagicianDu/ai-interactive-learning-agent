@@ -41,6 +41,39 @@ describe("LessonPromotionService", () => {
     await expect(readFile(result.lessonPath, "utf8")).resolves.toContain("targetPageCount: 8");
   });
 
+  test("preserves source grounding metadata in promoted lessons", async () => {
+    const root = await createTempRoot();
+    const runStore = new RunStore(root);
+    const config = createRunConfigFromArgs({
+      sourceText: "第 1 页：哈希表通过哈希函数把 key 映射到 bucket。",
+      sourceKind: "book",
+      sourceTitle: "哈希表资料",
+      pages: "8",
+      run: "hash-source-001"
+    });
+    const runPath = await runStore.createRun(config);
+    const artifacts = new ArtifactStore(runPath);
+    const lesson = buildLesson({ targetPageCount: 8, withSourceGrounding: true });
+    await artifacts.writeDraft("lesson", lesson);
+    const approvals = new ApprovalService(runPath, artifacts);
+    await approvals.approve({
+      gate: "lesson",
+      runId: config.runId,
+      artifactId: "lesson",
+      version: "v1",
+      decision: "approved"
+    });
+
+    const service = new LessonPromotionService(root);
+    const result = await service.promote(config.runId);
+    const source = await readFile(result.lessonPath, "utf8");
+
+    expect(source).toContain("sourceContext");
+    expect(source).toContain("source-001:page-1");
+    expect(source).toContain("sourceAnchorIds");
+    expect(source).toContain("grounding");
+  });
+
   test("rejects approved lessons that fail product quality gates", async () => {
     const root = await createTempRoot();
     const runStore = new RunStore(root);
@@ -190,12 +223,14 @@ function buildLesson({
   id = "hash-table",
   targetPageCount,
   actualPageCount = targetPageCount,
-  qualityComplete = true
+  qualityComplete = true,
+  withSourceGrounding = false
 }: {
   id?: string;
   targetPageCount: number;
   actualPageCount?: number;
   qualityComplete?: boolean;
+  withSourceGrounding?: boolean;
 }): Record<string, unknown> {
   if (!qualityComplete) {
     return {
@@ -233,7 +268,7 @@ function buildLesson({
     "summary_card"
   ];
 
-  return {
+  const lesson = {
     id,
     title: "哈希表为什么快",
     audience: "中文学习者",
@@ -251,6 +286,27 @@ function buildLesson({
     transferTasks: [{ id: "t1", prompt: "迁移到缓存 key 设计", targetMentalModel: "用搜索空间缩小理解加速。" }],
     summary: ["哈希表用 key 定位 bucket。"]
   };
+
+  if (withSourceGrounding) {
+    return {
+      ...lesson,
+      sourceContext: {
+        sourcePath: "/tmp/hash-table.pdf",
+        sourceKind: "book",
+        sourceAnchorIds: ["source-001:page-1"],
+        unitId: "overview",
+        chapterRefs: ["第 1 章"],
+        conceptIds: ["hash-function", "bucket"]
+      },
+      pages: lesson.pages.map((page, index) => ({
+        ...page,
+        sourceAnchorIds: ["source-001:page-1"],
+        grounding: index === 1 ? { kind: "analogy", note: "用目录类比 bucket 定位。" } : { kind: "source" }
+      }))
+    };
+  }
+
+  return lesson;
 }
 
 function buildQualityPage(id: string, type: string): Record<string, unknown> {

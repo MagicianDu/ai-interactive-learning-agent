@@ -13,6 +13,8 @@
 发布后告诉我运行 npm run dev，并说明我应该打开哪个页面查看。
 ```
 
+See `docs/runtime/source-type-acceptance.md` for the expected source anchors, unit structure, and pass/fail checks for book, paper, patent, and blog trials.
+
 ## Paper -> Learner-First Publish
 
 ```text

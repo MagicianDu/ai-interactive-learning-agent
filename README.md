@@ -191,6 +191,8 @@ The advanced/operator interaction pattern is:
 7. Codex calls `learning_agent.promote_units` only after approved child lessons and critic reports.
 
 Client setup examples live in `docs/runtime/mcp-client-setup.md`.
+Seed user quickstart lives in `docs/runtime/seed-user-quickstart.md`.
+Source-type acceptance checks live in `docs/runtime/source-type-acceptance.md`.
 The beta-level operator loop is documented in `docs/runtime/beta-operator-loop.md`.
 
 To use an operator session (Codex, Claude, or future OpenClaw) as the content generator, initialize with one of:

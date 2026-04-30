@@ -1,4 +1,4 @@
-import { mkdir, readdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { AgentRuntimeError } from "../errors.js";
@@ -40,9 +40,11 @@ export class LearningRevisionService {
 
     const revisionsDir = path.join(this.workspaceRoot, "runs", input.runId, "learning-revisions");
     await mkdir(revisionsDir, { recursive: true });
+    const previousFeedbackCount = await countExistingRevisionBriefs(revisionsDir);
     const revisionId = await nextRevisionId(revisionsDir);
     const previewResult = await new LearningPreviewService(this.workspaceRoot).getPreview(input.runId);
     const currentPreview = previewResult.status === "preview_ready" ? previewResult.preview : undefined;
+    const publishManifest = await readPublishManifest(this.workspaceRoot, input.runId);
     const revisionBrief = {
       schemaVersion: 1,
       runId: input.runId,
@@ -50,9 +52,12 @@ export class LearningRevisionService {
       feedback,
       focus: input.focus,
       currentPreview,
+      currentCoursePackPath: publishManifest?.coursePackPath,
+      currentLessonPaths: publishManifest?.lessonPaths ?? [],
+      previousFeedbackCount,
       createdAt: new Date().toISOString(),
       instruction:
-        "Codex should revise the existing Chinese course bundle according to this learner feedback, preserve source grounding, and call learning_agent.publish_learning_course again."
+        "Codex should read the current published lesson files, revise only the parts affected by learner feedback, preserve source grounding, and call learning_agent.publish_learning_course again."
     };
     const revisionBriefPath = path.join(revisionsDir, `${revisionId}.json`);
     await writeFile(revisionBriefPath, `${JSON.stringify(revisionBrief, null, 2)}\n`, "utf8");
@@ -75,18 +80,54 @@ export class LearningRevisionService {
 }
 
 async function nextRevisionId(revisionsDir: string): Promise<string> {
+  const latest = await latestRevisionIndex(revisionsDir);
+  return `revision-${String((latest ?? 0) + 1).padStart(3, "0")}`;
+}
+
+async function countExistingRevisionBriefs(revisionsDir: string): Promise<number> {
+  const entries = await readRevisionEntries(revisionsDir);
+  return entries.length;
+}
+
+async function latestRevisionIndex(revisionsDir: string): Promise<number | undefined> {
+  const entries = await readRevisionEntries(revisionsDir);
+  return entries
+    .map((entry) => Number(/^revision-(?<index>[0-9]{3})\.json$/u.exec(entry)?.groups?.index ?? 0))
+    .filter((index) => index > 0)
+    .sort((left, right) => right - left)[0];
+}
+
+async function readRevisionEntries(revisionsDir: string): Promise<string[]> {
   const entries = await readdir(revisionsDir).catch((error: unknown) => {
     if (isFileNotFound(error)) {
       return [];
     }
     throw error;
   });
-  const latest = entries
-    .map((entry) => /^revision-(?<index>[0-9]{3})\.json$/u.exec(entry)?.groups?.index)
-    .filter((index): index is string => index !== undefined)
-    .map(Number)
-    .sort((left, right) => right - left)[0];
-  return `revision-${String((latest ?? 0) + 1).padStart(3, "0")}`;
+  return entries.filter((entry) => /^revision-[0-9]{3}\.json$/u.test(entry));
+}
+
+async function readPublishManifest(
+  workspaceRoot: string,
+  runId: string
+): Promise<{ coursePackPath?: string; lessonPaths?: string[] } | undefined> {
+  try {
+    const manifest = JSON.parse(await readFile(path.join(workspaceRoot, "runs", runId, "learning-preview.json"), "utf8")) as unknown;
+    if (!isRecord(manifest)) {
+      return undefined;
+    }
+    return {
+      coursePackPath: typeof manifest.coursePackPath === "string" ? manifest.coursePackPath : undefined,
+      lessonPaths: Array.isArray(manifest.lessonPaths) && manifest.lessonPaths.every((item) => typeof item === "string")
+        ? manifest.lessonPaths
+        : undefined
+    };
+  } catch (error) {
+    if (isFileNotFound(error)) {
+      return undefined;
+    }
+    throw error;
+  }
 }
 
 function assertSafeRunId(runId: string): void {
@@ -97,4 +138,8 @@ function assertSafeRunId(runId: string): void {
 
 function isFileNotFound(error: unknown): boolean {
   return typeof error === "object" && error !== null && "code" in error && error.code === "ENOENT";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

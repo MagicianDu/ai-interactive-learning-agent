@@ -4,6 +4,8 @@ import path from "node:path";
 
 import { describe, expect, test } from "vitest";
 
+import { publishableLessonFixture } from "../quality/test-fixtures.js";
+import { LearningCoursePublisher } from "./learning-course-publisher.js";
 import { LearningRevisionService } from "./learning-revision-service.js";
 
 describe("LearningRevisionService", () => {
@@ -26,5 +28,36 @@ describe("LearningRevisionService", () => {
       }
     });
     await expect(readFile(result.revisionBriefPath, "utf8")).resolves.toContain("整体太难了");
+  });
+
+  test("includes current published paths and previous feedback count", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-revision-"));
+    await new LearningCoursePublisher(root).publish({
+      runId: "feedback-course",
+      lessons: [publishableLessonFixture({ id: "feedback-lesson", title: "哈希表：总览课", targetPageCount: 8 })],
+      coursePack: {
+        id: "feedback-course",
+        title: "哈希表：课程包",
+        parentRunId: "feedback-course",
+        units: [
+          {
+            unitId: "unit-overview",
+            title: "哈希表：总览课",
+            kind: "overview",
+            lessonId: "feedback-lesson",
+            targetPageCount: 8
+          }
+        ]
+      }
+    });
+    const service = new LearningRevisionService(root);
+
+    await service.requestRevision({ runId: "feedback-course", feedback: "先加一个例子。" });
+    const second = await service.requestRevision({ runId: "feedback-course", feedback: "再降低难度。" });
+    const revisionBrief = JSON.parse(await readFile(second.revisionBriefPath, "utf8")) as Record<string, unknown>;
+
+    expect(revisionBrief.previousFeedbackCount).toBe(1);
+    expect(revisionBrief.currentCoursePackPath).toContain("coursePack.ts");
+    expect(revisionBrief.currentLessonPaths).toEqual([expect.stringContaining("lesson.ts")]);
   });
 });

@@ -97,6 +97,11 @@ export type LessonPage = {
   title: string;
   learningGoal: string;
   narrative: string;
+  sourceAnchorIds?: string[];
+  grounding?: {
+    kind: "source" | "inferred" | "analogy";
+    note?: string;
+  };
   visualSpec?: VisualSpec;
   interactionSpec?: InteractionSpec;
   assessmentSpec?: AssessmentSpec;
@@ -124,6 +129,14 @@ export type Lesson = {
   title: string;
   audience: string;
   config: LessonConfig;
+  sourceContext?: {
+    sourcePath?: string;
+    sourceKind?: string;
+    sourceAnchorIds: string[];
+    unitId?: string;
+    chapterRefs?: string[];
+    conceptIds?: string[];
+  };
   prerequisites: string[];
   learningObjectives: string[];
   pages: LessonPage[];
