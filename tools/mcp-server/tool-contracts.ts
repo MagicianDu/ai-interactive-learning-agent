@@ -1,5 +1,6 @@
 export type LearningAgentToolName =
   | "learning_agent.create_learning_project"
+  | "learning_agent.generate_grounded_course"
   | "learning_agent.publish_learning_course"
   | "learning_agent.get_learning_preview"
   | "learning_agent.generate_quick_preview"
@@ -60,6 +61,12 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
       },
       ["request"]
     )
+  },
+  {
+    name: "learning_agent.generate_grounded_course",
+    description:
+      "Learner-facing tool. Generate and publish a source-grounded Chinese course directly from a learner project, using normalized source anchors and latest learner feedback.",
+    inputSchema: objectSchema({ runId: stringSchema, maxAnchorsPerLesson: numberSchema }, ["runId"])
   },
   {
     name: "learning_agent.publish_learning_course",

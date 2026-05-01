@@ -30,7 +30,7 @@ describe("real source regression suite", () => {
     }
   });
 
-  test("creates learner projects for regression samples without publishing private content", async () => {
+  test("creates learner projects and can optionally publish grounded course previews without private content", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "learning-agent-real-source-regression-"));
     const localBook = path.join(root, "book.pdf");
     const localPaper = path.join(root, "paper.pdf");
@@ -38,6 +38,7 @@ describe("real source regression suite", () => {
     await writeFile(localPaper, "fake paper source", "utf8");
 
     const result = await runRealSourceRegressionSuite(root, {
+      generateGroundedCourse: true,
       samples: [
         {
           id: "book-smoke",
@@ -69,20 +70,22 @@ describe("real source regression suite", () => {
           sourceKind: "blog",
           sourcePath: "https://example.com/blog",
           sourceType: "url",
-          strategy: "task_guided",
-          unitPages: 8,
-          audience: "中文学习者",
-          acceptanceChecks: ["project ready", "url retained", "task strategy"]
+            strategy: "task_guided",
+            unitPages: 8,
+            audience: "中文学习者",
+            acceptanceChecks: ["project ready", "url retained", "task strategy"]
         }
       ]
     });
 
-    expect(result.summary).toEqual({ total: 3, ready: 3, missingLocalSources: 0 });
+    expect(result.summary).toEqual({ total: 3, ready: 3, groundedReady: 3, missingLocalSources: 0 });
     expect(result.samples).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           id: "book-smoke",
           status: "project_ready",
+          groundedCourseStatus: "preview_ready",
+          sourceAnchorCount: expect.any(Number),
           strategy: "chapter_guided",
           selectedChapters: ["第 1 章"],
           sourceAvailable: true
@@ -90,6 +93,8 @@ describe("real source regression suite", () => {
         expect.objectContaining({
           id: "paper-smoke",
           status: "project_ready",
+          groundedCourseStatus: "preview_ready",
+          sourceAnchorCount: expect.any(Number),
           strategy: "topic_guided",
           selectedTopics: ["method"],
           sourceAvailable: true
@@ -97,11 +102,16 @@ describe("real source regression suite", () => {
         expect.objectContaining({
           id: "blog-smoke",
           status: "project_ready",
+          groundedCourseStatus: "preview_ready",
+          sourceAnchorCount: expect.any(Number),
           strategy: "task_guided",
           sourceAvailable: true
         })
       ])
     );
+    for (const sample of result.samples) {
+      expect(sample.sourceAnchorCount).toBeGreaterThan(0);
+    }
     await expect(readFile(path.join(root, "runs", "regression-book-smoke", "learner-project.json"), "utf8")).resolves.toContain("chapter_guided");
   });
 });

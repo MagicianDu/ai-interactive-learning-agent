@@ -128,6 +128,7 @@ Result summary from the latest local run:
   "summary": {
     "total": 4,
     "ready": 4,
+    "groundedReady": 4,
     "missingLocalSources": 0
   }
 }
@@ -135,8 +136,10 @@ Result summary from the latest local run:
 
 Acceptance notes:
 
-- The regression writes only learner-project briefs in a temporary workspace.
+- The regression writes learner-project briefs, `source-ingest` artifacts, grounded lessons, course packs, critic reports, and preview manifests in a temporary workspace.
 - It does not commit source-derived lesson content.
 - It verifies that all four source types reach `project_ready`.
+- It verifies that all four source types reach `preview_ready` through `learning_agent.generate_grounded_course`.
 - It verifies local book and paper paths exist on this machine.
-- Patent and blog samples are URL metadata checks by default; full network fetch/content quality checks remain a separate source-ingest gate.
+- Latest source anchor counts: book 1582, paper 22, patent 1016, blog 1.
+- The blog URL currently falls back to a document-level URL anchor with one extraction warning; it still publishes because source grounding is present, but deeper blog extraction remains a content-quality improvement target.

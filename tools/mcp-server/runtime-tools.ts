@@ -11,6 +11,7 @@ import {
   createRunConfigFromArgs,
   LessonPromotionService,
   LearningCoursePublisher,
+  GroundedCourseService,
   LearningPreviewService,
   LearningRevisionService,
   LearnerProjectService,
@@ -49,6 +50,8 @@ export class LearningAgentRuntimeTools {
     switch (name) {
       case "learning_agent.create_learning_project":
         return this.createLearningProject(input);
+      case "learning_agent.generate_grounded_course":
+        return this.generateGroundedCourse(input);
       case "learning_agent.publish_learning_course":
         return this.publishLearningCourse(input);
       case "learning_agent.get_learning_preview":
@@ -104,6 +107,14 @@ export class LearningAgentRuntimeTools {
       strategy: optionalString(options.strategy),
       selectedChapters: optionalStringArray(options.selectedChapters),
       selectedTopics: optionalStringArray(options.selectedTopics)
+    });
+  }
+
+  private async generateGroundedCourse(input: unknown): Promise<unknown> {
+    const options = expectRecord(input);
+    return new GroundedCourseService(this.workspaceRoot).generate({
+      runId: requiredString(options, "runId"),
+      maxAnchorsPerLesson: optionalNumber(options.maxAnchorsPerLesson)
     });
   }
 
@@ -385,9 +396,10 @@ export class LearningAgentRuntimeTools {
 }
 
 function isLearningAgentToolName(name: string): name is LearningAgentToolName {
-  return [
-    "learning_agent.create_learning_project",
-    "learning_agent.publish_learning_course",
+    return [
+      "learning_agent.create_learning_project",
+      "learning_agent.generate_grounded_course",
+      "learning_agent.publish_learning_course",
     "learning_agent.get_learning_preview",
     "learning_agent.generate_quick_preview",
     "learning_agent.revise_learning_course",

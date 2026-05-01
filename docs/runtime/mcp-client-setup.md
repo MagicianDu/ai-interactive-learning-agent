@@ -81,6 +81,7 @@ Default clients should prefer these learner-facing tools:
 
 ```text
 learning_agent.create_learning_project
+learning_agent.generate_grounded_course
 learning_agent.publish_learning_course
 learning_agent.get_learning_preview
 learning_agent.generate_quick_preview
@@ -92,15 +93,15 @@ The default client flow is:
 ```text
 Clarify learning request
   -> create_learning_project
-  -> Codex/Claude generates Chinese coursePack + lessons
-  -> publish_learning_course
+  -> generate_grounded_course for fast source-backed preview
   -> get_learning_preview
   -> revise_learning_course when the learner asks for changes
+  -> generate_grounded_course again, or publish_learning_course for Codex/Claude-authored revisions
   -> user opens npm run dev
 ```
 
 Do not ask learners to approve `source-map`, `concept-map`, or `curriculum-plan`.
-For source-backed projects, `publish_learning_course` enforces source grounding. Lessons should include `sourceContext.sourceAnchorIds` or page-level source anchors unless a page is explicitly marked as inferred or analogy.
+For source-backed projects, `generate_grounded_course` writes a `source-ingest` artifact, generates overview + focused unit lessons with source anchors, validates quality, and publishes the local preview. `publish_learning_course` remains available for client-authored bundles and enforces the same source grounding rules.
 
 Only when the user explicitly asks for "专家审查模式 / 查看内部 artifacts / 调试生成流程" should the client use `plan_run`, `read_artifact`, `approve_gate`, `run_course`, and other advanced/operator tools.
 
@@ -110,8 +111,8 @@ Only when the user explicitly asks for "专家审查模式 / 查看内部 artifa
 printf '%s\n' \
   '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"manual-smoke","version":"0.0.0"}}}' \
   '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
-  '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"learning_agent.create_learning_project","arguments":{"request":"请生成哈希表中文学习材料，面向有编程基础的学习者，每个单元 8 页。","runId":"mcp-jsonrpc-smoke"}}}' \
-  '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"learning_agent.get_learning_preview","arguments":{"runId":"mcp-jsonrpc-smoke"}}}' \
+  '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"learning_agent.create_learning_project","arguments":{"request":"请用 /absolute/path/to/source.md 生成中文学习网页，面向中文学习者，每个单元 8 页。","runId":"mcp-jsonrpc-smoke","sourcePath":"/absolute/path/to/source.md","sourceKind":"notes"}}}' \
+  '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"learning_agent.generate_grounded_course","arguments":{"runId":"mcp-jsonrpc-smoke"}}}' \
   | npm run mcp
 ```
 
@@ -119,7 +120,7 @@ Expected result:
 
 - `tools/list` starts with learner-facing tools.
 - `create_learning_project` writes `runs/mcp-jsonrpc-smoke/learner-project.json`.
-- `get_learning_preview` returns `not_published` until a course is published.
+- `generate_grounded_course` returns `preview_ready` for a valid local source path.
 
 ## Advanced/operator Mode
 

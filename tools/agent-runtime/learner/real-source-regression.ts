@@ -1,5 +1,6 @@
 import { access } from "node:fs/promises";
 
+import { GroundedCourseService } from "./grounded-course-service.js";
 import { LearnerProjectService } from "./learner-project-service.js";
 
 export type RealSourceRegressionSample = {
@@ -25,6 +26,9 @@ export type RealSourceRegressionSampleResult = {
   sourcePath: string;
   sourceAvailable: boolean;
   status: "project_ready" | "clarification_required";
+  groundedCourseStatus?: "preview_ready" | "revision_required";
+  sourceAnchorCount?: number;
+  sourceIngestWarningCount?: number;
   strategy: string;
   selectedChapters?: string[];
   selectedTopics?: string[];
@@ -37,6 +41,7 @@ export type RealSourceRegressionResult = {
   summary: {
     total: number;
     ready: number;
+    groundedReady: number;
     missingLocalSources: number;
   };
   samples: RealSourceRegressionSampleResult[];
@@ -44,6 +49,7 @@ export type RealSourceRegressionResult = {
 
 export type RunRealSourceRegressionOptions = {
   samples?: RealSourceRegressionSample[];
+  generateGroundedCourse?: boolean;
 };
 
 export const realSourceRegressionSamples: RealSourceRegressionSample[] = [
@@ -119,6 +125,7 @@ export async function runRealSourceRegressionSuite(
 ): Promise<RealSourceRegressionResult> {
   const samples = options.samples ?? realSourceRegressionSamples;
   const service = new LearnerProjectService(workspaceRoot);
+  const groundedCourseService = new GroundedCourseService(workspaceRoot);
   const results: RealSourceRegressionSampleResult[] = [];
 
   for (const sample of samples) {
@@ -135,6 +142,10 @@ export async function runRealSourceRegressionSuite(
       selectedChapters: sample.selectedChapters,
       selectedTopics: sample.selectedTopics
     });
+    const groundedCourse =
+      options.generateGroundedCourse && project.status === "project_ready"
+        ? await groundedCourseService.generate({ runId })
+        : undefined;
 
     results.push({
       id: sample.id,
@@ -145,6 +156,9 @@ export async function runRealSourceRegressionSuite(
       sourcePath: sample.sourcePath,
       sourceAvailable,
       status: project.status,
+      groundedCourseStatus: groundedCourse?.status,
+      sourceAnchorCount: groundedCourse?.sourceIngest.anchorCount,
+      sourceIngestWarningCount: groundedCourse?.sourceIngest.warningCount,
       strategy: project.brief.strategy,
       selectedChapters: project.brief.selectedChapters,
       selectedTopics: project.brief.selectedTopics,
@@ -158,6 +172,7 @@ export async function runRealSourceRegressionSuite(
     summary: {
       total: results.length,
       ready: results.filter((sample) => sample.status === "project_ready").length,
+      groundedReady: results.filter((sample) => sample.groundedCourseStatus === "preview_ready").length,
       missingLocalSources: results.filter((sample) => sample.sourceType === "file" && !sample.sourceAvailable).length
     },
     samples: results

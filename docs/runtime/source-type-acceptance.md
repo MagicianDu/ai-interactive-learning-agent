@@ -9,7 +9,7 @@ Prompt pattern:
 ```text
 请使用 learningAgent MCP 服务把这本书生成中文学习网页：/absolute/path/to/book.pdf
 先做总览课，再按核心 topic 拆课。每个单元 8 页。
-不要让我审批内部 artifacts；请直接生成 course bundle 并调用 publish_learning_course。
+不要让我审批内部 artifacts；请调用 generate_grounded_course 直接生成带来源锚点的中文网页。
 ```
 
 Acceptance:
@@ -82,6 +82,7 @@ Acceptance:
 For all source types:
 
 - `publish_learning_course` must return `preview_ready`.
+- `generate_grounded_course` must return `preview_ready` for the default learner-first path.
 - If source anchors are missing, the expected result is `revision_required`.
-- User feedback should go through `revise_learning_course`, then a revised `publish_learning_course`.
+- User feedback should go through `revise_learning_course`, then another `generate_grounded_course` or a revised `publish_learning_course`.
 - `create_learning_project` accepts `strategy`, `selectedChapters`, and `selectedTopics` so Codex can preserve user-specified organization in the learner brief.

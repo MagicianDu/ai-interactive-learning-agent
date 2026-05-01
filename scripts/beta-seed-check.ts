@@ -21,6 +21,7 @@ const checks: Check[] = [
       "tools/agent-runtime/__tests__/promotion.test.ts",
       "tools/agent-runtime/learner/bundle-authoring-guidance.test.ts",
       "tools/agent-runtime/learner/codex-authored-trial.test.ts",
+      "tools/agent-runtime/learner/grounded-course-service.test.ts",
       "tools/agent-runtime/learner/learner-project-service.test.ts",
       "tools/agent-runtime/learner/learning-course-publisher.test.ts",
       "tools/agent-runtime/learner/learning-preview-service.test.ts",

@@ -66,9 +66,9 @@ describe("MCP JSON-RPC server", () => {
 
     expect(listedTools.slice(0, 4).map((tool) => tool.name)).toEqual([
       "learning_agent.create_learning_project",
+      "learning_agent.generate_grounded_course",
       "learning_agent.publish_learning_course",
-      "learning_agent.get_learning_preview",
-      "learning_agent.generate_quick_preview"
+      "learning_agent.get_learning_preview"
     ]);
     expect(listedTools.find((tool) => tool.name === "learning_agent.approve_gate")?.description).toMatch(
       /Advanced\/operator tool/
@@ -137,6 +137,39 @@ describe("MCP JSON-RPC server", () => {
         lessonCount: 1
       }
     });
+  });
+
+  test("generates a source-grounded learner course through MCP without artifact approvals", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-grounded-mcp-"));
+    const sourcePath = path.join(root, "agentic-blog.md");
+    await writeFile(sourcePath, "# Agentic RAG\nAgentic RAG 先判断任务，再选择检索、工具调用或生成路径。", "utf8");
+    const tools = new LearningAgentRuntimeTools(root);
+    await callMcpTool(tools, "learning_agent.create_learning_project", {
+      request: `请用 "${sourcePath}" 这篇博客生成中文学习网页，面向中文学习者，每个单元 8 页。`,
+      runId: "mcp-grounded-blog",
+      sourcePath,
+      sourceKind: "blog",
+      audience: "中文学习者",
+      unitPages: 8,
+      strategy: "task_guided",
+      selectedTopics: ["任务判断", "工具选择"]
+    });
+
+    const generated = await callMcpTool(tools, "learning_agent.generate_grounded_course", {
+      runId: "mcp-grounded-blog"
+    });
+
+    expect(generated).toMatchObject({
+      status: "preview_ready",
+      runId: "mcp-grounded-blog",
+      sourceIngest: {
+        anchorCount: expect.any(Number)
+      },
+      preview: { devCommand: "npm run dev", localUrl: "http://127.0.0.1:5173/" }
+    });
+    await expect(readFile(path.join(root, "runs", "mcp-grounded-blog", "learning-preview.json"), "utf8")).resolves.toContain(
+      "preview_ready"
+    );
   });
 
   test("records learner feedback through MCP for course revision", async () => {

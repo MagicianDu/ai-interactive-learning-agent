@@ -125,6 +125,7 @@ npm run mcp -- --list-tools
 Default learner-facing tools:
 
 - `learning_agent.create_learning_project`
+- `learning_agent.generate_grounded_course`
 - `learning_agent.publish_learning_course`
 - `learning_agent.get_learning_preview`
 - `learning_agent.generate_quick_preview`
@@ -147,9 +148,9 @@ Advanced/operator tools include:
 - `learning_agent.promote_units`
 - `learning_agent.promote_lesson`
 
-The current entrypoint accepts newline-delimited JSON-RPC requests on stdin and returns MCP-compatible JSON-RPC responses. It is intentionally thin; tool calls wrap `RunPlanService`, `RunStore`, `AgentWorkflow`, `CoursePackService`, `ManualSubmissionService`, `ApprovalService`, and `LessonPromotionService`.
+The current entrypoint accepts newline-delimited JSON-RPC requests on stdin and returns MCP-compatible JSON-RPC responses. It is intentionally thin; tool calls wrap learner project creation, grounded course generation, publishing, preview, revision, and advanced operator workflows.
 
-Default Codex usage should be learner-first. Codex clarifies the learning request, generates a Chinese `coursePack` and `lessons`, calls `learning_agent.publish_learning_course`, then tells the user to run `npm run dev` and open the local page. Do not ask learners to approve `source-map`, `concept-map`, or `curriculum-plan`.
+Default Codex usage should be learner-first. Codex clarifies the learning request, calls `learning_agent.create_learning_project`, then calls `learning_agent.generate_grounded_course` for a fast source-grounded Chinese preview. For hand-authored or heavily refined content, Codex can still generate a Chinese `coursePack` and `lessons` and call `learning_agent.publish_learning_course`. Do not ask learners to approve `source-map`, `concept-map`, or `curriculum-plan`.
 
 Default trial prompt:
 
@@ -158,7 +159,7 @@ Default trial prompt:
 资料是：/absolute/path/to/source.pdf
 我希望先有总览课，再按核心 topic 拆课。每个单元 8 页。
 请先问我最多 3 个你必须知道的问题。明确后，不要让我审批 source-map、concept-map、curriculum-plan 这些内部 artifacts。
-你可以直接生成 course bundle，然后调用 learning_agent.publish_learning_course 发布网页。
+你可以调用 learning_agent.generate_grounded_course 直接生成带来源锚点的中文网页。
 发布后告诉我运行 npm run dev，并说明我应该打开哪个页面查看。
 ```
 
@@ -172,9 +173,9 @@ printf '%s\n' \
   | npm run mcp
 ```
 
-Quick local preview can use `learning_agent.generate_quick_preview` after `learning_agent.create_learning_project`. It is deterministic smoke for seeing the product shape; final content should normally use Codex-authored `publish_learning_course`.
+For source-backed learner projects, `learning_agent.generate_grounded_course` normalizes the source, writes `source-ingest`, generates overview + first focused unit, validates Chinese-first content, source grounding, interactions, feedback, and publishes a local preview. `learning_agent.generate_quick_preview` remains an operator smoke path for the older gate-based mock workflow.
 
-Learner feedback should use `learning_agent.revise_learning_course`. Codex records the feedback as a revision brief, revises the Chinese `coursePack` and `lessons`, preserves source anchors for source-backed projects, and calls `learning_agent.publish_learning_course` again.
+Learner feedback should use `learning_agent.revise_learning_course`. Codex records the feedback as a revision brief. A follow-up `learning_agent.generate_grounded_course` applies the latest brief to regenerate the grounded preview; Codex-authored advanced revisions can still republish through `publish_learning_course`.
 
 For book, paper, patent, blog, documentation, or notes-backed projects, direct publish now checks source grounding. Lessons must include `sourceContext.sourceAnchorIds` or page-level source anchors unless a page is explicitly marked as inferred or analogy.
 

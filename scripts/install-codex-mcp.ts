@@ -58,6 +58,7 @@ async function checkMcpToolList() {
   const output = await runCommand("npm", ["run", "mcp", "--", "--list-tools"]);
   const requiredTools = [
     "learning_agent.create_learning_project",
+    "learning_agent.generate_grounded_course",
     "learning_agent.publish_learning_course",
     "learning_agent.revise_learning_course",
     "learning_agent.plan_run",
