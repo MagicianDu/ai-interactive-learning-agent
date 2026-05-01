@@ -6,12 +6,15 @@ import { lessonRegistry } from "../lessons/registry";
 import { CourseWorkspace } from "./CourseWorkspace";
 
 describe("CourseWorkspace", () => {
-  test("renders product mode tabs and course progress", () => {
+  test("opens directly into the learner lesson instead of developer panels", () => {
     render(<CourseWorkspace coursePacks={coursePackRegistry} lessons={lessonRegistry} />);
 
-    expect(screen.getByRole("tab", { name: "学习" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "知识地图" })).toBeInTheDocument();
-    expect(screen.getAllByText(/已生成/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/先用总览课建立全局地图/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/第 1 \//).length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "课程结构" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("生成进度")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("分享和导出")).not.toBeInTheDocument();
+    expect(screen.queryByText("把技术资料变成可交互的中文学习体验")).not.toBeInTheDocument();
+    expect(screen.queryByText("讨论")).not.toBeInTheDocument();
+    expect(screen.queryByText("设置")).not.toBeInTheDocument();
   });
 });

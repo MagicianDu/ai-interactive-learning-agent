@@ -1,8 +1,16 @@
 # Roadmap
 
-For the full product delivery path, acceptance goals, and implementation slices, see:
+For the complete product target, user journeys, capability map, and acceptance milestones, see:
+
+- `docs/superpowers/specs/2026-05-02-complete-learning-product-development-spec.md`
+
+For the earlier full product delivery path, acceptance goals, and implementation slices, see:
 
 - `docs/superpowers/plans/2026-04-29-full-product-delivery-roadmap.md`
+
+For the current seed-ready implementation plan, see:
+
+- `docs/superpowers/plans/2026-05-02-seed-ready-product.md`
 
 ## Phase 0: Scaffold and Design
 

@@ -1,12 +1,4 @@
 import { useEffect, useState, type ReactNode } from "react";
-import {
-  BarChart3,
-  BookOpen,
-  Code2,
-  Menu,
-  MessageCircle,
-  Settings
-} from "lucide-react";
 
 import type { Lesson } from "../../schemas/lesson.schema";
 import { PageDots } from "./PageDots";
@@ -16,14 +8,6 @@ type DeckShellProps = {
   lesson: Lesson;
   renderPage: (currentIndex: number) => ReactNode;
 };
-
-const sidebarItems = [
-  { label: "学习", icon: BookOpen, active: true },
-  { label: "实验", icon: Code2, active: false },
-  { label: "练习", icon: BarChart3, active: false },
-  { label: "讨论", icon: MessageCircle, active: false },
-  { label: "设置", icon: Settings, active: false }
-];
 
 export function DeckShell({ lesson, renderPage }: DeckShellProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -68,48 +52,7 @@ export function DeckShell({ lesson, renderPage }: DeckShellProps) {
 
   return (
     <div className="min-h-screen bg-[#f4f7fb] text-ink">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-20 flex-col items-center bg-[#041a34] py-7 text-white shadow-2xl sm:flex">
-        <button
-          aria-label="打开课程菜单"
-          className="mb-8 grid size-11 place-items-center rounded-xl text-white/90 transition hover:bg-white/10"
-          type="button"
-        >
-          <Menu aria-hidden="true" className="size-7" />
-        </button>
-
-        <nav aria-label="学习模式" className="flex flex-1 flex-col items-center gap-5">
-          {sidebarItems.slice(0, 4).map((item) => {
-            const Icon = item.icon;
-
-            return (
-              <button
-                aria-current={item.active ? "page" : undefined}
-                className={[
-                  "grid w-full place-items-center gap-1 border-l-4 py-2 text-xs font-semibold transition",
-                  item.active
-                    ? "border-accent text-white"
-                    : "border-transparent text-white/70 hover:text-white"
-                ].join(" ")}
-                key={item.label}
-                type="button"
-              >
-                <Icon aria-hidden="true" className="size-6" />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
-        </nav>
-
-        <button
-          className="grid w-full place-items-center gap-1 border-l-4 border-transparent py-2 text-xs font-semibold text-white/70 transition hover:text-white"
-          type="button"
-        >
-          <Settings aria-hidden="true" className="size-6" />
-          <span>设置</span>
-        </button>
-      </aside>
-
-      <main className="min-h-screen sm:pl-20">
+      <main className="min-h-screen">
         <header className="sticky top-0 z-30 border-b border-line bg-white/95 shadow-sm backdrop-blur">
           <div className="grid min-h-20 grid-cols-1 items-center gap-4 px-4 py-4 sm:px-8 lg:grid-cols-[minmax(16rem,1fr)_auto_minmax(16rem,1fr)] lg:px-10">
             <div>

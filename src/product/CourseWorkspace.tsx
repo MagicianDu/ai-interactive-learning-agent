@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { CourseShell } from "../components/course/CourseShell";
 import type { CoursePackRegistryEntry } from "../course-packs/registry";
@@ -6,11 +6,7 @@ import type { LessonRegistryEntry } from "../lessons/registry";
 import { CanvasMapRenderer } from "../renderers/CanvasMapRenderer";
 import { LearningProductRenderer } from "../renderers/LearningProductRenderer";
 import { WebDeckRenderer } from "../renderers/WebDeckRenderer";
-import { CourseHero } from "./CourseHero";
-import { demoBetaStatus } from "./demoBetaStatus";
-import { GenerationTimeline } from "./GenerationTimeline";
-import { ProductModeTabs, productModeTabs, type CourseView } from "./ProductModeTabs";
-import { ShareExportPanel } from "./ShareExportPanel";
+import { productModeTabs, type CourseView } from "./ProductModeTabs";
 
 type CourseWorkspaceProps = {
   lessons: LessonRegistryEntry[];
@@ -19,11 +15,12 @@ type CourseWorkspaceProps = {
 
 export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) {
   const defaultLesson = lessons[0];
-  const defaultCoursePack = coursePacks[0];
+  const defaultCoursePack = pickDefaultCoursePack(coursePacks);
   const defaultCoursePackLessonId = defaultCoursePack?.coursePack.units.find((unit) => unit.lessonId)?.lessonId;
   const [selectedCoursePackId, setSelectedCoursePackId] = useState(defaultCoursePack?.id ?? "");
   const [selectedLessonId, setSelectedLessonId] = useState(defaultCoursePackLessonId ?? defaultLesson?.id ?? "");
   const [courseView, setCourseView] = useState<CourseView>("deck");
+  const [showStructure, setShowStructure] = useState(false);
   const selectedLesson = lessons.find((lesson) => lesson.id === selectedLessonId)?.lesson ?? defaultLesson?.lesson;
   const selectedCoursePack = coursePacks.find((entry) => entry.id === selectedCoursePackId)?.coursePack;
   const selectedCoursePackUnits =
@@ -32,8 +29,17 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
         unit,
         lessonAvailable: Boolean(unit.lessonId && lessons.some((entry) => entry.id === unit.lessonId))
       })) ?? [];
-  const generatedCount = selectedCoursePackUnits.filter((entry) => entry.lessonAvailable).length;
   const modeLabel = productModeTabs.find((tab) => tab.id === courseView)?.label ?? "学习";
+  const lessonChoices = useMemo(
+    () =>
+      selectedCoursePackUnits
+        .filter(({ unit, lessonAvailable }) => unit.lessonId && lessonAvailable)
+        .map(({ unit }) => ({
+          id: unit.lessonId as string,
+          label: unit.title
+        })),
+    [selectedCoursePackUnits]
+  );
 
   if (!selectedLesson) {
     return (
@@ -45,83 +51,108 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
 
   return (
     <div className="min-h-screen bg-[#f4f7fb]">
-      <div className="mx-auto grid max-w-7xl gap-4 px-4 py-4 text-slate-950 sm:px-8 lg:px-10">
-        <div className="grid min-w-0 gap-3 overflow-hidden rounded-lg border border-slate-200 bg-white p-3 shadow-sm lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.35fr)_minmax(18rem,0.35fr)] lg:items-center">
+      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 px-4 py-3 text-slate-950 shadow-sm backdrop-blur sm:px-8 lg:px-10">
+        <div className="mx-auto grid max-w-7xl gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
           <div className="min-w-0">
-            <p className="text-xs font-bold uppercase text-slate-500">当前课程</p>
-            <h2 className="mt-1 truncate text-lg font-bold text-slate-950">{selectedLesson.title}</h2>
+            <p className="text-xs font-bold uppercase text-slate-500">学习中</p>
+            <h1 className="mt-1 truncate text-xl font-bold text-slate-950">{selectedCoursePack?.title ?? selectedLesson.title}</h1>
+            <p className="mt-1 truncate text-sm font-medium text-slate-500">
+              {selectedLesson.title} · {modeLabel}
+            </p>
           </div>
-          {coursePacks.length > 0 && (
-            <label className="grid min-w-0 gap-1 text-sm font-semibold text-slate-700">
-              学习项目
-              <select
-                className="h-10 w-full min-w-0 max-w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-950 outline-none focus:border-sky-400"
-                value={selectedCoursePackId}
-                onChange={(event) => {
-                  const nextCoursePack = coursePacks.find((entry) => entry.id === event.target.value)?.coursePack;
-                  setSelectedCoursePackId(event.target.value);
-                  const firstUnitLessonId = nextCoursePack?.units.find((unit) => unit.lessonId)?.lessonId;
-                  if (firstUnitLessonId) {
-                    setSelectedLessonId(firstUnitLessonId);
+
+          <div className="flex flex-wrap items-end gap-2">
+            {coursePacks.length > 1 ? (
+              <label className="grid min-w-48 gap-1 text-xs font-bold text-slate-600">
+                学习项目
+                <select
+                  aria-label="选择学习项目"
+                  className="h-9 max-w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-950 outline-none focus:border-sky-400"
+                  value={selectedCoursePackId}
+                  onChange={(event) => {
+                    const nextCoursePack = coursePacks.find((entry) => entry.id === event.target.value)?.coursePack;
+                    setSelectedCoursePackId(event.target.value);
+                    const firstUnitLessonId = nextCoursePack?.units.find((unit) => unit.lessonId)?.lessonId;
+                    if (firstUnitLessonId) {
+                      setSelectedLessonId(firstUnitLessonId);
+                      setCourseView("deck");
+                    }
+                  }}
+                >
+                  {coursePacks.map((entry) => (
+                    <option key={entry.id} value={entry.id}>
+                      {entry.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+
+            {lessonChoices.length > 1 ? (
+              <label className="grid min-w-44 gap-1 text-xs font-bold text-slate-600">
+                课程单元
+                <select
+                  aria-label="选择课程单元"
+                  className="h-9 max-w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-950 outline-none focus:border-sky-400"
+                  value={selectedLessonId}
+                  onChange={(event) => {
+                    setSelectedLessonId(event.target.value);
                     setCourseView("deck");
-                  }
-                }}
+                  }}
+                >
+                  {lessonChoices.map((lesson) => (
+                    <option key={lesson.id} value={lesson.id}>
+                      {lesson.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+
+            <div className="flex gap-2">
+              <button
+                aria-pressed={courseView === "deck"}
+                className={modeButtonClass(courseView === "deck")}
+                onClick={() => setCourseView("deck")}
+                type="button"
               >
-                {coursePacks.map((entry) => (
-                  <option key={entry.id} value={entry.id}>
-                    {entry.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          <label className="grid min-w-0 gap-1 text-sm font-semibold text-slate-700">
-            课程单元
-            <select
-              className="h-10 w-full min-w-0 max-w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-950 outline-none focus:border-sky-400"
-              value={selectedLessonId}
-              onChange={(event) => setSelectedLessonId(event.target.value)}
-            >
-              {lessons.map((lesson) => (
-                <option key={lesson.id} value={lesson.id}>
-                  {lesson.label}
-                </option>
-              ))}
-            </select>
-          </label>
+                学习
+              </button>
+              <button
+                aria-pressed={courseView === "map"}
+                className={modeButtonClass(courseView === "map")}
+                onClick={() => setCourseView("map")}
+                type="button"
+              >
+                知识地图
+              </button>
+              <button
+                aria-expanded={showStructure}
+                className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 transition hover:border-sky-300 hover:text-sky-800"
+                onClick={() => setShowStructure((current) => !current)}
+                type="button"
+              >
+                课程结构
+              </button>
+            </div>
+          </div>
         </div>
+      </header>
 
-        {selectedCoursePack ? (
-          <CourseHero
-            generatedCount={generatedCount}
-            modeLabel={modeLabel}
-            sourceKind={selectedCoursePack.sourceKind}
-            strategy={selectedCoursePack.strategy}
-            title={selectedCoursePack.title}
-            unitCount={selectedCoursePackUnits.length}
-          />
-        ) : null}
-
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,0.36fr)]">
-          <GenerationTimeline status={demoBetaStatus} />
-          <ShareExportPanel
-            courseTitle={selectedCoursePack?.title}
-            lessonJson={selectedLesson}
-            lessonTitle={selectedLesson.title}
-          />
-        </div>
-
-        <ProductModeTabs onChange={setCourseView} value={courseView} />
-
-        {selectedCoursePack && selectedCoursePackUnits.length > 0 && (
+      {showStructure && selectedCoursePack && selectedCoursePackUnits.length > 0 ? (
+        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-8 lg:px-10">
           <CourseShell
             coursePack={selectedCoursePack}
-            onSelectLesson={setSelectedLessonId}
+            onSelectLesson={(lessonId) => {
+              setSelectedLessonId(lessonId);
+              setCourseView("deck");
+            }}
             selectedLessonId={selectedLessonId}
             units={selectedCoursePackUnits}
           />
-        )}
-      </div>
+        </div>
+      ) : null}
+
       {selectedCoursePack && courseView === "map" ? (
         <CanvasMapRenderer
           coursePack={selectedCoursePack}
@@ -138,4 +169,15 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
       )}
     </div>
   );
+}
+
+function pickDefaultCoursePack(coursePacks: CoursePackRegistryEntry[]): CoursePackRegistryEntry | undefined {
+  return coursePacks.find((entry) => entry.id !== "demo-course-pack") ?? coursePacks[0];
+}
+
+function modeButtonClass(active: boolean): string {
+  return [
+    "h-9 rounded-md border px-3 text-sm font-bold transition",
+    active ? "border-sky-300 bg-sky-50 text-sky-900" : "border-slate-200 bg-white text-slate-700 hover:border-sky-300 hover:text-sky-800"
+  ].join(" ");
 }
