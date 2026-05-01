@@ -33,6 +33,7 @@
     "mcp": "tsx tools/mcp-server/index.ts",
     "codex:mcp:install": "tsx scripts/install-codex-mcp.ts --install",
     "codex:mcp:check": "tsx scripts/install-codex-mcp.ts --check",
+    "source:regression": "tsx tools/agent-runtime/learner/real-source-regression-cli.ts",
     "seed:check": "tsx scripts/beta-seed-check.ts"
   },
   "dependencies": {

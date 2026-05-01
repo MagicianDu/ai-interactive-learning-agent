@@ -97,3 +97,46 @@ Acceptance notes:
 - The generated lesson included lesson-level `sourceContext.sourceAnchorIds`.
 - Each page included page-level `sourceAnchorIds`, so the Web Deck can render learner-facing source evidence chips.
 - The course pack and lesson were written under a temporary workspace only.
+
+## 2026-05-01 Four-source learner project regression
+
+Purpose:
+
+```text
+Keep book, paper, patent, and blog source requests as repeatable seed-user checks.
+```
+
+Command:
+
+```bash
+npm run source:regression
+```
+
+Selected sources:
+
+```text
+book   /Users/dm/Documents/1.书籍资料/BOOKS/Agentic_Design_Patterns.pdf
+paper  /Users/dm/Documents/1.书籍资料/1.基础模型训练/推理/Agents Thinking Fast and Slow- A Talker-Reasoner Architecture.pdf
+patent https://patents.google.com/patent/WO2025085566A1/en
+blog   https://techcommunity.microsoft.com/blog/azure-ai-foundry-blog/bonus-rag-time-journey-agentic-rag/4404652
+```
+
+Result summary from the latest local run:
+
+```json
+{
+  "summary": {
+    "total": 4,
+    "ready": 4,
+    "missingLocalSources": 0
+  }
+}
+```
+
+Acceptance notes:
+
+- The regression writes only learner-project briefs in a temporary workspace.
+- It does not commit source-derived lesson content.
+- It verifies that all four source types reach `project_ready`.
+- It verifies local book and paper paths exist on this machine.
+- Patent and blog samples are URL metadata checks by default; full network fetch/content quality checks remain a separate source-ingest gate.

@@ -26,6 +26,7 @@ const checks: Check[] = [
       "tools/agent-runtime/learner/learning-preview-service.test.ts",
       "tools/agent-runtime/learner/learning-revision-service.test.ts",
       "tools/agent-runtime/learner/quick-preview-service.test.ts",
+      "tools/agent-runtime/learner/real-source-regression.test.ts",
       "tools/mcp-server/json-rpc-server.test.ts",
       "scripts/codex-mcp-config.test.ts"
     ]

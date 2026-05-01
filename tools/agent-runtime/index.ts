@@ -1,6 +1,7 @@
 export const agentRuntimeVersion = "0.1.0";
 
 export { CodexAuthoredTrialService } from "./learner/codex-authored-trial.js";
+export { realSourceRegressionSamples, runRealSourceRegressionSuite } from "./learner/real-source-regression.js";
 export { CodexManualAdapter } from "./adapters/codex-manual-adapter.js";
 export { MockRuntimeAdapter } from "./adapters/mock-adapter.js";
 export { ApprovalService } from "./approval-service.js";

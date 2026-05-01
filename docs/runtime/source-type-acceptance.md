@@ -44,6 +44,12 @@ Prompt pattern:
 重点解释权利要求、技术方案、实施例、术语和风险边界。
 ```
 
+Current regression sample:
+
+```text
+https://patents.google.com/patent/WO2025085566A1/en
+```
+
 Acceptance:
 
 - Units cover claims, embodiments, technical solution and transfer/risk.
@@ -57,6 +63,12 @@ Prompt pattern:
 ```text
 请使用 learningAgent MCP 服务把这篇技术博客生成中文互动学习网页：https://example.com/post
 请把实践步骤重构成可操作教程，不要只做摘要。
+```
+
+Current regression sample:
+
+```text
+https://techcommunity.microsoft.com/blog/azure-ai-foundry-blog/bonus-rag-time-journey-agentic-rag/4404652
 ```
 
 Acceptance:
