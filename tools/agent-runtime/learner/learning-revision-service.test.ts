@@ -23,6 +23,10 @@ describe("LearningRevisionService", () => {
       status: "revision_brief_ready",
       runId: "feedback-course",
       revisionId: "revision-001",
+      target: {
+        scope: "unit",
+        requestedChange: "整体太难了，请减少术语、增加一个生活化例子，并保留中文解释。"
+      },
       next: {
         recommendedTool: "learning_agent.publish_learning_course"
       }
@@ -59,5 +63,25 @@ describe("LearningRevisionService", () => {
     expect(revisionBrief.previousFeedbackCount).toBe(1);
     expect(revisionBrief.currentCoursePackPath).toContain("coursePack.ts");
     expect(revisionBrief.currentLessonPaths).toEqual([expect.stringContaining("lesson.ts")]);
+  });
+
+  test("stores parsed revision targets in the brief", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-revision-"));
+    const service = new LearningRevisionService(root);
+
+    const result = await service.requestRevision({
+      runId: "feedback-course",
+      feedback: "第 4 页互动选择太弱，请换成操作实验"
+    });
+    const revisionBrief = JSON.parse(await readFile(result.revisionBriefPath, "utf8")) as Record<string, unknown>;
+
+    expect(result).toMatchObject({
+      target: {
+        scope: "page",
+        pageIndex: 3,
+        requestedChange: "第 4 页互动选择太弱，请换成操作实验"
+      }
+    });
+    expect(revisionBrief.target).toEqual(result.target);
   });
 });

@@ -21,6 +21,7 @@ describe("LearningAgentRuntimeTools", () => {
         "learning_agent.get_learning_preview",
         "learning_agent.generate_quick_preview",
         "learning_agent.revise_learning_course",
+        "learning_agent.apply_learning_revision",
         "learning_agent.init_run",
         "learning_agent.plan_run",
         "learning_agent.init_from_plan",
@@ -95,6 +96,54 @@ describe("LearningAgentRuntimeTools", () => {
       pageCount: { target: 8 }
     });
     await expect(readFile(path.join(root, "runs", "mcp-smoke", "run.config.json"), "utf8")).resolves.toContain("哈希表");
+  });
+
+  test("applies the latest targeted revision through tool handlers", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
+    const tools = new LearningAgentRuntimeTools(root);
+    const lesson = buildQualityLesson();
+    lesson.pages = (lesson.pages as Array<Record<string, unknown>>).map((page, index) => ({
+      ...page,
+      narrative: `第${index + 1}页原文`
+    }));
+    await tools.callTool("learning_agent.publish_learning_course", {
+      runId: "mcp-revision",
+      lessons: [lesson],
+      coursePack: {
+        id: "mcp-revision",
+        title: "哈希表：课程包",
+        parentRunId: "mcp-revision",
+        units: [
+          {
+            unitId: "unit-overview",
+            title: "哈希表：总览课",
+            kind: "overview",
+            lessonId: "hash-table",
+            targetPageCount: 8
+          }
+        ]
+      }
+    });
+    await tools.callTool("learning_agent.revise_learning_course", {
+      runId: "mcp-revision",
+      feedback: "第 3 页补一个工程排障例子"
+    });
+
+    const result = await tools.callTool("learning_agent.apply_learning_revision", { runId: "mcp-revision" });
+    const lessonText = await readFile(path.join(root, "src", "lessons", "hash-table", "lesson.ts"), "utf8");
+
+    expect(result).toMatchObject({
+      status: "revision_applied",
+      runId: "mcp-revision",
+      revisionId: "revision-001",
+      changedLessonIds: ["hash-table"],
+      preview: {
+        coursePackId: "mcp-revision",
+        lessonCount: 1
+      }
+    });
+    expect(lessonText).toContain('narrative: "第3页原文\\n\\n修订说明：第 3 页补一个工程排障例子"');
+    expect(lessonText.match(/修订说明/g)).toHaveLength(1);
   });
 
   test("lists and archives learner projects through tool handlers", async () => {

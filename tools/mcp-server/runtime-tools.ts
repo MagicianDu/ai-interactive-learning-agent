@@ -23,6 +23,7 @@ import {
 } from "../agent-runtime/index.js";
 import type { ArtifactVersion } from "../agent-runtime/artifact-store.js";
 import { ProjectRegistry } from "../agent-runtime/learner/project-registry.js";
+import { TargetedRevisionService } from "../agent-runtime/learner/targeted-revision-service.js";
 import type { ApprovalGateId } from "../agent-runtime/types.js";
 import type { LearningAgentToolName } from "./tool-contracts.js";
 
@@ -65,6 +66,8 @@ export class LearningAgentRuntimeTools {
         return this.generateQuickPreview(input);
       case "learning_agent.revise_learning_course":
         return this.reviseLearningCourse(input);
+      case "learning_agent.apply_learning_revision":
+        return this.applyLearningRevision(input);
       case "learning_agent.init_run":
         return this.initRun(input);
       case "learning_agent.plan_run":
@@ -169,6 +172,12 @@ export class LearningAgentRuntimeTools {
       runId: requiredString(options, "runId"),
       feedback: requiredString(options, "feedback"),
       focus: optionalString(options.focus)
+    });
+  }
+
+  private async applyLearningRevision(input: unknown): Promise<unknown> {
+    return new TargetedRevisionService(this.workspaceRoot).applyLatestRevision({
+      runId: requiredString(expectRecord(input), "runId")
     });
   }
 
@@ -428,6 +437,7 @@ function isLearningAgentToolName(name: string): name is LearningAgentToolName {
     "learning_agent.get_learning_preview",
     "learning_agent.generate_quick_preview",
     "learning_agent.revise_learning_course",
+    "learning_agent.apply_learning_revision",
     "learning_agent.init_run",
     "learning_agent.plan_run",
     "learning_agent.init_from_plan",

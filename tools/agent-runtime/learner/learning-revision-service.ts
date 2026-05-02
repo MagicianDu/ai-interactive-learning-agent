@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { AgentRuntimeError } from "../errors.js";
 import { LearningPreviewService, type LearningPreviewResult } from "./learning-preview-service.js";
+import { parseRevisionTarget, type RevisionTarget } from "./revision-targeting.js";
 
 type ReadyLearningPreview = Extract<LearningPreviewResult, { status: "preview_ready" }>["preview"];
 
@@ -19,6 +20,7 @@ export type RequestLearningRevisionResult = {
   revisionBriefPath: string;
   feedback: string;
   focus?: string;
+  target: RevisionTarget;
   currentPreview?: ReadyLearningPreview;
   next: {
     recommendedTool: "learning_agent.publish_learning_course";
@@ -45,12 +47,14 @@ export class LearningRevisionService {
     const previewResult = await new LearningPreviewService(this.workspaceRoot).getPreview(input.runId);
     const currentPreview = previewResult.status === "preview_ready" ? previewResult.preview : undefined;
     const publishManifest = await readPublishManifest(this.workspaceRoot, input.runId);
+    const target = parseRevisionTarget(feedback, input.focus);
     const revisionBrief = {
       schemaVersion: 1,
       runId: input.runId,
       revisionId,
       feedback,
       focus: input.focus,
+      target,
       currentPreview,
       currentCoursePackPath: publishManifest?.coursePackPath,
       currentLessonPaths: publishManifest?.lessonPaths ?? [],
@@ -69,6 +73,7 @@ export class LearningRevisionService {
       revisionBriefPath,
       feedback,
       focus: input.focus,
+      target,
       currentPreview,
       next: {
         recommendedTool: "learning_agent.publish_learning_course",
