@@ -8,13 +8,17 @@ import { InteractionRenderer } from "../components/interaction/InteractionRender
 import { VisualRenderer } from "../components/visual/VisualRenderer";
 
 type WebDeckRendererProps = {
+  initialPageIndex?: number;
   lesson: Lesson;
+  onPageChange?: (pageIndex: number) => void;
 };
 
-export function WebDeckRenderer({ lesson }: WebDeckRendererProps) {
+export function WebDeckRenderer({ initialPageIndex, lesson, onPageChange }: WebDeckRendererProps) {
   return (
     <DeckShell
+      initialPageIndex={initialPageIndex}
       lesson={lesson}
+      onPageChange={onPageChange}
       renderPage={(currentIndex) => {
         const page = lesson.pages[currentIndex];
 

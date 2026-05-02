@@ -1,4 +1,6 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { vi } from "vitest";
 
 import { databaseIndexLesson } from "../lessons/database-index/lesson";
 import type { Lesson } from "../schemas/lesson.schema";
@@ -55,5 +57,25 @@ describe("WebDeckRenderer", () => {
 
     expect(screen.getByText("视觉说明待补充")).toBeInTheDocument();
     expect(screen.getByText("互动或评估待补充")).toBeInTheDocument();
+  });
+
+  test("accepts an initial page index and reports page changes", async () => {
+    const user = userEvent.setup();
+    const onPageChange = vi.fn();
+
+    render(
+      <WebDeckRenderer
+        initialPageIndex={1}
+        lesson={databaseIndexLesson}
+        onPageChange={onPageChange}
+      />
+    );
+
+    expect(screen.getAllByText("第 2 / 10 页")).toHaveLength(2);
+
+    await user.click(screen.getByRole("button", { name: "下一页" }));
+
+    expect(onPageChange).toHaveBeenCalledWith(2);
+    expect(screen.getAllByText("第 3 / 10 页")).toHaveLength(2);
   });
 });

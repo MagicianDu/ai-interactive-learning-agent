@@ -7,6 +7,7 @@ import { CanvasMapRenderer } from "../renderers/CanvasMapRenderer";
 import { LearningProductRenderer } from "../renderers/LearningProductRenderer";
 import { WebDeckRenderer } from "../renderers/WebDeckRenderer";
 import { productModeTabs, type CourseView } from "./ProductModeTabs";
+import { buildProductRoute, parseProductRoute } from "./product-route";
 
 type CourseWorkspaceProps = {
   lessons: LessonRegistryEntry[];
@@ -14,11 +15,14 @@ type CourseWorkspaceProps = {
 };
 
 export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) {
+  const initialRoute = parseProductRoute(typeof window === "undefined" ? "" : window.location.hash);
   const defaultLesson = lessons[0];
-  const defaultCoursePack = pickDefaultCoursePack(coursePacks);
-  const defaultCoursePackLessonId = defaultCoursePack?.coursePack.units.find((unit) => unit.lessonId)?.lessonId;
+  const defaultCoursePack = pickDefaultCoursePack(coursePacks, initialRoute.courseId);
+  const defaultUnit = pickDefaultUnit(defaultCoursePack?.coursePack, initialRoute.unitId);
+  const defaultCoursePackLessonId = defaultUnit?.lessonId ?? defaultCoursePack?.coursePack.units.find((unit) => unit.lessonId)?.lessonId;
   const [selectedCoursePackId, setSelectedCoursePackId] = useState(defaultCoursePack?.id ?? "");
   const [selectedLessonId, setSelectedLessonId] = useState(defaultCoursePackLessonId ?? defaultLesson?.id ?? "");
+  const [selectedPageIndex, setSelectedPageIndex] = useState(initialRoute.pageIndex ?? 0);
   const [courseView, setCourseView] = useState<CourseView>("deck");
   const [showStructure, setShowStructure] = useState(false);
   const selectedLesson = lessons.find((lesson) => lesson.id === selectedLessonId)?.lesson ?? defaultLesson?.lesson;
@@ -40,6 +44,34 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
         })),
     [selectedCoursePackUnits]
   );
+
+  const updateRoute = (courseId: string, lessonId: string, pageIndex: number) => {
+    const coursePack = coursePacks.find((entry) => entry.id === courseId)?.coursePack;
+    const unitId = coursePack?.units.find((unit) => unit.lessonId === lessonId)?.unitId;
+    const nextRoute = buildProductRoute({ courseId, unitId, pageIndex });
+    if (typeof window !== "undefined" && window.location.hash !== nextRoute) {
+      window.history.replaceState(null, "", nextRoute);
+    }
+  };
+
+  const selectLesson = (lessonId: string, pageIndex = 0) => {
+    setSelectedLessonId(lessonId);
+    setSelectedPageIndex(pageIndex);
+    setCourseView("deck");
+    updateRoute(selectedCoursePackId, lessonId, pageIndex);
+  };
+
+  const selectCoursePack = (coursePackId: string) => {
+    const nextCoursePack = coursePacks.find((entry) => entry.id === coursePackId)?.coursePack;
+    setSelectedCoursePackId(coursePackId);
+    const firstUnitLessonId = nextCoursePack?.units.find((unit) => unit.lessonId)?.lessonId;
+    if (firstUnitLessonId) {
+      setSelectedLessonId(firstUnitLessonId);
+      setSelectedPageIndex(0);
+      setCourseView("deck");
+      updateRoute(coursePackId, firstUnitLessonId, 0);
+    }
+  };
 
   if (!selectedLesson) {
     return (
@@ -69,15 +101,7 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
                   aria-label="选择学习项目"
                   className="h-9 max-w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-950 outline-none focus:border-sky-400"
                   value={selectedCoursePackId}
-                  onChange={(event) => {
-                    const nextCoursePack = coursePacks.find((entry) => entry.id === event.target.value)?.coursePack;
-                    setSelectedCoursePackId(event.target.value);
-                    const firstUnitLessonId = nextCoursePack?.units.find((unit) => unit.lessonId)?.lessonId;
-                    if (firstUnitLessonId) {
-                      setSelectedLessonId(firstUnitLessonId);
-                      setCourseView("deck");
-                    }
-                  }}
+                  onChange={(event) => selectCoursePack(event.target.value)}
                 >
                   {coursePacks.map((entry) => (
                     <option key={entry.id} value={entry.id}>
@@ -95,10 +119,7 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
                   aria-label="选择课程单元"
                   className="h-9 max-w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-950 outline-none focus:border-sky-400"
                   value={selectedLessonId}
-                  onChange={(event) => {
-                    setSelectedLessonId(event.target.value);
-                    setCourseView("deck");
-                  }}
+                  onChange={(event) => selectLesson(event.target.value)}
                 >
                   {lessonChoices.map((lesson) => (
                     <option key={lesson.id} value={lesson.id}>
@@ -144,8 +165,7 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
           <CourseShell
             coursePack={selectedCoursePack}
             onSelectLesson={(lessonId) => {
-              setSelectedLessonId(lessonId);
-              setCourseView("deck");
+              selectLesson(lessonId);
             }}
             selectedLessonId={selectedLessonId}
             units={selectedCoursePackUnits}
@@ -157,22 +177,32 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
         <CanvasMapRenderer
           coursePack={selectedCoursePack}
           onSelectLesson={(lessonId) => {
-            setSelectedLessonId(lessonId);
-            setCourseView("deck");
+            selectLesson(lessonId);
           }}
           selectedLessonId={selectedLessonId}
         />
       ) : courseView === "assessment" || courseView === "teacher" || courseView === "playground" || courseView === "tutor" ? (
         <LearningProductRenderer lesson={selectedLesson} mode={courseView} />
       ) : (
-        <WebDeckRenderer lesson={selectedLesson} />
+        <WebDeckRenderer
+          initialPageIndex={selectedPageIndex}
+          lesson={selectedLesson}
+          onPageChange={(pageIndex) => {
+            setSelectedPageIndex(pageIndex);
+            updateRoute(selectedCoursePackId, selectedLessonId, pageIndex);
+          }}
+        />
       )}
     </div>
   );
 }
 
-function pickDefaultCoursePack(coursePacks: CoursePackRegistryEntry[]): CoursePackRegistryEntry | undefined {
-  return coursePacks.find((entry) => entry.id !== "demo-course-pack") ?? coursePacks[0];
+function pickDefaultCoursePack(coursePacks: CoursePackRegistryEntry[], preferredCourseId: string | undefined): CoursePackRegistryEntry | undefined {
+  return coursePacks.find((entry) => entry.id === preferredCourseId) ?? coursePacks.find((entry) => entry.id !== "demo-course-pack") ?? coursePacks[0];
+}
+
+function pickDefaultUnit(coursePack: CoursePackRegistryEntry["coursePack"] | undefined, preferredUnitId: string | undefined) {
+  return coursePack?.units.find((unit) => unit.unitId === preferredUnitId && unit.lessonId);
 }
 
 function modeButtonClass(active: boolean): string {

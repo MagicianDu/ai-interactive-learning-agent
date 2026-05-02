@@ -5,12 +5,14 @@ import { PageDots } from "./PageDots";
 import { PageNavigation } from "./PageNavigation";
 
 type DeckShellProps = {
+  initialPageIndex?: number;
   lesson: Lesson;
+  onPageChange?: (pageIndex: number) => void;
   renderPage: (currentIndex: number) => ReactNode;
 };
 
-export function DeckShell({ lesson, renderPage }: DeckShellProps) {
-  const [currentIndex, setCurrentIndex] = useState(0);
+export function DeckShell({ initialPageIndex = 0, lesson, onPageChange, renderPage }: DeckShellProps) {
+  const [currentIndex, setCurrentIndex] = useState(initialPageIndex);
   const total = lesson.pages.length;
   const displayedIndex = total > 0 ? Math.min(currentIndex, total - 1) : 0;
   const pageCountLabel =
@@ -18,8 +20,14 @@ export function DeckShell({ lesson, renderPage }: DeckShellProps) {
 
   const goTo = (index: number) => {
     const lastIndex = Math.max(total - 1, 0);
-    setCurrentIndex(Math.min(Math.max(index, 0), lastIndex));
+    const nextIndex = Math.min(Math.max(index, 0), lastIndex);
+    setCurrentIndex(nextIndex);
+    onPageChange?.(nextIndex);
   };
+
+  useEffect(() => {
+    goTo(initialPageIndex);
+  }, [initialPageIndex, lesson.id, total]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -35,17 +43,17 @@ export function DeckShell({ lesson, renderPage }: DeckShellProps) {
 
       if (event.key === "ArrowRight") {
         event.preventDefault();
-        setCurrentIndex((current) => Math.min(current + 1, Math.max(total - 1, 0)));
+        goTo(displayedIndex + 1);
       }
       if (event.key === "ArrowLeft") {
         event.preventDefault();
-        setCurrentIndex((current) => Math.max(current - 1, 0));
+        goTo(displayedIndex - 1);
       }
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [total]);
+  }, [displayedIndex, total]);
 
   const canGoBack = total > 0 && displayedIndex > 0;
   const canGoForward = total > 0 && displayedIndex < total - 1;
