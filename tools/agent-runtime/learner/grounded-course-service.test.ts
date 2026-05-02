@@ -37,8 +37,11 @@ describe("GroundedCourseService", () => {
 
     const result = await new GroundedCourseService(root).generate({ runId: "grounded-agent" });
 
+    expect(result.status).toBe("preview_ready");
+    if (result.status !== "preview_ready") {
+      throw new Error("expected grounded course preview to be ready");
+    }
     expect(result).toMatchObject({
-      status: "preview_ready",
       runId: "grounded-agent",
       coursePackId: "grounded-agent",
       sourceIngest: {
@@ -46,20 +49,26 @@ describe("GroundedCourseService", () => {
         warningCount: 0
       },
       quality: {
-        checkedLessons: 2,
         blockingIssueCount: 0
-      },
-      criticReports: [expect.objectContaining({ status: "passed" }), expect.objectContaining({ status: "passed" })]
+      }
     });
+    expect(result.preview.instructions.join("\n")).toContain("npm run dev");
+    expect(result.lessonPaths.length).toBeGreaterThanOrEqual(3);
+    expect(result.quality.checkedLessons).toBeGreaterThanOrEqual(3);
+    expect(result.criticReports.length).toBe(result.lessonPaths.length);
+    expect(result.criticReports.every((report) => report.status === "passed")).toBe(true);
     expect(result.sourceIngest.anchorCount).toBeGreaterThanOrEqual(3);
     await expect(readFile(result.sourceIngest.artifactPath, "utf8")).resolves.toContain("candidateInteractions");
+    const coursePackText = await readFile(result.coursePackPath, "utf8");
+    const unitIds = [...coursePackText.matchAll(/unitId: "([^"]+)"/gu)].map((match) => match[1]);
+    expect(unitIds).toContain("unit-overview");
+    expect((coursePackText.match(/lessonId:/gu) ?? []).length).toBeGreaterThanOrEqual(3);
     const lessonText = await readFile(path.join(root, "src", "lessons", "grounded-agent-overview", "lesson.ts"), "utf8");
     expect(lessonText).toContain("sourceContext");
     expect(lessonText).toContain("sourceAnchorIds");
     expect(lessonText).toContain("工具使用");
-    await expect(readFile(path.join(root, "src", "lessons", "grounded-agent-topic-01", "lesson.ts"), "utf8")).resolves.toContain(
-      "多智能体审核"
-    );
+    const generatedLessonTexts = await Promise.all(result.lessonPaths.map((lessonPath) => readFile(lessonPath, "utf8")));
+    expect(generatedLessonTexts.join("\n")).toContain("多智能体审核");
   });
 
   test("applies the latest learner feedback when regenerating a grounded course", async () => {

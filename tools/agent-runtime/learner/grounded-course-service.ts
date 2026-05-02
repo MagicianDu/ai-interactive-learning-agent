@@ -8,6 +8,7 @@ import { buildLessonCriticReport, type LessonCriticReport } from "../quality/les
 import { createRunConfigFromArgs } from "../run-config.js";
 import type { RunConfig } from "../types.js";
 import { normalizeSources } from "../source/source-normalizer.js";
+import { planCourseUnits, type PlannedCourseUnit } from "./course-unit-planner.js";
 import { LearningCoursePublisher, type PublishLearningCourseResult } from "./learning-course-publisher.js";
 
 type LearnerProjectFile = {
@@ -221,32 +222,30 @@ function buildGroundedBundle({
   revision?: RevisionBrief;
 }): { coursePack: Record<string, unknown>; lessons: Array<Record<string, unknown>> } {
   const targetPageCount = config.coursePack?.unitPageCount ?? config.pageCount.target;
-  const focusConcept = concepts[1] ?? concepts[0] ?? "核心机制";
-  const unitKind = focusUnitKind(config.coursePack?.strategy);
-  const overviewLessonId = `${config.runId}-overview`;
-  const topicLessonId = `${config.runId}-topic-01`;
-  const lessons = [
+  const unitPlan = planCourseUnits({
+    runId: config.runId,
+    topic: config.topic,
+    sourceKind: config.sourceKind ?? "unknown",
+    strategy: config.coursePack?.strategy ?? "overview_plus_topic",
+    unitPageCount: targetPageCount,
+    selectedTopics: config.coursePack?.selectedTopics ?? [],
+    selectedChapters: config.coursePack?.selectedChapters ?? [],
+    concepts,
+    sourceAnchorIds,
+    sourceNodeIds: config.sources.map((source) => `${source.id}:root`)
+  });
+  const lessons = unitPlan.units.map((unit) =>
     buildLesson({
-      id: overviewLessonId,
-      title: `${config.topic}：总览课`,
-      unitTitle: `${config.topic}：总览课`,
+      id: unit.lessonId,
+      title: unit.title,
+      unitTitle: unit.title,
       config,
-      sourceAnchorIds,
-      concepts,
-      targetPageCount,
-      revision
-    }),
-    buildLesson({
-      id: topicLessonId,
-      title: `${config.topic}：${focusConcept}`,
-      unitTitle: `${config.topic}：${focusConcept}`,
-      config,
-      sourceAnchorIds: anchorSlice(sourceAnchorIds, 1, 2),
-      concepts: [focusConcept, ...concepts.filter((concept) => concept !== focusConcept)],
+      sourceAnchorIds: unit.sourceAnchorIds,
+      concepts: unit.focusConcepts.length > 0 ? unit.focusConcepts : concepts,
       targetPageCount,
       revision
     })
-  ];
+  );
 
   return {
     lessons,
@@ -258,32 +257,23 @@ function buildGroundedBundle({
       strategy: config.coursePack?.strategy ?? "overview_plus_topic",
       audience: config.audience,
       language: "zh-CN",
-      overviewUnitId: "unit-overview",
-      units: [
-        {
-          unitId: "unit-overview",
-          title: `${config.topic}：总览课`,
-          kind: "overview",
-          lessonId: overviewLessonId,
-          targetPageCount,
-          sourceAnchorIds,
-          sourceNodeIds: config.sources.map((source) => `${source.id}:root`),
-          chapterRefs: config.coursePack?.selectedChapters,
-          conceptIds: concepts.map((concept, index) => `concept-${String(index + 1).padStart(2, "0")}`)
-        },
-        {
-          unitId: "unit-topic-01",
-          title: `${config.topic}：${focusConcept}`,
-          kind: unitKind,
-          lessonId: topicLessonId,
-          targetPageCount,
-          sourceAnchorIds: anchorSlice(sourceAnchorIds, 1, 2),
-          sourceNodeIds: config.sources.map((source) => `${source.id}:root`),
-          chapterRefs: config.coursePack?.selectedChapters,
-          conceptIds: ["concept-02"]
-        }
-      ]
+      overviewUnitId: unitPlan.overviewUnitId,
+      units: unitPlan.units.map(toCoursePackUnit)
     }
+  };
+}
+
+function toCoursePackUnit(unit: PlannedCourseUnit): Record<string, unknown> {
+  return {
+    unitId: unit.unitId,
+    title: unit.title,
+    kind: unit.kind,
+    lessonId: unit.lessonId,
+    targetPageCount: unit.targetPageCount,
+    sourceAnchorIds: unit.sourceAnchorIds,
+    sourceNodeIds: unit.sourceNodeIds,
+    chapterRefs: unit.chapterRefs,
+    conceptIds: unit.conceptIds
   };
 }
 
@@ -590,19 +580,6 @@ function primarySourceValue(config: RunConfig): string | undefined {
     return config.source.items[0]?.value;
   }
   return config.source.value;
-}
-
-function focusUnitKind(strategy: string | undefined): "chapter" | "topic" | "task" | "hybrid" {
-  if (strategy === "chapter_guided") {
-    return "chapter";
-  }
-  if (strategy === "task_guided") {
-    return "task";
-  }
-  if (strategy === "hybrid") {
-    return "hybrid";
-  }
-  return "topic";
 }
 
 function anchorSlice(anchorIds: string[], index: number, total: number): string[] {
