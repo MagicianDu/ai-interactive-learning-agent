@@ -12,6 +12,8 @@ type CanvasMapRendererProps = {
 export function CanvasMapRenderer({ coursePack, selectedLessonId, onSelectLesson }: CanvasMapRendererProps) {
   const conceptIds = collectConceptIds(coursePack);
   const sourceAnchorIds = collectSourceAnchorIds(coursePack);
+  const generatedUnitCount = coursePack.units.filter((unit) => unit.lessonId).length;
+  const plannedUnitCount = coursePack.units.length - generatedUnitCount;
   const edges = coursePack.units.flatMap((unit) => unit.conceptIds.map((conceptId) => ({ from: unit.title, to: conceptId })));
   const conceptCoverageById = new Map(coursePack.conceptCoverage?.map((entry) => [entry.conceptId, entry]) ?? []);
   const sourceCoverageById = new Map(coursePack.sourceCoverage?.map((entry) => [entry.sourceNodeId, entry]) ?? []);
@@ -29,6 +31,13 @@ export function CanvasMapRenderer({ coursePack, selectedLessonId, onSelectLesson
         <div className="rounded-lg bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-600">
           {coursePack.sourceKind ?? "unknown"} · {coursePack.strategy ?? "course"}
         </div>
+      </div>
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricCard label="已生成单元" value={generatedUnitCount} />
+        <MetricCard label="待生成单元" value={plannedUnitCount} />
+        <MetricCard label="核心概念" value={conceptIds.length} />
+        <MetricCard label="来源锚点" value={sourceAnchorIds.length} />
       </div>
 
       <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(18rem,0.7fr)]">
@@ -79,7 +88,7 @@ export function CanvasMapRenderer({ coursePack, selectedLessonId, onSelectLesson
 
         <aside className="grid content-start gap-5">
           <section>
-            <h3 className="text-sm font-bold text-slate-700">核心概念</h3>
+            <h3 className="text-sm font-bold text-slate-700">核心概念明细</h3>
             <div className="mt-3 grid gap-3">
               {conceptIds.map((conceptId) => (
                 <ConceptNode key={conceptId} meta="concept" title={conceptId}>
@@ -112,8 +121,8 @@ export function CanvasMapRenderer({ coursePack, selectedLessonId, onSelectLesson
           </section>
 
           <section>
-            <h3 className="text-sm font-bold text-slate-700">来源锚点</h3>
-            <div className="mt-3 grid gap-2">
+            <h3 className="text-sm font-bold text-slate-700">来源锚点明细</h3>
+            <div className="mt-3 grid max-h-[32rem] gap-2 overflow-auto pr-1">
               {sourceAnchorIds.map((anchorId) => (
                 <ConceptNode key={anchorId} meta="source anchor" title={anchorId} tone="source">
                   <p className="text-xs font-semibold text-slate-600">
@@ -126,6 +135,15 @@ export function CanvasMapRenderer({ coursePack, selectedLessonId, onSelectLesson
         </aside>
       </div>
     </MapViewport>
+  );
+}
+
+function MetricCard({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+      <p className="text-xs font-bold text-slate-500">{label}</p>
+      <p className="mt-1 text-2xl font-bold text-slate-950">{value}</p>
+    </div>
   );
 }
 

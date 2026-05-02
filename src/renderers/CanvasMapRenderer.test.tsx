@@ -47,8 +47,14 @@ describe("CanvasMapRenderer", () => {
     render(<CanvasMapRenderer coursePack={coursePack} onSelectLesson={() => undefined} selectedLessonId="" />);
 
     expect(screen.getByRole("heading", { name: "知识地图" })).toBeInTheDocument();
+    expect(screen.getByText("已生成单元")).toBeInTheDocument();
+    expect(screen.getByText("待生成单元")).toBeInTheDocument();
+    expect(screen.getByText("核心概念")).toBeInTheDocument();
+    expect(screen.getByText("来源锚点")).toBeInTheDocument();
+    expect(screen.getAllByText("1").length).toBeGreaterThanOrEqual(2);
     expect(screen.getAllByText("总览课").length).toBeGreaterThan(0);
     expect(screen.getAllByText("路由与任务分派").length).toBeGreaterThan(0);
+    expect(screen.getByText("待生成")).toBeInTheDocument();
     expect(screen.getAllByText("routing").length).toBeGreaterThan(0);
     expect(screen.getAllByText("planning").length).toBeGreaterThan(0);
     expect(screen.getByText("source-001:chapter-01")).toBeInTheDocument();
