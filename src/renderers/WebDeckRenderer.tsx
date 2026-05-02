@@ -21,6 +21,11 @@ export function WebDeckRenderer({ initialPageIndex, lesson, onPageChange }: WebD
       onPageChange={onPageChange}
       renderPage={(currentIndex) => {
         const page = lesson.pages[currentIndex];
+        const hasSideContent =
+          Boolean(page?.interactionSpec) ||
+          Boolean(page?.assessmentSpec) ||
+          Boolean(page?.code) ||
+          page?.type === "summary_card";
 
         if (!page) {
           return (
@@ -39,36 +44,29 @@ export function WebDeckRenderer({ initialPageIndex, lesson, onPageChange }: WebD
             pageNumber={currentIndex + 1}
             totalPages={lesson.pages.length}
           >
-            <div className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(22rem,0.8fr)]">
+            <div className={hasSideContent ? "grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(22rem,0.8fr)]" : "grid gap-5"}>
               <VisualRenderer title={page.title} visualSpec={page.visualSpec} />
 
-              <div className="grid content-start gap-4">
-                <InteractionRenderer interactionSpec={page.interactionSpec} />
+              {hasSideContent ? (
+                <div className="grid content-start gap-4">
+                  <InteractionRenderer interactionSpec={page.interactionSpec} />
 
-                {page.assessmentSpec ? (
-                  <AssessmentRenderer
-                    assessmentSpec={page.assessmentSpec}
-                    feedbackSpec={page.feedbackSpec}
-                  />
-                ) : null}
+                  {page.assessmentSpec ? (
+                    <AssessmentRenderer
+                      assessmentSpec={page.assessmentSpec}
+                      feedbackSpec={page.feedbackSpec}
+                    />
+                  ) : null}
 
-                {page.code ? (
-                  <CodeBlock language={page.code.language} value={page.code.value} />
-                ) : null}
+                  {page.code ? (
+                    <CodeBlock language={page.code.language} value={page.code.value} />
+                  ) : null}
 
-                {page.type === "summary_card" ? (
-                  <ConceptCard title="记住这张心智模型卡" items={lesson.summary} />
-                ) : null}
-
-                {!page.interactionSpec && !page.assessmentSpec && !page.code && page.type !== "summary_card" ? (
-                  <div className="rounded-lg border border-dashed border-slate-300 bg-white p-5 text-slate-700">
-                    <p className="text-sm font-semibold text-slate-500">互动或评估待补充</p>
-                    <p className="mt-2 text-sm leading-6">
-                      当前页面还没有生成 interactionSpec、assessmentSpec 或 code。请在后续设计中补充学习者动作、检查题或代码走读。
-                    </p>
-                  </div>
-                ) : null}
-              </div>
+                  {page.type === "summary_card" ? (
+                    <ConceptCard title="记住这张心智模型卡" items={lesson.summary} />
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           </DeckPage>
         );

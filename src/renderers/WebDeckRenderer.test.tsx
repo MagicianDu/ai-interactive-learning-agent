@@ -35,7 +35,7 @@ describe("WebDeckRenderer", () => {
     expect(screen.queryByRole("button", { name: "跳转到第 7 页" })).not.toBeInTheDocument();
   });
 
-  test("renders explicit fallback states for incomplete generated page specs", () => {
+  test("keeps incomplete generated page specs learner-facing", () => {
     const incompleteLesson: Lesson = {
       ...databaseIndexLesson,
       id: "incomplete-generated-test",
@@ -44,7 +44,7 @@ describe("WebDeckRenderer", () => {
           id: "p1",
           type: "problem_scene",
           title: "缺少规格的页面",
-          learningGoal: "识别待补充状态",
+          learningGoal: "先建立学习问题",
           narrative: "这页还没有生成完整规格。"
         }
       ],
@@ -55,8 +55,8 @@ describe("WebDeckRenderer", () => {
 
     render(<WebDeckRenderer lesson={incompleteLesson} />);
 
-    expect(screen.getByText("视觉说明待补充")).toBeInTheDocument();
-    expect(screen.getByText("互动或评估待补充")).toBeInTheDocument();
+    expect(screen.getByText("先聚焦这一页的问题")).toBeInTheDocument();
+    expect(screen.queryByText(/visualSpec|interactionSpec|待补充/)).not.toBeInTheDocument();
   });
 
   test("accepts an initial page index and reports page changes", async () => {

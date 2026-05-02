@@ -14,9 +14,9 @@ type VisualRendererProps = {
 export function VisualRenderer({ title, visualSpec }: VisualRendererProps) {
   if (!visualSpec) {
     return (
-      <DiagramFrame title={title} description="视觉说明待补充">
+      <DiagramFrame title={title} description="先聚焦这一页的问题">
         <p className="text-sm leading-6 text-slate-500">
-          当前页面还没有生成 visualSpec。后续 source-grounded 生成或人工修订应补充图示、流程、结构或状态变化说明。
+          先用这页的问题建立方向，再通过后续页面的结构图、互动或检查题验证理解。
         </p>
       </DiagramFrame>
     );

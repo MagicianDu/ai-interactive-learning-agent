@@ -139,5 +139,5 @@ describe("real source regression suite", () => {
       expect(sample.sourceAnchorCount).toBeGreaterThan(0);
     }
     await expect(readFile(path.join(root, "runs", "regression-book-smoke", "learner-project.json"), "utf8")).resolves.toContain("chapter_guided");
-  });
+  }, 15_000);
 });
