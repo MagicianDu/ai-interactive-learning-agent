@@ -1,4 +1,4 @@
-import { access } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 
 import { GroundedCourseService } from "./grounded-course-service.js";
 import { LearnerProjectService } from "./learner-project-service.js";
@@ -34,6 +34,11 @@ export type RealSourceRegressionSampleResult = {
   selectedTopics?: string[];
   unitPages: number;
   acceptanceChecks: string[];
+  semanticExpectations: {
+    expectedConceptLabels: string[];
+    matchedConceptLabels: string[];
+    missingConceptLabels: string[];
+  };
   clarificationQuestions?: string[];
 };
 
@@ -119,6 +124,13 @@ export const realSourceRegressionSamples: RealSourceRegressionSample[] = [
   }
 ];
 
+const expectedSemanticConceptLabelsByKind: Record<RealSourceRegressionSample["sourceKind"], string[]> = {
+  book: ["全局地图", "核心机制"],
+  paper: ["研究问题", "方法结构", "证据边界"],
+  patent: ["权利要求边界", "技术方案", "实施例"],
+  blog: ["实践问题", "操作流程"]
+};
+
 export async function runRealSourceRegressionSuite(
   workspaceRoot: string,
   options: RunRealSourceRegressionOptions = {}
@@ -146,6 +158,7 @@ export async function runRealSourceRegressionSuite(
       options.generateGroundedCourse && project.status === "project_ready"
         ? await groundedCourseService.generate({ runId })
         : undefined;
+    const semanticExpectations = await buildSemanticExpectations(sample.sourceKind, groundedCourse?.sourceIngest.artifactPath);
 
     results.push({
       id: sample.id,
@@ -164,6 +177,7 @@ export async function runRealSourceRegressionSuite(
       selectedTopics: project.brief.selectedTopics,
       unitPages: project.brief.unitPages,
       acceptanceChecks: sample.acceptanceChecks,
+      semanticExpectations,
       ...(project.status === "clarification_required" ? { clarificationQuestions: project.clarificationQuestions } : {})
     });
   }
@@ -189,6 +203,38 @@ async function isSourceAvailable(sample: RealSourceRegressionSample): Promise<bo
     return true;
   } catch {
     return false;
+  }
+}
+
+async function buildSemanticExpectations(
+  sourceKind: RealSourceRegressionSample["sourceKind"],
+  sourceIngestPath: string | undefined
+): Promise<RealSourceRegressionSampleResult["semanticExpectations"]> {
+  const expectedConceptLabels = expectedSemanticConceptLabelsByKind[sourceKind];
+  const actualConceptLabels = sourceIngestPath ? await readSourceIngestConceptLabels(sourceIngestPath) : [];
+  const matchedConceptLabels = expectedConceptLabels.filter((label) => actualConceptLabels.includes(label));
+
+  return {
+    expectedConceptLabels,
+    matchedConceptLabels,
+    missingConceptLabels: expectedConceptLabels.filter((label) => !matchedConceptLabels.includes(label))
+  };
+}
+
+async function readSourceIngestConceptLabels(sourceIngestPath: string): Promise<string[]> {
+  try {
+    const sourceIngest = JSON.parse(await readFile(sourceIngestPath, "utf8")) as {
+      concepts?: Array<{ label?: unknown }>;
+    };
+    return Array.from(
+      new Set(
+        (sourceIngest.concepts ?? [])
+          .map((concept) => concept.label)
+          .filter((label): label is string => typeof label === "string" && label.trim().length > 0)
+      )
+    );
+  } catch {
+    return [];
   }
 }
 

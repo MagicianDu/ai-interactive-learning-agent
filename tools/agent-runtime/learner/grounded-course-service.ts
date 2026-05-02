@@ -10,6 +10,7 @@ import type { RunConfig } from "../types.js";
 import { normalizeSources } from "../source/source-normalizer.js";
 import { planCourseUnits, type PlannedCourseUnit } from "./course-unit-planner.js";
 import { LearningCoursePublisher, type PublishLearningCourseResult } from "./learning-course-publisher.js";
+import { extractSourceSemantics } from "./source-semantic-extractor.js";
 
 type LearnerProjectFile = {
   request?: string;
@@ -74,7 +75,7 @@ export class GroundedCourseService {
     const bundle = buildGroundedBundle({
       config,
       sourceAnchorIds: sourceAnchorIds.slice(0, maxAnchorsPerLesson),
-      concepts: sourceIngest.concepts.map((concept) => concept.label),
+      concepts: lessonConceptLabels(config, sourceIngest.concepts.map((concept) => concept.label)),
       revision
     });
     const criticReports = bundle.lessons.map((lesson) => buildLessonCriticReport(lesson, config));
@@ -155,12 +156,8 @@ function buildSourceIngestArtifact(
   anchors: SourceAnchor[];
   extractionWarnings: unknown[];
 } {
-  const conceptLabels = selectedConceptLabels(config);
-  const concepts = conceptLabels.map((label, index) => ({
-    id: `concept-${String(index + 1).padStart(2, "0")}`,
-    label,
-    sourceAnchorIds: anchorSlice(sourceAnchorIds, index, conceptLabels.length)
-  }));
+  const semantics = extractSourceSemantics({ sourceKind: config.sourceKind ?? "unknown", anchors });
+  const concepts = withFallbackAnchorIds(semantics.concepts, sourceAnchorIds);
 
   return {
     artifactId: "source-ingest",
@@ -176,19 +173,8 @@ function buildSourceIngestArtifact(
       relation: "supports_next_learning_step",
       sourceAnchorIds: concept.sourceAnchorIds
     })),
-    examples: concepts.map((concept) => ({
-      id: `${concept.id}-example`,
-      title: `${concept.label} 的来源例子`,
-      sourceAnchorIds: concept.sourceAnchorIds
-    })),
-    misconceptions: [
-      {
-        id: "source-summary-is-understanding",
-        statement: "把资料总结出来就等于真正理解。",
-        correction: "真正理解需要能解释机制、操作模型、识别边界，并迁移到新问题。",
-        sourceAnchorIds: sourceAnchorIds.slice(0, 2)
-      }
-    ],
+    examples: withFallbackAnchorIds(semantics.examples, sourceAnchorIds),
+    misconceptions: withFallbackAnchorIds(semantics.misconceptions, sourceAnchorIds),
     candidateInteractions: [
       {
         id: "choose-grounded-claim",
@@ -201,7 +187,7 @@ function buildSourceIngestArtifact(
         id: "select-next-learning-path",
         type: "choice",
         learnerAction: "选择先看总览、机制、误区还是迁移任务",
-        feedback: "反馈会解释不同阅读路径适合的学习目标。",
+        feedback: `反馈会解释不同阅读路径适合的学习目标：${semantics.teachingAngles.join("；")}。`,
         sourceAnchorIds: sourceAnchorIds.slice(0, 2)
       }
     ],
@@ -550,29 +536,18 @@ function assessmentFields(kind: "quiz" | "misconception" | "transfer"): Record<s
   };
 }
 
-function selectedConceptLabels(config: RunConfig): string[] {
-  const selected = config.coursePack?.selectedTopics?.filter(Boolean);
-  if (selected && selected.length > 0) {
-    return uniqueStrings(["全局地图", ...selected, "迁移应用"]).slice(0, 5);
-  }
-  if (config.sourceKind === "patent") {
-    return ["权利要求边界", "技术方案", "实施例", "风险边界", "迁移判断"];
-  }
-  if (config.sourceKind === "paper") {
-    return ["研究问题", "方法结构", "证据边界", "局限条件", "迁移应用"];
-  }
-  if (config.sourceKind === "blog") {
-    return ["实践问题", "操作流程", "工具选择", "评估方式", "迁移应用"];
-  }
-  return ["全局地图", "核心机制", "关键例子", "常见误区", "迁移应用"];
-}
-
 function usableSourceTitle(topic: string | undefined): string | undefined {
   const normalized = topic?.trim();
   if (!normalized || ["中文", "课程", "学习材料", "学习网页"].includes(normalized)) {
     return undefined;
   }
   return normalized;
+}
+
+function lessonConceptLabels(config: RunConfig, semanticConceptLabels: string[]): string[] {
+  const selectedTopics = config.coursePack?.selectedTopics ?? [];
+  const [overviewConcept, ...restSemanticConcepts] = semanticConceptLabels;
+  return uniqueStrings([overviewConcept ?? "全局地图", ...selectedTopics, ...restSemanticConcepts]);
 }
 
 function primarySourceValue(config: RunConfig): string | undefined {
@@ -582,14 +557,11 @@ function primarySourceValue(config: RunConfig): string | undefined {
   return config.source.value;
 }
 
-function anchorSlice(anchorIds: string[], index: number, total: number): string[] {
-  if (anchorIds.length <= 1 || total <= 1) {
-    return anchorIds;
-  }
-  const chunkSize = Math.max(1, Math.ceil(anchorIds.length / total));
-  const start = Math.min(index * chunkSize, Math.max(0, anchorIds.length - 1));
-  const chunk = anchorIds.slice(start, start + chunkSize);
-  return chunk.length > 0 ? chunk : anchorIds.slice(0, 1);
+function withFallbackAnchorIds<T extends { sourceAnchorIds: string[] }>(items: T[], fallbackAnchorIds: string[]): T[] {
+  return items.map((item) => ({
+    ...item,
+    sourceAnchorIds: item.sourceAnchorIds.length > 0 ? item.sourceAnchorIds : fallbackAnchorIds.slice(0, 1)
+  }));
 }
 
 function ensureAnchorIds(anchorIds: string[], config: RunConfig): string[] {

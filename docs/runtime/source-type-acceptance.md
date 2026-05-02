@@ -15,6 +15,7 @@ Prompt pattern:
 Acceptance:
 
 - Course pack has one overview unit and at least one topic unit.
+- Source semantic expectations report at least `全局地图` and `核心机制` as matched concept labels.
 - Lessons include sourceContext.sourceAnchorIds or page-level source anchors.
 - Overview explains the whole book map, not only one chapter.
 - Topic lessons preserve chapter/source mapping.
@@ -32,6 +33,7 @@ Prompt pattern:
 Acceptance:
 
 - Overview separates research problem, contribution, assumptions, evidence and limitations.
+- Source semantic expectations report `研究问题`, `方法结构`, and `证据边界` as matched concept labels.
 - Method and experiment units cite source anchors.
 - Transfer task asks the learner to apply the method boundary to a new paper or project.
 
@@ -53,6 +55,7 @@ https://patents.google.com/patent/WO2025085566A1/en
 Acceptance:
 
 - Units cover claims, embodiments, technical solution and transfer/risk.
+- Source semantic expectations report `权利要求边界`, `技术方案`, and `实施例` as matched concept labels.
 - Lessons distinguish claim text from explanatory analogy.
 - Source anchors point to claims or specification sections.
 
@@ -74,6 +77,7 @@ https://techcommunity.microsoft.com/blog/azure-ai-foundry-blog/bonus-rag-time-jo
 Acceptance:
 
 - Lesson starts from a practical problem.
+- Source semantic expectations report `实践问题` and `操作流程` as matched concept labels.
 - At least two interactions require learner decisions.
 - Source-backed claims cite blog anchors; missing background is marked as prerequisite or inference.
 
@@ -84,5 +88,6 @@ For all source types:
 - `publish_learning_course` must return `preview_ready`.
 - `generate_grounded_course` must return `preview_ready` for the default learner-first path.
 - If source anchors are missing, the expected result is `revision_required`.
+- `source:regression` reports `semanticExpectations.expectedConceptLabels`, `matchedConceptLabels`, and `missingConceptLabels` for each source kind. Missing semantic labels are reported in this slice; they do not fail `seed:check` yet.
 - User feedback should go through `revise_learning_course`, then another `generate_grounded_course` or a revised `publish_learning_course`.
 - `create_learning_project` accepts `strategy`, `selectedChapters`, and `selectedTopics` so Codex can preserve user-specified organization in the learner brief.

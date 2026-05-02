@@ -86,6 +86,11 @@ describe("real source regression suite", () => {
           status: "project_ready",
           groundedCourseStatus: "preview_ready",
           sourceAnchorCount: expect.any(Number),
+          semanticExpectations: {
+            expectedConceptLabels: ["全局地图", "核心机制"],
+            matchedConceptLabels: ["全局地图", "核心机制"],
+            missingConceptLabels: []
+          },
           strategy: "chapter_guided",
           selectedChapters: ["第 1 章"],
           sourceAvailable: true
@@ -95,6 +100,11 @@ describe("real source regression suite", () => {
           status: "project_ready",
           groundedCourseStatus: "preview_ready",
           sourceAnchorCount: expect.any(Number),
+          semanticExpectations: {
+            expectedConceptLabels: ["研究问题", "方法结构", "证据边界"],
+            matchedConceptLabels: ["研究问题", "方法结构", "证据边界"],
+            missingConceptLabels: []
+          },
           strategy: "topic_guided",
           selectedTopics: ["method"],
           sourceAvailable: true
@@ -104,6 +114,11 @@ describe("real source regression suite", () => {
           status: "project_ready",
           groundedCourseStatus: "preview_ready",
           sourceAnchorCount: expect.any(Number),
+          semanticExpectations: {
+            expectedConceptLabels: ["实践问题", "操作流程"],
+            matchedConceptLabels: ["实践问题", "操作流程"],
+            missingConceptLabels: []
+          },
           strategy: "task_guided",
           sourceAvailable: true
         })
