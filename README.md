@@ -125,6 +125,8 @@ npm run mcp -- --list-tools
 Default learner-facing tools:
 
 - `learning_agent.create_learning_project`
+- `learning_agent.list_learning_projects`
+- `learning_agent.archive_learning_project`
 - `learning_agent.generate_grounded_course`
 - `learning_agent.publish_learning_course`
 - `learning_agent.get_learning_preview`
@@ -152,7 +154,7 @@ Advanced/operator tools include:
 
 The current entrypoint accepts newline-delimited JSON-RPC requests on stdin and returns MCP-compatible JSON-RPC responses. It is intentionally thin; tool calls wrap learner project creation, grounded course generation, publishing, preview, revision, and advanced operator workflows.
 
-Default Codex usage should be learner-first. Codex clarifies the learning request, calls `learning_agent.create_learning_project`, then calls `learning_agent.generate_grounded_course` for a fast source-grounded Chinese preview. For hand-authored or heavily refined content, Codex can still generate a Chinese `coursePack` and `lessons` and call `learning_agent.publish_learning_course`. Do not ask learners to approve `source-map`, `concept-map`, or `curriculum-plan`.
+Default Codex usage should be learner-first. Codex clarifies the learning request, calls `learning_agent.create_learning_project`, then calls `learning_agent.generate_grounded_course` for a fast source-grounded Chinese preview. It should call `learning_agent.get_learning_preview` after generation, use `learning_agent.revise_learning_course` then `learning_agent.apply_learning_revision` for learner feedback, and call `learning_agent.export_learning_course` when the learner wants a shareable bundle. For hand-authored or heavily refined content, Codex can still generate a Chinese `coursePack` and `lessons` and call `learning_agent.publish_learning_course`. Do not ask learners to approve `source-map`, `concept-map`, or `curriculum-plan`.
 
 Default trial prompt:
 
@@ -170,8 +172,9 @@ Manual learner-first smoke:
 ```bash
 printf '%s\n' \
   '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"manual-smoke","version":"0.0.0"}}}' \
-  '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"learning_agent.create_learning_project","arguments":{"request":"请生成哈希表中文学习材料，面向有编程基础的学习者，每个单元 8 页。","runId":"hash-table-nl"}}}' \
-  '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"learning_agent.get_learning_preview","arguments":{"runId":"hash-table-nl"}}}' \
+  '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"learning_agent.create_learning_project","arguments":{"request":"请把这份资料生成中文学习网页，先给总览课，再按核心 topic 拆课，每个单元 8 页，面向有编程基础的中文学习者。","runId":"seed-ready-smoke","sourcePath":"/absolute/path/to/source.pdf","sourceKind":"book","audience":"有编程基础但缺少系统心智模型的中文学习者","unitPages":8,"strategy":"overview_plus_topic"}}}' \
+  '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"learning_agent.generate_grounded_course","arguments":{"runId":"seed-ready-smoke"}}}' \
+  '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"learning_agent.get_learning_preview","arguments":{"runId":"seed-ready-smoke"}}}' \
   | npm run mcp
 ```
 
@@ -180,6 +183,19 @@ For source-backed learner projects, `learning_agent.generate_grounded_course` no
 Learner feedback should use `learning_agent.revise_learning_course`. Codex records the feedback as a revision brief. `learning_agent.apply_learning_revision` applies the latest targeted revision to the current published preview when the feedback maps to a supported scope such as a page. Codex-authored advanced revisions can still republish through `publish_learning_course`.
 
 When the learner accepts a course, `learning_agent.export_learning_course` writes an export manifest under `runs/<run-id>/exports/static-course/manifest.json` with the course metadata and published artifact paths.
+
+Seed-ready learner flow:
+
+```text
+create_learning_project
+generate_grounded_course
+get_learning_preview
+revise_learning_course
+apply_learning_revision
+export_learning_course
+```
+
+Long sources such as books, papers, patents, and technical blogs should generate one overview unit plus multiple focused units, with source anchors and semantic regression checks preserved.
 
 For book, paper, patent, blog, documentation, or notes-backed projects, direct publish now checks source grounding. Lessons must include `sourceContext.sourceAnchorIds` or page-level source anchors unless a page is explicitly marked as inferred or analogy.
 
@@ -229,6 +245,9 @@ npm run typecheck
 npm run lint
 npm run test
 npm run build
+npm run codex:mcp:check
+npm run source:regression
+npm run seed:check
 ```
 
 ## Current Lesson

@@ -12,6 +12,15 @@ For the current seed-ready implementation plan, see:
 
 - `docs/superpowers/plans/2026-05-02-seed-ready-product.md`
 
+## Current Seed-Ready Track
+
+- Learner entrypoint is Codex/MCP natural language, not internal artifact approval.
+- Default flow is `create_learning_project -> generate_grounded_course -> get_learning_preview`.
+- Feedback flow is `revise_learning_course -> apply_learning_revision -> get_learning_preview`.
+- Export flow is `export_learning_course`.
+- Long sources generate one overview unit plus multiple focused units while preserving chapter/topic/source mapping.
+- Source regression covers book, paper, patent, and blog samples with generated unit count and semantic readiness status.
+
 ## Phase 0: Scaffold and Design
 
 - Initialize repository structure.
@@ -44,6 +53,7 @@ For the current seed-ready implementation plan, see:
 - Add conversational guidance around the visual objects.
 - Diagnose misconceptions through learner responses.
 - Avoid replacing the visual lesson with chat-only explanation.
+- Let the tutor route learner feedback into targeted course revisions instead of exposing internal artifacts.
 
 ## Phase 5: Teacher Mode
 
