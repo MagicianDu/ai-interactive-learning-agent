@@ -25,7 +25,7 @@ npm run codex:mcp:check
 资料是：/absolute/path/to/source.pdf
 我希望先有总览课，再按核心 topic 拆课。每个单元 8 页。
 请先问我最多 3 个你必须知道的问题。明确后，不要让我审批内部 artifacts。
-你可以直接生成 course bundle，然后调用 learning_agent.publish_learning_course 发布网页。
+你可以直接调用 learning_agent.create_learning_project，然后调用 learning_agent.generate_grounded_course 生成带来源锚点的课程网页。
 ```
 
 Alternative organization prompts:
@@ -42,7 +42,7 @@ strategy=hybrid。先给总览课，再按教学 topic 组织路径，同时保�
 
 ```text
 create_learning_project
-publish_learning_course
+generate_grounded_course
 get_learning_preview
 ```
 
@@ -57,8 +57,14 @@ If the user gives feedback after viewing:
 
 ```text
 revise_learning_course
-publish_learning_course
+apply_learning_revision
 get_learning_preview
+```
+
+If the user wants to share or archive the generated lesson:
+
+```text
+export_learning_course
 ```
 
 ## Failure Handling
@@ -74,6 +80,8 @@ The trial is acceptable when:
 
 - the user gets `npm run dev` and `http://127.0.0.1:5173/`
 - a course pack appears in the frontend
+- long sources produce one overview unit plus multiple focused units
 - lessons are Chinese-first
 - source-backed lessons show source anchors
-- feedback can be recorded through `revise_learning_course`
+- feedback can be recorded through `revise_learning_course` and applied through `apply_learning_revision`
+- static export can be created through `export_learning_course`

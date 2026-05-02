@@ -3,6 +3,8 @@ import { access, readFile } from "node:fs/promises";
 import { GroundedCourseService } from "./grounded-course-service.js";
 import { LearnerProjectService } from "./learner-project-service.js";
 
+export type RealSourceRegressionSemanticStatus = "passed" | "warning" | "failed";
+
 export type RealSourceRegressionSample = {
   id: string;
   title: string;
@@ -34,6 +36,9 @@ export type RealSourceRegressionSampleResult = {
   selectedTopics?: string[];
   unitPages: number;
   acceptanceChecks: string[];
+  generatedUnitCount: number;
+  semanticStatus: RealSourceRegressionSemanticStatus;
+  missingConceptLabels: string[];
   semanticExpectations: {
     expectedConceptLabels: string[];
     matchedConceptLabels: string[];
@@ -159,6 +164,14 @@ export async function runRealSourceRegressionSuite(
         ? await groundedCourseService.generate({ runId })
         : undefined;
     const semanticExpectations = await buildSemanticExpectations(sample.sourceKind, groundedCourse?.sourceIngest.artifactPath);
+    const generatedUnitCount = groundedCourse?.status === "preview_ready" ? groundedCourse.lessonPaths.length : 0;
+    const missingConceptLabels = semanticExpectations.missingConceptLabels;
+    const semanticStatus = resolveSemanticStatus({
+      sourceKind: sample.sourceKind,
+      generatedUnitCount,
+      missingConceptLabels,
+      sourceIngestWarningCount: groundedCourse?.sourceIngest.warningCount ?? 0
+    });
 
     results.push({
       id: sample.id,
@@ -177,6 +190,9 @@ export async function runRealSourceRegressionSuite(
       selectedTopics: project.brief.selectedTopics,
       unitPages: project.brief.unitPages,
       acceptanceChecks: sample.acceptanceChecks,
+      generatedUnitCount,
+      semanticStatus,
+      missingConceptLabels,
       semanticExpectations,
       ...(project.status === "clarification_required" ? { clarificationQuestions: project.clarificationQuestions } : {})
     });
@@ -191,6 +207,27 @@ export async function runRealSourceRegressionSuite(
     },
     samples: results
   };
+}
+
+export function resolveSemanticStatus(input: {
+  sourceKind: RealSourceRegressionSample["sourceKind"];
+  generatedUnitCount: number;
+  missingConceptLabels: string[];
+  sourceIngestWarningCount: number;
+}): RealSourceRegressionSemanticStatus {
+  if (input.generatedUnitCount < 3) {
+    return "failed";
+  }
+
+  if (input.missingConceptLabels.length > 0 && input.sourceKind !== "blog") {
+    return "failed";
+  }
+
+  if (input.sourceKind === "blog" && input.sourceIngestWarningCount > 0 && input.generatedUnitCount > 0) {
+    return "warning";
+  }
+
+  return "passed";
 }
 
 async function isSourceAvailable(sample: RealSourceRegressionSample): Promise<boolean> {

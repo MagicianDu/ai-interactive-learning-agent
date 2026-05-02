@@ -64,11 +64,18 @@ describe("MCP JSON-RPC server", () => {
     const response = await handleMcpRequest({ jsonrpc: "2.0", id: "tools", method: "tools/list" }, tools);
     const listedTools = (response as { result: { tools: Array<{ name: string; description: string }> } }).result.tools;
 
-    expect(listedTools.slice(0, 4).map((tool) => tool.name)).toEqual([
+    const advancedToolIndex = listedTools.findIndex((tool) => tool.description.startsWith("Advanced/operator tool."));
+    expect(listedTools.slice(0, advancedToolIndex).map((tool) => tool.name)).toEqual([
       "learning_agent.create_learning_project",
+      "learning_agent.list_learning_projects",
+      "learning_agent.archive_learning_project",
       "learning_agent.generate_grounded_course",
       "learning_agent.publish_learning_course",
-      "learning_agent.get_learning_preview"
+      "learning_agent.get_learning_preview",
+      "learning_agent.generate_quick_preview",
+      "learning_agent.revise_learning_course",
+      "learning_agent.apply_learning_revision",
+      "learning_agent.export_learning_course"
     ]);
     expect(listedTools.find((tool) => tool.name === "learning_agent.approve_gate")?.description).toMatch(
       /Advanced\/operator tool/

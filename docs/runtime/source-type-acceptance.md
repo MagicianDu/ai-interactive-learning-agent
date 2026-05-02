@@ -15,7 +15,9 @@ Prompt pattern:
 Acceptance:
 
 - Course pack has one overview unit and at least one topic unit.
+- Generated unit count is at least 3 for seed regression.
 - Source semantic expectations report at least `全局地图` and `核心机制` as matched concept labels.
+- Semantic status is `passed`; missing concept labels fail seed readiness.
 - Lessons include sourceContext.sourceAnchorIds or page-level source anchors.
 - Overview explains the whole book map, not only one chapter.
 - Topic lessons preserve chapter/source mapping.
@@ -33,7 +35,9 @@ Prompt pattern:
 Acceptance:
 
 - Overview separates research problem, contribution, assumptions, evidence and limitations.
+- Generated unit count is at least 3 for seed regression.
 - Source semantic expectations report `研究问题`, `方法结构`, and `证据边界` as matched concept labels.
+- Semantic status is `passed`; missing concept labels fail seed readiness.
 - Method and experiment units cite source anchors.
 - Transfer task asks the learner to apply the method boundary to a new paper or project.
 
@@ -55,7 +59,9 @@ https://patents.google.com/patent/WO2025085566A1/en
 Acceptance:
 
 - Units cover claims, embodiments, technical solution and transfer/risk.
+- Generated unit count is at least 3 for seed regression.
 - Source semantic expectations report `权利要求边界`, `技术方案`, and `实施例` as matched concept labels.
+- Semantic status is `passed`; missing concept labels fail seed readiness.
 - Lessons distinguish claim text from explanatory analogy.
 - Source anchors point to claims or specification sections.
 
@@ -77,7 +83,9 @@ https://techcommunity.microsoft.com/blog/azure-ai-foundry-blog/bonus-rag-time-jo
 Acceptance:
 
 - Lesson starts from a practical problem.
+- Generated unit count is at least 3 for seed regression.
 - Source semantic expectations report `实践问题` and `操作流程` as matched concept labels.
+- Semantic status is `passed` when URL content is extracted, or `warning` when URL extraction falls back but the course still generates.
 - At least two interactions require learner decisions.
 - Source-backed claims cite blog anchors; missing background is marked as prerequisite or inference.
 
@@ -88,6 +96,8 @@ For all source types:
 - `publish_learning_course` must return `preview_ready`.
 - `generate_grounded_course` must return `preview_ready` for the default learner-first path.
 - If source anchors are missing, the expected result is `revision_required`.
-- `source:regression` reports `semanticExpectations.expectedConceptLabels`, `matchedConceptLabels`, and `missingConceptLabels` for each source kind. Missing semantic labels are reported in this slice; they do not fail `seed:check` yet.
-- User feedback should go through `revise_learning_course`, then another `generate_grounded_course` or a revised `publish_learning_course`.
+- `source:regression` reports `generatedUnitCount`, `semanticStatus`, `missingConceptLabels`, and `semanticExpectations` for each source kind.
+- `seed:check` fails if any source regression item has `semanticStatus=failed`.
+- User feedback should go through `revise_learning_course`, then `apply_learning_revision`, then `get_learning_preview`.
+- Shareable output should go through `export_learning_course`.
 - `create_learning_project` accepts `strategy`, `selectedChapters`, and `selectedTopics` so Codex can preserve user-specified organization in the learner brief.

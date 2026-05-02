@@ -29,3 +29,12 @@ if (result.summary.groundedReady !== result.summary.total) {
 if (result.summary.missingLocalSources > 0) {
   throw new Error(`missing ${result.summary.missingLocalSources} local source file(s)`);
 }
+
+const failedSemanticSamples = result.samples.filter((sample) => sample.semanticStatus === "failed");
+if (failedSemanticSamples.length > 0) {
+  throw new Error(
+    `semantic source regression failed for ${failedSemanticSamples
+      .map((sample) => `${sample.id}(${sample.missingConceptLabels.join(", ") || "insufficient generated units"})`)
+      .join("; ")}`
+  );
+}
