@@ -1,7 +1,8 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { buildBundleAuthoringGuidance } from "./bundle-authoring-guidance.js";
+import { ProjectRegistry } from "./project-registry.js";
 
 export type CreateLearnerProjectInput = {
   request: string;
@@ -75,8 +76,22 @@ export class LearnerProjectService {
 
   private async writeBrief(runId: string, brief: LearnerBrief, request: string): Promise<void> {
     const runPath = path.join(this.workspaceRoot, "runs", runId);
-    await mkdir(runPath, { recursive: true });
-    await writeFile(path.join(runPath, "learner-project.json"), JSON.stringify({ runId, request, brief }, null, 2), "utf8");
+    await new ProjectRegistry(this.workspaceRoot).upsertProject({
+      projectId: runId,
+      title: brief.topic ?? runId,
+      sourceKind: brief.sourceKind,
+      sourceRefs: brief.sourcePath ? [brief.sourcePath] : [],
+      audience: brief.audience,
+      language: "zh-CN",
+      strategy: brief.strategy,
+      unitPageCount: brief.unitPages,
+      selectedChapters: brief.selectedChapters,
+      selectedTopics: brief.selectedTopics,
+      status: "draft"
+    });
+    const projectPath = path.join(runPath, "learner-project.json");
+    const current = JSON.parse(await readFile(projectPath, "utf8")) as Record<string, unknown>;
+    await writeFile(projectPath, `${JSON.stringify({ ...current, runId, request, brief }, null, 2)}\n`, "utf8");
   }
 }
 

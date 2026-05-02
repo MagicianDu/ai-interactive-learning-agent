@@ -13,6 +13,14 @@ describe("LearningAgentRuntimeTools", () => {
   test("declares stable learning agent tool contracts", () => {
     expect(learningAgentToolContracts.map((tool) => tool.name)).toEqual(
       expect.arrayContaining([
+        "learning_agent.create_learning_project",
+        "learning_agent.list_learning_projects",
+        "learning_agent.archive_learning_project",
+        "learning_agent.generate_grounded_course",
+        "learning_agent.publish_learning_course",
+        "learning_agent.get_learning_preview",
+        "learning_agent.generate_quick_preview",
+        "learning_agent.revise_learning_course",
         "learning_agent.init_run",
         "learning_agent.plan_run",
         "learning_agent.init_from_plan",
@@ -87,6 +95,46 @@ describe("LearningAgentRuntimeTools", () => {
       pageCount: { target: 8 }
     });
     await expect(readFile(path.join(root, "runs", "mcp-smoke", "run.config.json"), "utf8")).resolves.toContain("哈希表");
+  });
+
+  test("lists and archives learner projects through tool handlers", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
+    const tools = new LearningAgentRuntimeTools(root);
+
+    await tools.callTool("learning_agent.create_learning_project", {
+      request: "请用 /tmp/book.pdf 生成中文学习材料，面向有编程基础的学习者，每个单元 8 页，先总览再按核心 topic 拆课。",
+      runId: "mcp-book-project"
+    });
+
+    const listResult = await tools.callTool("learning_agent.list_learning_projects", {});
+
+    expect(listResult).toMatchObject({
+      status: "projects_ready",
+      projects: [
+        expect.objectContaining({
+          projectId: "mcp-book-project",
+          sourceKind: "book",
+          sourceRefs: ["/tmp/book.pdf"],
+          status: "draft"
+        })
+      ]
+    });
+
+    const archiveResult = await tools.callTool("learning_agent.archive_learning_project", { runId: "mcp-book-project" });
+    const manifest = JSON.parse(await readFile(path.join(root, "runs", "mcp-book-project", "learner-project.json"), "utf8")) as {
+      request?: string;
+      brief?: unknown;
+      project?: { status: string };
+    };
+
+    expect(archiveResult).toMatchObject({
+      status: "project_archived",
+      runId: "mcp-book-project",
+      project: expect.objectContaining({ status: "archived" })
+    });
+    expect(manifest.request).toContain("/tmp/book.pdf");
+    expect(manifest.brief).toBeDefined();
+    expect(manifest.project?.status).toBe("archived");
   });
 
   test("submits and approves artifacts through tool handlers", async () => {

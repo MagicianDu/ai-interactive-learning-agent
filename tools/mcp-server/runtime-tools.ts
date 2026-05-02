@@ -22,6 +22,7 @@ import {
   RunStore
 } from "../agent-runtime/index.js";
 import type { ArtifactVersion } from "../agent-runtime/artifact-store.js";
+import { ProjectRegistry } from "../agent-runtime/learner/project-registry.js";
 import type { ApprovalGateId } from "../agent-runtime/types.js";
 import type { LearningAgentToolName } from "./tool-contracts.js";
 
@@ -50,6 +51,10 @@ export class LearningAgentRuntimeTools {
     switch (name) {
       case "learning_agent.create_learning_project":
         return this.createLearningProject(input);
+      case "learning_agent.list_learning_projects":
+        return this.listLearningProjects(input);
+      case "learning_agent.archive_learning_project":
+        return this.archiveLearningProject(input);
       case "learning_agent.generate_grounded_course":
         return this.generateGroundedCourse(input);
       case "learning_agent.publish_learning_course":
@@ -108,6 +113,24 @@ export class LearningAgentRuntimeTools {
       selectedChapters: optionalStringArray(options.selectedChapters),
       selectedTopics: optionalStringArray(options.selectedTopics)
     });
+  }
+
+  private async listLearningProjects(input: unknown): Promise<unknown> {
+    expectRecord(input);
+    return {
+      status: "projects_ready",
+      projects: await new ProjectRegistry(this.workspaceRoot).listProjects()
+    };
+  }
+
+  private async archiveLearningProject(input: unknown): Promise<unknown> {
+    const options = expectRecord(input);
+    const runId = requiredString(options, "runId");
+    return {
+      status: "project_archived",
+      runId,
+      project: await new ProjectRegistry(this.workspaceRoot).archiveProject(runId)
+    };
   }
 
   private async generateGroundedCourse(input: unknown): Promise<unknown> {
@@ -396,10 +419,12 @@ export class LearningAgentRuntimeTools {
 }
 
 function isLearningAgentToolName(name: string): name is LearningAgentToolName {
-    return [
-      "learning_agent.create_learning_project",
-      "learning_agent.generate_grounded_course",
-      "learning_agent.publish_learning_course",
+  return [
+    "learning_agent.create_learning_project",
+    "learning_agent.list_learning_projects",
+    "learning_agent.archive_learning_project",
+    "learning_agent.generate_grounded_course",
+    "learning_agent.publish_learning_course",
     "learning_agent.get_learning_preview",
     "learning_agent.generate_quick_preview",
     "learning_agent.revise_learning_course",

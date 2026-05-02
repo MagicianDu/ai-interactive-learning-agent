@@ -42,9 +42,25 @@ describe("LearnerProjectService", () => {
         language: "zh-CN"
       }
     });
-    await expect(readFile(path.join(root, "runs", "book-run", "learner-project.json"), "utf8")).resolves.toContain(
-      "有编程基础"
-    );
+    const manifest = JSON.parse(await readFile(path.join(root, "runs", "book-run", "learner-project.json"), "utf8")) as {
+      request: string;
+      brief: unknown;
+      project?: {
+        projectId: string;
+        title: string;
+        sourceKind: string;
+        sourceRefs: string[];
+        status: string;
+      };
+    };
+    expect(manifest.request).toContain("有编程基础");
+    expect(manifest.brief).toBeDefined();
+    expect(manifest.project).toMatchObject({
+      projectId: "book-run",
+      sourceKind: "book",
+      sourceRefs: ["/tmp/book.pdf"],
+      status: "draft"
+    });
   });
 
   test("preserves requested chapters and topics in learner brief and Codex instruction", async () => {

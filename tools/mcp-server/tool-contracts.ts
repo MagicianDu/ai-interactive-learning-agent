@@ -1,5 +1,7 @@
 export type LearningAgentToolName =
   | "learning_agent.create_learning_project"
+  | "learning_agent.list_learning_projects"
+  | "learning_agent.archive_learning_project"
   | "learning_agent.generate_grounded_course"
   | "learning_agent.publish_learning_course"
   | "learning_agent.get_learning_preview"
@@ -61,6 +63,16 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
       },
       ["request"]
     )
+  },
+  {
+    name: "learning_agent.list_learning_projects",
+    description: "Learner-facing tool. List local learning projects created under runs/ with preview metadata when available.",
+    inputSchema: objectSchema({})
+  },
+  {
+    name: "learning_agent.archive_learning_project",
+    description: "Learner-facing tool. Archive a local learning project without deleting generated run artifacts.",
+    inputSchema: objectSchema({ runId: stringSchema }, ["runId"])
   },
   {
     name: "learning_agent.generate_grounded_course",
