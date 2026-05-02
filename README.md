@@ -130,6 +130,8 @@ Default learner-facing tools:
 - `learning_agent.get_learning_preview`
 - `learning_agent.generate_quick_preview`
 - `learning_agent.revise_learning_course`
+- `learning_agent.apply_learning_revision`
+- `learning_agent.export_learning_course`
 
 Advanced/operator tools include:
 
@@ -173,9 +175,11 @@ printf '%s\n' \
   | npm run mcp
 ```
 
-For source-backed learner projects, `learning_agent.generate_grounded_course` normalizes the source, writes `source-ingest`, generates overview + first focused unit, validates Chinese-first content, source grounding, interactions, feedback, and publishes a local preview. `learning_agent.generate_quick_preview` remains an operator smoke path for the older gate-based mock workflow.
+For source-backed learner projects, `learning_agent.generate_grounded_course` normalizes the source, writes `source-ingest`, generates overview + focused units, validates Chinese-first content, source grounding, interactions, feedback, and publishes a local preview. `learning_agent.generate_quick_preview` remains an operator smoke path for the older gate-based mock workflow.
 
-Learner feedback should use `learning_agent.revise_learning_course`. Codex records the feedback as a revision brief. A follow-up `learning_agent.generate_grounded_course` applies the latest brief to regenerate the grounded preview; Codex-authored advanced revisions can still republish through `publish_learning_course`.
+Learner feedback should use `learning_agent.revise_learning_course`. Codex records the feedback as a revision brief. `learning_agent.apply_learning_revision` applies the latest targeted revision to the current published preview when the feedback maps to a supported scope such as a page. Codex-authored advanced revisions can still republish through `publish_learning_course`.
+
+When the learner accepts a course, `learning_agent.export_learning_course` writes an export manifest under `runs/<run-id>/exports/static-course/manifest.json` with the course metadata and published artifact paths.
 
 For book, paper, patent, blog, documentation, or notes-backed projects, direct publish now checks source grounding. Lessons must include `sourceContext.sourceAnchorIds` or page-level source anchors unless a page is explicitly marked as inferred or analogy.
 

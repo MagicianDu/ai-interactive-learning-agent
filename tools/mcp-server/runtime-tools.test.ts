@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -22,6 +22,7 @@ describe("LearningAgentRuntimeTools", () => {
         "learning_agent.generate_quick_preview",
         "learning_agent.revise_learning_course",
         "learning_agent.apply_learning_revision",
+        "learning_agent.export_learning_course",
         "learning_agent.init_run",
         "learning_agent.plan_run",
         "learning_agent.init_from_plan",
@@ -184,6 +185,34 @@ describe("LearningAgentRuntimeTools", () => {
     expect(manifest.request).toContain("/tmp/book.pdf");
     expect(manifest.brief).toBeDefined();
     expect(manifest.project?.status).toBe("archived");
+  });
+
+  test("exports a preview-ready learning course through tool handlers", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
+    const tools = new LearningAgentRuntimeTools(root);
+    const runDir = path.join(root, "runs", "mcp-export");
+    await mkdir(runDir, { recursive: true });
+    await writeFile(
+      path.join(runDir, "learning-preview.json"),
+      JSON.stringify({
+        status: "preview_ready",
+        runId: "mcp-export",
+        coursePackId: "mcp-export",
+        courseTitle: "导出课程",
+        lessonCount: 1,
+        lessonPaths: [],
+        coursePackPath: path.join(root, "src/course-packs/mcp-export/coursePack.ts")
+      }),
+      "utf8"
+    );
+
+    const result = await tools.callTool("learning_agent.export_learning_course", { runId: "mcp-export" });
+
+    expect(result).toMatchObject({
+      status: "export_ready",
+      runId: "mcp-export",
+      manifestPath: expect.stringContaining("manifest.json")
+    });
   });
 
   test("submits and approves artifacts through tool handlers", async () => {
