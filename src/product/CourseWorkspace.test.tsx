@@ -45,4 +45,16 @@ describe("CourseWorkspace", () => {
 
     expect(window.location.hash).toMatch(/^#\/course\/[a-z0-9-]+\/unit\/[a-z0-9-]+\/page\/2$/u);
   });
+
+  test("opens the learner project library without replacing the default learning flow", async () => {
+    const user = userEvent.setup();
+    render(<CourseWorkspace coursePacks={coursePackRegistry} lessons={lessonRegistry} />);
+
+    expect(screen.queryByText("选择要继续学习的课程")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "项目库" }));
+
+    expect(screen.getByText("选择要继续学习的课程")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /打开 /u }).length).toBeGreaterThan(0);
+  });
 });

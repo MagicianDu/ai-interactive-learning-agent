@@ -7,6 +7,7 @@ import { CanvasMapRenderer } from "../renderers/CanvasMapRenderer";
 import { LearningProductRenderer } from "../renderers/LearningProductRenderer";
 import { WebDeckRenderer } from "../renderers/WebDeckRenderer";
 import { productModeTabs, type CourseView } from "./ProductModeTabs";
+import { ProjectLibrary } from "./ProjectLibrary";
 import { buildProductRoute, parseProductRoute } from "./product-route";
 
 type CourseWorkspaceProps = {
@@ -24,6 +25,7 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
   const [selectedLessonId, setSelectedLessonId] = useState(defaultCoursePackLessonId ?? defaultLesson?.id ?? "");
   const [selectedPageIndex, setSelectedPageIndex] = useState(initialRoute.pageIndex ?? 0);
   const [courseView, setCourseView] = useState<CourseView>("deck");
+  const [showLibrary, setShowLibrary] = useState(false);
   const [showStructure, setShowStructure] = useState(false);
   const selectedLesson = lessons.find((lesson) => lesson.id === selectedLessonId)?.lesson ?? defaultLesson?.lesson;
   const selectedCoursePack = coursePacks.find((entry) => entry.id === selectedCoursePackId)?.coursePack;
@@ -134,7 +136,10 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
               <button
                 aria-pressed={courseView === "deck"}
                 className={modeButtonClass(courseView === "deck")}
-                onClick={() => setCourseView("deck")}
+                onClick={() => {
+                  setCourseView("deck");
+                  setShowLibrary(false);
+                }}
                 type="button"
               >
                 学习
@@ -142,10 +147,21 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
               <button
                 aria-pressed={courseView === "map"}
                 className={modeButtonClass(courseView === "map")}
-                onClick={() => setCourseView("map")}
+                onClick={() => {
+                  setCourseView("map");
+                  setShowLibrary(false);
+                }}
                 type="button"
               >
                 知识地图
+              </button>
+              <button
+                aria-expanded={showLibrary}
+                className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 transition hover:border-sky-300 hover:text-sky-800"
+                onClick={() => setShowLibrary((current) => !current)}
+                type="button"
+              >
+                项目库
               </button>
               <button
                 aria-expanded={showStructure}
@@ -159,6 +175,17 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
           </div>
         </div>
       </header>
+
+      {showLibrary ? (
+        <ProjectLibrary
+          coursePacks={coursePacks}
+          onSelectCourse={(coursePackId) => {
+            selectCoursePack(coursePackId);
+            setShowLibrary(false);
+          }}
+          selectedCoursePackId={selectedCoursePackId}
+        />
+      ) : null}
 
       {showStructure && selectedCoursePack && selectedCoursePackUnits.length > 0 ? (
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-8 lg:px-10">

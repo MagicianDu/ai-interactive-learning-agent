@@ -9,12 +9,16 @@ export type CoursePackRegistryEntry = {
   label: string;
   coursePack: CoursePack;
   modulePath: string;
+  projectStatus: "preview-ready" | "generated" | "sample";
+  sourceKind?: string;
+  strategy?: string;
+  unitCount: number;
 };
 
 const coursePackModules = import.meta.glob<CoursePackModule>("./*/coursePack.ts", { eager: true });
 
 export const coursePackRegistry = Object.entries(coursePackModules)
-  .map(([modulePath, module]) => {
+  .map(([modulePath, module]): CoursePackRegistryEntry | undefined => {
     if (!module.generatedCoursePack) {
       return undefined;
     }
@@ -23,7 +27,11 @@ export const coursePackRegistry = Object.entries(coursePackModules)
       id: module.generatedCoursePack.id,
       label: module.generatedCoursePack.title,
       coursePack: module.generatedCoursePack,
-      modulePath
+      modulePath,
+      projectStatus: module.generatedCoursePack.parentRunId?.startsWith("demo") ? "sample" : "preview-ready",
+      sourceKind: module.generatedCoursePack.sourceKind,
+      strategy: module.generatedCoursePack.strategy,
+      unitCount: module.generatedCoursePack.units.length
     };
   })
   .filter((entry): entry is CoursePackRegistryEntry => entry !== undefined)
