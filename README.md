@@ -250,6 +250,22 @@ npm run source:regression
 npm run seed:check
 ```
 
+## Product Docs
+
+The current product boundary and next development path are documented here:
+
+- `docs/product/current-product-state.md`
+- `docs/product/future-development-plan.md`
+
+The current architectural direction is MCP plus skills:
+
+```text
+Skills define how AI agents reason, route, critique, recover, and communicate.
+MCP tools expose stable callable capabilities.
+Runtime executes source normalization, course generation, validation, revision, and export.
+Frontend renders the learner-facing experience.
+```
+
 ## Current Lesson
 
 The first sample lesson is **数据库索引为什么更快**.

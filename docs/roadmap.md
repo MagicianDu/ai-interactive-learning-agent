@@ -1,5 +1,13 @@
 # Roadmap
 
+For the current seed-ready product state, verified capabilities, and product gaps, see:
+
+- `docs/product/current-product-state.md`
+
+For the forward development plan centered on MCP plus skills, see:
+
+- `docs/product/future-development-plan.md`
+
 For the complete product target, user journeys, capability map, and acceptance milestones, see:
 
 - `docs/superpowers/specs/2026-05-02-complete-learning-product-development-spec.md`
