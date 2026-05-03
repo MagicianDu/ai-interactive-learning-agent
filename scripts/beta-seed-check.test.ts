@@ -1,6 +1,10 @@
 import { describe, expect, test } from "vitest";
 
-import { buildSourceRegressionSeedSummary, assertNoSemanticRegressionFailures } from "./beta-seed-check.js";
+import {
+  assertNoSemanticRegressionFailures,
+  assertNoSourceEvidenceRegressionFailures,
+  buildSourceRegressionSeedSummary
+} from "./beta-seed-check.js";
 
 describe("beta seed check source regression summary", () => {
   test("summarizes semantic source regression states for the final seed report", () => {
@@ -23,7 +27,13 @@ describe("beta seed check source regression summary", () => {
       total: 4,
       passed: 2,
       warnings: 1,
-      failed: 1
+      failed: 1,
+      sourceEvidence: {
+        passed: 2,
+        warnings: 1,
+        failed: 1,
+        missing: 0
+      }
     });
   });
 
@@ -33,9 +43,32 @@ describe("beta seed check source regression summary", () => {
         total: 2,
         passed: 1,
         warnings: 0,
-        failed: 1
+        failed: 1,
+        sourceEvidence: {
+          passed: 2,
+          warnings: 0,
+          failed: 0,
+          missing: 0
+        }
       })
     ).toThrow("source regression semantic checks failed");
+  });
+
+  test("fails the seed check when source evidence status fails or is missing", () => {
+    expect(() =>
+      assertNoSourceEvidenceRegressionFailures({
+        total: 2,
+        passed: 2,
+        warnings: 0,
+        failed: 0,
+        sourceEvidence: {
+          passed: 1,
+          warnings: 0,
+          failed: 1,
+          missing: 0
+        }
+      })
+    ).toThrow("source regression evidence checks failed");
   });
 });
 
@@ -55,6 +88,7 @@ function semanticSample(
     groundedCourseStatus: "preview_ready" as const,
     generatedUnitCount: semanticStatus === "failed" ? 1 : 3,
     semanticStatus,
+    sourceEvidenceStatus: semanticStatus,
     missingConceptLabels: semanticStatus === "failed" ? ["核心机制"] : [],
     sourceAnchorCount: 3,
     sourceIngestWarningCount: 0,

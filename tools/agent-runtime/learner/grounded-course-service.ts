@@ -5,6 +5,7 @@ import { ArtifactStore } from "../artifact-store.js";
 import type { SourceAnchor } from "../corpus-types.js";
 import { AgentRuntimeError } from "../errors.js";
 import { buildLessonCriticReport, type LessonCriticReport } from "../quality/lesson-critic.js";
+import { analyzeSourceEvidence, type SourceEvidenceSummary } from "../quality/source-evidence-analyzer.js";
 import { createRunConfigFromArgs } from "../run-config.js";
 import type { RunConfig } from "../types.js";
 import { normalizeSources } from "../source/source-normalizer.js";
@@ -45,6 +46,7 @@ export type GenerateGroundedCourseResult = PublishLearningCourseResult & {
     anchorCount: number;
     warningCount: number;
   };
+  sourceEvidence: SourceEvidenceSummary;
   criticReports: LessonCriticReport[];
   revisionApplied?: RevisionBrief;
 };
@@ -78,6 +80,7 @@ export class GroundedCourseService {
       concepts: lessonConceptLabels(config, sourceIngest.concepts.map((concept) => concept.label)),
       revision
     });
+    const sourceEvidence = analyzeSourceEvidence(bundle.lessons, config);
     const criticReports = bundle.lessons.map((lesson) => buildLessonCriticReport(lesson, config));
     await artifactStore.writeDraft("critic-report", {
       artifactId: "critic-report",
@@ -103,6 +106,7 @@ export class GroundedCourseService {
         anchorCount: normalizedSources.anchors.length,
         warningCount: normalizedSources.extractionWarnings.length
       },
+      sourceEvidence,
       criticReports,
       ...(revision ? { revisionApplied: revision } : {})
     };

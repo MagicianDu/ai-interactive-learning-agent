@@ -77,6 +77,8 @@ export_learning_course
 
 Goal: improve generated lesson quality beyond structural validity.
 
+Status on 2026-05-04: source evidence mapping baseline implemented. Grounded course generation now returns `sourceEvidence`; critic reports include page-level source support; `source:regression` and `seed:check` fail on failed or missing source evidence status.
+
 ### Work Items
 
 - Strengthen source semantics:
@@ -85,7 +87,7 @@ Goal: improve generated lesson quality beyond structural validity.
   - prerequisite extraction
   - misconception extraction
   - candidate interaction extraction
-- Add source evidence mapping:
+- Baseline implemented: add source evidence mapping:
   - each key claim maps to one or more source spans
   - inferred/analogy/background claims are explicitly marked
   - unsupported claims are flagged

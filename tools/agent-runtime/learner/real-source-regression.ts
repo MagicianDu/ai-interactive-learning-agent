@@ -2,6 +2,7 @@ import { access, readFile } from "node:fs/promises";
 
 import { GroundedCourseService } from "./grounded-course-service.js";
 import { LearnerProjectService } from "./learner-project-service.js";
+import type { SourceEvidenceStatus, SourceEvidenceSummary } from "../quality/source-evidence-analyzer.js";
 
 export type RealSourceRegressionSemanticStatus = "passed" | "warning" | "failed";
 
@@ -38,6 +39,8 @@ export type RealSourceRegressionSampleResult = {
   acceptanceChecks: string[];
   generatedUnitCount: number;
   semanticStatus: RealSourceRegressionSemanticStatus;
+  sourceEvidenceStatus?: SourceEvidenceStatus;
+  sourceEvidence?: Omit<SourceEvidenceSummary, "pageSupport">;
   missingConceptLabels: string[];
   semanticExpectations: {
     expectedConceptLabels: string[];
@@ -192,6 +195,19 @@ export async function runRealSourceRegressionSuite(
       acceptanceChecks: sample.acceptanceChecks,
       generatedUnitCount,
       semanticStatus,
+      sourceEvidenceStatus: groundedCourse?.sourceEvidence.status,
+      sourceEvidence: groundedCourse
+        ? {
+            status: groundedCourse.sourceEvidence.status,
+            totalLessons: groundedCourse.sourceEvidence.totalLessons,
+            totalPages: groundedCourse.sourceEvidence.totalPages,
+            supportedPages: groundedCourse.sourceEvidence.supportedPages,
+            inferredPages: groundedCourse.sourceEvidence.inferredPages,
+            unsupportedPages: groundedCourse.sourceEvidence.unsupportedPages,
+            supportRatio: groundedCourse.sourceEvidence.supportRatio,
+            unsupportedPageRefs: groundedCourse.sourceEvidence.unsupportedPageRefs
+          }
+        : undefined,
       missingConceptLabels,
       semanticExpectations,
       ...(project.status === "clarification_required" ? { clarificationQuestions: project.clarificationQuestions } : {})

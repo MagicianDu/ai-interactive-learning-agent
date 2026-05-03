@@ -48,6 +48,10 @@ describe("GroundedCourseService", () => {
         anchorCount: expect.any(Number),
         warningCount: 0
       },
+      sourceEvidence: {
+        status: "passed",
+        unsupportedPages: 0
+      },
       quality: {
         blockingIssueCount: 0
       }
@@ -57,6 +61,8 @@ describe("GroundedCourseService", () => {
     expect(result.quality.checkedLessons).toBeGreaterThanOrEqual(3);
     expect(result.criticReports.length).toBe(result.lessonPaths.length);
     expect(result.criticReports.every((report) => report.status === "passed")).toBe(true);
+    expect(result.criticReports.every((report) => report.sourceEvidence.status === "passed")).toBe(true);
+    expect(result.criticReports.flatMap((report) => report.pageScores).every((score) => score.sourceSupport === "supported")).toBe(true);
     expect(result.sourceIngest.anchorCount).toBeGreaterThanOrEqual(3);
     await expect(readFile(result.sourceIngest.artifactPath, "utf8")).resolves.toContain("candidateInteractions");
     const coursePackText = await readFile(result.coursePackPath, "utf8");

@@ -96,8 +96,8 @@ For all source types:
 - `generate_grounded_course` must return `preview_ready` for the default learner-first path.
 - `publish_learning_course` must return `preview_ready` for Codex-authored or deeply revised bundles.
 - If source anchors are missing, the expected result is `revision_required`.
-- `source:regression` reports `generatedUnitCount`, `semanticStatus`, `missingConceptLabels`, and `semanticExpectations` for each source kind.
-- `seed:check` fails if any source regression item has `semanticStatus=failed`.
+- `source:regression` reports `generatedUnitCount`, `semanticStatus`, `sourceEvidenceStatus`, `sourceEvidence`, `missingConceptLabels`, and `semanticExpectations` for each source kind.
+- `seed:check` fails if any source regression item has `semanticStatus=failed`, `sourceEvidenceStatus=failed`, or missing source evidence status.
 - User feedback should go through `revise_learning_course`, then `apply_learning_revision`, then `get_learning_preview`.
 - Shareable output should go through `export_learning_course`.
 - `create_learning_project` accepts `strategy`, `selectedChapters`, and `selectedTopics` so Codex can preserve user-specified organization in the learner brief.

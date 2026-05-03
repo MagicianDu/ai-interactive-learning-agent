@@ -141,5 +141,7 @@ Acceptance notes:
 - It verifies that all four source types reach `project_ready`.
 - It verifies that all four source types reach `preview_ready` through `learning_agent.generate_grounded_course`.
 - It verifies local book and paper paths exist on this machine.
-- Latest source anchor counts: book 1582, paper 22, patent 1016, blog 1.
-- The blog URL currently falls back to a document-level URL anchor with one extraction warning; it still publishes because source grounding is present, but deeper blog extraction remains a content-quality improvement target.
+- Latest source anchor counts: book 1582, paper 22, patent 1016, blog 178.
+- Latest semantic status: book, paper, patent, and blog all `passed`.
+- Latest source evidence status: book, paper, patent, and blog all `passed`.
+- Latest source evidence coverage: each sample generated 5 lessons and 40 pages; all 40 pages were source-supported, with 0 unsupported pages.

@@ -87,8 +87,12 @@ describe("real source regression suite", () => {
           groundedCourseStatus: "preview_ready",
           generatedUnitCount: expect.any(Number),
           semanticStatus: "passed",
+          sourceEvidenceStatus: "passed",
           missingConceptLabels: [],
           sourceAnchorCount: expect.any(Number),
+          sourceEvidence: expect.objectContaining({
+            unsupportedPages: 0
+          }),
           semanticExpectations: {
             expectedConceptLabels: ["全局地图", "核心机制"],
             matchedConceptLabels: ["全局地图", "核心机制"],
@@ -104,8 +108,12 @@ describe("real source regression suite", () => {
           groundedCourseStatus: "preview_ready",
           generatedUnitCount: expect.any(Number),
           semanticStatus: "passed",
+          sourceEvidenceStatus: "passed",
           missingConceptLabels: [],
           sourceAnchorCount: expect.any(Number),
+          sourceEvidence: expect.objectContaining({
+            unsupportedPages: 0
+          }),
           semanticExpectations: {
             expectedConceptLabels: ["研究问题", "方法结构", "证据边界"],
             matchedConceptLabels: ["研究问题", "方法结构", "证据边界"],
@@ -121,8 +129,12 @@ describe("real source regression suite", () => {
           groundedCourseStatus: "preview_ready",
           generatedUnitCount: expect.any(Number),
           semanticStatus: "warning",
+          sourceEvidenceStatus: "passed",
           missingConceptLabels: [],
           sourceAnchorCount: expect.any(Number),
+          sourceEvidence: expect.objectContaining({
+            unsupportedPages: 0
+          }),
           semanticExpectations: {
             expectedConceptLabels: ["实践问题", "操作流程"],
             matchedConceptLabels: ["实践问题", "操作流程"],
@@ -136,6 +148,7 @@ describe("real source regression suite", () => {
     for (const sample of result.samples) {
       expect(sample.generatedUnitCount).toBeGreaterThanOrEqual(3);
       expect(sample.semanticStatus).not.toBe("failed");
+      expect(sample.sourceEvidenceStatus).not.toBe("failed");
       expect(sample.sourceAnchorCount).toBeGreaterThan(0);
     }
     await expect(readFile(path.join(root, "runs", "regression-book-smoke", "learner-project.json"), "utf8")).resolves.toContain("chapter_guided");

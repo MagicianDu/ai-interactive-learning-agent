@@ -166,7 +166,7 @@ export class MockRuntimeAdapter implements RuntimeAdapter {
         language: "zh-CN",
         prerequisites: profile.prerequisites,
         learningObjectives: profile.learningObjectives,
-        pages: buildLessonPages(config.pageCount.target, profile),
+        pages: buildLessonPages(config.pageCount.target, profile, selectedUnit?.sourceAnchorIds ?? []),
         misconceptions: profile.misconceptions,
         transferTasks: profile.transferTasks,
         summary: profile.summary
@@ -646,12 +646,13 @@ function isAgenticTopic(topic: string): boolean {
   return /agent|智能体|多代理|多智能体/i.test(topic);
 }
 
-function buildLessonPages(targetPageCount: number, profile: MockLessonProfile): Array<{
+function buildLessonPages(targetPageCount: number, profile: MockLessonProfile, sourceAnchorIds: string[] = []): Array<{
   id: string;
   type: string;
   title: string;
   learningGoal: string;
   narrative: string;
+  sourceAnchorIds?: string[];
   visualSpec?: Record<string, unknown>;
   interactionSpec?: Record<string, unknown>;
   assessmentSpec?: Record<string, unknown>;
@@ -664,6 +665,7 @@ function buildLessonPages(targetPageCount: number, profile: MockLessonProfile): 
     const page = selectedPages[index % selectedPages.length];
     return {
       id: `page-${String(index + 1).padStart(2, "0")}`,
+      ...(sourceAnchorIds.length > 0 ? { sourceAnchorIds } : {}),
       ...page
     };
   });

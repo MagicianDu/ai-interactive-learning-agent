@@ -38,3 +38,12 @@ if (failedSemanticSamples.length > 0) {
       .join("; ")}`
   );
 }
+
+const failedEvidenceSamples = result.samples.filter((sample) => sample.sourceEvidenceStatus === "failed");
+if (failedEvidenceSamples.length > 0) {
+  throw new Error(
+    `source evidence regression failed for ${failedEvidenceSamples
+      .map((sample) => `${sample.id}(${sample.sourceEvidence?.unsupportedPages ?? "unknown"} unsupported page(s))`)
+      .join("; ")}`
+  );
+}

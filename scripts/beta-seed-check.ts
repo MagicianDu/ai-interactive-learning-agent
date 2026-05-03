@@ -16,6 +16,7 @@ type SourceRegressionResultLike = {
   };
   samples: Array<{
     semanticStatus: "passed" | "warning" | "failed";
+    sourceEvidenceStatus?: "passed" | "warning" | "failed";
   }>;
 };
 
@@ -59,6 +60,12 @@ export type SourceRegressionSeedSummary = {
   passed: number;
   warnings: number;
   failed: number;
+  sourceEvidence: {
+    passed: number;
+    warnings: number;
+    failed: number;
+    missing: number;
+  };
 };
 
 export async function runSeedCheck(): Promise<void> {
@@ -77,13 +84,27 @@ export function buildSourceRegressionSeedSummary(result: SourceRegressionResultL
     total: result.samples.length,
     passed: result.samples.filter((sample) => sample.semanticStatus === "passed").length,
     warnings: result.samples.filter((sample) => sample.semanticStatus === "warning").length,
-    failed: result.samples.filter((sample) => sample.semanticStatus === "failed").length
+    failed: result.samples.filter((sample) => sample.semanticStatus === "failed").length,
+    sourceEvidence: {
+      passed: result.samples.filter((sample) => sample.sourceEvidenceStatus === "passed").length,
+      warnings: result.samples.filter((sample) => sample.sourceEvidenceStatus === "warning").length,
+      failed: result.samples.filter((sample) => sample.sourceEvidenceStatus === "failed").length,
+      missing: result.samples.filter((sample) => sample.sourceEvidenceStatus === undefined).length
+    }
   };
 }
 
 export function assertNoSemanticRegressionFailures(summary: SourceRegressionSeedSummary): void {
   if (summary.failed > 0) {
     throw new Error(`source regression semantic checks failed: ${summary.failed}/${summary.total} failed`);
+  }
+}
+
+export function assertNoSourceEvidenceRegressionFailures(summary: SourceRegressionSeedSummary): void {
+  if (summary.sourceEvidence.failed > 0 || summary.sourceEvidence.missing > 0) {
+    throw new Error(
+      `source regression evidence checks failed: ${summary.sourceEvidence.failed}/${summary.total} failed, ${summary.sourceEvidence.missing}/${summary.total} missing`
+    );
   }
 }
 
@@ -106,6 +127,7 @@ async function runSourceRegressionCheck(): Promise<SourceRegressionSeedSummary> 
   }
 
   assertNoSemanticRegressionFailures(summary);
+  assertNoSourceEvidenceRegressionFailures(summary);
 
   return summary;
 }

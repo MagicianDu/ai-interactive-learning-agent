@@ -90,11 +90,14 @@ Current source regression output includes:
 
 - `generatedUnitCount`
 - `semanticStatus`
+- `sourceEvidenceStatus`
+- `sourceEvidence.supportedPages`
+- `sourceEvidence.unsupportedPages`
 - `missingConceptLabels`
 - `semanticExpectations`
 - source anchor count and warning count
 
-Seed readiness fails if a source regression sample has `semanticStatus=failed`.
+Seed readiness fails if a source regression sample has `semanticStatus=failed`, `sourceEvidenceStatus=failed`, or missing source evidence status.
 
 ### Course Generation
 
@@ -166,14 +169,20 @@ The most recent verified `seed:check` passed with:
 {
   "sourceRegression": {
     "total": 4,
-    "passed": 3,
-    "warnings": 1,
-    "failed": 0
+    "passed": 4,
+    "warnings": 0,
+    "failed": 0,
+    "sourceEvidence": {
+      "passed": 4,
+      "warnings": 0,
+      "failed": 0,
+      "missing": 0
+    }
   }
 }
 ```
 
-Warnings are acceptable when the run still generates usable grounded units and the warning is not a semantic failure.
+Warnings are acceptable when the run still generates usable grounded units and the warning is not a semantic or source-evidence failure.
 
 ## Local-Only Smoke Artifacts
 
