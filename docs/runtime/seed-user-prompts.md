@@ -50,7 +50,7 @@ See `docs/runtime/source-type-acceptance.md` for the expected source anchors, un
 ```text
 请调用 learning_agent.create_learning_project 记录我的学习需求，然后调用 learning_agent.generate_grounded_course。
 目标是先让我快速看到带来源锚点的中文网页，不要让我审批内部 artifacts。
-如果我之后反馈太难、太浅、顺序不对，请调用 revise_learning_course 记录反馈，再调用 generate_grounded_course 重新生成。
+如果我之后反馈太难、太浅、顺序不对，请调用 revise_learning_course 记录反馈，再调用 apply_learning_revision 应用修订，并用 get_learning_preview 给我看新版。
 ```
 
 ## Quick Local Preview -> generate_quick_preview
@@ -65,7 +65,7 @@ See `docs/runtime/source-type-acceptance.md` for the expected source anchors, un
 
 ```text
 我已经看了网页，整体太难了。请保留中文解释和来源依据，把第一个单元拆得更慢一点，多加一个代码例子和一个生活化类比。
-请调用 learning_agent.revise_learning_course 记录我的反馈，然后调用 learning_agent.generate_grounded_course 重新生成新版网页。
+请调用 learning_agent.revise_learning_course 记录我的反馈，然后调用 learning_agent.apply_learning_revision 应用修订，最后调用 learning_agent.get_learning_preview 给我新版预览。
 ```
 
 ## Expert Review Mode -> Advanced Tools

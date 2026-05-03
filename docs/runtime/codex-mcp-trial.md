@@ -27,7 +27,7 @@ cwd = "/Users/dm/Documents/the learning agent"
 npm run codex:mcp:check
 ```
 
-期望看到 `learning_agent.create_learning_project`、`learning_agent.publish_learning_course`、`learning_agent.get_learning_preview` 和 `learning_agent.generate_quick_preview`。
+期望看到 `learning_agent.create_learning_project`、`learning_agent.generate_grounded_course`、`learning_agent.get_learning_preview`、`learning_agent.revise_learning_course`、`learning_agent.apply_learning_revision` 和 `learning_agent.export_learning_course`。
 
 ## 3. 默认 Codex 试用 Prompt
 
@@ -38,7 +38,7 @@ npm run codex:mcp:check
 资料是：/absolute/path/to/source.pdf
 我希望先有总览课，再按核心 topic 拆课。每个单元 8 页。
 请先问我最多 3 个你必须知道的问题。明确后，不要让我审批 source-map、concept-map、curriculum-plan 这些内部 artifacts。
-你可以直接生成 course bundle，然后调用 learning_agent.publish_learning_course 发布网页。
+你可以直接调用 learning_agent.create_learning_project，然后调用 learning_agent.generate_grounded_course 生成带来源锚点的课程网页。
 发布后告诉我运行 npm run dev，并说明我应该打开哪个页面查看。
 ```
 
@@ -46,9 +46,11 @@ Codex 应该优先调用：
 
 ```text
 learning_agent.create_learning_project
-learning_agent.publish_learning_course
+learning_agent.generate_grounded_course
 learning_agent.get_learning_preview
 learning_agent.revise_learning_course
+learning_agent.apply_learning_revision
+learning_agent.export_learning_course
 ```
 
 如果只是想先看低保真本地样例，Codex 可以调用：
@@ -82,11 +84,11 @@ http://127.0.0.1:5173/
 太难了，请减少术语，多给生活化例子。
 ```
 
-Codex 应调用 `learning_agent.revise_learning_course` 记录反馈，读取返回的 revision brief，然后修订 `coursePack` 和 `lessons`，再次调用 `learning_agent.publish_learning_course`。如果原项目来自书籍、论文、专利或博客，修订后的 lesson 必须保留 `sourceContext.sourceAnchorIds` 或页级来源锚点，否则发布会返回 `revision_required`。
+Codex 应调用 `learning_agent.revise_learning_course` 记录反馈，再调用 `learning_agent.apply_learning_revision` 应用当前支持的目标修订，最后调用 `learning_agent.get_learning_preview` 让用户查看新版网页。如果反馈超出自动修订范围，Codex 可以进入手写修订并通过 `publish_learning_course` 重新发布；来自书籍、论文、专利或博客的课程仍必须保留 `sourceContext.sourceAnchorIds` 或页级来源锚点。
 
 ## 7. 当前 Beta 边界
 
 - MCP 服务是本地 stdio 服务，不是网络服务。
-- Codex-authored 默认路径由 Codex 理解资料并生成最终 `coursePack` 和 `lessons`，MCP 负责保存、校验、发布。
+- 默认路径由 MCP 生成 source-grounded course preview；Codex 负责澄清学习目标、解释预览路径和处理超出自动工具范围的修订。
 - `generate_quick_preview` 是 deterministic smoke，用于快速看产品形态，不代表最终内容质量。
 - Advanced/operator 工具仍保留，用于调试、审计来源映射和专家审核。

@@ -4,6 +4,15 @@ AI Interactive Learning Agent turns technical topics and source material into vi
 
 This repository now contains a runnable React/Vite Web Deck MVP, not only a scaffold. The first product form is a PPT-like interactive web lesson with structured lesson data, reusable deck/visual/interaction/assessment components, and local verification scripts.
 
+## Product Bundle
+
+The AI-native product surface is **MCP tools plus skills**:
+
+- MCP tools provide stable callable capabilities for project creation, grounded course generation, preview, feedback revision, export, and advanced operator workflows.
+- Skills tell Codex, Claude, OpenClaw-style clients, and future agent runtimes how to route natural-language learning requests, choose source/course strategies, avoid exposing internal artifacts to learners, and recover through feedback.
+
+Default learner-facing operation should use `skills/learning-agent-operator`, `skills/source-to-course`, and `skills/learner-feedback-revision` with the learner MCP flow. Advanced artifact approval remains available only for expert/operator mode.
+
 ## Language Direction
 
 The default learning output is **Chinese-first**. Generated lessons, page titles, learner actions, feedback, quizzes, misconception checks, transfer tasks, and primary UI labels should be written in Chinese unless a lesson explicitly targets another language.
@@ -134,6 +143,13 @@ Default learner-facing tools:
 - `learning_agent.revise_learning_course`
 - `learning_agent.apply_learning_revision`
 - `learning_agent.export_learning_course`
+
+Relevant skills:
+
+- `skills/learning-agent-operator`: default natural-language operating flow and expert/operator fallback.
+- `skills/source-to-course`: source routing for books, papers, patents, blogs, notes, folders, and topic-only requests.
+- `skills/learner-feedback-revision`: learner feedback interpretation, preview refresh, and export routing.
+- `skills/learning-agent-runner`: single-unit or legacy gate-based lesson operation.
 
 Advanced/operator tools include:
 

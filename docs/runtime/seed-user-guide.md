@@ -48,9 +48,9 @@ npm run codex:mcp:check
 npm run mcp -- --list-tools
 ```
 
-外部客户端应优先调用 learner-facing tools：`learning_agent.create_learning_project`、`learning_agent.publish_learning_course`、`learning_agent.get_learning_preview`。如果用户看完课程后提出“太难 / 加代码 / 多例子 / 拆细”，调用 `learning_agent.revise_learning_course` 记录反馈，再由 Codex 修订 bundle 并重新发布。如果只想快速看本地样例，可以调用 `learning_agent.generate_quick_preview`。
+外部客户端应优先调用 learner-facing tools：`learning_agent.create_learning_project`、`learning_agent.generate_grounded_course`、`learning_agent.get_learning_preview`。如果用户看完课程后提出“太难 / 加代码 / 多例子 / 拆细”，调用 `learning_agent.revise_learning_course` 记录反馈，再调用 `learning_agent.apply_learning_revision` 应用修订并重新预览。用户接受后再调用 `learning_agent.export_learning_course`。如果只想快速看低保真本地样例，可以调用 `learning_agent.generate_quick_preview`。
 
-真实资料项目发布时必须保留来源依据。Codex 生成的 lesson 需要包含 `sourceContext.sourceAnchorIds` 或页级 source anchors；否则 `publish_learning_course` 会要求修订。
+真实资料项目发布时必须保留来源依据。`generate_grounded_course` 会生成带来源锚点的总览课和核心单元；Codex 手写或深度改写后若通过 `publish_learning_course` 发布，lesson 仍需要包含 `sourceContext.sourceAnchorIds` 或页级 source anchors。
 
 ## 5. 专家审查模式
 

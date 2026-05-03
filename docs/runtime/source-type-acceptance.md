@@ -93,8 +93,8 @@ Acceptance:
 
 For all source types:
 
-- `publish_learning_course` must return `preview_ready`.
 - `generate_grounded_course` must return `preview_ready` for the default learner-first path.
+- `publish_learning_course` must return `preview_ready` for Codex-authored or deeply revised bundles.
 - If source anchors are missing, the expected result is `revision_required`.
 - `source:regression` reports `generatedUnitCount`, `semanticStatus`, `missingConceptLabels`, and `semanticExpectations` for each source kind.
 - `seed:check` fails if any source regression item has `semanticStatus=failed`.

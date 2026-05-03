@@ -1,0 +1,46 @@
+---
+name: source-to-course
+description: Use when converting books, papers, patents, blogs, notes, folders, or topic-only learner requests into course organization strategy, source kind, unit page count, selected chapters/topics, and MCP learner project inputs.
+---
+
+# Source To Course
+
+Use this skill to turn learner-supplied material into a course request that the learner-facing MCP flow can execute.
+
+## Source Routing
+
+- `book`: long-form PDF/EPUB/text, usually needs an overview unit plus focused topic units, with optional chapter mapping.
+- `paper`: extract research problem, method, evidence, limitations, and transfer use cases; keep source grounding visible.
+- `patent`: map claims, prior-art problem, mechanism, embodiments, figures, and application boundaries.
+- `blog`: extract the main argument, implementation pattern, caveats, and runnable examples.
+- `notes` or folder: preserve the user's structure when clear; otherwise infer themes and prerequisites.
+- topic-only: generate a compact course from the topic and audience, then ask for source material only if factual grounding is required.
+
+## Strategy Mapping
+
+- `overview_plus_topic`: default for long sources; one overview course plus core-topic units.
+- `chapter_guided`: use when the learner asks to follow chapters or sections.
+- `topic_guided`: use when the learner asks for core concepts, mental models, or selected topics.
+- `task_guided`: use when the learner wants practical workflow, exercises, or application tasks.
+- `hybrid`: use when the learner wants chapter traceability and topic-first learning.
+
+Track selected chapters, selected topics, audience, language, and `unitPages` as learner-visible choices. `unitPages` means pages per unit.
+
+## Apply The Plan Through MCP
+
+Call the learner-facing tools in this order:
+
+```json
+{"method":"tools/call","params":{"name":"learning_agent.create_learning_project","arguments":{"request":"<Chinese learner request with source path or URL, audience, strategy, and unitPages>"}}}
+{"method":"tools/call","params":{"name":"learning_agent.generate_grounded_course","arguments":{"runId":"<run-id>"}}}
+{"method":"tools/call","params":{"name":"learning_agent.get_learning_preview","arguments":{"runId":"<run-id>"}}}
+```
+
+## Quality Checklist
+
+- Keep generated learning content Chinese-first unless requested otherwise.
+- For long sources, prefer an overview unit followed by focused units instead of compressing the entire source into one short lesson.
+- Do not ask the learner to approve internal artifacts such as source maps, concept maps, or curriculum plans.
+- Preserve chapter or section mappings when the learner asks for them.
+- Keep every unit's page count aligned with the requested `unitPages`.
+- Make the preview the main acceptance surface.

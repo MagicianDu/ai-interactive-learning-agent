@@ -8,6 +8,8 @@ This document captures the current product shape after the seed-ready beta push.
 
 AI Interactive Learning Agent is currently a local, Codex/MCP-driven learning experience generator.
 
+The product bundle is MCP tools plus skills. MCP exposes stable local capabilities; skills define how Codex, Claude, OpenClaw-style clients, and future agent runtimes should interpret learner intent, select source strategies, avoid internal artifact approval in learner mode, and recover through feedback.
+
 The working seed-ready flow is:
 
 ```text
@@ -39,7 +41,7 @@ The product is not only a web deck renderer. It now has four cooperating layers:
 
 ### Learner-Facing MCP Flow
 
-The following tools are available for normal seed-user use:
+The following tools are available for normal seed-user use and are now encoded in the skill/MCP contract test:
 
 - `learning_agent.create_learning_project`
 - `learning_agent.list_learning_projects`
@@ -51,6 +53,17 @@ The following tools are available for normal seed-user use:
 - `learning_agent.export_learning_course`
 
 `learning_agent.publish_learning_course` and `learning_agent.generate_quick_preview` remain available, but they are not the preferred default path for source-backed seed-user trials.
+
+### Skills Layer
+
+The skill pack now covers the current learner path:
+
+- `skills/learning-agent-operator`: default learner-facing operation and explicit expert/operator fallback.
+- `skills/source-to-course`: source kind, course strategy, selected chapter/topic, and page-per-unit routing for books, papers, patents, blogs, notes, folders, and topic-only requests.
+- `skills/learner-feedback-revision`: feedback scope mapping, revision application, preview refresh, and export.
+- `skills/learning-agent-runner`: single-topic/unit and legacy gate-based lesson operation.
+
+The `tools/mcp-server/skill-mcp-contract.test.ts` check fails when these skills reference missing MCP tools or when `learning-agent-operator` stops defaulting to the learner-facing flow.
 
 ### Source Types
 
@@ -185,8 +198,8 @@ It is not yet appropriate to promise:
 
 ## Main Product Gaps
 
-1. **Skills are not yet first-class product assets**
-   The repository has skill documents, but they are not fully aligned with the new seed-ready MCP path. The AI-native product should ship as MCP tools plus a skill pack.
+1. **Skill distribution is not yet packaged**
+   The repository now has skills aligned with the seed-ready MCP path, but the public install/upgrade story for shipping MCP plus skills as one bundle is still missing.
 
 2. **Content generation is still too template-like**
    The generated courses are structurally valid, but many pages need deeper source-specific examples, stronger interaction design, and better misconception diagnosis.
@@ -211,4 +224,4 @@ The next major investment should not be another UI-only pass. The highest-levera
 Skills Layer + Course Quality Kernel
 ```
 
-That means aligning skills with MCP, adding source-type strategies, strengthening lesson critique, and making Codex behave like a learning-product operator rather than a raw tool caller.
+That means packaging the MCP+skills bundle, strengthening lesson critique, and making Codex behave like a learning-product operator rather than a raw tool caller.

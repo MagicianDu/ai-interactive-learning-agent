@@ -1,44 +1,85 @@
 ---
 name: learning-agent-operator
-description: Use when operating this repository's AI Interactive Learning Agent from natural language: initialize source-backed runs for books, papers, patents, blogs, notes, folders, or topics; orchestrate course packs; handle manual artifacts; approve gates; and promote lessons or course packs.
+description: Use when operating this repository's AI Interactive Learning Agent from natural language for books, papers, patents, blogs, notes, folders, or topics, especially when creating, previewing, revising, exporting, or running source-backed Chinese learning courses.
 ---
 
 # Learning Agent Operator
 
-Use this skill when the user asks Codex to generate or continue Chinese interactive learning material from a topic, book, paper, patent, blog, URL, folder, or pasted text in this repository.
+Use this skill when the user asks Codex to generate, preview, revise, export, or continue Chinese interactive learning material from a topic, book, paper, patent, blog, URL, folder, or pasted text in this repository.
 
 ## Defaults
 
 - Work from the repository root.
 - Output language is `zh-CN` unless the user explicitly requests otherwise.
-- Prefer source-backed course packs over single lessons when a file, URL, folder, book, paper, patent, or blog is provided.
+- Prefer source-backed course packs over single lessons when a file, URL, folder, book, paper, patent, blog, or long pasted text is provided.
 - Default course strategy: `overview_plus_topic`.
 - `--unit-pages` means pages per learning unit, not total pages for the whole source.
-- Use `--adapter codex` when the current Codex session should produce manual role artifacts.
-- Preserve approval gates. Do not promote drafts.
+- Learner-facing operation should hide internal artifacts unless the user explicitly asks for expert review.
+- Use expert/operator mode only for debugging, auditing, or artifact-level generation.
 
 ## Natural Language Mapping
 
-Map user intent into run config flags:
+Map learner intent into project inputs:
 
-- Book: `--source-kind book --source-file <path>`
-- Paper or article PDF: `--source-kind paper --source-file <path>`
-- Patent: `--source-kind patent --source-file <path>` or `--source-url <url>`
-- Blog or web article: `--source-kind blog --source-url <url>`
-- Local notes or folder: `--source-kind notes --source-file <path>` or `--source-folder <path>`
-- Topic only: `--topic "<topic>"`
-- "按章节": `--strategy chapter_guided --planning-mode chapter_guided`
-- "按 topic / 核心概念": `--strategy overview_plus_topic --planning-mode topic_guided`
-- "按任务 / 实践": `--strategy task_guided --planning-mode task_guided`
-- Page count like "每章10页" or "每个 topic 12 页": `--unit-pages 10` or `--unit-pages 12`
+- Book: `sourceKind=book`, `sourceFile=<path>`
+- Paper or article PDF: `sourceKind=paper`, `sourceFile=<path>`
+- Patent: `sourceKind=patent`, `sourceFile=<path>` or `sourceUrl=<url>`
+- Blog or web article: `sourceKind=blog`, `sourceUrl=<url>`
+- Local notes or folder: `sourceKind=notes`, `sourceFile=<path>` or `sourceFolder=<path>`
+- Topic only: `topic="<topic>"`
+- "先总览再按核心 topic": `strategy=overview_plus_topic`
+- "按章节": `strategy=chapter_guided`
+- "按 topic / 核心概念": `strategy=topic_guided` or `overview_plus_topic`
+- "按任务 / 实践": `strategy=task_guided`
+- "章节 + topic 混合": `strategy=hybrid`
+- Page count like "每章10页" or "每个 topic 12 页": `unitPages=10` or `unitPages=12`
 
-If the user does not specify planning mode for source-backed material, use:
+Clarify only learner-visible choices when missing:
 
-```bash
---strategy overview_plus_topic --planning-mode topic_guided
+- source scope: whole source, selected chapters, selected topics, or a practical task path
+- audience: beginner, experienced programmer, practitioner, researcher, or custom description
+- unit size: pages per unit; default to the existing product default when unspecified
+- output: preview link, exported course pack, or both
+
+## Default Learner Workflow
+
+Use this flow for normal Codex/Claude-style natural language operation. It should produce a previewable learning course quickly without asking the learner to approve source maps, concept maps, curriculum plans, or other internal artifacts.
+
+1. Create or load a learner-facing project:
+
+```json
+{"method":"tools/call","params":{"name":"learning_agent.create_learning_project","arguments":{"request":"<Chinese natural-language course request>"}}}
 ```
 
-## Course Pack Workflow
+2. Generate the grounded course:
+
+```json
+{"method":"tools/call","params":{"name":"learning_agent.generate_grounded_course","arguments":{"runId":"<run-id>"}}}
+```
+
+3. Open a learner-visible preview:
+
+```json
+{"method":"tools/call","params":{"name":"learning_agent.get_learning_preview","arguments":{"runId":"<run-id>"}}}
+```
+
+4. When the learner gives feedback, revise and preview again:
+
+```json
+{"method":"tools/call","params":{"name":"learning_agent.revise_learning_course","arguments":{"runId":"<run-id>","feedback":"<learner feedback>"}}}
+{"method":"tools/call","params":{"name":"learning_agent.apply_learning_revision","arguments":{"runId":"<run-id>"}}}
+{"method":"tools/call","params":{"name":"learning_agent.get_learning_preview","arguments":{"runId":"<run-id>"}}}
+```
+
+5. Export only after the visible preview matches the learner's request:
+
+```json
+{"method":"tools/call","params":{"name":"learning_agent.export_learning_course","arguments":{"runId":"<run-id>"}}}
+```
+
+## Expert/Operator Mode
+
+Use this mode only when the user asks for artifact review, debugging, reproducibility, approval gates, or low-level workflow control. It is appropriate for operator-facing runs, not for a normal learner who wants to study.
 
 1. Convert natural language into a reviewable run plan:
 
@@ -48,21 +89,13 @@ npm run agent:plan -- \
   --run <run-id>
 ```
 
-Inspect:
-
-```text
-runs/<run-id>/run.plan.json
-```
-
-Confirm inferred `sourceKind`, `strategy`, `planningMode`, `unitPages`, `audience`, and `adapter`. If the plan is acceptable, initialize from it:
+Inspect `runs/<run-id>/run.plan.json`, then initialize only after the plan is acceptable:
 
 ```bash
 npm run agent:init-from-plan -- --run <run-id> --approve true
 ```
 
-Use `--approve true` only after the plan has been reviewed. For stricter operation, edit the plan file to set `"status": "approved"` and then omit the shortcut.
-
-MCP-ready equivalent:
+MCP equivalents:
 
 ```json
 {"method":"tools/call","params":{"name":"learning_agent.plan_run","arguments":{"request":"<Chinese natural-language course request>","runId":"<run-id>"}}}
@@ -71,7 +104,7 @@ MCP-ready equivalent:
 {"method":"tools/call","params":{"name":"learning_agent.read_artifact","arguments":{"runId":"<run-id>","artifactId":"source-map","version":"v1"}}}
 ```
 
-2. Initialize the run directly when the user has already supplied exact flags:
+2. Initialize directly when exact flags are already known:
 
 ```bash
 npm run agent:init -- \
@@ -178,7 +211,8 @@ npm run build
 
 - Do not collapse source-backed material into one short lesson unless the user explicitly asks for an overview only.
 - Do not treat a book's total output as `--unit-pages`; it is per-unit.
-- Do not approve artifacts without inspecting versioned files under `runs/<run-id>/artifacts/`.
-- Do not promote until the relevant `lesson` artifact is approved.
+- Do not expose internal artifacts or approvals in the default learner workflow.
+- Do not approve artifacts without inspecting versioned files under `runs/<run-id>/artifacts/` when using expert/operator mode.
+- Do not promote low-level draft lessons until the relevant `lesson` artifact is approved.
 - Do not assume old runs match the latest schema; check `run.config.json` and artifact shape first.
 - Keep learner-facing content Chinese-first by default.

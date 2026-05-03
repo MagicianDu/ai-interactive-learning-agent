@@ -37,9 +37,11 @@ MCP alone is not enough. It exposes actions but does not encode judgment. Skills
 
 Goal: turn the existing skills into a usable AI-native product layer.
 
+Status on 2026-05-03: baseline implemented. The repository now has learner-facing operator, source routing, and feedback revision skills aligned with current MCP tools, plus a contract test included in `npm run seed:check`. Remaining Phase 1 work is packaging/install guidance for distributing MCP plus skills together.
+
 ### Work Items
 
-- Rewrite `skills/learning-agent-operator/SKILL.md` around the seed-ready flow:
+- Completed: rewrite `skills/learning-agent-operator/SKILL.md` around the seed-ready flow:
 
 ```text
 create_learning_project
@@ -50,17 +52,18 @@ apply_learning_revision
 export_learning_course
 ```
 
-- Keep advanced gate-based operation as an explicit expert mode, not the default.
-- Update `learning-agent-runner` so it clearly covers single topic/unit workflows only.
-- Add a `source-to-course` skill for source-type routing:
+- Completed: keep advanced gate-based operation as an explicit expert mode, not the default.
+- Completed: keep `learning-agent-runner` scoped to single topic/unit workflows only.
+- Completed: add a `source-to-course` skill for source-type routing:
   - book
   - paper
   - patent
   - blog
   - notes/folder
   - topic only
-- Add a `learner-feedback-revision` skill for feedback interpretation and revision application.
-- Add a `skill-mcp-contract` check that verifies skill docs mention only existing MCP tools and preferred workflows.
+- Completed: add a `learner-feedback-revision` skill for feedback interpretation and revision application.
+- Completed: add a `skill-mcp-contract` check that verifies skill docs mention only existing MCP tools and preferred workflows.
+- Remaining: add public packaging/install docs for the MCP plus skills bundle.
 
 ### Acceptance
 
@@ -222,12 +225,10 @@ The next sprint should focus on Phase 1.
 
 Recommended task order:
 
-1. Update `learning-agent-operator` to be seed-ready by default.
-2. Create `source-to-course` skill.
-3. Create `learner-feedback-revision` skill.
-4. Add skill/MCP contract tests.
-5. Update docs to describe MCP + skills as the product bundle.
-6. Run `npm run seed:check` and a fresh MCP smoke after skill updates.
+1. Package the MCP server and skill pack as one installable local bundle.
+2. Add install/upgrade docs for Codex first, with runtime-neutral notes for Claude and future OpenClaw-style clients.
+3. Strengthen source evidence mapping before adding more UI-heavy interaction components.
+4. Upgrade critic and revision loops so feedback changes are quality-checked before export.
 
 ## Open Decisions
 
