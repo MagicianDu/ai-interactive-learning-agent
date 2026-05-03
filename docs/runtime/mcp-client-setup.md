@@ -37,9 +37,12 @@ The server supports:
 Preferred local install:
 
 ```bash
-npm run codex:mcp:install
+npm run codex:bundle:install
+npm run bundle:check
 npm run codex:mcp:check
 ```
+
+`codex:bundle:install` installs both the MCP server config and the project skill pack. Use `codex:mcp:install` only when you intentionally want to update the MCP config without copying skills.
 
 If the Codex environment uses TOML-style MCP server config, use:
 

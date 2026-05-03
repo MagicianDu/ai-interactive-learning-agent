@@ -54,6 +54,18 @@ The following tools are available for normal seed-user use and are now encoded i
 
 `learning_agent.publish_learning_course` and `learning_agent.generate_quick_preview` remain available, but they are not the preferred default path for source-backed seed-user trials.
 
+### MCP And Skills Bundle
+
+Codex can install the local product bundle with:
+
+```bash
+npm run codex:bundle:install
+npm run bundle:check
+npm run codex:mcp:check
+```
+
+`codex:bundle:install` installs the `learningAgent` MCP server config and copies the project skill pack into `~/.codex/skills/`. `bundle:check` verifies the package scripts, required skill files, and bundle docs without changing user state.
+
 ### Skills Layer
 
 The skill pack now covers the current learner path:
@@ -142,6 +154,7 @@ npm run typecheck
 npm run lint
 npm run test
 npm run build
+npm run bundle:check
 npm run codex:mcp:check
 npm run source:regression
 npm run seed:check
@@ -198,8 +211,8 @@ It is not yet appropriate to promise:
 
 ## Main Product Gaps
 
-1. **Skill distribution is not yet packaged**
-   The repository now has skills aligned with the seed-ready MCP path, but the public install/upgrade story for shipping MCP plus skills as one bundle is still missing.
+1. **Skill distribution is local-only**
+   The repository now has a Codex MCP+skills bundle installer and check, but it is still a local checkout workflow rather than a versioned package with release artifacts.
 
 2. **Content generation is still too template-like**
    The generated courses are structurally valid, but many pages need deeper source-specific examples, stronger interaction design, and better misconception diagnosis.
@@ -224,4 +237,4 @@ The next major investment should not be another UI-only pass. The highest-levera
 Skills Layer + Course Quality Kernel
 ```
 
-That means packaging the MCP+skills bundle, strengthening lesson critique, and making Codex behave like a learning-product operator rather than a raw tool caller.
+That means strengthening source grounding, lesson critique, and revision quality while keeping Codex operating through the MCP+skills product bundle rather than as a raw tool caller.

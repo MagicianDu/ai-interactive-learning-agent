@@ -33,6 +33,9 @@
     "mcp": "tsx tools/mcp-server/index.ts",
     "codex:mcp:install": "tsx scripts/install-codex-mcp.ts --install",
     "codex:mcp:check": "tsx scripts/install-codex-mcp.ts --check",
+    "codex:skills:install": "tsx scripts/learning-agent-bundle.ts --install-codex-skills",
+    "codex:bundle:install": "npm run codex:mcp:install && npm run codex:skills:install",
+    "bundle:check": "tsx scripts/learning-agent-bundle.ts --check",
     "source:regression": "tsx tools/agent-runtime/learner/real-source-regression-cli.ts",
     "seed:check": "tsx scripts/beta-seed-check.ts"
   },

@@ -44,11 +44,13 @@ const checks: Check[] = [
       "tools/mcp-server/skill-mcp-contract.test.ts",
       "tools/mcp-server/json-rpc-server.test.ts",
       "scripts/codex-mcp-config.test.ts",
+      "scripts/learning-agent-bundle.test.ts",
       "scripts/beta-seed-check.test.ts"
     ]
   },
   { name: "typecheck", command: "npm", args: ["run", "typecheck"] },
   { name: "build", command: "npm", args: ["run", "build"] },
+  { name: "bundle-check", command: "npm", args: ["run", "bundle:check"] },
   { name: "mcp-tool-list", command: "npm", args: ["run", "mcp", "--", "--list-tools"] }
 ];
 

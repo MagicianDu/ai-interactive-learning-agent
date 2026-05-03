@@ -2,15 +2,19 @@
 
 这份文档是种子用户从 Codex 试用 `learningAgent` MCP 服务的默认路径。默认体验面向学习者：先澄清学习需求，然后快速发布中文网页课程；不要让学习者审批 `source-map`、`concept-map`、`curriculum-plan` 这些内部 artifacts。
 
-## 1. 安装本地 MCP 服务
+## 1. 安装本地 MCP 和 Skills
 
 在项目根目录运行：
 
 ```bash
-npm run codex:mcp:install
+npm run codex:bundle:install
+npm run bundle:check
+npm run codex:mcp:check
 ```
 
-这个命令会备份 `~/.codex/config.toml`，并写入：
+`codex:bundle:install` 会备份 `~/.codex/config.toml`，安装 MCP 配置，并把本项目的学习代理 skills 复制到 `~/.codex/skills/`。
+
+MCP 配置形如：
 
 ```toml
 [mcp_servers.learningAgent]
@@ -19,11 +23,12 @@ args = ["run", "mcp"]
 cwd = "/Users/dm/Documents/the learning agent"
 ```
 
-安装后重启 Codex 或打开一个新的 Codex 会话，让 MCP server 列表重新加载。
+安装后重启 Codex 或打开一个新的 Codex 会话，让 MCP server 和 skills 列表重新加载。
 
 ## 2. 检查安装
 
 ```bash
+npm run bundle:check
 npm run codex:mcp:check
 ```
 

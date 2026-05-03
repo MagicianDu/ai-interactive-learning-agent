@@ -13,6 +13,16 @@ The AI-native product surface is **MCP tools plus skills**:
 
 Default learner-facing operation should use `skills/learning-agent-operator`, `skills/source-to-course`, and `skills/learner-feedback-revision` with the learner MCP flow. Advanced artifact approval remains available only for expert/operator mode.
 
+Codex local install:
+
+```bash
+npm run codex:bundle:install
+npm run bundle:check
+npm run codex:mcp:check
+```
+
+Bundle setup details live in `docs/runtime/mcp-skills-bundle.md`.
+
 ## Language Direction
 
 The default learning output is **Chinese-first**. Generated lessons, page titles, learner actions, feedback, quizzes, misconception checks, transfer tasks, and primary UI labels should be written in Chinese unless a lesson explicitly targets another language.

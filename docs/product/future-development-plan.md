@@ -37,7 +37,7 @@ MCP alone is not enough. It exposes actions but does not encode judgment. Skills
 
 Goal: turn the existing skills into a usable AI-native product layer.
 
-Status on 2026-05-03: baseline implemented. The repository now has learner-facing operator, source routing, and feedback revision skills aligned with current MCP tools, plus a contract test included in `npm run seed:check`. Remaining Phase 1 work is packaging/install guidance for distributing MCP plus skills together.
+Status on 2026-05-03: baseline implemented. The repository now has learner-facing operator, source routing, and feedback revision skills aligned with current MCP tools, a contract test included in `npm run seed:check`, and a Codex local MCP+skills bundle installer/check. Remaining Phase 1 work is versioned release packaging beyond a local checkout.
 
 ### Work Items
 
@@ -63,7 +63,8 @@ export_learning_course
   - topic only
 - Completed: add a `learner-feedback-revision` skill for feedback interpretation and revision application.
 - Completed: add a `skill-mcp-contract` check that verifies skill docs mention only existing MCP tools and preferred workflows.
-- Remaining: add public packaging/install docs for the MCP plus skills bundle.
+- Completed: add public packaging/install docs and `bundle:check` for the MCP plus skills bundle.
+- Remaining: turn the local bundle into a versioned release package.
 
 ### Acceptance
 
@@ -221,14 +222,14 @@ Goal: make the system usable outside a local development checkout.
 
 ## Immediate Next Sprint
 
-The next sprint should focus on Phase 1.
+The next sprint should move from Phase 1 into Phase 2 and Phase 3.
 
 Recommended task order:
 
-1. Package the MCP server and skill pack as one installable local bundle.
-2. Add install/upgrade docs for Codex first, with runtime-neutral notes for Claude and future OpenClaw-style clients.
-3. Strengthen source evidence mapping before adding more UI-heavy interaction components.
-4. Upgrade critic and revision loops so feedback changes are quality-checked before export.
+1. Strengthen source evidence mapping before adding more UI-heavy interaction components.
+2. Upgrade critic and revision loops so feedback changes are quality-checked before export.
+3. Add richer source-specific examples, misconceptions, and candidate interactions.
+4. Prepare versioned MCP+skills release packaging after the quality kernel is less template-like.
 
 ## Open Decisions
 
