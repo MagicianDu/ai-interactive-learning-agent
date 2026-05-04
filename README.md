@@ -146,6 +146,7 @@ Default learner-facing tools:
 - `learning_agent.create_learning_project`
 - `learning_agent.list_learning_projects`
 - `learning_agent.archive_learning_project`
+- `learning_agent.get_authoring_context`
 - `learning_agent.generate_grounded_course`
 - `learning_agent.publish_learning_course`
 - `learning_agent.get_learning_preview`
@@ -178,9 +179,9 @@ Advanced/operator tools include:
 - `learning_agent.promote_units`
 - `learning_agent.promote_lesson`
 
-The current entrypoint accepts newline-delimited JSON-RPC requests on stdin and returns MCP-compatible JSON-RPC responses. It is intentionally thin; tool calls wrap learner project creation, grounded course generation, publishing, preview, revision, and advanced operator workflows.
+The current entrypoint accepts newline-delimited JSON-RPC requests on stdin and returns MCP-compatible JSON-RPC responses. It is intentionally thin; tool calls wrap learner project creation, authoring context, deterministic draft generation, publishing, preview, revision, and advanced operator workflows.
 
-Default Codex usage should be learner-first. Codex clarifies the learning request, calls `learning_agent.create_learning_project`, then calls `learning_agent.generate_grounded_course` for a fast source-grounded Chinese preview. It should call `learning_agent.get_learning_preview` after generation, use `learning_agent.revise_learning_course` then `learning_agent.apply_learning_revision` for learner feedback, and call `learning_agent.export_learning_course` when the learner wants a shareable bundle. For hand-authored or heavily refined content, Codex can still generate a Chinese `coursePack` and `lessons` and call `learning_agent.publish_learning_course`. Do not ask learners to approve `source-map`, `concept-map`, or `curriculum-plan`.
+Default Codex/Claude usage should be learner-first and Codex-authored. Codex clarifies the learning request, calls `learning_agent.create_learning_project`, then calls `learning_agent.get_authoring_context` for source anchors, recommended units, quality constraints, and the publish contract. Codex then writes the Chinese `coursePack` and `lessons`, calls `learning_agent.publish_learning_course`, and finally calls `learning_agent.get_learning_preview`. Use `learning_agent.revise_learning_course` then `learning_agent.apply_learning_revision` for learner feedback, and call `learning_agent.export_learning_course` when the learner wants a shareable bundle. Do not ask learners to approve `source-map`, `concept-map`, or `curriculum-plan`.
 
 Default trial prompt:
 
@@ -189,7 +190,8 @@ Default trial prompt:
 资料是：/absolute/path/to/source.pdf
 我希望先有总览课，再按核心 topic 拆课。每个单元 8 页。
 请先问我最多 3 个你必须知道的问题。明确后，不要让我审批 source-map、concept-map、curriculum-plan 这些内部 artifacts。
-你可以调用 learning_agent.generate_grounded_course 直接生成带来源锚点的中文网页。
+请调用 learning_agent.create_learning_project，然后调用 learning_agent.get_authoring_context 获取来源锚点、推荐单元和发布约束。
+请由 Codex 创作 coursePack 与 lessons，再调用 learning_agent.publish_learning_course 发布中文网页。
 发布后告诉我运行 npm run dev，并说明我应该打开哪个页面查看。
 ```
 
@@ -199,12 +201,13 @@ Manual learner-first smoke:
 printf '%s\n' \
   '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"manual-smoke","version":"0.0.0"}}}' \
   '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"learning_agent.create_learning_project","arguments":{"request":"请把这份资料生成中文学习网页，先给总览课，再按核心 topic 拆课，每个单元 8 页，面向有编程基础的中文学习者。","runId":"seed-ready-smoke","sourcePath":"/absolute/path/to/source.pdf","sourceKind":"book","audience":"有编程基础但缺少系统心智模型的中文学习者","unitPages":8,"strategy":"overview_plus_topic"}}}' \
-  '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"learning_agent.generate_grounded_course","arguments":{"runId":"seed-ready-smoke"}}}' \
-  '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"learning_agent.get_learning_preview","arguments":{"runId":"seed-ready-smoke"}}}' \
+  '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"learning_agent.get_authoring_context","arguments":{"runId":"seed-ready-smoke"}}}' \
   | npm run mcp
 ```
 
-For source-backed learner projects, `learning_agent.generate_grounded_course` normalizes the source, writes `source-ingest`, generates overview + focused units, validates Chinese-first content, source grounding, interactions, feedback, and publishes a local preview. `learning_agent.generate_quick_preview` remains an operator smoke path for the older gate-based mock workflow.
+After the context call, the client should author `coursePack` and `lessons` from the returned contract, publish them with `learning_agent.publish_learning_course`, then call `learning_agent.get_learning_preview`.
+
+`learning_agent.generate_grounded_course` remains available for deterministic quick drafts and smoke previews. It is useful for regression checks, but it is not the default high-quality content authoring path. `learning_agent.generate_quick_preview` remains an operator smoke path for the older gate-based mock workflow.
 
 Learner feedback should use `learning_agent.revise_learning_course`. Codex records the feedback as a revision brief. `learning_agent.apply_learning_revision` applies the latest targeted revision to the current published preview when the feedback maps to a supported scope such as a page. Codex-authored advanced revisions can still republish through `publish_learning_course`.
 
@@ -214,7 +217,8 @@ Seed-ready learner flow:
 
 ```text
 create_learning_project
-generate_grounded_course
+get_authoring_context
+publish_learning_course
 get_learning_preview
 revise_learning_course
 apply_learning_revision

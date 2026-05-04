@@ -9,13 +9,13 @@ Prompt pattern:
 ```text
 请使用 learningAgent MCP 服务把这本书生成中文学习网页：/absolute/path/to/book.pdf
 先做总览课，再按核心 topic 拆课。每个单元 8 页。
-不要让我审批内部 artifacts；请调用 generate_grounded_course 直接生成带来源锚点的中文网页。
+不要让我审批内部 artifacts；请调用 get_authoring_context 获取来源锚点和课程约束，然后由 Codex 创作 coursePack 与 lessons，并调用 publish_learning_course。
 ```
 
-For high-quality Codex-authored trials, replace the last sentence with:
+For deterministic quick-draft regression only, replace the last sentence with:
 
 ```text
-不要让我审批内部 artifacts；请调用 get_authoring_context 获取来源锚点和课程约束，然后由 Codex 创作 coursePack 与 lessons，并调用 publish_learning_course。
+不要让我审批内部 artifacts；请调用 generate_grounded_course 生成低保真 deterministic 预览，用于 smoke 测试而不是最终内容质量验收。
 ```
 
 Acceptance:

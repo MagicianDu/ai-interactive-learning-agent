@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import type { Lesson, LessonPage } from "../schemas/lesson.schema";
-import { ModeHeader } from "./product-view-common";
+import { ModeHeader, Panel } from "./product-view-common";
 
 type TutorIntent = "confused" | "example" | "quiz";
 
@@ -15,6 +15,13 @@ export function TutorProductView({ lesson }: { lesson: Lesson }) {
   return (
     <>
       <ModeHeader meta="本地模拟导师：根据当前课程页生成固定辅导话术，不调用实时大模型。" subtitle={lesson.title} title="导师模式" />
+      <Panel title="当前页辅导策略">
+        <div className="grid gap-2 text-sm leading-6 text-slate-700 md:grid-cols-3">
+          <p className="rounded-md bg-slate-50 p-3">围绕页面学习目标提问，避免脱离当前视觉和互动对象。</p>
+          <p className="rounded-md bg-slate-50 p-3">先诊断困惑，再补例子，最后用小测检查。</p>
+          <p className="rounded-md bg-slate-50 p-3">回答必须回到“发生了什么、为什么、如何迁移”。</p>
+        </div>
+      </Panel>
       <div className="grid gap-4 lg:grid-cols-3">
         {lesson.pages.slice(0, 6).map((page) => (
           <TutorCard key={page.id} page={page} />

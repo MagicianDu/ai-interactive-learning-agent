@@ -1,7 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { buildBundleAuthoringGuidance } from "./bundle-authoring-guidance.js";
 import { ProjectRegistry } from "./project-registry.js";
 
 export type CreateLearnerProjectInput = {
@@ -40,7 +39,7 @@ export type CreateLearnerProjectResult =
       runId: string;
       brief: LearnerBrief;
       next: {
-        recommendedTool: "learning_agent.publish_learning_course";
+        recommendedTool: "learning_agent.get_authoring_context";
         codexInstruction: string;
       };
     };
@@ -68,8 +67,8 @@ export class LearnerProjectService {
       runId,
       brief,
       next: {
-        recommendedTool: "learning_agent.publish_learning_course",
-        codexInstruction: buildBundleAuthoringGuidance(brief)
+        recommendedTool: "learning_agent.get_authoring_context",
+        codexInstruction: buildAuthoringContextGuidance(runId, brief)
       }
     };
   }
@@ -93,6 +92,23 @@ export class LearnerProjectService {
     const current = JSON.parse(await readFile(projectPath, "utf8")) as Record<string, unknown>;
     await writeFile(projectPath, `${JSON.stringify({ ...current, runId, request, brief }, null, 2)}\n`, "utf8");
   }
+}
+
+function buildAuthoringContextGuidance(runId: string, brief: LearnerBrief): string {
+  return [
+    "learner brief 已记录。下一步请调用 learning_agent.get_authoring_context 获取来源锚点、推荐单元和发布约束。",
+    `runId：${runId}`,
+    `输出语言：${brief.language}`,
+    `目标学习者：${brief.audience ?? "中文学习者"}`,
+    `课程组织：${brief.strategy}，每个单元 ${brief.unitPages} 页。`,
+    brief.sourcePath ? `资料路径：${brief.sourcePath}` : undefined,
+    `资料类型：${brief.sourceKind}`,
+    brief.selectedChapters?.length ? `指定章节：${brief.selectedChapters.join("、")}。` : undefined,
+    brief.selectedTopics?.length ? `指定 topics：${brief.selectedTopics.join("、")}。` : undefined,
+    "拿到 authoring context 后，由 Codex/Claude 创作 coursePack 与 lessons，再调用 learning_agent.publish_learning_course。"
+  ]
+    .filter((line): line is string => typeof line === "string")
+    .join("\n");
 }
 
 function buildBrief(input: CreateLearnerProjectInput): LearnerBrief {

@@ -8,6 +8,13 @@ Generate quizzes, prediction tasks, misconception checks, and transfer tasks.
 
 Use after the learning path and interaction plan are clear.
 
+## Product Contract
+
+- Codex authors assessment pages, answer keys, and explanatory feedback before MCP publishing.
+- Keep prompts, options, explanations, misconception checks, and transfer tasks中文优先.
+- Source-backed assessment pages should preserve `sourceAnchorIds` or mark inferred/analogy grounding.
+- 不要让学习者审批内部 artifacts; learner validation happens through quizzes, feedback, and preview revisions.
+
 ## Inputs
 
 - Learning objectives
@@ -47,4 +54,3 @@ Use after the learning path and interaction plan are clear.
 - Feedback explains why.
 - Transfer uses a new but related context.
 - The lesson includes recall, prediction, misconception, and transfer.
-

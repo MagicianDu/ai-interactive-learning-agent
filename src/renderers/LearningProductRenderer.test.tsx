@@ -11,6 +11,7 @@ describe("LearningProductRenderer", () => {
     const firstAssessmentPrompt = databaseIndexLesson.pages.find((page) => page.assessmentSpec)?.assessmentSpec?.prompt;
 
     expect(screen.getByRole("heading", { name: "练习模式" })).toBeInTheDocument();
+    expect(screen.getByText("掌握度路径")).toBeInTheDocument();
     expect(screen.getByText(firstAssessmentPrompt!)).toBeInTheDocument();
     expect(screen.getByText(databaseIndexLesson.misconceptions[0]!.statement)).toBeInTheDocument();
     expect(screen.getByText(databaseIndexLesson.transferTasks[0]!.prompt)).toBeInTheDocument();
@@ -32,6 +33,7 @@ describe("LearningProductRenderer", () => {
     render(<LearningProductRenderer lesson={databaseIndexLesson} mode="teacher" />);
 
     expect(screen.getByRole("heading", { name: "教师模式" })).toBeInTheDocument();
+    expect(screen.getByText("可直接使用的课堂动作")).toBeInTheDocument();
     expect(screen.getByText(/建议节奏/)).toBeInTheDocument();
     expect(screen.getByText(databaseIndexLesson.learningObjectives[0]!)).toBeInTheDocument();
     expect(screen.getByText(databaseIndexLesson.misconceptions[0]!.correction)).toBeInTheDocument();
@@ -41,6 +43,7 @@ describe("LearningProductRenderer", () => {
     render(<LearningProductRenderer lesson={databaseIndexLesson} mode="playground" />);
 
     expect(screen.getByRole("heading", { name: "实验模式" })).toBeInTheDocument();
+    expect(screen.getByText("实验记录")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "WHERE email = 'sam@example.com'" }));
 
     expect(screen.getByText("走索引查找")).toBeInTheDocument();
@@ -51,6 +54,7 @@ describe("LearningProductRenderer", () => {
     render(<LearningProductRenderer lesson={databaseIndexLesson} mode="tutor" />);
 
     expect(screen.getByRole("heading", { name: "导师模式" })).toBeInTheDocument();
+    expect(screen.getByText("当前页辅导策略")).toBeInTheDocument();
     expect(screen.getByText(databaseIndexLesson.pages[0]!.title)).toBeInTheDocument();
     expect(screen.getByText(`你会怎样解释：${databaseIndexLesson.pages[0]!.learningGoal}`)).toBeInTheDocument();
   });

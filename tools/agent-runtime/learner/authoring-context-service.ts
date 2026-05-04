@@ -76,6 +76,22 @@ export type AuthoringContextResult = {
     language: "zh-CN";
     requirements: string[];
   };
+  qualityContract: {
+    language: "zh-CN";
+    supportedStrategies: string[];
+    requiredPageTypes: string[];
+    requiredLearningActions: string[];
+    pageRules: string[];
+    feedbackRules: string[];
+    groundingRules: string[];
+    sourceKindGuidance: {
+      sourceKind: string;
+      authoringFocus: string[];
+      avoid: string[];
+    };
+    publishChecklist: string[];
+  };
+  learnerClarificationHints: string[];
   codexInstruction: string;
 };
 
@@ -177,9 +193,112 @@ export class AuthoringContextService {
           "完成后调用 learning_agent.publish_learning_course，并用 learning_agent.get_learning_preview 返回网页。"
         ]
       },
+      qualityContract: buildQualityContract(brief),
+      learnerClarificationHints: buildLearnerClarificationHints(brief),
       codexInstruction: buildCodexInstruction(brief, unitPlan.units.length)
     };
   }
+}
+
+function buildQualityContract(brief: AuthoringContextResult["brief"]): AuthoringContextResult["qualityContract"] {
+  return {
+    language: "zh-CN",
+    supportedStrategies: ["overview_plus_topic", "chapter_guided", "topic_guided", "task_guided", "hybrid"],
+    requiredPageTypes: [
+      "problem_scene",
+      "intuition_visual",
+      "structure_diagram",
+      "interactive_model",
+      "quiz",
+      "misconception_check",
+      "transfer_challenge",
+      "summary_card"
+    ],
+    requiredLearningActions: ["predict", "manipulate", "compare", "explain", "debug", "transfer"],
+    pageRules: [
+      "每页只承载一个学习目标，正文应短，优先使用图、流程、状态变化或可操作模型。",
+      "不要把一整章压缩进一页；内容过多时拆成多个 unit 或多页。",
+      "先从问题、情境、视觉模型和学习动作进入，再引入术语、公式、代码或定义。",
+      `每个 unit 目标页数为 ${brief.unitPages} 页；除非用户明确修改，不要随意缩短。`
+    ],
+    feedbackRules: [
+      "所有 quiz、prediction、interaction、misconception_check 都必须解释为什么，而不是只说正确或错误。",
+      "反馈要指出学习者可能采用了什么错误假设，以及应该怎样更新心智模型。",
+      "反馈要解释因果机制、边界条件和迁移方式。"
+    ],
+    groundingRules: [
+      "source-backed lesson 必须包含 sourceContext.sourceAnchorIds，相关页面必须包含 page.sourceAnchorIds。",
+      "没有直接来源的推理页必须显式设置 grounding.kind 为 inferred；类比页必须设置 grounding.kind 为 analogy。",
+      "不要伪造来源锚点；如果来源不足，缩小课程范围或把结论标为推理。"
+    ],
+    sourceKindGuidance: sourceKindGuidance(brief.sourceKind),
+    publishChecklist: [
+      "coursePack.units 引用的 lessonId 必须存在。",
+      "每个 lesson 必须中文优先，并包含 objectives、prerequisites、pages、misconceptions、transferTasks、summary。",
+      "每个 lesson 至少包含 3 个 visualSpec、2 个 interactionSpec、2 个 assessmentSpec、1 个 misconception_check 和 1 个 transfer_challenge。",
+      "每个 interactionSpec 必须说明 learnerAction、expectedObservation、cognitivePurpose，并提供解释性结果。",
+      "每个 assessment 页面必须有 feedbackSpec。"
+    ]
+  };
+}
+
+function sourceKindGuidance(sourceKind: string): AuthoringContextResult["qualityContract"]["sourceKindGuidance"] {
+  if (sourceKind === "book") {
+    return {
+      sourceKind,
+      authoringFocus: ["章节映射", "全书总览课", "核心 topic 拆课", "概念依赖和长期记忆结构"],
+      avoid: ["把整本书压缩成一个 12 页摘要", "逐章搬运原文", "忽略章节到 topic 的映射"]
+    };
+  }
+  if (sourceKind === "paper") {
+    return {
+      sourceKind,
+      authoringFocus: ["研究问题", "方法机制", "证据链", "局限边界", "如何迁移到实践判断"],
+      avoid: ["把论文讲成普通博客", "跳过实验或证据", "把作者结论过度外推"]
+    };
+  }
+  if (sourceKind === "patent") {
+    return {
+      sourceKind,
+      authoringFocus: ["权利要求", "现有技术问题", "发明机制", "实施例", "适用边界"],
+      avoid: ["把权利要求当成学术结论", "忽略附图或实施例", "弱化法律边界"]
+    };
+  }
+  if (sourceKind === "blog") {
+    return {
+      sourceKind,
+      authoringFocus: ["实现模式", "问题场景", "关键 caveat", "可复用实践步骤", "读者可操作检查"],
+      avoid: ["只摘录观点", "忽略作者的实践上下文", "把示例泛化成绝对规则"]
+    };
+  }
+  if (sourceKind === "notes") {
+    return {
+      sourceKind,
+      authoringFocus: ["用户原始结构", "隐含问题", "碎片概念归并", "缺口标注", "复习路径"],
+      avoid: ["打乱用户已有脉络", "把笔记不足的地方补成确定事实", "忽略用户自己的术语"]
+    };
+  }
+  if (sourceKind === "documentation") {
+    return {
+      sourceKind,
+      authoringFocus: ["任务路径", "API/概念边界", "常见错误", "最小可运行例子", "决策表"],
+      avoid: ["复制文档目录", "堆 API 参数", "缺少操作反馈"]
+    };
+  }
+  return {
+    sourceKind,
+    authoringFocus: ["心智模型", "具体问题", "可视化结构", "学习动作", "迁移挑战"],
+    avoid: ["编造来源", "从定义开始堆长文", "缺少学习者反馈"]
+  };
+}
+
+function buildLearnerClarificationHints(brief: AuthoringContextResult["brief"]): string[] {
+  return [
+    `确认学习目标：这套课程要让学习者最终能做什么，而不只是知道什么？`,
+    `确认课程组织：当前为 ${brief.strategy}；用户也可以选择按章节、按 topic、按任务或混合路径。`,
+    `确认阅读习惯：每个单元当前 ${brief.unitPages} 页，可按用户耐心和基础调整。`,
+    `确认受众水平：当前为 ${brief.audience}；内容深度、例子和练习都应围绕该画像。`
+  ];
 }
 
 function buildCodexInstruction(brief: AuthoringContextResult["brief"], unitCount: number): string {

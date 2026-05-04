@@ -23,7 +23,8 @@ For the current seed-ready implementation plan, see:
 ## Current Seed-Ready Track
 
 - Learner entrypoint is Codex/MCP natural language, not internal artifact approval.
-- Default flow is `create_learning_project -> generate_grounded_course -> get_learning_preview`.
+- Default high-quality flow is `create_learning_project -> get_authoring_context -> publish_learning_course -> get_learning_preview`, with Codex/Claude authoring the course bundle and MCP validating/publishing it.
+- `generate_grounded_course` remains available for deterministic quick drafts and smoke regression, not as the default high-quality authoring path.
 - Feedback flow is `revise_learning_course -> apply_learning_revision -> get_learning_preview`.
 - Export flow is `export_learning_course`.
 - Long sources generate one overview unit plus multiple focused units while preserving chapter/topic/source mapping.

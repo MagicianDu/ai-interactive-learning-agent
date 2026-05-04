@@ -7,6 +7,13 @@ description: Use when converting books, papers, patents, blogs, notes, folders, 
 
 Use this skill to turn learner-supplied material into a course request that the learner-facing MCP flow can execute.
 
+## Product Contract
+
+- Codex or Claude authors the final `coursePack` and `lessons` after `learning_agent.get_authoring_context`.
+- Keep learner-facing course output中文优先 unless the learner explicitly asks otherwise.
+- Preserve `sourceAnchorIds` for books, papers, patents, blogs, notes, folders, and other source-backed materials.
+- 不要让学习者审批内部 artifacts such as source maps, concept maps, curriculum plans, or critic reports in the default learner flow.
+
 ## Source Routing
 
 - `book`: long-form PDF/EPUB/text, usually needs an overview unit plus focused topic units, with optional chapter mapping.

@@ -10,12 +10,19 @@ Use this skill when the user asks Codex to generate, preview, revise, export, or
 ## Defaults
 
 - Work from the repository root.
-- Output language is `zh-CN` unless the user explicitly requests otherwise.
+- Output language is `zh-CN` unless the user explicitly requests otherwise; learner-facing content is中文优先.
 - Prefer source-backed course packs over single lessons when a file, URL, folder, book, paper, patent, blog, or long pasted text is provided.
 - Default course strategy: `overview_plus_topic`.
 - `--unit-pages` means pages per learning unit, not total pages for the whole source.
 - Learner-facing operation should hide internal artifacts unless the user explicitly asks for expert review.
 - Use expert/operator mode only for debugging, auditing, or artifact-level generation.
+
+## Product Contract
+
+- Codex or Claude authors the final `coursePack` and `lessons`; MCP provides context, validation, publishing, preview, revision, and export.
+- Keep all learner-facing lesson content中文优先.
+- Preserve source grounding with `sourceAnchorIds` at lesson or page level for source-backed courses.
+- 不要让学习者审批内部 artifacts such as source maps, concept maps, curriculum plans, or critic reports in the default learner flow.
 
 ## Natural Language Mapping
 

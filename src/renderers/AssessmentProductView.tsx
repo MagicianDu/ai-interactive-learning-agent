@@ -17,6 +17,13 @@ export function AssessmentProductView({ lesson }: { lesson: Lesson }) {
       />
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.55fr)]">
         <section className="grid gap-3">
+          <Panel title="掌握度路径">
+            <div className="grid gap-2 text-sm leading-6 text-slate-700 sm:grid-cols-3">
+              <p className="rounded-md bg-sky-50 p-3 font-semibold text-sky-900">先做预测题，暴露当前心智模型。</p>
+              <p className="rounded-md bg-amber-50 p-3 font-semibold text-amber-900">再看误区反馈，修正错误假设。</p>
+              <p className="rounded-md bg-emerald-50 p-3 font-semibold text-emerald-900">最后做迁移任务，确认能换场景使用。</p>
+            </div>
+          </Panel>
           {assessmentPages.map((page) => (
             <AssessmentCard
               answer={answers[page.id]}

@@ -80,6 +80,30 @@ describe("skill and MCP contracts", () => {
 
     expect(invalidArgumentNames).toEqual([]);
   });
+
+  test("core authoring skills preserve the Codex-authored Chinese source-grounded contract", async () => {
+    const skillNames = [
+      "learning-agent-operator",
+      "source-to-course",
+      "learning-architecture",
+      "visual-pedagogy",
+      "interaction-design",
+      "assessment-design",
+      "lesson-critic"
+    ];
+    const missing: string[] = [];
+
+    for (const skillName of skillNames) {
+      const markdown = await readSkill(skillName);
+      for (const required of ["中文优先", "Codex", "sourceAnchorIds", "不要让学习者审批内部 artifacts"]) {
+        if (!markdown.includes(required)) {
+          missing.push(`${skillName}: ${required}`);
+        }
+      }
+    }
+
+    expect(missing).toEqual([]);
+  });
 });
 
 async function readSkill(skillName: string): Promise<string> {

@@ -8,6 +8,13 @@ Convert concepts into meaningful learner actions with explanatory feedback.
 
 Use after the visual plan and before UI implementation.
 
+## Product Contract
+
+- Codex authors interaction specs and feedback in the final lesson bundle; MCP validates and publishes the course.
+- Keep learner actions, option labels, observations, and feedback中文优先.
+- Source-backed interaction pages should preserve `sourceAnchorIds` or explicit inferred/analogy grounding.
+- 不要让学习者审批内部 artifacts; learners should interact with the preview, not review interaction-design JSON.
+
 ## Inputs
 
 - Page sequence
@@ -48,4 +55,3 @@ Use after the visual plan and before UI implementation.
 - Feedback explains the mechanism.
 - Interaction reveals cause and effect.
 - Interaction improves the mental model.
-

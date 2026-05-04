@@ -16,6 +16,14 @@ export function TeacherProductView({ lesson }: { lesson: Lesson }) {
           复制教学提纲
         </button>
       </div>
+      <Panel title="可直接使用的课堂动作">
+        <div className="grid gap-2 text-sm leading-6 text-slate-700 md:grid-cols-4">
+          <p className="rounded-md bg-slate-50 p-3">开场先抛出第一页的问题场景，不先讲定义。</p>
+          <p className="rounded-md bg-slate-50 p-3">每到互动页，先让学生预测，再展示反馈。</p>
+          <p className="rounded-md bg-slate-50 p-3">误区页要求学生说出错误假设来自哪里。</p>
+          <p className="rounded-md bg-slate-50 p-3">结尾用迁移任务检查是否能换场景使用。</p>
+        </div>
+      </Panel>
       <div className="grid gap-4 lg:grid-cols-2">
         <Panel title="教学目标">
           <ul className="grid gap-2 text-sm leading-6 text-slate-700">

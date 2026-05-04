@@ -22,7 +22,7 @@ describe("bundle authoring guidance", () => {
     expect(guidance).toContain("transferTasks");
   });
 
-  test("injects the guidance into project_ready Codex instruction", async () => {
+  test("project_ready points Codex to authoring context before publishing", async () => {
     const service = new LearnerProjectService(await import("node:fs/promises").then(({ mkdtemp }) => mkdtemp("/tmp/learner-guidance-")));
     const result = await service.createProject({
       request: "请用 /tmp/book.pdf 生成中文学习材料，面向中文学习者，每个单元 8 页。",
@@ -33,7 +33,8 @@ describe("bundle authoring guidance", () => {
     if (result.status !== "project_ready") {
       throw new Error("expected project_ready");
     }
-    expect(result.next.codexInstruction).toContain("sourceContext.sourceAnchorIds");
-    expect(result.next.codexInstruction).toContain("learning_agent.publish_learning_course");
+    expect(result.next.recommendedTool).toBe("learning_agent.get_authoring_context");
+    expect(result.next.codexInstruction).toContain("learning_agent.get_authoring_context");
+    expect(result.next.codexInstruction).not.toContain("learning_agent.generate_grounded_course");
   });
 });

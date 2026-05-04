@@ -66,6 +66,20 @@ describe("AuthoringContextService", () => {
     expect(context.codexInstruction).toContain("请由 Codex 创作 coursePack 和 lessons");
     expect(context.codexInstruction).toContain("learning_agent.publish_learning_course");
     expect(context.source.anchors.length).toBeLessThanOrEqual(4);
+    expect(context.qualityContract).toMatchObject({
+      language: "zh-CN",
+      requiredPageTypes: expect.arrayContaining(["problem_scene", "interactive_model", "quiz", "misconception_check", "transfer_challenge"]),
+      requiredLearningActions: expect.arrayContaining(["predict", "manipulate", "explain", "transfer"]),
+      sourceKindGuidance: expect.objectContaining({
+        sourceKind: "blog"
+      }),
+      supportedStrategies: expect.arrayContaining(["overview_plus_topic", "chapter_guided", "topic_guided", "task_guided", "hybrid"])
+    });
+    expect(context.qualityContract.feedbackRules.join("\n")).toContain("为什么");
+    expect(context.qualityContract.groundingRules.join("\n")).toContain("sourceAnchorIds");
+    expect(context.learnerClarificationHints).toEqual(
+      expect.arrayContaining([expect.stringContaining("学习目标"), expect.stringContaining("课程组织")])
+    );
   });
 
   test("returns topic-only context without requiring source approval artifacts", async () => {
@@ -96,6 +110,31 @@ describe("AuthoringContextService", () => {
       }
     });
     expect(context.coursePlan.recommendedUnits[0]?.title).toContain("哈希表");
+    expect(context.qualityContract.sourceKindGuidance.sourceKind).toBe("topic");
+    expect(context.qualityContract.sourceKindGuidance.authoringFocus.join("\n")).toContain("心智模型");
+  });
+
+  test.each([
+    ["book", "章节映射"],
+    ["paper", "研究问题"],
+    ["patent", "权利要求"],
+    ["blog", "实现模式"],
+    ["notes", "用户原始结构"]
+  ])("adds source-kind guidance for %s projects", async (sourceKind, expectedFocus) => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-authoring-context-"));
+    await new LearnerProjectService(root).createProject({
+      request: `请生成 ${sourceKind} 中文互动学习网页，面向中文学习者，每个单元 8 页。`,
+      runId: `context-${sourceKind}`,
+      sourceKind,
+      audience: "中文学习者",
+      unitPages: 8
+    });
+
+    const context = await new AuthoringContextService(root).getContext({ runId: `context-${sourceKind}` });
+
+    expect(context.qualityContract.sourceKindGuidance).toMatchObject({
+      sourceKind,
+      authoringFocus: expect.arrayContaining([expect.stringContaining(expectedFocus)])
+    });
   });
 });
-

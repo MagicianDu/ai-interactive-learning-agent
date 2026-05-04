@@ -8,6 +8,13 @@ Decide which concepts need diagrams, animations, comparisons, timelines, or visu
 
 Use after page sequencing and before component design.
 
+## Product Contract
+
+- Codex authors visual plans as part of the final lesson bundle; MCP validates and publishes the result.
+- Keep diagram labels, captions, visual state names, and visual explanations中文优先.
+- Source-backed visuals should preserve relevant `sourceAnchorIds` or mark analogy/inferred grounding.
+- 不要让学习者审批内部 artifacts; visual planning is an internal authoring step, while learners review the final preview.
+
 ## Inputs
 
 - Page sequence
@@ -45,4 +52,3 @@ Use after page sequencing and before component design.
 - Diagrams have one dominant idea.
 - Animation shows meaningful change.
 - Visuals are not purely ornamental.
-

@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import type { InteractionOption, Lesson, LessonPage } from "../schemas/lesson.schema";
-import { ModeHeader } from "./product-view-common";
+import { ModeHeader, Panel } from "./product-view-common";
 
 export function PlaygroundProductView({ lesson }: { lesson: Lesson }) {
   const interactivePages = lesson.pages.filter((page) => page.interactionSpec);
@@ -9,6 +9,13 @@ export function PlaygroundProductView({ lesson }: { lesson: Lesson }) {
   return (
     <>
       <ModeHeader meta="通过选择、观察和记录，把抽象概念变成可操作模型" subtitle={lesson.title} title="实验模式" />
+      <Panel title="实验记录">
+        <div className="grid gap-2 text-sm leading-6 text-slate-700 md:grid-cols-3">
+          <p className="rounded-md bg-slate-50 p-3">选择一个条件或参数，先预测结果。</p>
+          <p className="rounded-md bg-slate-50 p-3">观察系统反馈里解释的因果机制。</p>
+          <p className="rounded-md bg-slate-50 p-3">把观察写下来，形成可迁移规则。</p>
+        </div>
+      </Panel>
       <div className="grid gap-4 lg:grid-cols-2">
         {interactivePages.map((page) => (
           <PlaygroundCard key={page.id} page={page} />

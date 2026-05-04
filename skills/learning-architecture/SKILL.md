@@ -8,6 +8,13 @@ Turn concepts into a coherent learning path that builds a mental model from prob
 
 Use after concept extraction and before visual or UI design.
 
+## Product Contract
+
+- Codex authors the learning path from the authoring context; MCP validates and publishes later.
+- Keep page titles, learning goals, learner actions, feedback, and summaries中文优先.
+- Preserve `sourceAnchorIds` or explicit inferred/analogy grounding when planning source-backed pages.
+- 不要让学习者审批内部 artifacts; learner approval happens on the previewable course, not on source maps or curriculum internals.
+
 ## Inputs
 
 - Concept list
@@ -44,4 +51,3 @@ Use after concept extraction and before visual or UI design.
 - Each page contributes to the mental model.
 - Transfer is built into the sequence.
 - The sequence is not a blog outline.
-

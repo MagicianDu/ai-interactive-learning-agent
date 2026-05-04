@@ -42,6 +42,12 @@ describe("LearnerProjectService", () => {
         language: "zh-CN"
       }
     });
+    if (result.status !== "project_ready") {
+      throw new Error("expected project_ready");
+    }
+    expect(result.next.recommendedTool).toBe("learning_agent.get_authoring_context");
+    expect(result.next.codexInstruction).toContain("learning_agent.get_authoring_context");
+    expect(result.next.codexInstruction).not.toContain("learning_agent.generate_grounded_course");
     const manifest = JSON.parse(await readFile(path.join(root, "runs", "book-run", "learner-project.json"), "utf8")) as {
       request: string;
       brief: unknown;
@@ -88,6 +94,7 @@ describe("LearnerProjectService", () => {
     }
     expect(result.next.codexInstruction).toContain("第 1 章");
     expect(result.next.codexInstruction).toContain("planning");
+    expect(result.next.codexInstruction).toContain("learning_agent.get_authoring_context");
     await expect(readFile(path.join(root, "runs", "chapter-run", "learner-project.json"), "utf8")).resolves.toContain(
       "selectedChapters"
     );

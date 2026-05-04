@@ -8,6 +8,13 @@ Review a lesson against the learning principles and quality rubric.
 
 Use before implementation, after implementation, and before publishing.
 
+## Product Contract
+
+- Codex uses the critique to revise the final `coursePack` and `lessons`; MCP should only publish after blocking issues are fixed.
+- Critique learner-facing content for中文优先 quality, not only schema validity.
+- Source-backed critique must check `sourceAnchorIds`, inferred/analogy grounding, and unsupported claims.
+- 不要让学习者审批内部 artifacts; convert critic issues into learner-visible course revisions or concise operator notes.
+
 ## Inputs
 
 - Lesson object
@@ -42,4 +49,3 @@ Use before implementation, after implementation, and before publishing.
 - Required fixes map to learning or product risk.
 - Feedback does not only comment on visual styling.
 - The critique protects the mental model goal.
-
