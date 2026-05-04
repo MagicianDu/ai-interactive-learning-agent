@@ -8,7 +8,8 @@ import { learningAgentToolContracts } from "./tool-contracts.js";
 const skillsRoot = path.join(process.cwd(), "skills");
 const learnerDefaultTools = [
   "learning_agent.create_learning_project",
-  "learning_agent.generate_grounded_course",
+  "learning_agent.get_authoring_context",
+  "learning_agent.publish_learning_course",
   "learning_agent.get_learning_preview"
 ];
 const feedbackTools = [

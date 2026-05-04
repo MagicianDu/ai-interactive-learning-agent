@@ -12,8 +12,9 @@ Current learner-facing MCP tool names:
 
 ```text
 learning_agent.create_learning_project
-learning_agent.generate_grounded_course
+learning_agent.get_authoring_context
 learning_agent.publish_learning_course
+learning_agent.generate_grounded_course
 learning_agent.get_learning_preview
 learning_agent.generate_quick_preview
 learning_agent.revise_learning_course
@@ -42,7 +43,9 @@ learning_agent.promote_units
 learning_agent.promote_lesson
 ```
 
-`learning_agent.create_learning_project`, `learning_agent.generate_grounded_course`, and `learning_agent.get_learning_preview` are the default learner-facing entrypoints for Codex/Claude-style operation. Codex or Claude clarifies the request; MCP generates and publishes a source-grounded Chinese preview.
+`learning_agent.create_learning_project`, `learning_agent.get_authoring_context`, `learning_agent.publish_learning_course`, and `learning_agent.get_learning_preview` are the default high-quality learner-facing entrypoints for Codex/Claude-style operation. Codex or Claude clarifies the request, authors the course bundle, then MCP validates and publishes it.
+
+`learning_agent.generate_grounded_course` remains available for deterministic draft and smoke-preview runs. It should not be treated as the high-quality default authoring path.
 
 `learning_agent.revise_learning_course` records learner feedback as a durable revision brief. `learning_agent.apply_learning_revision` applies currently supported targeted revisions and refreshes the preview. For deeper Codex/Claude-authored rewrites, `publish_learning_course` remains available and enforces source grounding with lesson-level or page-level source anchors.
 

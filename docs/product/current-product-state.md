@@ -15,7 +15,9 @@ The working seed-ready flow is:
 ```text
 learner intent in Codex
   -> learning_agent.create_learning_project
-  -> learning_agent.generate_grounded_course
+  -> learning_agent.get_authoring_context
+  -> Codex authors coursePack + lessons
+  -> learning_agent.publish_learning_course
   -> learning_agent.get_learning_preview
   -> browser learning interface
   -> learning_agent.revise_learning_course
@@ -29,10 +31,10 @@ The product is not only a web deck renderer. It now has four cooperating layers:
    Defines how an AI operator should interpret learner intent, select workflow paths, judge quality, handle source types, and avoid exposing internal artifacts.
 
 2. **MCP Tool Layer**
-   Provides callable capabilities for Codex and other agent clients: project creation, grounded course generation, preview, revision, export, and advanced operator workflows.
+   Provides callable capabilities for Codex and other agent clients: project creation, authoring context, validation/publish, deterministic draft generation, preview, revision, export, and advanced operator workflows.
 
 3. **Runtime Layer**
-   Normalizes sources, writes artifacts, generates multi-unit course bundles, validates quality, and publishes local preview files.
+   Normalizes sources, prepares authoring context, writes artifacts, validates Codex-authored course bundles, can generate deterministic drafts, and publishes local preview files.
 
 4. **Learning Surface**
    Renders learner-facing Chinese course packs with web deck navigation, course library, knowledge map, source anchors, and revision-friendly routes.
@@ -46,13 +48,15 @@ The following tools are available for normal seed-user use and are now encoded i
 - `learning_agent.create_learning_project`
 - `learning_agent.list_learning_projects`
 - `learning_agent.archive_learning_project`
+- `learning_agent.get_authoring_context`
+- `learning_agent.publish_learning_course`
 - `learning_agent.generate_grounded_course`
 - `learning_agent.get_learning_preview`
 - `learning_agent.revise_learning_course`
 - `learning_agent.apply_learning_revision`
 - `learning_agent.export_learning_course`
 
-`learning_agent.publish_learning_course` and `learning_agent.generate_quick_preview` remain available, but they are not the preferred default path for source-backed seed-user trials.
+`learning_agent.generate_grounded_course` and `learning_agent.generate_quick_preview` remain available as deterministic draft/smoke-preview paths, but they are not the preferred high-quality default for source-backed seed-user trials.
 
 ### MCP And Skills Bundle
 
@@ -101,14 +105,15 @@ Seed readiness fails if a source regression sample has `semanticStatus=failed`, 
 
 ### Course Generation
 
-Long sources generate:
+Long sources now use a Codex-authored path by default. MCP returns authoring context containing:
 
-- one overview unit
-- multiple focused units
-- Chinese-first lesson text
-- source anchors
-- quality reports
-- a local preview manifest
+- one recommended overview unit
+- multiple recommended focused units
+- source anchors and source samples
+- strategy, unit page count, selected chapters/topics
+- publish requirements and Codex instructions
+
+Codex writes Chinese-first lesson text, interactions, checks, and course packs; MCP validates and publishes the local preview manifest.
 
 The default organization is `overview_plus_topic`. The runtime also accepts `chapter_guided`, `topic_guided`, `task_guided`, and `hybrid` strategies.
 
@@ -119,10 +124,11 @@ The frontend currently supports:
 - learner-first course view
 - course project selector
 - unit selector
+- persistent left sidebar for learning functions
 - page navigation and stable URL routes
 - course library panel
 - knowledge map panel
-- source anchor display
+- source anchor display outside the main teaching page
 - generated course bundle discovery
 - learner-facing fallback text when a page has no interaction or assessment block
 

@@ -45,7 +45,8 @@ Status on 2026-05-03: baseline implemented. The repository now has learner-facin
 
 ```text
 create_learning_project
-generate_grounded_course
+get_authoring_context
+publish_learning_course
 get_learning_preview
 revise_learning_course
 apply_learning_revision
@@ -79,6 +80,8 @@ Goal: improve generated lesson quality beyond structural validity.
 
 Status on 2026-05-04: source evidence mapping baseline implemented. Grounded course generation now returns `sourceEvidence`; critic reports include page-level source support; `source:regression` and `seed:check` fail on failed or missing source evidence status.
 
+Status update on 2026-05-04: default high-quality authoring is moving from deterministic MCP generation to Codex-authored course bundles. MCP now exposes authoring context and keeps deterministic generation as a draft/smoke path.
+
 ### Work Items
 
 - Strengthen source semantics:
@@ -109,6 +112,7 @@ Status on 2026-05-04: source evidence mapping baseline implemented. Grounded cou
 - Critic reports flag generic explanations and weak interactions.
 - `source:regression` includes source evidence status in addition to semantic status.
 - Generated lessons contain meaningful interactions instead of only visual summaries.
+- Default high-quality flow uses `get_authoring_context` followed by Codex-authored `publish_learning_course`.
 
 ## Phase 3: Critic And Revision Loop
 

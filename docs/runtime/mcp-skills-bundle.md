@@ -4,7 +4,7 @@ This document defines the local product bundle for AI Interactive Learning Agent
 
 The bundle has two parts:
 
-- MCP server: stable callable tools for creating projects, generating grounded courses, previewing, revising, exporting, and running expert workflows.
+- MCP server: stable callable tools for creating projects, preparing authoring context, validating/publishing Codex-authored courses, generating deterministic drafts, previewing, revising, exporting, and running expert workflows.
 - Skills: operating instructions for Codex, Claude, OpenClaw-style clients, and future agent runtimes so natural-language learner requests follow the right path.
 
 ## Codex Install
@@ -44,7 +44,8 @@ Normal users should not review internal artifacts. The default flow is:
 
 ```text
 learning_agent.create_learning_project
-learning_agent.generate_grounded_course
+learning_agent.get_authoring_context
+learning_agent.publish_learning_course
 learning_agent.get_learning_preview
 learning_agent.revise_learning_course
 learning_agent.apply_learning_revision
@@ -52,6 +53,8 @@ learning_agent.export_learning_course
 ```
 
 Use expert/operator tools only when the user explicitly asks to inspect artifacts, debug generation, or audit source coverage.
+
+Use `learning_agent.generate_grounded_course` only for quick deterministic drafts or smoke previews.
 
 ## Upgrade
 

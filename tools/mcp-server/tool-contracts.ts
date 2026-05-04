@@ -2,6 +2,7 @@ export type LearningAgentToolName =
   | "learning_agent.create_learning_project"
   | "learning_agent.list_learning_projects"
   | "learning_agent.archive_learning_project"
+  | "learning_agent.get_authoring_context"
   | "learning_agent.generate_grounded_course"
   | "learning_agent.publish_learning_course"
   | "learning_agent.get_learning_preview"
@@ -77,9 +78,15 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
     inputSchema: objectSchema({ runId: stringSchema }, ["runId"])
   },
   {
+    name: "learning_agent.get_authoring_context",
+    description:
+      "Learner-facing tool. Prepare source anchors, recommended units, and Codex authoring instructions before a Codex-authored publish_learning_course call.",
+    inputSchema: objectSchema({ runId: stringSchema, maxAnchors: numberSchema }, ["runId"])
+  },
+  {
     name: "learning_agent.generate_grounded_course",
     description:
-      "Learner-facing tool. Generate and publish a source-grounded Chinese course directly from a learner project, using normalized source anchors and latest learner feedback.",
+      "Learner-facing draft tool. Generate and publish a deterministic source-grounded Chinese draft from a learner project for smoke previews.",
     inputSchema: objectSchema({ runId: stringSchema, maxAnchorsPerLesson: numberSchema }, ["runId"])
   },
   {

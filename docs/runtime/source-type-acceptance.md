@@ -12,6 +12,12 @@ Prompt pattern:
 不要让我审批内部 artifacts；请调用 generate_grounded_course 直接生成带来源锚点的中文网页。
 ```
 
+For high-quality Codex-authored trials, replace the last sentence with:
+
+```text
+不要让我审批内部 artifacts；请调用 get_authoring_context 获取来源锚点和课程约束，然后由 Codex 创作 coursePack 与 lessons，并调用 publish_learning_course。
+```
+
 Acceptance:
 
 - Course pack has one overview unit and at least one topic unit.
@@ -93,8 +99,9 @@ Acceptance:
 
 For all source types:
 
-- `generate_grounded_course` must return `preview_ready` for the default learner-first path.
-- `publish_learning_course` must return `preview_ready` for Codex-authored or deeply revised bundles.
+- `get_authoring_context` must return `authoring_context_ready` for the default high-quality learner-first path.
+- `publish_learning_course` must return `preview_ready` for Codex-authored bundles.
+- `generate_grounded_course` must return `preview_ready` for deterministic draft regression.
 - If source anchors are missing, the expected result is `revision_required`.
 - `source:regression` reports `generatedUnitCount`, `semanticStatus`, `sourceEvidenceStatus`, `sourceEvidence`, `missingConceptLabels`, and `semanticExpectations` for each source kind.
 - `seed:check` fails if any source regression item has `semanticStatus=failed`, `sourceEvidenceStatus=failed`, or missing source evidence status.

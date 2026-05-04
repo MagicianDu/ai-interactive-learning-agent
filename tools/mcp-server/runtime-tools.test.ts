@@ -16,6 +16,7 @@ describe("LearningAgentRuntimeTools", () => {
         "learning_agent.create_learning_project",
         "learning_agent.list_learning_projects",
         "learning_agent.archive_learning_project",
+        "learning_agent.get_authoring_context",
         "learning_agent.generate_grounded_course",
         "learning_agent.publish_learning_course",
         "learning_agent.get_learning_preview",
@@ -185,6 +186,38 @@ describe("LearningAgentRuntimeTools", () => {
     expect(manifest.request).toContain("/tmp/book.pdf");
     expect(manifest.brief).toBeDefined();
     expect(manifest.project?.status).toBe("archived");
+  });
+
+  test("returns authoring context through tool handlers", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
+    const sourcePath = path.join(root, "source.md");
+    await writeFile(sourcePath, "# 工具选择\n先判断任务，再决定是否检索和调用工具。", "utf8");
+    const tools = new LearningAgentRuntimeTools(root);
+    await tools.callTool("learning_agent.create_learning_project", {
+      request: `请用 "${sourcePath}" 生成中文学习网页，面向中文学习者，每个单元 8 页。`,
+      runId: "mcp-authoring-context",
+      sourcePath,
+      sourceKind: "notes",
+      audience: "中文学习者",
+      unitPages: 8
+    });
+
+    const result = await tools.callTool("learning_agent.get_authoring_context", {
+      runId: "mcp-authoring-context",
+      maxAnchors: 3
+    });
+
+    expect(result).toMatchObject({
+      status: "authoring_context_ready",
+      runId: "mcp-authoring-context",
+      source: {
+        sourceKind: "notes",
+        anchorCount: expect.any(Number)
+      },
+      authoringContract: {
+        defaultTool: "learning_agent.publish_learning_course"
+      }
+    });
   });
 
   test("exports a preview-ready learning course through tool handlers", async () => {

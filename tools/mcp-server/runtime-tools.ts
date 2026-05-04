@@ -5,6 +5,7 @@ import {
   AgentWorkflow,
   ApprovalService,
   ArtifactStore,
+  AuthoringContextService,
   BetaStatusService,
   CodexManualAdapter,
   CoursePackService,
@@ -57,6 +58,8 @@ export class LearningAgentRuntimeTools {
         return this.listLearningProjects(input);
       case "learning_agent.archive_learning_project":
         return this.archiveLearningProject(input);
+      case "learning_agent.get_authoring_context":
+        return this.getAuthoringContext(input);
       case "learning_agent.generate_grounded_course":
         return this.generateGroundedCourse(input);
       case "learning_agent.publish_learning_course":
@@ -137,6 +140,14 @@ export class LearningAgentRuntimeTools {
       runId,
       project: await new ProjectRegistry(this.workspaceRoot).archiveProject(runId)
     };
+  }
+
+  private async getAuthoringContext(input: unknown): Promise<unknown> {
+    const options = expectRecord(input);
+    return new AuthoringContextService(this.workspaceRoot).getContext({
+      runId: requiredString(options, "runId"),
+      maxAnchors: optionalNumber(options.maxAnchors)
+    });
   }
 
   private async generateGroundedCourse(input: unknown): Promise<unknown> {
@@ -441,6 +452,7 @@ function isLearningAgentToolName(name: string): name is LearningAgentToolName {
     "learning_agent.create_learning_project",
     "learning_agent.list_learning_projects",
     "learning_agent.archive_learning_project",
+    "learning_agent.get_authoring_context",
     "learning_agent.generate_grounded_course",
     "learning_agent.publish_learning_course",
     "learning_agent.get_learning_preview",

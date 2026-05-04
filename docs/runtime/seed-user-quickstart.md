@@ -25,7 +25,7 @@ npm run codex:mcp:check
 资料是：/absolute/path/to/source.pdf
 我希望先有总览课，再按核心 topic 拆课。每个单元 8 页。
 请先问我最多 3 个你必须知道的问题。明确后，不要让我审批内部 artifacts。
-你可以直接调用 learning_agent.create_learning_project，然后调用 learning_agent.generate_grounded_course 生成带来源锚点的课程网页。
+你可以直接调用 learning_agent.create_learning_project，然后调用 learning_agent.get_authoring_context 获取来源和课程约束。请由 Codex 创作 coursePack 与 lessons，再调用 learning_agent.publish_learning_course 发布课程网页。
 ```
 
 Alternative organization prompts:
@@ -42,7 +42,8 @@ strategy=hybrid。先给总览课，再按教学 topic 组织路径，同时保�
 
 ```text
 create_learning_project
-generate_grounded_course
+get_authoring_context
+publish_learning_course
 get_learning_preview
 ```
 
@@ -50,6 +51,7 @@ If the user only wants a smoke preview:
 
 ```text
 create_learning_project
+generate_grounded_course
 generate_quick_preview
 ```
 

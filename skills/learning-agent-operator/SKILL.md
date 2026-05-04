@@ -43,7 +43,7 @@ Clarify only learner-visible choices when missing:
 
 ## Default Learner Workflow
 
-Use this flow for normal Codex/Claude-style natural language operation. It should produce a previewable learning course quickly without asking the learner to approve source maps, concept maps, curriculum plans, or other internal artifacts.
+Use this flow for normal Codex/Claude-style natural language operation. It should produce a previewable learning course without asking the learner to approve source maps, concept maps, curriculum plans, or other internal artifacts. Codex should author the course content; MCP should provide context, validate, and publish.
 
 1. Create or load a learner-facing project:
 
@@ -51,19 +51,25 @@ Use this flow for normal Codex/Claude-style natural language operation. It shoul
 {"method":"tools/call","params":{"name":"learning_agent.create_learning_project","arguments":{"request":"<Chinese natural-language course request>"}}}
 ```
 
-2. Generate the grounded course:
+2. Get source and course authoring context:
 
 ```json
-{"method":"tools/call","params":{"name":"learning_agent.generate_grounded_course","arguments":{"runId":"<run-id>"}}}
+{"method":"tools/call","params":{"name":"learning_agent.get_authoring_context","arguments":{"runId":"<run-id>"}}}
 ```
 
-3. Open a learner-visible preview:
+3. Codex authors `coursePack` and `lessons`, then publishes:
+
+```json
+{"method":"tools/call","params":{"name":"learning_agent.publish_learning_course","arguments":{"runId":"<run-id>","coursePack":{},"lessons":[]}}}
+```
+
+4. Open a learner-visible preview:
 
 ```json
 {"method":"tools/call","params":{"name":"learning_agent.get_learning_preview","arguments":{"runId":"<run-id>"}}}
 ```
 
-4. When the learner gives feedback, revise and preview again:
+5. When the learner gives feedback, revise and preview again:
 
 ```json
 {"method":"tools/call","params":{"name":"learning_agent.revise_learning_course","arguments":{"runId":"<run-id>","feedback":"<learner feedback>"}}}
@@ -71,11 +77,13 @@ Use this flow for normal Codex/Claude-style natural language operation. It shoul
 {"method":"tools/call","params":{"name":"learning_agent.get_learning_preview","arguments":{"runId":"<run-id>"}}}
 ```
 
-5. Export only after the visible preview matches the learner's request:
+6. Export only after the visible preview matches the learner's request:
 
 ```json
 {"method":"tools/call","params":{"name":"learning_agent.export_learning_course","arguments":{"runId":"<run-id>"}}}
 ```
+
+Use `learning_agent.generate_grounded_course` only for deterministic quick drafts or smoke previews when the user explicitly prioritizes speed over content quality.
 
 ## Expert/Operator Mode
 

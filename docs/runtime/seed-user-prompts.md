@@ -9,7 +9,7 @@
 资料是：/absolute/path/to/book.pdf
 我希望先有总览课，再按核心 topic 拆课。每个单元 8 页，面向有基础编程经验但还没有建立该领域心智模型的中文学习者。
 请先问我最多 3 个你必须知道的问题。明确后，不要让我审批 source-map、concept-map、curriculum-plan 这些内部 artifacts。
-你可以调用 learning_agent.generate_grounded_course 直接生成带来源锚点的中文网页。
+请调用 learning_agent.get_authoring_context 获取来源锚点、推荐单元和发布约束。然后由 Codex 创作 coursePack 与 lessons，并调用 learning_agent.publish_learning_course 发布中文网页。
 发布后告诉我运行 npm run dev，并说明我应该打开哪个页面查看。
 ```
 
@@ -22,7 +22,7 @@ See `docs/runtime/source-type-acceptance.md` for the expected source anchors, un
 资料是：/absolute/path/to/paper.pdf
 目标是帮助我理解论文问题、方法贡献、关键假设、实验逻辑、局限和可复现路径。
 请先做总览课，再按 method、experiment、limitation、transfer 拆成核心 topic。每个单元 6 到 8 页。
-不要让我审批内部 artifacts。你可以调用 learning_agent.generate_grounded_course 直接生成中文网页；如果需要深度精修，再生成 course bundle 并调用 publish_learning_course。
+不要让我审批内部 artifacts。请调用 learning_agent.get_authoring_context 获取作者上下文，然后由 Codex 创作 course bundle 并调用 publish_learning_course。
 ```
 
 ## Patent -> Learner-First Publish
@@ -32,7 +32,7 @@ See `docs/runtime/source-type-acceptance.md` for the expected source anchors, un
 资料是：/absolute/path/to/patent.pdf
 重点是权利要求地图、技术方案结构、实施例解释、关键术语和与常见方案的差异。
 请先做总览课，再按 claims、embodiments、technical-solution、risk-and-transfer 拆课。每个单元 6 页。
-默认不要进入专家审核流程；请直接调用 learning_agent.generate_grounded_course 发布可预览网页。
+默认不要进入专家审核流程；请调用 learning_agent.get_authoring_context 后由 Codex 创作课程，再调用 learning_agent.publish_learning_course 发布可预览网页。
 ```
 
 ## Blog -> Learner-First Publish
@@ -49,7 +49,7 @@ See `docs/runtime/source-type-acceptance.md` for the expected source anchors, un
 
 ```text
 请调用 learning_agent.create_learning_project 记录我的学习需求，然后调用 learning_agent.generate_grounded_course。
-目标是先让我快速看到带来源锚点的中文网页，不要让我审批内部 artifacts。
+目标是先让我快速看到 deterministic 草稿，不代表最终内容质量，也不要让我审批内部 artifacts。
 如果我之后反馈太难、太浅、顺序不对，请调用 revise_learning_course 记录反馈，再调用 apply_learning_revision 应用修订，并用 get_learning_preview 给我看新版。
 ```
 

@@ -6,7 +6,8 @@ This is the default authoring contract when Codex or Claude uses learner-facing 
 
 ```text
 learning_agent.create_learning_project
-  -> Codex reads learner brief and source material
+  -> learning_agent.get_authoring_context
+  -> Codex reads learner brief, source anchors, recommended units, and publish constraints
   -> Codex authors coursePack + lessons
   -> learning_agent.publish_learning_course
   -> learning_agent.get_learning_preview

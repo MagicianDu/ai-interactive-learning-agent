@@ -59,23 +59,23 @@ export function DeckShell({ initialPageIndex = 0, lesson, onPageChange, renderPa
   const canGoForward = total > 0 && displayedIndex < total - 1;
 
   return (
-    <div className="min-h-screen bg-[#f4f7fb] text-ink">
-      <main className="min-h-screen">
-        <header className="sticky top-0 z-30 border-b border-line bg-white/95 shadow-sm backdrop-blur">
-          <div className="grid min-h-20 grid-cols-1 items-center gap-4 px-4 py-4 sm:px-8 lg:grid-cols-[minmax(16rem,1fr)_auto_minmax(16rem,1fr)] lg:px-10">
-            <div>
-              <h1 className="text-2xl font-bold text-ink sm:text-3xl">{lesson.title}</h1>
-              <p className="mt-1 text-sm font-medium text-slate-500">{lesson.audience}</p>
+    <div className="h-full min-h-0 overflow-hidden bg-[#f4f7fb] text-ink">
+      <main className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)]">
+        <header className="border-b border-line bg-white/95 shadow-sm">
+          <div className="grid min-h-16 grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-4 py-3 lg:grid-cols-[minmax(12rem,1fr)_auto_minmax(12rem,1fr)] lg:px-5">
+            <div className="min-w-0">
+              <h1 className="truncate text-lg font-bold text-ink">{lesson.title}</h1>
+              <p className="mt-0.5 truncate text-xs font-medium text-slate-500">{lesson.audience}</p>
             </div>
 
             <div className="flex flex-col items-center gap-2">
               {total > 0 ? (
                 <PageDots currentIndex={displayedIndex} onSelect={goTo} total={total} />
               ) : null}
-              <p className="text-base font-semibold text-ink">{pageCountLabel}</p>
+              <p className="text-sm font-semibold text-ink">{pageCountLabel}</p>
             </div>
 
-            <div className="justify-self-stretch lg:justify-self-end">
+            <div className="col-span-2 justify-self-stretch lg:col-span-1 lg:justify-self-end">
               <PageNavigation
                 canGoBack={canGoBack}
                 canGoForward={canGoForward}
@@ -86,7 +86,7 @@ export function DeckShell({ initialPageIndex = 0, lesson, onPageChange, renderPa
           </div>
         </header>
 
-        <section aria-live="polite" className="px-4 py-6 sm:px-8 lg:px-10">
+        <section aria-live="polite" className="min-h-0 overflow-hidden p-4">
           {total > 0 ? (
             renderPage(displayedIndex)
           ) : (

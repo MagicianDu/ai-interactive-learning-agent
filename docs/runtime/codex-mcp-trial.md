@@ -32,7 +32,7 @@ npm run bundle:check
 npm run codex:mcp:check
 ```
 
-期望看到 `learning_agent.create_learning_project`、`learning_agent.generate_grounded_course`、`learning_agent.get_learning_preview`、`learning_agent.revise_learning_course`、`learning_agent.apply_learning_revision` 和 `learning_agent.export_learning_course`。
+期望看到 `learning_agent.create_learning_project`、`learning_agent.get_authoring_context`、`learning_agent.publish_learning_course`、`learning_agent.get_learning_preview`、`learning_agent.revise_learning_course`、`learning_agent.apply_learning_revision` 和 `learning_agent.export_learning_course`。
 
 ## 3. 默认 Codex 试用 Prompt
 
@@ -43,7 +43,7 @@ npm run codex:mcp:check
 资料是：/absolute/path/to/source.pdf
 我希望先有总览课，再按核心 topic 拆课。每个单元 8 页。
 请先问我最多 3 个你必须知道的问题。明确后，不要让我审批 source-map、concept-map、curriculum-plan 这些内部 artifacts。
-你可以直接调用 learning_agent.create_learning_project，然后调用 learning_agent.generate_grounded_course 生成带来源锚点的课程网页。
+你可以直接调用 learning_agent.create_learning_project，然后调用 learning_agent.get_authoring_context 获取来源锚点、推荐单元和发布约束。请由 Codex 创作 coursePack 与 lessons，再调用 learning_agent.publish_learning_course 发布课程网页。
 发布后告诉我运行 npm run dev，并说明我应该打开哪个页面查看。
 ```
 
@@ -51,16 +51,18 @@ Codex 应该优先调用：
 
 ```text
 learning_agent.create_learning_project
-learning_agent.generate_grounded_course
+learning_agent.get_authoring_context
+learning_agent.publish_learning_course
 learning_agent.get_learning_preview
 learning_agent.revise_learning_course
 learning_agent.apply_learning_revision
 learning_agent.export_learning_course
 ```
 
-如果只是想先看低保真本地样例，Codex 可以调用：
+如果只是想先看低保真 deterministic 草稿，Codex 可以调用：
 
 ```text
+learning_agent.generate_grounded_course
 learning_agent.generate_quick_preview
 ```
 
@@ -94,6 +96,7 @@ Codex 应调用 `learning_agent.revise_learning_course` 记录反馈，再调用
 ## 7. 当前 Beta 边界
 
 - MCP 服务是本地 stdio 服务，不是网络服务。
-- 默认路径由 MCP 生成 source-grounded course preview；Codex 负责澄清学习目标、解释预览路径和处理超出自动工具范围的修订。
+- 默认高质量路径由 Codex 创作 source-grounded course bundle；MCP 负责准备 authoring context、校验、发布和导出。
+- `generate_grounded_course` 是 deterministic draft，不代表最终内容质量。
 - `generate_quick_preview` 是 deterministic smoke，用于快速看产品形态，不代表最终内容质量。
 - Advanced/operator 工具仍保留，用于调试、审计来源映射和专家审核。

@@ -69,6 +69,7 @@ describe("MCP JSON-RPC server", () => {
       "learning_agent.create_learning_project",
       "learning_agent.list_learning_projects",
       "learning_agent.archive_learning_project",
+      "learning_agent.get_authoring_context",
       "learning_agent.generate_grounded_course",
       "learning_agent.publish_learning_course",
       "learning_agent.get_learning_preview",
@@ -177,6 +178,37 @@ describe("MCP JSON-RPC server", () => {
     await expect(readFile(path.join(root, "runs", "mcp-grounded-blog", "learning-preview.json"), "utf8")).resolves.toContain(
       "preview_ready"
     );
+  });
+
+  test("returns authoring context through MCP tools/call", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-authoring-rpc-"));
+    const sourcePath = path.join(root, "source.md");
+    await writeFile(sourcePath, "# Agentic RAG\n先判断任务，再决定是否检索、调用工具或生成。", "utf8");
+    const tools = new LearningAgentRuntimeTools(root);
+    await callMcpTool(tools, "learning_agent.create_learning_project", {
+      request: `请用 "${sourcePath}" 生成中文学习网页，面向中文学习者，每个单元 8 页。`,
+      runId: "rpc-authoring",
+      sourcePath,
+      sourceKind: "blog",
+      audience: "中文学习者",
+      unitPages: 8
+    });
+
+    const context = await callMcpTool(tools, "learning_agent.get_authoring_context", {
+      runId: "rpc-authoring",
+      maxAnchors: 3
+    });
+
+    expect(context).toMatchObject({
+      status: "authoring_context_ready",
+      runId: "rpc-authoring",
+      authoringContract: {
+        defaultTool: "learning_agent.publish_learning_course"
+      },
+      coursePlan: {
+        recommendedUnits: expect.arrayContaining([expect.objectContaining({ unitId: "unit-overview" })])
+      }
+    });
   });
 
   test("records learner feedback through MCP for course revision", async () => {

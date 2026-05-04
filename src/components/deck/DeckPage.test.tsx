@@ -14,11 +14,11 @@ const page: LessonPage = {
 };
 
 describe("DeckPage", () => {
-  test("renders source anchors for source-backed pages", () => {
+  test("keeps source anchors out of the fixed teaching page body", () => {
     render(<DeckPage page={page} pageNumber={1} totalPages={8} />);
 
-    expect(screen.getByText("来源依据")).toBeInTheDocument();
-    expect(screen.getByText("source-001:page-1")).toBeInTheDocument();
-    expect(screen.getByText("source-001:paragraph-2")).toBeInTheDocument();
+    expect(screen.getByText("为什么要看来源")).toBeInTheDocument();
+    expect(screen.queryByText("来源依据")).not.toBeInTheDocument();
+    expect(screen.queryByText("source-001:page-1")).not.toBeInTheDocument();
   });
 });

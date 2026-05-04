@@ -32,13 +32,15 @@ Call the learner-facing tools in this order:
 
 ```json
 {"method":"tools/call","params":{"name":"learning_agent.create_learning_project","arguments":{"request":"<Chinese learner request with source path or URL, audience, strategy, and unitPages>"}}}
-{"method":"tools/call","params":{"name":"learning_agent.generate_grounded_course","arguments":{"runId":"<run-id>"}}}
+{"method":"tools/call","params":{"name":"learning_agent.get_authoring_context","arguments":{"runId":"<run-id>"}}}
+{"method":"tools/call","params":{"name":"learning_agent.publish_learning_course","arguments":{"runId":"<run-id>","coursePack":{},"lessons":[]}}}
 {"method":"tools/call","params":{"name":"learning_agent.get_learning_preview","arguments":{"runId":"<run-id>"}}}
 ```
 
 ## Quality Checklist
 
 - Keep generated learning content Chinese-first unless requested otherwise.
+- Codex should author the course content from the authoring context; MCP validates and publishes it.
 - For long sources, prefer an overview unit followed by focused units instead of compressing the entire source into one short lesson.
 - Do not ask the learner to approve internal artifacts such as source maps, concept maps, or curriculum plans.
 - Preserve chapter or section mappings when the learner asks for them.

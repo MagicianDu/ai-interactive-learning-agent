@@ -58,6 +58,7 @@ async function checkMcpToolList() {
   const output = await runCommand("npm", ["run", "mcp", "--", "--list-tools"]);
   const requiredTools = [
     "learning_agent.create_learning_project",
+    "learning_agent.get_authoring_context",
     "learning_agent.generate_grounded_course",
     "learning_agent.publish_learning_course",
     "learning_agent.revise_learning_course",
@@ -76,7 +77,7 @@ async function checkMcpToolList() {
   }
 
   console.log(
-    "[codex:mcp] MCP tool list includes learner-facing tools plus learning_agent.plan_run and learning_agent.beta_status"
+    "[codex:mcp] MCP tool list includes learner-facing authoring tools plus learning_agent.plan_run and learning_agent.beta_status"
   );
 }
 
