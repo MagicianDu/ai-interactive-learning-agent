@@ -1,8 +1,16 @@
 # Future Development Plan
 
-Last updated: 2026-05-03
+Last updated: 2026-05-06
 
 This document defines the next product development path after the seed-ready beta. It should be read together with `docs/product/current-product-state.md`.
+
+The executable spec for the next quality push is:
+
+```text
+docs/superpowers/specs/2026-05-06-public-beta-quality-execution-spec.md
+```
+
+Use that spec as the source of truth for task ordering, acceptance gates, and stop conditions.
 
 ## Product Direction
 
