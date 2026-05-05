@@ -203,9 +203,9 @@ async function createParentRun(): Promise<{
   tempRoots.push(root);
   const runStore = new RunStore(root);
   const config = createRunConfigFromArgs({
-    sourceFile: "/tmp/Agentic_Design_Patterns.pdf",
+    sourceFile: "/tmp/agent-workflow-notes.pdf",
     sourceKind: "book",
-    sourceTitle: "Agentic Design Patterns",
+    sourceTitle: "Agent Workflow Notes",
     unitPages: "12",
     run: "agentic-parent"
   });

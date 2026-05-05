@@ -59,6 +59,46 @@ describe("WebDeckRenderer", () => {
     expect(screen.queryByText(/visualSpec|interactionSpec|待补充/)).not.toBeInTheDocument();
   });
 
+  test("does not spend deck body space on a generic visual placeholder when an interaction is present", () => {
+    const interactionOnlyLesson: Lesson = {
+      ...databaseIndexLesson,
+      id: "interaction-only-test",
+      pages: [
+        {
+          id: "p1",
+          type: "interactive_model",
+          title: "选择目标范围",
+          learningGoal: "判断目标范围是否匹配控制能力",
+          narrative: "先读场景，再做选择。",
+          interactionSpec: {
+            kind: "choice",
+            learnerAction: "选择合理目标范围。",
+            expectedObservation: "目标越窄，需要的控制能力越强。",
+            cognitivePurpose: "建立目标范围和控制能力的匹配关系。",
+            options: [
+              {
+                id: "range",
+                label: "控制到可接受区间",
+                outcomeId: "bounded-range",
+                resultTitle: "合理",
+                resultTone: "success",
+                explanation: "可接受区间能降低控制成本。"
+              }
+            ]
+          }
+        }
+      ],
+      config: {
+        targetPageCount: 1
+      }
+    };
+
+    render(<WebDeckRenderer lesson={interactionOnlyLesson} />);
+
+    expect(screen.getByRole("button", { name: "控制到可接受区间" })).toBeInTheDocument();
+    expect(screen.queryByText("先聚焦这一页的问题")).not.toBeInTheDocument();
+  });
+
   test("accepts an initial page index and reports page changes", async () => {
     const user = userEvent.setup();
     const onPageChange = vi.fn();

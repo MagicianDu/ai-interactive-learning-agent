@@ -2,7 +2,7 @@ import type { Lesson } from "../../schemas/lesson.schema";
 
 export const generatedLesson = {
   id: "agentic-design-book",
-  title: "Agentic Design Patterns：可控协作式智能体系统",
+  title: "Agent Workflow Patterns：可控协作式智能体系统",
   audience: "具备基础技术背景、希望通过中文互动课程建立心智模型的学习者。",
   config: {
     targetPageCount: 12,

@@ -137,7 +137,7 @@ Minimal shape:
 {
   "coursePack": {
     "id": "agentic-design-book-course-pack",
-    "title": "Agentic Design Patterns：课程包",
+    "title": "Agent Workflow Patterns：课程包",
     "sourceKind": "book",
     "strategy": "overview_plus_topic",
     "overviewUnitId": "unit-overview",

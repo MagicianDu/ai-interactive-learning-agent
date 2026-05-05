@@ -46,15 +46,17 @@ export function WebDeckRenderer({ initialPageIndex, lesson, onPageChange }: WebD
           >
             <div
               className={
-                hasSideContent
-                  ? "grid h-full min-h-0 gap-4 overflow-hidden xl:grid-cols-[minmax(0,1.2fr)_minmax(20rem,0.8fr)]"
-                  : "grid h-full min-h-0 gap-4 overflow-hidden"
+                page.visualSpec && hasSideContent
+                  ? "grid min-h-0 gap-3 lg:gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(20rem,0.8fr)]"
+                  : "grid min-h-0 gap-3 lg:gap-4"
               }
             >
-              <VisualRenderer title={page.title} visualSpec={page.visualSpec} />
+              {page.visualSpec || !hasSideContent ? (
+                <VisualRenderer title={page.title} visualSpec={page.visualSpec} />
+              ) : null}
 
               {hasSideContent ? (
-                <div className="grid min-h-0 content-start gap-3 overflow-hidden">
+                <div className="grid min-h-0 content-start gap-3">
                   <InteractionRenderer interactionSpec={page.interactionSpec} />
 
                   {page.assessmentSpec ? (

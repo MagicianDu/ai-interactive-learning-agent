@@ -8,6 +8,12 @@ describe("coursePackRegistry", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
+  test("keeps registered samples open-source safe", () => {
+    for (const entry of coursePackRegistry) {
+      expect(JSON.stringify(entry.coursePack)).not.toMatch(/\/Users\/dm|Documents\/1\.书籍资料|Agentic Design Patterns/u);
+    }
+  });
+
   test("exposes project metadata for learner project library", () => {
     for (const entry of coursePackRegistry) {
       expect(entry.unitCount).toBe(entry.coursePack.units.length);

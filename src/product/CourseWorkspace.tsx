@@ -102,18 +102,20 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
   return (
     <div className="h-screen overflow-hidden bg-[#f4f7fb] text-slate-950">
       <div className="grid h-full min-h-0 grid-cols-1 lg:grid-cols-[18rem_minmax(0,1fr)]">
-        <LearningSidebar
-          activeView={activeView}
-          coursePacks={coursePacks}
-          currentPage={currentPageContext}
-          lessonChoices={lessonChoices}
-          onSelectCourse={selectCoursePack}
-          onSelectLesson={selectLesson}
-          onSelectView={setActiveView}
-          selectedCoursePackId={selectedCoursePackId}
-          selectedLessonId={selectedLessonId}
-          title={selectedCoursePack?.title ?? selectedLesson.title}
-        />
+        <div className="hidden min-h-0 lg:block" data-testid="desktop-learning-sidebar">
+          <LearningSidebar
+            activeView={activeView}
+            coursePacks={coursePacks}
+            currentPage={currentPageContext}
+            lessonChoices={lessonChoices}
+            onSelectCourse={selectCoursePack}
+            onSelectLesson={selectLesson}
+            onSelectView={setActiveView}
+            selectedCoursePackId={selectedCoursePackId}
+            selectedLessonId={selectedLessonId}
+            title={selectedCoursePack?.title ?? selectedLesson.title}
+          />
+        </div>
 
         <main className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden" data-testid="learning-main-viewport">
           <WorkspaceStatusStrip
@@ -245,7 +247,10 @@ function WorkspaceStatusStrip({
   totalPages: number;
 }) {
   return (
-    <section className="border-b border-slate-200 bg-white px-4 py-3">
+    <section
+      className="hidden border-b border-slate-200 bg-white px-4 py-3 lg:block"
+      data-testid="workspace-status-strip"
+    >
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-bold uppercase text-slate-500">当前学习单元</p>
@@ -378,7 +383,7 @@ function viewLabel(view: WorkspaceView): string {
 }
 
 function pickDefaultCoursePack(coursePacks: CoursePackRegistryEntry[], preferredCourseId: string | undefined): CoursePackRegistryEntry | undefined {
-  return coursePacks.find((entry) => entry.id === preferredCourseId) ?? coursePacks.find((entry) => entry.id !== "demo-course-pack") ?? coursePacks[0];
+  return coursePacks.find((entry) => entry.id === preferredCourseId) ?? coursePacks.find((entry) => entry.id === "demo-course-pack") ?? coursePacks[0];
 }
 
 function pickDefaultUnit(coursePack: CoursePackRegistryEntry["coursePack"] | undefined, preferredUnitId: string | undefined) {

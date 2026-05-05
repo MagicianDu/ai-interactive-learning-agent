@@ -63,6 +63,22 @@ describe("DeckShell", () => {
     expect(screen.getByRole("button", { name: "下一页" })).toBeDisabled();
   });
 
+  test("wraps each page in a viewport fit container instead of a scroll container", () => {
+    render(
+      <DeckShell
+        lesson={twoPageLesson}
+        renderPage={(currentIndex) => (
+          <article>
+            <h2>{twoPageLesson.pages[currentIndex].title}</h2>
+          </article>
+        )}
+      />,
+    );
+
+    expect(screen.getByTestId("deck-viewport-fit")).toHaveClass("overflow-hidden");
+    expect(screen.getByTestId("deck-page-stage")).not.toHaveClass("overflow-y-auto");
+  });
+
   test("supports arrow-key page navigation", async () => {
     const user = userEvent.setup();
 

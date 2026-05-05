@@ -138,8 +138,8 @@ Examples:
 {
   "source": {
     "type": "file",
-    "value": "/path/to/Agentic_Design_Patterns.pdf",
-    "label": "Agentic Design Patterns"
+    "value": "examples/sources/agent-workflow-notes.md",
+    "label": "Agent Workflow Notes"
   },
   "sourceKind": "book"
 }
@@ -270,7 +270,7 @@ Minimal shape:
 {
   "selectedUnit": {
     "id": "unit-overview",
-    "title": "Agentic Design Patterns：总览课",
+    "title": "Agent Workflow Patterns：总览课",
     "kind": "overview",
     "purpose": "建立全局地图",
     "targetPageCount": 12,

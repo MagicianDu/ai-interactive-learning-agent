@@ -192,16 +192,16 @@ Warnings are acceptable when the run still generates usable grounded units and t
 
 ## Local-Only Smoke Artifacts
 
-The local `seed-ready-smoke` course generated during browser/MCP verification is intentionally not committed.
+The local `public-mock-smoke` course generated during browser/MCP verification is intentionally not committed.
 
 Local untracked paths may include:
 
 ```text
-src/course-packs/seed-ready-smoke/
-src/lessons/seed-ready-smoke-*/
+src/course-packs/public-mock-smoke/
+src/lessons/public-mock-smoke-*/
 ```
 
-These are useful for previewing the current product but should not be treated as source-controlled product examples because they are generated from a real book source.
+These are useful for previewing the current product but should not be treated as source-controlled product examples because they are generated from temporary smoke-test output.
 
 ## Current Product Boundary
 

@@ -17,7 +17,7 @@ export function PageDots({ total, currentIndex, onSelect }: PageDotsProps) {
               <span
                 aria-hidden="true"
                 className={[
-                  "h-1 w-10 rounded-full",
+                  "h-0.5 w-4 rounded-full sm:w-7 lg:h-1 lg:w-10",
                   index <= currentIndex ? "bg-accent/70" : "bg-line"
                 ].join(" ")}
               />
@@ -26,7 +26,7 @@ export function PageDots({ total, currentIndex, onSelect }: PageDotsProps) {
               aria-current={isCurrent ? "page" : undefined}
               aria-label={`跳转到第 ${index + 1} 页`}
               className={[
-                "flex size-9 items-center justify-center rounded-full border text-sm font-bold transition",
+                "flex size-7 items-center justify-center rounded-full border text-xs font-bold transition sm:size-8 lg:size-9 lg:text-sm",
                 "focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2",
                 isCurrent
                   ? "border-accent bg-accent text-white shadow-lg shadow-accent/25"

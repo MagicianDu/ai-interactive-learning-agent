@@ -521,7 +521,7 @@ function buildMockLessonProfile(config: RunConfig): MockLessonProfile {
   if (isAgenticTopic(config.topic)) {
     return {
       defaultLessonId: "agentic-design-patterns-lesson",
-      defaultTitle: "Agentic Design Patterns：可控协作式智能体系统",
+      defaultTitle: "Agent Workflow Patterns：可控协作式智能体系统",
       concepts: ["智能体执行循环", "工具调用边界", "多智能体协作", "人工审核", "记忆与评估"],
       dependencies: ["理解大模型基本输入输出", "知道工具调用会产生外部副作用"],
       examples: ["让一个智能体读取资料、调用工具、观察结果并修正计划", "把资料拆解、课程设计和审核交给不同角色协作"],

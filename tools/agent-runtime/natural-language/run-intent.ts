@@ -74,20 +74,32 @@ function extractSourceKind(request: string, sourceType: "file" | "url"): SourceM
   if (/专利/u.test(request)) {
     return "patent";
   }
-  if (/论文|paper/i.test(request)) {
+  if (/论文/u.test(request)) {
     return "paper";
   }
-  if (/博客|blog|post/i.test(request)) {
+  if (/博客/u.test(request)) {
     return "blog";
   }
-  if (/文档|documentation|docs/i.test(request)) {
+  if (/文档/u.test(request)) {
     return "documentation";
-  }
-  if (/笔记|notes?/i.test(request)) {
-    return "notes";
   }
   if (/书籍|这本书|本书|书/u.test(request)) {
     return "book";
+  }
+  if (/笔记/u.test(request)) {
+    return "notes";
+  }
+  if (/\bpaper\b/i.test(request)) {
+    return "paper";
+  }
+  if (/\bblog\b|\bpost\b/i.test(request)) {
+    return "blog";
+  }
+  if (/\bdocumentation\b|\bdocs\b/i.test(request)) {
+    return "documentation";
+  }
+  if (/\bnotes?\b/i.test(request)) {
+    return "notes";
   }
   if (/课程|course/i.test(request)) {
     return "course";

@@ -2,7 +2,7 @@ import type { Lesson } from "../../schemas/lesson.schema";
 
 export const generatedLesson = {
   id: "demo-course-pack-unit-overview",
-  title: "Agentic Design Patterns 示例课程包：总览课",
+  title: "Agent Workflow Patterns 示例课程包：总览课",
   audience: "有基础编程经验但缺少智能体系统心智模型的中文学习者",
   config: {
     targetPageCount: 8,

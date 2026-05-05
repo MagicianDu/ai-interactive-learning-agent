@@ -7,7 +7,7 @@ import type { CoursePack } from "../../schemas/course-pack.schema";
 
 const coursePack: CoursePack = {
   id: "agentic-design-book-course-pack",
-  title: "Agentic Design Patterns：课程包",
+  title: "Agent Workflow Patterns：课程包",
   parentRunId: "agentic-design-book",
   sourceKind: "book",
   strategy: "overview_plus_topic",
@@ -73,7 +73,7 @@ describe("CourseShell", () => {
       />
     );
 
-    expect(screen.getByRole("heading", { name: "Agentic Design Patterns：课程包" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Agent Workflow Patterns：课程包" })).toBeInTheDocument();
     expect(screen.getByText("book")).toBeInTheDocument();
     expect(screen.getByText("overview_plus_topic")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /总览课/ })).toBeEnabled();

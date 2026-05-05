@@ -11,7 +11,7 @@ describe("RunPlanService", () => {
   test("creates a reviewable plan from Chinese natural language", () => {
     const service = new RunPlanService("/workspace");
     const plan = service.createPlan(
-      "用 /Users/dm/Documents/BOOKS/Agentic_Design_Patterns.pdf 这本书生成中文课程，先做总览课，再按核心 topic 拆课。每个单元 10 页，面向中文开发者。",
+      "用 \"examples/sources/agent-workflow-notes.md\" 这本书生成中文课程，先做总览课，再按核心 topic 拆课。每个单元 10 页，面向中文开发者。",
       { runId: "agentic-design-plan" }
     );
 
@@ -19,7 +19,7 @@ describe("RunPlanService", () => {
     expect(plan.status).toBe("draft");
     expect(plan.intent.source.kind).toBe("book");
     expect(plan.initArgs).toMatchObject({
-      sourceFile: "/Users/dm/Documents/BOOKS/Agentic_Design_Patterns.pdf",
+      sourceFile: "examples/sources/agent-workflow-notes.md",
       sourceKind: "book",
       unitPages: "10",
       strategy: "overview_plus_topic",

@@ -12,7 +12,7 @@ describe("ProjectRegistry", () => {
     const runDir = path.join(root, "runs", "agentic-book");
     await new ProjectRegistry(root).upsertProject({
       projectId: "agentic-book",
-      title: "Agentic Design Patterns",
+      title: "Agent Workflow Patterns",
       sourceKind: "book",
       sourceRefs: ["/tmp/book.pdf"],
       audience: "有编程基础的中文学习者",
@@ -23,7 +23,7 @@ describe("ProjectRegistry", () => {
     });
     await writeFile(
       path.join(runDir, "learning-preview.json"),
-      JSON.stringify({ status: "preview_ready", courseTitle: "Agentic Design Patterns：课程包", lessonCount: 3 }, null, 2),
+      JSON.stringify({ status: "preview_ready", courseTitle: "Agent Workflow Patterns：课程包", lessonCount: 3 }, null, 2),
       "utf8"
     );
 
@@ -32,11 +32,11 @@ describe("ProjectRegistry", () => {
     expect(projects).toHaveLength(1);
     expect(projects[0]).toMatchObject({
       projectId: "agentic-book",
-      title: "Agentic Design Patterns",
+      title: "Agent Workflow Patterns",
       sourceKind: "book",
       status: "preview-ready",
       preview: {
-        courseTitle: "Agentic Design Patterns：课程包",
+        courseTitle: "Agent Workflow Patterns：课程包",
         lessonCount: 3
       }
     });

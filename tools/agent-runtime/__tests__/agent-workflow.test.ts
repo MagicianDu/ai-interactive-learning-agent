@@ -236,7 +236,7 @@ describe("AgentWorkflow", () => {
     const { approvalService, artifactStore, workflow } = await createHarness(
       baseConfig({
         runId: "agentic-course",
-        topic: "Agentic Design Patterns",
+        topic: "Agent Workflow Patterns",
         sourceKind: "book",
         source: { type: "text", value: sourceText },
         sources: [
@@ -244,7 +244,7 @@ describe("AgentWorkflow", () => {
             id: "source-001",
             type: "text",
             kind: "book",
-            title: "Agentic Design Patterns",
+            title: "Agent Workflow Patterns",
             value: sourceText,
             language: "zh-CN"
           }

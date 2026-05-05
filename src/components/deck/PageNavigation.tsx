@@ -14,10 +14,10 @@ export function PageNavigation({
   onForward
 }: PageNavigationProps) {
   const buttonClass =
-    "inline-flex min-h-12 items-center gap-2 rounded-lg border px-5 py-2 text-base font-semibold shadow-sm transition focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-45";
+    "inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-semibold shadow-sm transition focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-45 sm:px-4 lg:min-h-12 lg:px-5 lg:py-2 lg:text-base";
 
   return (
-    <nav aria-label="课程翻页" className="flex items-center justify-end gap-3">
+    <nav aria-label="课程翻页" className="flex items-center justify-end gap-2 lg:gap-3">
       <button
         className={`${buttonClass} border-line bg-white text-ink hover:border-accent hover:text-accent disabled:hover:border-line disabled:hover:text-ink`}
         disabled={!canGoBack}

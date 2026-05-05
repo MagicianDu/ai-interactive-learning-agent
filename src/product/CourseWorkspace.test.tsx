@@ -15,6 +15,7 @@ describe("CourseWorkspace", () => {
     render(<CourseWorkspace coursePacks={coursePackRegistry} lessons={lessonRegistry} />);
 
     expect(screen.getAllByText(/第 1 \//).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("智能体工作流公开示例：总览课").length).toBeGreaterThan(0);
     expect(screen.getByText("当前学习单元")).toBeInTheDocument();
     expect(screen.getByText(/策略：/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "课程结构" })).toBeInTheDocument();
@@ -30,6 +31,8 @@ describe("CourseWorkspace", () => {
     render(<CourseWorkspace coursePacks={coursePackRegistry} lessons={lessonRegistry} />);
 
     expect(screen.getByTestId("learning-main-viewport")).toHaveClass("overflow-hidden");
+    expect(screen.getByTestId("desktop-learning-sidebar")).toHaveClass("hidden", "lg:block");
+    expect(screen.getByTestId("workspace-status-strip")).toHaveClass("hidden", "lg:block");
     expect(getComputedStyle(document.body).overflow).toBe("hidden");
     expect(document.body.scrollHeight).toBeLessThanOrEqual(window.innerHeight);
   });

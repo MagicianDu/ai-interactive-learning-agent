@@ -8,9 +8,9 @@ import {
 
 describe("Codex MCP config helpers", () => {
   test("builds the learningAgent MCP server TOML snippet", () => {
-    expect(buildLearningAgentMcpToml("/Users/dm/Documents/the learning agent")).toContain("[mcp_servers.learningAgent]");
-    expect(buildLearningAgentMcpToml("/Users/dm/Documents/the learning agent")).toContain(
-      'cwd = "/Users/dm/Documents/the learning agent"'
+    expect(buildLearningAgentMcpToml("/path/to/ai-interactive-learning-agent")).toContain("[mcp_servers.learningAgent]");
+    expect(buildLearningAgentMcpToml("/path/to/ai-interactive-learning-agent")).toContain(
+      'cwd = "/path/to/ai-interactive-learning-agent"'
     );
   });
 

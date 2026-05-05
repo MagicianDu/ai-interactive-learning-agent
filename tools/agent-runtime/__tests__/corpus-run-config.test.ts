@@ -46,18 +46,18 @@ describe("corpus run config", () => {
 
   test("creates a source-grounded course-pack config from a local file source", () => {
     const config = createRunConfigFromArgs({
-      sourceFile: "/tmp/Agentic_Design_Patterns.pdf",
+      sourceFile: "/tmp/agent-workflow-notes.pdf",
       sourceKind: "book",
-      sourceTitle: "Agentic Design Patterns",
+      sourceTitle: "Agent Workflow Notes",
       unitPages: "12",
-      run: "agentic-design-book"
+      run: "agent-workflow-book"
     });
 
-    expect(config.topic).toBe("Agentic Design Patterns");
+    expect(config.topic).toBe("Agent Workflow Notes");
     expect(config.source).toEqual({
       type: "file",
-      value: "/tmp/Agentic_Design_Patterns.pdf",
-      label: "Agentic Design Patterns"
+      value: "/tmp/agent-workflow-notes.pdf",
+      label: "Agent Workflow Notes"
     });
     expect(config.sourceKind).toBe("book");
     expect(config.sources).toEqual([
@@ -65,9 +65,9 @@ describe("corpus run config", () => {
         id: "source-001",
         type: "file",
         kind: "book",
-        title: "Agentic Design Patterns",
-        value: "/tmp/Agentic_Design_Patterns.pdf",
-        uri: "/tmp/Agentic_Design_Patterns.pdf",
+        title: "Agent Workflow Notes",
+        value: "/tmp/agent-workflow-notes.pdf",
+        uri: "/tmp/agent-workflow-notes.pdf",
         language: "zh-CN"
       }
     ]);
@@ -92,7 +92,7 @@ describe("corpus run config", () => {
     const config = createRunConfigFromArgs({
       sourceUrl: "https://example.com/agentic-design-patterns",
       sourceKind: "blog",
-      sourceTitle: "Agentic Design Patterns",
+      sourceTitle: "Agent Workflow Patterns",
       planningMode: "topic_guided",
       strategy: "overview_plus_topic",
       unitPages: "10",

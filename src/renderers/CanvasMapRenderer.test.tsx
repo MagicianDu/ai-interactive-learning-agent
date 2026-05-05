@@ -7,7 +7,7 @@ import { CanvasMapRenderer } from "./CanvasMapRenderer";
 
 const coursePack: CoursePack = {
   id: "agentic-design-book",
-  title: "Agentic Design Patterns：课程包",
+  title: "Agent Workflow Patterns：课程包",
   parentRunId: "agentic-design-book",
   sourceKind: "book",
   strategy: "overview_plus_topic",

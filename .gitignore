@@ -4,6 +4,12 @@ dist/
 coverage/
 .playwright-cli/
 runs/
+src/course-packs/*-smoke/
+src/course-packs/*-local/
+src/course-packs/*-chapters-*/
+src/lessons/*-smoke-*/
+src/lessons/*-local-*/
+src/lessons/*-chapters-*/
 playwright-report/
 test-results/
 .DS_Store

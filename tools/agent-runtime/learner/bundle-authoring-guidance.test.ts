@@ -6,7 +6,7 @@ import { LearnerProjectService } from "./learner-project-service.js";
 describe("bundle authoring guidance", () => {
   test("requires Chinese-first lessons, interactions, feedback, transfer tasks, and source anchors", () => {
     const guidance = buildBundleAuthoringGuidance({
-      topic: "Agentic Design Patterns",
+      topic: "Agent Workflow Patterns",
       sourcePath: "/tmp/book.pdf",
       sourceKind: "book",
       audience: "中文学习者",

@@ -68,10 +68,10 @@ export type RunRealSourceRegressionOptions = {
 export const realSourceRegressionSamples: RealSourceRegressionSample[] = [
   {
     id: "book-agentic-design",
-    title: "Agentic Design Patterns",
+    title: "Agent Workflow Patterns",
     sourceKind: "book",
     sourceType: "file",
-    sourcePath: "/Users/dm/Documents/1.书籍资料/BOOKS/Agentic_Design_Patterns.pdf",
+    sourcePath: "examples/sources/agent-workflow-notes.md",
     strategy: "hybrid",
     selectedTopics: ["agent loop", "tool use", "multi-agent review"],
     unitPages: 8,
@@ -84,10 +84,10 @@ export const realSourceRegressionSamples: RealSourceRegressionSample[] = [
   },
   {
     id: "paper-talk-reasoner",
-    title: "Agents Thinking Fast and Slow: A Talker-Reasoner Architecture",
+    title: "Talker-Reasoner Architecture Mock Paper",
     sourceKind: "paper",
     sourceType: "file",
-    sourcePath: "/Users/dm/Documents/1.书籍资料/1.基础模型训练/推理/Agents Thinking Fast and Slow- A Talker-Reasoner Architecture.pdf",
+    sourcePath: "examples/sources/talker-reasoner-architecture.md",
     strategy: "topic_guided",
     selectedTopics: ["problem", "architecture", "evaluation", "limitations", "transfer"],
     unitPages: 8,

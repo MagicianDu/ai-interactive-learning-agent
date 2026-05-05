@@ -12,4 +12,10 @@ describe("lessonRegistry", () => {
     const ids = lessonRegistry.map((entry) => entry.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
+
+  test("keeps registered lessons open-source safe", () => {
+    for (const entry of lessonRegistry) {
+      expect(JSON.stringify(entry.lesson)).not.toMatch(/\/Users\/dm|Documents\/1\.书籍资料|Agentic Design Patterns/u);
+    }
+  });
 });

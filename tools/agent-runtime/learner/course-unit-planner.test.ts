@@ -6,7 +6,7 @@ describe("planCourseUnits", () => {
   it("creates overview plus three topic units for a long book", () => {
     const plan = planCourseUnits({
       runId: "agentic-book",
-      topic: "Agentic Design Patterns",
+      topic: "Agent Workflow Patterns",
       sourceKind: "book",
       strategy: "overview_plus_topic",
       unitPageCount: 8,

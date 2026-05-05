@@ -26,7 +26,7 @@ The server supports:
     "learning-agent": {
       "command": "npm",
       "args": ["run", "mcp"],
-      "cwd": "/Users/dm/Documents/the learning agent"
+      "cwd": "/path/to/ai-interactive-learning-agent"
     }
   }
 }
@@ -50,7 +50,7 @@ If the Codex environment uses TOML-style MCP server config, use:
 [mcp_servers.learningAgent]
 command = "npm"
 args = ["run", "mcp"]
-cwd = "/Users/dm/Documents/the learning agent"
+cwd = "/path/to/ai-interactive-learning-agent"
 ```
 
 If the Codex environment manages MCP servers through the app UI, add a stdio server with:
@@ -59,7 +59,7 @@ If the Codex environment manages MCP servers through the app UI, add a stdio ser
 Name: learningAgent
 Command: npm
 Arguments: run mcp
-Working directory: /Users/dm/Documents/the learning agent
+Working directory: /path/to/ai-interactive-learning-agent
 ```
 
 ## Claude Desktop Configuration Shape
@@ -72,7 +72,7 @@ Claude Desktop commonly uses a JSON config shape:
     "learning-agent": {
       "command": "npm",
       "args": ["run", "mcp"],
-      "cwd": "/Users/dm/Documents/the learning agent"
+      "cwd": "/path/to/ai-interactive-learning-agent"
     }
   }
 }

@@ -5,12 +5,12 @@ import { parseRunIntent } from "./run-intent.js";
 describe("parseRunIntent", () => {
   test("maps a Chinese book course request into a source-backed run intent", () => {
     const intent = parseRunIntent(
-      "用 /Users/dm/Documents/BOOKS/Agentic_Design_Patterns.pdf 这本书生成一套中文课程：先做总览课，再按核心 topic 拆课。每个单元 10 页，面向有基础编程经验但没建立系统心智模型的中文学习者。"
+      "用 \"examples/sources/agent-workflow-notes.md\" 这本书生成一套中文课程：先做总览课，再按核心 topic 拆课。每个单元 10 页，面向有基础编程经验但没建立系统心智模型的中文学习者。"
     );
 
     expect(intent.source).toMatchObject({
       type: "file",
-      value: "/Users/dm/Documents/BOOKS/Agentic_Design_Patterns.pdf",
+      value: "examples/sources/agent-workflow-notes.md",
       kind: "book"
     });
     expect(intent.language).toBe("zh-CN");

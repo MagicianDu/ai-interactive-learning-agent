@@ -14,7 +14,7 @@ describe("source normalizer", () => {
       id: "source-001",
       type: "text",
       kind: "book",
-      title: "Agentic Design Patterns",
+      title: "Agent Workflow Patterns",
       value: "# Overview\nAgents combine planning and tools.\n\n## Tool Use\nTools extend action space.",
       language: "zh-CN"
     };

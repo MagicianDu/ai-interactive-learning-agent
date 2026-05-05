@@ -2,7 +2,7 @@ import type { Lesson } from "../../schemas/lesson.schema";
 
 export const generatedLesson = {
   id: "demo-agentic-design-grounded-topic-01",
-  title: "Agentic Design Patterns中文课程：agent loop",
+  title: "智能体工作流公开示例：agent loop",
   audience: "有编程基础但缺少智能体系统心智模型的中文学习者",
   config: {
     targetPageCount: 8,
@@ -10,7 +10,7 @@ export const generatedLesson = {
     maxPageCount: 10
   },
   sourceContext: {
-    sourcePath: "/Users/dm/Documents/1.书籍资料/BOOKS/Agentic_Design_Patterns.pdf",
+    sourcePath: "examples/sources/agent-workflow-notes.md",
     sourceKind: "book",
     sourceAnchorIds: [
       "source-001:paragraph-page-3-2",
@@ -32,7 +32,7 @@ export const generatedLesson = {
     "希望通过中文互动课程建立可迁移心智模型"
   ],
   learningObjectives: [
-    "解释Agentic Design Patterns中文课程：agent loop的核心问题和来源依据",
+    "解释智能体工作流公开示例：agent loop的核心问题和来源依据",
     "用可视化结构说明agent loop如何发挥作用",
     "通过行动、反馈和迁移任务检查理解是否可靠"
   ],
@@ -40,9 +40,9 @@ export const generatedLesson = {
     {
       id: "page-01",
       type: "problem_scene",
-      title: "Agentic Design Patterns中文课程：agent loop：先看学习问题",
+      title: "智能体工作流公开示例：agent loop：先看学习问题",
       learningGoal: "识别这份资料最需要解决的理解问题",
-      narrative: "Agentic Design Patterns中文课程：agent loop 不能只被压缩成摘要；学习者需要看见问题、机制和边界。",
+      narrative: "智能体工作流公开示例：agent loop 不能只被压缩成摘要；学习者需要看见问题、机制和边界。",
       sourceAnchorIds: [
         "source-001:paragraph-page-3-2",
         "source-001:paragraph-page-3-3",
@@ -275,7 +275,7 @@ export const generatedLesson = {
     }
   ],
   summary: [
-    "Agentic Design Patterns中文课程：agent loop 的学习重点是先建立来源地图，再进入机制。",
+    "智能体工作流公开示例：agent loop 的学习重点是先建立来源地图，再进入机制。",
     "每个可靠解释都应该连接来源锚点、因果链和适用边界。",
     "能在新材料中复用这套判断方式，才说明心智模型真正形成。"
   ]

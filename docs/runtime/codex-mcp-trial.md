@@ -20,7 +20,7 @@ MCP 配置形如：
 [mcp_servers.learningAgent]
 command = "npm"
 args = ["run", "mcp"]
-cwd = "/Users/dm/Documents/the learning agent"
+cwd = "/path/to/ai-interactive-learning-agent"
 ```
 
 安装后重启 Codex 或打开一个新的 Codex 会话，让 MCP server 和 skills 列表重新加载。

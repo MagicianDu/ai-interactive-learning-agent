@@ -210,7 +210,7 @@ describe("ProjectRegistry", () => {
     const runDir = path.join(root, "runs", "agentic-book");
     await new ProjectRegistry(root).upsertProject({
       projectId: "agentic-book",
-      title: "Agentic Design Patterns",
+      title: "Agent Workflow Patterns",
       sourceKind: "book",
       sourceRefs: ["/tmp/book.pdf"],
       audience: "有编程基础的中文学习者",
@@ -221,7 +221,7 @@ describe("ProjectRegistry", () => {
     });
     await writeFile(
       path.join(runDir, "learning-preview.json"),
-      JSON.stringify({ status: "preview_ready", courseTitle: "Agentic Design Patterns：课程包", lessonCount: 3 }, null, 2),
+      JSON.stringify({ status: "preview_ready", courseTitle: "Agent Workflow Patterns：课程包", lessonCount: 3 }, null, 2),
       "utf8"
     );
 
@@ -230,11 +230,11 @@ describe("ProjectRegistry", () => {
     expect(projects).toHaveLength(1);
     expect(projects[0]).toMatchObject({
       projectId: "agentic-book",
-      title: "Agentic Design Patterns",
+      title: "Agent Workflow Patterns",
       sourceKind: "book",
       status: "preview-ready",
       preview: {
-        courseTitle: "Agentic Design Patterns：课程包",
+        courseTitle: "Agent Workflow Patterns：课程包",
         lessonCount: 3
       }
     });
@@ -491,7 +491,7 @@ describe("planCourseUnits", () => {
   it("creates overview plus at least two topic units for a long book", () => {
     const plan = planCourseUnits({
       runId: "agentic-book",
-      topic: "Agentic Design Patterns",
+      topic: "Agent Workflow Patterns",
       sourceKind: "book",
       strategy: "overview_plus_topic",
       unitPageCount: 8,
@@ -1666,10 +1666,10 @@ Run:
 
 ```bash
 printf '%s\n' \
-  '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"seed-ready-smoke","version":"0.0.0"}}}' \
-  '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"learning_agent.create_learning_project","arguments":{"request":"请把这份资料生成中文学习网页，先给总览课，再按核心 topic 拆课，每个单元 8 页，面向有编程基础的中文学习者。","runId":"seed-ready-smoke","sourcePath":"/Users/dm/Documents/1.书籍资料/BOOKS/Agentic_Design_Patterns.pdf","sourceKind":"book","audience":"有编程基础但缺少系统心智模型的中文学习者","unitPages":8,"strategy":"overview_plus_topic"}}}' \
-  '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"learning_agent.generate_grounded_course","arguments":{"runId":"seed-ready-smoke"}}}' \
-  '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"learning_agent.get_learning_preview","arguments":{"runId":"seed-ready-smoke"}}}' \
+  '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"public-mock-smoke","version":"0.0.0"}}}' \
+  '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"learning_agent.create_learning_project","arguments":{"request":"请把这份资料生成中文学习网页，先给总览课，再按核心 topic 拆课，每个单元 8 页，面向有编程基础的中文学习者。","runId":"public-mock-smoke","sourcePath":"examples/sources/agent-workflow-notes.md","sourceKind":"book","audience":"有编程基础但缺少系统心智模型的中文学习者","unitPages":8,"strategy":"overview_plus_topic"}}}' \
+  '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"learning_agent.generate_grounded_course","arguments":{"runId":"public-mock-smoke"}}}' \
+  '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"learning_agent.get_learning_preview","arguments":{"runId":"public-mock-smoke"}}}' \
   | npm run mcp
 ```
 
@@ -1691,7 +1691,7 @@ npm run dev
 Open:
 
 ```text
-http://127.0.0.1:5173/#/course/seed-ready-smoke
+http://127.0.0.1:5173/#/course/public-mock-smoke
 ```
 
 Expected:
@@ -1709,9 +1709,9 @@ Run MCP smoke for revision:
 ```bash
 printf '%s\n' \
   '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"seed-ready-revision","version":"0.0.0"}}}' \
-  '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"learning_agent.revise_learning_course","arguments":{"runId":"seed-ready-smoke","feedback":"第 3 页太抽象，换成更贴近工程实践的例子。"}}}' \
-  '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"learning_agent.apply_learning_revision","arguments":{"runId":"seed-ready-smoke"}}}' \
-  '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"learning_agent.export_learning_course","arguments":{"runId":"seed-ready-smoke"}}}' \
+  '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"learning_agent.revise_learning_course","arguments":{"runId":"public-mock-smoke","feedback":"第 3 页太抽象，换成更贴近工程实践的例子。"}}}' \
+  '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"learning_agent.apply_learning_revision","arguments":{"runId":"public-mock-smoke"}}}' \
+  '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"learning_agent.export_learning_course","arguments":{"runId":"public-mock-smoke"}}}' \
   | npm run mcp
 ```
 
@@ -1719,7 +1719,7 @@ Expected:
 
 - Revision result is `revision_applied`.
 - Export result is `export_ready`.
-- `runs/seed-ready-smoke/exports/static-course/manifest.json` exists.
+- `runs/public-mock-smoke/exports/static-course/manifest.json` exists.
 
 - [ ] **Step 5: Update docs**
 

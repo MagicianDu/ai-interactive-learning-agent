@@ -2,12 +2,12 @@
 
 This file records source-backed smoke trials without committing generated lesson content from private or copyrighted material.
 
-## 2026-04-30 Agentic Design Patterns PDF
+## 2026-04-30 Agent Workflow Patterns PDF
 
 Source:
 
 ```text
-/Users/dm/Documents/1.书籍资料/BOOKS/Agentic_Design_Patterns.pdf
+examples/sources/agent-workflow-notes.md
 ```
 
 Command shape:
@@ -20,7 +20,7 @@ import path from 'node:path';
 import { LearnerProjectService } from './tools/agent-runtime/learner/learner-project-service.ts';
 import { QuickPreviewService } from './tools/agent-runtime/learner/quick-preview-service.ts';
 
-const sourcePath = '/Users/dm/Documents/1.书籍资料/BOOKS/Agentic_Design_Patterns.pdf';
+const sourcePath = 'examples/sources/agent-workflow-notes.md';
 const root = await mkdtemp(path.join(tmpdir(), 'learning-agent-real-source-'));
 await new LearnerProjectService(root).createProject({
   request: `请用 ${sourcePath} 这本书生成中文学习材料，面向有编程基础但缺少智能体系统心智模型的中文学习者，每个单元 8 页。`,
@@ -53,7 +53,7 @@ Generated files were written under a temporary workspace, not this repository, s
 Source:
 
 ```text
-/Users/dm/Documents/1.书籍资料/BOOKS/Agentic_Design_Patterns.pdf
+examples/sources/agent-workflow-notes.md
 ```
 
 Command shape:
@@ -65,7 +65,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { CodexAuthoredTrialService } from './tools/agent-runtime/learner/codex-authored-trial.ts';
 
-const sourcePath = '/Users/dm/Documents/1.书籍资料/BOOKS/Agentic_Design_Patterns.pdf';
+const sourcePath = 'examples/sources/agent-workflow-notes.md';
 const root = await mkdtemp(path.join(tmpdir(), 'codex-authored-real-trial-'));
 const result = await new CodexAuthoredTrialService(root).runTrial({
   runId: 'codex-agentic-design',
@@ -115,8 +115,8 @@ npm run source:regression
 Selected sources:
 
 ```text
-book   /Users/dm/Documents/1.书籍资料/BOOKS/Agentic_Design_Patterns.pdf
-paper  /Users/dm/Documents/1.书籍资料/1.基础模型训练/推理/Agents Thinking Fast and Slow- A Talker-Reasoner Architecture.pdf
+book   examples/sources/agent-workflow-notes.md
+paper  examples/sources/talker-reasoner-architecture.md
 patent https://patents.google.com/patent/WO2025085566A1/en
 blog   https://techcommunity.microsoft.com/blog/azure-ai-foundry-blog/bonus-rag-time-journey-agentic-rag/4404652
 ```

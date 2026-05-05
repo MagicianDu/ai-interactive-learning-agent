@@ -2,14 +2,14 @@ import type { CoursePack } from "../../schemas/course-pack.schema";
 
 export const generatedCoursePack = {
   id: "demo-course-pack",
-  title: "Agentic Design Patterns 示例课程包：课程包",
+  title: "智能体工作流公开示例：课程包",
   parentRunId: "demo-course-pack",
   sourceKind: "notes",
   strategy: "overview_plus_topic",
   units: [
     {
       unitId: "unit-overview",
-      title: "Agentic Design Patterns 示例课程包：总览课",
+      title: "智能体工作流公开示例：总览课",
       kind: "overview",
       lessonId: "demo-course-pack-unit-overview",
       targetPageCount: 8,
@@ -27,7 +27,7 @@ export const generatedCoursePack = {
     },
     {
       unitId: "unit-topic-01",
-      title: "Agentic Design Patterns 示例课程包：核心机制",
+      title: "智能体工作流公开示例：核心机制",
       kind: "topic",
       lessonId: "demo-course-pack-unit-topic-01",
       targetPageCount: 8,

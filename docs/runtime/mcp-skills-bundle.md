@@ -79,7 +79,7 @@ For Claude Desktop or a generic MCP client, configure the same stdio server:
     "learning-agent": {
       "command": "npm",
       "args": ["run", "mcp"],
-      "cwd": "/Users/dm/Documents/the learning agent"
+      "cwd": "/path/to/ai-interactive-learning-agent"
     }
   }
 }
