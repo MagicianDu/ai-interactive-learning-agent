@@ -11,9 +11,23 @@ describe("product-route", () => {
     });
   });
 
+  it("parses generated preview routes", () => {
+    expect(parseProductRoute("#/preview/mock-run/unit/unit-overview/page/2")).toEqual({
+      previewRunId: "mock-run",
+      unitId: "unit-overview",
+      pageIndex: 1
+    });
+  });
+
   it("builds stable hash routes", () => {
     expect(buildProductRoute({ courseId: "agentic", unitId: "unit-overview", pageIndex: 0 })).toBe(
       "#/course/agentic/unit/unit-overview/page/1"
+    );
+  });
+
+  it("builds generated preview hash routes", () => {
+    expect(buildProductRoute({ previewRunId: "mock-run", unitId: "unit-overview", pageIndex: 0 })).toBe(
+      "#/preview/mock-run/unit/unit-overview/page/1"
     );
   });
 });

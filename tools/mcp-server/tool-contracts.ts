@@ -92,12 +92,11 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
   {
     name: "learning_agent.publish_learning_course",
     description:
-      "Learner-facing tool. Publish a Codex-authored Chinese course bundle directly to the web lesson registry after quality checks.",
-    inputSchema: objectSchema({ runId: stringSchema, coursePack: looseObjectSchema, lessons: arraySchema, publishNotes: stringSchema }, [
-      "runId",
-      "coursePack",
-      "lessons"
-    ])
+      "Learner-facing tool. Publish a Codex-authored Chinese course bundle to the clean preview runtime after quality checks. Maintainers may pass outputMode=source to write fixture modules.",
+    inputSchema: objectSchema(
+      { runId: stringSchema, coursePack: looseObjectSchema, lessons: arraySchema, publishNotes: stringSchema, outputMode: stringSchema },
+      ["runId", "coursePack", "lessons"]
+    )
   },
   {
     name: "learning_agent.get_learning_preview",

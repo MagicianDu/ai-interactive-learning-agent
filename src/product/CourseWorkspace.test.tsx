@@ -1,13 +1,23 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { coursePackRegistry } from "../course-packs/registry";
 import { lessonRegistry } from "../lessons/registry";
 import { CourseWorkspace } from "./CourseWorkspace";
+import { learningProgressStorageKey } from "./learning-progress";
 
 describe("CourseWorkspace", () => {
+  beforeEach(() => {
+    Object.defineProperty(window, "localStorage", {
+      configurable: true,
+      value: new MemoryStorage()
+    });
+  });
+
   afterEach(() => {
+    vi.restoreAllMocks();
+    window.localStorage.clear();
     window.history.replaceState(null, "", "#/");
   });
 
@@ -51,6 +61,79 @@ describe("CourseWorkspace", () => {
     expect(window.location.hash).toBe(`#/course/${routedCourse.id}/unit/${routedUnit.unitId}/page/2`);
   });
 
+  test("opens a clean generated preview route without registered source modules", async () => {
+    window.history.replaceState(null, "", "#/preview/public-smoke/unit/unit-overview/page/2");
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url === "/__learning-preview/public-smoke/manifest.json") {
+        return jsonResponse({
+          schemaVersion: 1,
+          runId: "public-smoke",
+          coursePackId: "public-smoke",
+          courseTitle: "公开示例：课程包",
+          coursePackPath: "course-pack.json",
+          lessonPaths: ["lessons/public-smoke-overview.json"]
+        });
+      }
+      if (url === "/__learning-preview/public-smoke/course-pack.json") {
+        return jsonResponse({
+          id: "public-smoke",
+          title: "公开示例：课程包",
+          parentRunId: "public-smoke",
+          sourceKind: "blog",
+          strategy: "overview_plus_topic",
+          units: [
+            {
+              unitId: "unit-overview",
+              title: "公开示例：总览课",
+              kind: "overview",
+              lessonId: "public-smoke-overview",
+              targetPageCount: 2,
+              sourceAnchorIds: ["source-001:page-1"],
+              conceptIds: ["overview"]
+            }
+          ]
+        });
+      }
+      if (url === "/__learning-preview/public-smoke/lessons/public-smoke-overview.json") {
+        return jsonResponse({
+          id: "public-smoke-overview",
+          title: "公开示例：总览课",
+          audience: "中文学习者",
+          config: { targetPageCount: 2 },
+          prerequisites: ["能阅读中文技术材料"],
+          learningObjectives: ["建立总览心智模型"],
+          pages: [
+            {
+              id: "page-01",
+              type: "problem_scene",
+              title: "第一页",
+              learningGoal: "看到问题",
+              narrative: "用问题进入学习。"
+            },
+            {
+              id: "page-02",
+              type: "summary_card",
+              title: "第二页",
+              learningGoal: "压缩模型",
+              narrative: "用中文总结结构。"
+            }
+          ],
+          misconceptions: [],
+          transferTasks: [],
+          summary: ["问题、结构、迁移"]
+        });
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    });
+
+    render(<CourseWorkspace coursePacks={coursePackRegistry} lessons={lessonRegistry} />);
+
+    expect((await screen.findAllByText("公开示例：课程包")).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/第 2 \//).length).toBeGreaterThan(0);
+    expect(window.location.hash).toBe("#/preview/public-smoke/unit/unit-overview/page/2");
+  });
+
   test("updates the stable hash route when the learner changes page", async () => {
     const user = userEvent.setup();
     render(<CourseWorkspace coursePacks={coursePackRegistry} lessons={lessonRegistry} />);
@@ -84,6 +167,28 @@ describe("CourseWorkspace", () => {
     expect(screen.getByText("单元来源映射")).toBeInTheDocument();
   });
 
+  test("preserves local progress and records learner page feedback briefs", async () => {
+    const user = userEvent.setup();
+    render(<CourseWorkspace coursePacks={coursePackRegistry} lessons={lessonRegistry} />);
+
+    expect(screen.getByText("完成进度")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "下一页" }));
+    await user.click(screen.getByRole("button", { name: "太抽象" }));
+
+    const progress = JSON.parse(window.localStorage.getItem(learningProgressStorageKey) ?? "{}") as {
+      completedPages?: string[];
+      feedbackBriefs?: Array<{ scope: string; pageId: string; feedback: string; recommendedTool: string }>;
+    };
+
+    expect(progress.completedPages?.length).toBeGreaterThanOrEqual(2);
+    expect(progress.feedbackBriefs?.[0]).toMatchObject({
+      scope: "page",
+      recommendedTool: "learning_agent.revise_learning_course"
+    });
+    expect(progress.feedbackBriefs?.[0]?.feedback).toContain("太抽象");
+    expect(screen.getByText(/已记录：第 2 页，太抽象/u)).toBeInTheDocument();
+  });
+
   test("sidebar product modes show actionable learner surfaces", async () => {
     const user = userEvent.setup();
     render(<CourseWorkspace coursePacks={coursePackRegistry} lessons={lessonRegistry} />);
@@ -105,3 +210,38 @@ describe("CourseWorkspace", () => {
     expect(screen.getByText("当前页辅导策略")).toBeInTheDocument();
   });
 });
+
+function jsonResponse(value: unknown): Response {
+  return new Response(JSON.stringify(value), {
+    headers: { "content-type": "application/json" },
+    status: 200
+  });
+}
+
+class MemoryStorage implements Storage {
+  private readonly values = new Map<string, string>();
+
+  get length(): number {
+    return this.values.size;
+  }
+
+  clear(): void {
+    this.values.clear();
+  }
+
+  getItem(key: string): string | null {
+    return this.values.get(key) ?? null;
+  }
+
+  key(index: number): string | null {
+    return Array.from(this.values.keys())[index] ?? null;
+  }
+
+  removeItem(key: string): void {
+    this.values.delete(key);
+  }
+
+  setItem(key: string, value: string): void {
+    this.values.set(key, value);
+  }
+}

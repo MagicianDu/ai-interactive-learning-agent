@@ -44,6 +44,7 @@ describe("GroundedCourseService", () => {
     expect(result).toMatchObject({
       runId: "grounded-agent",
       coursePackId: "grounded-agent",
+      outputMode: "preview",
       sourceIngest: {
         anchorCount: expect.any(Number),
         warningCount: 0
@@ -54,9 +55,17 @@ describe("GroundedCourseService", () => {
       },
       quality: {
         blockingIssueCount: 0
+      },
+      qualityReport: {
+        status: "passed",
+        checks: {
+          sourceEvidence: "passed",
+          chineseFirst: "passed"
+        }
       }
     });
     expect(result.preview.instructions.join("\n")).toContain("npm run dev");
+    expect(result.preview.localUrl).toContain("#/preview/grounded-agent");
     expect(result.lessonPaths.length).toBeGreaterThanOrEqual(3);
     expect(result.quality.checkedLessons).toBeGreaterThanOrEqual(3);
     expect(result.criticReports.length).toBe(result.lessonPaths.length);
@@ -65,11 +74,12 @@ describe("GroundedCourseService", () => {
     expect(result.criticReports.flatMap((report) => report.pageScores).every((score) => score.sourceSupport === "supported")).toBe(true);
     expect(result.sourceIngest.anchorCount).toBeGreaterThanOrEqual(3);
     await expect(readFile(result.sourceIngest.artifactPath, "utf8")).resolves.toContain("candidateInteractions");
-    const coursePackText = await readFile(result.coursePackPath, "utf8");
-    const unitIds = [...coursePackText.matchAll(/unitId: "([^"]+)"/gu)].map((match) => match[1]);
+    await expect(readFile(result.qualityReport.reportPath, "utf8")).resolves.toContain("\"coursePackId\": \"grounded-agent\"");
+    const coursePack = JSON.parse(await readFile(result.coursePackPath, "utf8")) as { units: Array<{ unitId: string; lessonId?: string }> };
+    const unitIds = coursePack.units.map((unit) => unit.unitId);
     expect(unitIds).toContain("unit-overview");
-    expect((coursePackText.match(/lessonId:/gu) ?? []).length).toBeGreaterThanOrEqual(3);
-    const lessonText = await readFile(path.join(root, "src", "lessons", "grounded-agent-overview", "lesson.ts"), "utf8");
+    expect(coursePack.units.filter((unit) => unit.lessonId).length).toBeGreaterThanOrEqual(3);
+    const lessonText = await readFile(path.join(root, "runs", "grounded-agent", "preview", "lessons", "grounded-agent-overview.json"), "utf8");
     expect(lessonText).toContain("sourceContext");
     expect(lessonText).toContain("sourceAnchorIds");
     expect(lessonText).toContain("工具使用");
@@ -102,12 +112,13 @@ describe("GroundedCourseService", () => {
 
     expect(revised).toMatchObject({
       status: "preview_ready",
+      outputMode: "preview",
       revisionApplied: {
         revisionId: "revision-001",
         feedback: "太难了，请降低术语密度，并增加一个新手友好的行动提示。"
       }
     });
-    const lessonText = await readFile(path.join(root, "src", "lessons", "grounded-rag-overview", "lesson.ts"), "utf8");
+    const lessonText = await readFile(path.join(root, "runs", "grounded-rag", "preview", "lessons", "grounded-rag-overview.json"), "utf8");
     expect(lessonText).toContain("已根据最新反馈降低术语密度");
     expect(lessonText).toContain("新手行动提示");
   });

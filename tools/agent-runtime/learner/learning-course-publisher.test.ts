@@ -9,7 +9,7 @@ import { LearnerProjectService } from "./learner-project-service.js";
 import { LearningCoursePublisher } from "./learning-course-publisher.js";
 
 describe("LearningCoursePublisher", () => {
-  test("publishes a Codex-authored course bundle into lessons and course-packs", async () => {
+  test("publishes a Codex-authored course bundle into the clean preview runtime by default", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "learning-course-publisher-"));
     const lesson = publishableLessonFixture({ id: "hash-table-overview", title: "哈希表：总览课", targetPageCount: 8 });
     const publisher = new LearningCoursePublisher(root);
@@ -39,16 +39,60 @@ describe("LearningCoursePublisher", () => {
     expect(result).toMatchObject({
       status: "preview_ready",
       coursePackId: "hash-course",
+      outputMode: "preview",
+      qualityReport: {
+        status: "passed",
+        score: 100,
+        requiredFixCount: 0
+      },
       quality: { checkedLessons: 1, blockingIssueCount: 0 }
+    });
+    if (result.status !== "preview_ready") {
+      throw new Error("expected preview_ready");
+    }
+    expect(result.coursePackPath).toBe(path.join(root, "runs", "hash-course", "preview", "course-pack.json"));
+    expect(result.lessonPaths).toEqual([path.join(root, "runs", "hash-course", "preview", "lessons", "hash-table-overview.json")]);
+    await expect(readFile(result.coursePackPath, "utf8")).resolves.toContain("\"id\": \"hash-course\"");
+    await expect(readFile(result.lessonPaths[0] as string, "utf8")).resolves.toContain("\"id\": \"hash-table-overview\"");
+    await expect(readFile(path.join(root, "runs", "hash-course", "preview", "manifest.json"), "utf8")).resolves.toContain(
+      "\"coursePackPath\": \"course-pack.json\""
+    );
+    await expect(readFile(path.join(root, "runs", "hash-course", "learning-preview.json"), "utf8")).resolves.toContain(
+      "#/preview/hash-course"
+    );
+    await expect(readFile(path.join(root, "runs", "hash-course", "quality", "course-quality-report.json"), "utf8")).resolves.toContain(
+      "\"status\": \"passed\""
+    );
+    await expect(readFile(path.join(root, "src", "lessons", "hash-table-overview", "lesson.ts"), "utf8")).rejects.toMatchObject({
+      code: "ENOENT"
+    });
+    await expect(readFile(path.join(root, "src", "course-packs", "hash-course", "coursePack.ts"), "utf8")).rejects.toMatchObject({
+      code: "ENOENT"
+    });
+  });
+
+  test("can explicitly publish maintainer TypeScript fixtures when requested", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-course-publisher-source-"));
+    const lesson = publishableLessonFixture({ id: "hash-table-overview", title: "哈希表：总览课", targetPageCount: 8 });
+    const publisher = new LearningCoursePublisher(root);
+
+    const result = await publisher.publish({
+      runId: "hash-source",
+      outputMode: "source",
+      lessons: [lesson],
+      coursePack: coursePackFixture("hash-source", "hash-table-overview")
+    });
+
+    expect(result).toMatchObject({
+      status: "preview_ready",
+      coursePackId: "hash-source",
+      outputMode: "source"
     });
     await expect(readFile(path.join(root, "src", "lessons", "hash-table-overview", "lesson.ts"), "utf8")).resolves.toContain(
       "generatedLesson"
     );
-    await expect(readFile(path.join(root, "src", "course-packs", "hash-course", "coursePack.ts"), "utf8")).resolves.toContain(
+    await expect(readFile(path.join(root, "src", "course-packs", "hash-source", "coursePack.ts"), "utf8")).resolves.toContain(
       "generatedCoursePack"
-    );
-    await expect(readFile(path.join(root, "runs", "hash-course", "learning-preview.json"), "utf8")).resolves.toContain(
-      "http://127.0.0.1:5173/"
     );
   });
 
@@ -71,6 +115,12 @@ describe("LearningCoursePublisher", () => {
     expect(result).toMatchObject({
       status: "revision_required",
       runId: "english-course",
+      qualityReport: {
+        status: "failed",
+        checks: {
+          chineseFirst: "failed"
+        }
+      },
       userMessage: "课程还不能发布：需要 Codex 先修订中文学习内容和质量问题。"
     });
     if (result.status !== "revision_required") {

@@ -61,8 +61,8 @@ describe("LearningRevisionService", () => {
     const revisionBrief = JSON.parse(await readFile(second.revisionBriefPath, "utf8")) as Record<string, unknown>;
 
     expect(revisionBrief.previousFeedbackCount).toBe(1);
-    expect(revisionBrief.currentCoursePackPath).toContain("coursePack.ts");
-    expect(revisionBrief.currentLessonPaths).toEqual([expect.stringContaining("lesson.ts")]);
+    expect(revisionBrief.currentCoursePackPath).toContain("preview/course-pack.json");
+    expect(revisionBrief.currentLessonPaths).toEqual([expect.stringContaining("preview/lessons/feedback-lesson.json")]);
   });
 
   test("stores parsed revision targets in the brief", async () => {

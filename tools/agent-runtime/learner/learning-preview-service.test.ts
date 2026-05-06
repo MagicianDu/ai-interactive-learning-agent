@@ -44,10 +44,15 @@ describe("LearningPreviewService", () => {
       runId: "preview-course",
       preview: {
         devCommand: "npm run dev",
-        localUrl: "http://127.0.0.1:5173/",
+        localUrl: "http://127.0.0.1:5173/#/preview/preview-course",
         coursePackId: "preview-course",
         courseTitle: "哈希表：课程包",
-        lessonCount: 1
+        lessonCount: 1,
+        previewManifestPath: path.join(root, "runs", "preview-course", "preview", "manifest.json"),
+        qualityReport: {
+          status: "passed",
+          score: 100
+        }
       }
     });
   });

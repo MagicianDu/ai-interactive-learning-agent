@@ -21,6 +21,23 @@ describe("ExportBundleService", () => {
           lessonCount: 3,
           coursePackPath: path.join(root, "src/course-packs/agentic/coursePack.ts"),
           lessonPaths: [path.join(root, "src/lessons/agentic-overview/lesson.ts")],
+          qualityReport: {
+            status: "passed",
+            score: 96,
+            summary: "课程质量通过",
+            reportPath: path.join(root, "runs", "agentic", "quality", "course-quality-report.json"),
+            requiredFixCount: 0,
+            optionalImprovementCount: 1,
+            checks: {
+              sourceEvidence: "passed",
+              chineseFirst: "passed",
+              pageStructure: "passed",
+              interactionQuality: "passed",
+              assessmentCoverage: "passed",
+              transferCoverage: "passed"
+            },
+            lessonScores: []
+          },
           publishNotes: "Generated."
         },
         null,
@@ -32,8 +49,14 @@ describe("ExportBundleService", () => {
     const result = await new ExportBundleService(root).exportRun({ runId: "agentic" });
 
     expect(result.status).toBe("export_ready");
-    const manifest = JSON.parse(await readFile(result.manifestPath, "utf8")) as { courseTitle: string; artifactVersions: string[] };
+    const manifest = JSON.parse(await readFile(result.manifestPath, "utf8")) as {
+      courseTitle: string;
+      artifactVersions: string[];
+      qualityReport?: { status: string; score: number };
+    };
     expect(manifest.courseTitle).toBe("Agentic 课程");
     expect(manifest.artifactVersions).toEqual([]);
+    expect(result.qualityReport).toMatchObject({ status: "passed", score: 96 });
+    expect(manifest.qualityReport).toMatchObject({ status: "passed", score: 96 });
   });
 });

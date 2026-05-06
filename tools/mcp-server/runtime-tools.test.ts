@@ -132,7 +132,7 @@ describe("LearningAgentRuntimeTools", () => {
     });
 
     const result = await tools.callTool("learning_agent.apply_learning_revision", { runId: "mcp-revision" });
-    const lessonText = await readFile(path.join(root, "src", "lessons", "hash-table", "lesson.ts"), "utf8");
+    const lessonText = await readFile(path.join(root, "runs", "mcp-revision", "preview", "lessons", "hash-table.json"), "utf8");
 
     expect(result).toMatchObject({
       status: "revision_applied",
@@ -142,9 +142,12 @@ describe("LearningAgentRuntimeTools", () => {
       preview: {
         coursePackId: "mcp-revision",
         lessonCount: 1
+      },
+      qualityReport: {
+        status: "passed"
       }
     });
-    expect(lessonText).toContain('narrative: "第3页原文\\n\\n修订说明：第 3 页补一个工程排障例子"');
+    expect(lessonText).toContain('"narrative": "第3页原文\\n\\n修订说明：第 3 页补一个工程排障例子"');
     expect(lessonText.match(/修订说明/g)).toHaveLength(1);
   });
 

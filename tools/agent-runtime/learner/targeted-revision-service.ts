@@ -3,6 +3,7 @@ import path from "node:path";
 import { Script } from "node:vm";
 
 import { AgentRuntimeError } from "../errors.js";
+import type { CompactCourseQualityReport } from "../quality/course-quality-report.js";
 import { LearningCoursePublisher } from "./learning-course-publisher.js";
 import { LearningPreviewService, type LearningPreviewResult } from "./learning-preview-service.js";
 import { parseRevisionTarget, type RevisionTarget } from "./revision-targeting.js";
@@ -17,6 +18,7 @@ type RevisionBrief = {
 };
 
 type PreviewManifest = {
+  outputMode?: "preview" | "source";
   coursePackPath: string;
   lessonPaths: string[];
 };
@@ -36,6 +38,7 @@ export type ApplyLearningRevisionResult = {
   revisionId: string;
   changedLessonIds: string[];
   preview: ReadyLearningPreview;
+  qualityReport: CompactCourseQualityReport;
 };
 
 const RUN_ID_PATTERN = /^[a-z][a-z0-9-]{0,63}$/;
@@ -53,10 +56,13 @@ export class TargetedRevisionService {
     const target = revisionBrief.target ?? parseRevisionTarget(revisionBrief.feedback, revisionBrief.focus);
     const previewManifest = await this.readPreviewManifest(input.runId);
     const lessons = await Promise.all(
-      previewManifest.lessonPaths.map(async (lessonPath) => readGeneratedObject(resolveWorkspacePath(this.workspaceRoot, lessonPath), "generatedLesson", "Lesson"))
+      previewManifest.lessonPaths.map(async (lessonPath) =>
+        readPublishedObject(resolveWorkspacePath(this.workspaceRoot, lessonPath), previewManifest.outputMode, "generatedLesson", "Lesson")
+      )
     );
-    const coursePack = await readGeneratedObject(
+    const coursePack = await readPublishedObject(
       resolveWorkspacePath(this.workspaceRoot, previewManifest.coursePackPath),
+      previewManifest.outputMode,
       "generatedCoursePack",
       "CoursePack"
     );
@@ -85,7 +91,8 @@ export class TargetedRevisionService {
       runId: input.runId,
       revisionId: revisionBrief.revisionId,
       changedLessonIds,
-      preview: previewResult.preview
+      preview: previewResult.preview,
+      qualityReport: publishResult.qualityReport
     };
   }
 
@@ -126,6 +133,7 @@ export class TargetedRevisionService {
       throw new AgentRuntimeError("learning-preview.json is missing published course paths", "MISSING_ARTIFACT");
     }
     return {
+      outputMode: value.outputMode === "source" ? "source" : "preview",
       coursePackPath: value.coursePackPath,
       lessonPaths: value.lessonPaths
     };
@@ -173,6 +181,22 @@ function readGeneratedObject(filePath: string, exportName: string, typeName: str
     }
     return value;
   });
+}
+
+async function readPublishedObject(
+  filePath: string,
+  outputMode: "preview" | "source" | undefined,
+  exportName: string,
+  typeName: string
+): Promise<Record<string, unknown>> {
+  if (outputMode !== "source" || filePath.endsWith(".json")) {
+    const value = JSON.parse(await readFile(filePath, "utf8")) as unknown;
+    if (!isRecord(value)) {
+      throw new AgentRuntimeError(`published JSON is not an object: ${filePath}`, "MISSING_ARTIFACT");
+    }
+    return value;
+  }
+  return readGeneratedObject(filePath, exportName, typeName);
 }
 
 function resolveWorkspacePath(workspaceRoot: string, filePath: string): string {

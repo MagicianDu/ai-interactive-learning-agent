@@ -1,5 +1,7 @@
 # AI Interactive Learning Agent
 
+[![CI](https://github.com/MagicianDu/ai-interactive-learning-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/MagicianDu/ai-interactive-learning-agent/actions/workflows/ci.yml)
+
 AI Interactive Learning Agent turns technical sources into visual, interactive,
 feedback-rich learning experiences.
 
@@ -52,7 +54,7 @@ Requirements:
 Install and start the local app:
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
@@ -99,6 +101,17 @@ npm run bundle:check
 npm run codex:mcp:check
 ```
 
+Before a public beta checkpoint, run the full local release gate:
+
+```bash
+npx playwright install chromium # first time on a machine
+npm run release:check
+```
+
+`release:check` runs the stable CI gate, source regression, seed/MCP checks,
+Codex MCP config check, and a Playwright smoke that verifies the default sample
+course, a generated `#/preview/<run-id>` route, and next-page navigation.
+
 ## Public Fixtures
 
 Open-source demos should use public mock sources under:
@@ -138,7 +151,7 @@ printf '%s\n' \
 After generating and publishing a course, run the app and open:
 
 ```text
-http://127.0.0.1:5173/#/course/public-mock-smoke
+http://127.0.0.1:5173/#/preview/public-mock-smoke
 ```
 
 Learner-facing tools:
@@ -163,7 +176,7 @@ Default learner-facing clients should not ask users to approve internal
 `source-map`, `concept-map`, or `curriculum-plan` artifacts. Use those gates only
 when the user explicitly asks for expert/operator mode.
 
-## Codex Bundle
+## Try With Codex
 
 Install the local MCP config and skills bundle for Codex:
 
@@ -180,6 +193,12 @@ The relevant local skills live under `skills/`:
 - `learner-feedback-revision`
 - `learning-agent-runner`
 
+Copyable trial prompts are in:
+
+```text
+docs/runtime/codex-user-trial-script.md
+```
+
 The intended natural-language flow is:
 
 1. Clarify the learning goal and source constraints in a few questions.
@@ -192,6 +211,10 @@ The intended natural-language flow is:
 7. Use `revise_learning_course` and `apply_learning_revision` for learner
    feedback.
 8. Use `export_learning_course` for a shareable static artifact.
+
+Default learner-facing answers should return the preview URL and compact
+`qualityReport` summary. They should not ask learners to approve internal
+`source-map`, `concept-map`, or `curriculum-plan` artifacts.
 
 ## Project Structure
 
@@ -238,6 +261,13 @@ When touching source-grounding or MCP flows, also run:
 
 ```bash
 npm run test:regression
+```
+
+Before a public beta release candidate, run:
+
+```bash
+npx playwright install chromium
+npm run release:check
 ```
 
 ## License

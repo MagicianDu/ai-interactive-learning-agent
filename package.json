@@ -41,7 +41,9 @@
     "codex:bundle:install": "npm run codex:mcp:install && npm run codex:skills:install",
     "bundle:check": "tsx scripts/learning-agent-bundle.ts --check",
     "source:regression": "tsx tools/agent-runtime/learner/real-source-regression-cli.ts",
-    "seed:check": "tsx scripts/beta-seed-check.ts"
+    "seed:check": "tsx scripts/beta-seed-check.ts",
+    "smoke:playwright": "tsx scripts/playwright-smoke.ts",
+    "release:check": "npm run test:ci && npm run test:regression && npm run seed:check && npm run codex:mcp:check && npm run smoke:playwright"
   },
   "dependencies": {
     "framer-motion": "^12.0.0",
@@ -51,6 +53,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",
+    "@playwright/test": "^1.59.1",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",
     "@testing-library/user-event": "^14.6.1",

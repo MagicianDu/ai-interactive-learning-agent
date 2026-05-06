@@ -54,7 +54,8 @@ const requiredSkills = [
 const requiredDocs = [
   "docs/runtime/mcp-skills-bundle.md",
   "docs/runtime/mcp-client-setup.md",
-  "docs/runtime/codex-mcp-trial.md"
+  "docs/runtime/codex-mcp-trial.md",
+  "docs/runtime/codex-user-trial-script.md"
 ] as const;
 
 const requiredPackageScripts = [

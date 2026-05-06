@@ -6,6 +6,16 @@ import type { LessonRegistryEntry } from "../lessons/registry";
 import { CanvasMapRenderer } from "../renderers/CanvasMapRenderer";
 import { LearningProductRenderer } from "../renderers/LearningProductRenderer";
 import { WebDeckRenderer } from "../renderers/WebDeckRenderer";
+import { fetchGeneratedPreview, type GeneratedPreviewLoadResult } from "./generated-preview";
+import {
+  addFeedbackBrief,
+  completedPageCountForCourse,
+  createPageFeedbackRevisionBrief,
+  loadLearningProgress,
+  recordPageVisit,
+  saveLearningProgress,
+  type PageFeedbackOption
+} from "./learning-progress";
 import { LearningSidebar, type WorkspaceView } from "./LearningSidebar";
 import { ProjectLibrary } from "./ProjectLibrary";
 import { buildProductRoute, parseProductRoute } from "./product-route";
@@ -17,21 +27,33 @@ type CourseWorkspaceProps = {
 
 export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) {
   const initialRoute = parseProductRoute(typeof window === "undefined" ? "" : window.location.hash);
-  const defaultLesson = lessons[0];
-  const defaultCoursePack = pickDefaultCoursePack(coursePacks, initialRoute.courseId);
+  const [generatedPreview, setGeneratedPreview] = useState<GeneratedPreviewLoadResult | undefined>(undefined);
+  const [previewError, setPreviewError] = useState<string | undefined>(undefined);
+  const [previewLoading, setPreviewLoading] = useState(Boolean(initialRoute.previewRunId));
+  const workspaceLessons = useMemo(
+    () => mergeLessons(lessons, generatedPreview?.lessonEntries ?? []),
+    [generatedPreview?.lessonEntries, lessons]
+  );
+  const workspaceCoursePacks = useMemo(
+    () => mergeCoursePacks(coursePacks, generatedPreview ? [generatedPreview.coursePackEntry] : []),
+    [coursePacks, generatedPreview]
+  );
+  const defaultLesson = workspaceLessons[0];
+  const defaultCoursePack = pickDefaultCoursePack(workspaceCoursePacks, initialRoute.courseId ?? initialRoute.previewRunId);
   const defaultUnit = pickDefaultUnit(defaultCoursePack?.coursePack, initialRoute.unitId);
   const defaultCoursePackLessonId = defaultUnit?.lessonId ?? defaultCoursePack?.coursePack.units.find((unit) => unit.lessonId)?.lessonId;
   const [selectedCoursePackId, setSelectedCoursePackId] = useState(defaultCoursePack?.id ?? "");
   const [selectedLessonId, setSelectedLessonId] = useState(defaultCoursePackLessonId ?? defaultLesson?.id ?? "");
   const [selectedPageIndex, setSelectedPageIndex] = useState(initialRoute.pageIndex ?? 0);
   const [activeView, setActiveView] = useState<WorkspaceView>("deck");
-  const selectedLesson = lessons.find((lesson) => lesson.id === selectedLessonId)?.lesson ?? defaultLesson?.lesson;
-  const selectedCoursePack = coursePacks.find((entry) => entry.id === selectedCoursePackId)?.coursePack;
+  const [learningProgress, setLearningProgress] = useState(() => loadLearningProgress());
+  const selectedLesson = workspaceLessons.find((lesson) => lesson.id === selectedLessonId)?.lesson ?? defaultLesson?.lesson;
+  const selectedCoursePack = workspaceCoursePacks.find((entry) => entry.id === selectedCoursePackId)?.coursePack;
   const selectedCoursePackUnits =
     selectedCoursePack?.units
       .map((unit) => ({
         unit,
-        lessonAvailable: Boolean(unit.lessonId && lessons.some((entry) => entry.id === unit.lessonId))
+        lessonAvailable: Boolean(unit.lessonId && workspaceLessons.some((entry) => entry.id === unit.lessonId))
       })) ?? [];
   const lessonChoices = useMemo(
     () =>
@@ -52,10 +74,55 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
     };
   }, []);
 
+  useEffect(() => {
+    const previewRunId = initialRoute.previewRunId;
+    if (!previewRunId) {
+      return;
+    }
+
+    let cancelled = false;
+    setPreviewLoading(true);
+    fetchGeneratedPreview(previewRunId)
+      .then((preview) => {
+        if (cancelled) {
+          return;
+        }
+        setGeneratedPreview(preview);
+        setPreviewError(undefined);
+        const nextCoursePack = preview.coursePackEntry.coursePack;
+        const nextUnit = pickDefaultUnit(nextCoursePack, initialRoute.unitId) ?? nextCoursePack.units.find((unit) => unit.lessonId);
+        const nextLessonId = nextUnit?.lessonId ?? preview.lessonEntries[0]?.id;
+        setSelectedCoursePackId(nextCoursePack.id);
+        if (nextLessonId) {
+          setSelectedLessonId(nextLessonId);
+        }
+        setSelectedPageIndex(initialRoute.pageIndex ?? 0);
+        setActiveView("deck");
+      })
+      .catch((error: unknown) => {
+        if (cancelled) {
+          return;
+        }
+        setPreviewError(error instanceof Error ? error.message : "generated preview load failed");
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setPreviewLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialRoute.pageIndex, initialRoute.previewRunId, initialRoute.unitId]);
+
   const updateRoute = (courseId: string, lessonId: string, pageIndex: number) => {
-    const coursePack = coursePacks.find((entry) => entry.id === courseId)?.coursePack;
+    const coursePack = workspaceCoursePacks.find((entry) => entry.id === courseId)?.coursePack;
     const unitId = coursePack?.units.find((unit) => unit.lessonId === lessonId)?.unitId;
-    const nextRoute = buildProductRoute({ courseId, unitId, pageIndex });
+    const nextRoute =
+      generatedPreview?.coursePackEntry.id === courseId
+        ? buildProductRoute({ previewRunId: generatedPreview.previewRunId, unitId, pageIndex })
+        : buildProductRoute({ courseId, unitId, pageIndex });
     if (typeof window !== "undefined" && window.location.hash !== nextRoute) {
       window.history.replaceState(null, "", nextRoute);
     }
@@ -69,7 +136,7 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
   };
 
   const selectCoursePack = (coursePackId: string) => {
-    const nextCoursePack = coursePacks.find((entry) => entry.id === coursePackId)?.coursePack;
+    const nextCoursePack = workspaceCoursePacks.find((entry) => entry.id === coursePackId)?.coursePack;
     setSelectedCoursePackId(coursePackId);
     const firstUnitLessonId = nextCoursePack?.units.find((unit) => unit.lessonId)?.lessonId;
     if (firstUnitLessonId) {
@@ -80,6 +147,79 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
     }
   };
 
+  const safePageIndex = selectedLesson ? Math.min(selectedPageIndex, Math.max(selectedLesson.pages.length - 1, 0)) : 0;
+  const currentPage = selectedLesson?.pages[safePageIndex];
+  const currentPageContext = {
+    title: currentPage?.title ?? "课程页面",
+    learningGoal: currentPage?.learningGoal ?? "继续学习当前单元",
+    pageNumber: safePageIndex + 1,
+    totalPages: selectedLesson?.pages.length ?? 0,
+    sourceAnchorIds: currentPage?.sourceAnchorIds ?? []
+  };
+  const selectedCoursePackUnit = selectedCoursePack?.units.find((unit) => unit.lessonId === selectedLesson?.id);
+  const totalCoursePages = countCoursePages(selectedCoursePack, workspaceLessons);
+  const latestFeedback = learningProgress.feedbackBriefs.find(
+    (brief) =>
+      brief.courseId === selectedCoursePackId &&
+      brief.lessonId === selectedLesson?.id &&
+      brief.pageId === (currentPage?.id ?? "")
+  );
+
+  useEffect(() => {
+    if (!selectedCoursePackId || !selectedLesson?.id || !currentPage?.id) {
+      return;
+    }
+    setLearningProgress((previous) => {
+      const next = recordPageVisit(previous, {
+        courseId: selectedCoursePackId,
+        unitId: selectedCoursePackUnit?.unitId,
+        lessonId: selectedLesson.id,
+        pageId: currentPage.id,
+        pageIndex: safePageIndex
+      });
+      saveLearningProgress(next);
+      return next;
+    });
+  }, [currentPage?.id, safePageIndex, selectedCoursePackId, selectedCoursePackUnit?.unitId, selectedLesson.id]);
+
+  const submitPageFeedback = (option: PageFeedbackOption) => {
+    if (!currentPage?.id || !selectedCoursePackId || !selectedLesson) {
+      return;
+    }
+    const brief = createPageFeedbackRevisionBrief({
+      courseId: selectedCoursePackId,
+      unitId: selectedCoursePackUnit?.unitId,
+      lessonId: selectedLesson.id,
+      pageId: currentPage.id,
+      pageNumber: safePageIndex + 1,
+      option
+    });
+    setLearningProgress((previous) => {
+      const next = addFeedbackBrief(previous, brief);
+      saveLearningProgress(next);
+      return next;
+    });
+  };
+
+  if (previewLoading && initialRoute.previewRunId) {
+    return (
+      <div className="flex h-screen items-center justify-center overflow-hidden bg-slate-950 px-5 text-center text-white">
+        <p className="max-w-md text-sm text-slate-300">正在读取本地生成的课程预览...</p>
+      </div>
+    );
+  }
+
+  if (previewError) {
+    return (
+      <div className="flex h-screen items-center justify-center overflow-hidden bg-slate-950 px-5 text-center text-white">
+        <div className="max-w-lg rounded-lg border border-red-400/40 bg-red-950/40 p-5">
+          <p className="text-sm font-bold text-red-100">生成预览读取失败</p>
+          <p className="mt-2 text-sm leading-6 text-red-100/80">{previewError}</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!selectedLesson) {
     return (
       <div className="flex h-screen items-center justify-center overflow-hidden bg-slate-950 px-5 text-center text-white">
@@ -88,29 +228,25 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
     );
   }
 
-  const safePageIndex = Math.min(selectedPageIndex, Math.max(selectedLesson.pages.length - 1, 0));
-  const currentPage = selectedLesson.pages[safePageIndex];
-  const currentPageContext = {
-    title: currentPage?.title ?? "课程页面",
-    learningGoal: currentPage?.learningGoal ?? "继续学习当前单元",
-    pageNumber: safePageIndex + 1,
-    totalPages: selectedLesson.pages.length,
-    sourceAnchorIds: currentPage?.sourceAnchorIds ?? []
-  };
-  const selectedCoursePackUnit = selectedCoursePack?.units.find((unit) => unit.lessonId === selectedLesson.id);
-
   return (
     <div className="h-screen overflow-hidden bg-[#f4f7fb] text-slate-950">
       <div className="grid h-full min-h-0 grid-cols-1 lg:grid-cols-[18rem_minmax(0,1fr)]">
         <div className="hidden min-h-0 lg:block" data-testid="desktop-learning-sidebar">
           <LearningSidebar
             activeView={activeView}
-            coursePacks={coursePacks}
+            coursePacks={workspaceCoursePacks}
             currentPage={currentPageContext}
+            latestFeedback={latestFeedback}
             lessonChoices={lessonChoices}
+            onSubmitFeedback={submitPageFeedback}
             onSelectCourse={selectCoursePack}
             onSelectLesson={selectLesson}
             onSelectView={setActiveView}
+            progress={{
+              completedPages: completedPageCountForCourse(learningProgress, selectedCoursePackId),
+              totalPages: totalCoursePages,
+              quizAttempts: learningProgress.quizAttempts.filter((attempt) => attempt.courseId === selectedCoursePackId).length
+            }}
             selectedCoursePackId={selectedCoursePackId}
             selectedLessonId={selectedLessonId}
             title={selectedCoursePack?.title ?? selectedLesson.title}
@@ -128,9 +264,9 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
           <div className="min-h-0 overflow-hidden">
             {renderWorkspaceView({
               activeView,
-              coursePacks,
+              coursePacks: workspaceCoursePacks,
               currentPageSourceAnchorIds: currentPageContext.sourceAnchorIds,
-              lessons,
+              lessons: workspaceLessons,
               onSelectCourse: selectCoursePack,
               onSelectLesson: selectLesson,
               onPageChange: (pageIndex) => {
@@ -388,4 +524,33 @@ function pickDefaultCoursePack(coursePacks: CoursePackRegistryEntry[], preferred
 
 function pickDefaultUnit(coursePack: CoursePackRegistryEntry["coursePack"] | undefined, preferredUnitId: string | undefined) {
   return coursePack?.units.find((unit) => unit.unitId === preferredUnitId && unit.lessonId);
+}
+
+function mergeCoursePacks(base: CoursePackRegistryEntry[], generated: CoursePackRegistryEntry[]): CoursePackRegistryEntry[] {
+  if (generated.length === 0) {
+    return base;
+  }
+  const generatedIds = new Set(generated.map((entry) => entry.id));
+  return [...generated, ...base.filter((entry) => !generatedIds.has(entry.id))];
+}
+
+function mergeLessons(base: LessonRegistryEntry[], generated: LessonRegistryEntry[]): LessonRegistryEntry[] {
+  if (generated.length === 0) {
+    return base;
+  }
+  const generatedIds = new Set(generated.map((entry) => entry.id));
+  return [...generated, ...base.filter((entry) => !generatedIds.has(entry.id))];
+}
+
+function countCoursePages(
+  coursePack: CoursePackRegistryEntry["coursePack"] | undefined,
+  lessons: LessonRegistryEntry[]
+): number {
+  if (!coursePack) {
+    return lessons[0]?.lesson.pages.length ?? 0;
+  }
+  return coursePack.units.reduce((sum, unit) => {
+    const lesson = lessons.find((entry) => entry.id === unit.lessonId)?.lesson;
+    return sum + (lesson?.pages.length ?? 0);
+  }, 0);
 }

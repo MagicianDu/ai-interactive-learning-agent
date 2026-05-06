@@ -33,6 +33,8 @@ Use this skill to turn learner-supplied material into a course request that the 
 
 Track selected chapters, selected topics, audience, language, and `unitPages` as learner-visible choices. `unitPages` means pages per unit.
 
+Ask at most three learner-answerable clarification questions. Never ask a learner to approve source maps, concept maps, curriculum plans, or critic reports in the default flow.
+
 ## Apply The Plan Through MCP
 
 Call the learner-facing tools in this order:
@@ -43,6 +45,8 @@ Call the learner-facing tools in this order:
 {"method":"tools/call","params":{"name":"learning_agent.publish_learning_course","arguments":{"runId":"<run-id>","coursePack":{},"lessons":[]}}}
 {"method":"tools/call","params":{"name":"learning_agent.get_learning_preview","arguments":{"runId":"<run-id>"}}}
 ```
+
+Normal outputs should be compact: preview URL, course shape, and `qualityReport` status/score/checks. Keep detailed artifacts available only when the learner explicitly asks for expert review.
 
 ## Quality Checklist
 

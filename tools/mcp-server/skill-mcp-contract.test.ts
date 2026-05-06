@@ -45,6 +45,11 @@ describe("skill and MCP contracts", () => {
     expectContainsInOrder(defaultWorkflow, learnerDefaultTools);
     expect(defaultWorkflow).not.toContain("learning_agent.plan_run");
     expect(defaultWorkflow).not.toContain("learning_agent.approve_gate");
+    expect(defaultWorkflow).not.toContain("source-map");
+    expect(defaultWorkflow).not.toContain("concept-map");
+    expect(defaultWorkflow).not.toContain("curriculum-plan");
+    expect(section(markdown, "## Learner-Facing Response Shape")).toContain("qualityReport.status");
+    expect(section(markdown, "## Learner-Facing Response Shape")).toContain("#/preview/<run-id>");
     expect(markdown.indexOf("## Default Learner Workflow")).toBeLessThan(markdown.indexOf("## Expert/Operator Mode"));
   });
 

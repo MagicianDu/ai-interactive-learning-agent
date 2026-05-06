@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { AgentRuntimeError } from "../errors.js";
+import type { CompactCourseQualityReport } from "../quality/course-quality-report.js";
 
 export type ExportBundleInput = {
   runId: string;
@@ -12,6 +13,7 @@ export type ExportBundleResult = {
   runId: string;
   exportDir: string;
   manifestPath: string;
+  qualityReport?: CompactCourseQualityReport;
 };
 
 export class ExportBundleService {
@@ -31,6 +33,7 @@ export class ExportBundleService {
       coursePackPath?: string;
       lessonPaths?: string[];
       publishNotes?: string;
+      qualityReport?: CompactCourseQualityReport;
     };
 
     const exportDir = path.join(this.workspaceRoot, "runs", input.runId, "exports", "static-course");
@@ -43,6 +46,7 @@ export class ExportBundleService {
       lessonCount: preview.lessonCount,
       coursePackPath: preview.coursePackPath,
       lessonPaths: preview.lessonPaths ?? [],
+      qualityReport: preview.qualityReport,
       publishNotes: preview.publishNotes,
       artifactVersions: [],
       exportedAt: new Date().toISOString(),
@@ -50,7 +54,13 @@ export class ExportBundleService {
     };
     const manifestPath = path.join(exportDir, "manifest.json");
     await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
-    return { status: "export_ready", runId: input.runId, exportDir, manifestPath };
+    return {
+      status: "export_ready",
+      runId: input.runId,
+      exportDir,
+      manifestPath,
+      ...(preview.qualityReport ? { qualityReport: preview.qualityReport } : {})
+    };
   }
 }
 

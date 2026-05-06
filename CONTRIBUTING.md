@@ -27,6 +27,17 @@ npm run test:regression
 npm run seed:check
 ```
 
+Run the full release gate before public beta checkpoints:
+
+```bash
+npx playwright install chromium # first time on a machine
+npm run release:check
+```
+
+Use `npm run smoke:playwright` when changing preview routing, Vite runtime
+middleware, or learner navigation. It starts Vite locally and verifies the
+default public sample plus a generated `#/preview/<run-id>` course.
+
 ## Source And Privacy Rules
 
 - Do not commit private books, papers, patents, blogs, notes, PDFs, or generated
@@ -41,4 +52,5 @@ npm run seed:check
 - The change is scoped and described clearly.
 - Tests or docs were updated for behavior changes.
 - `npm run test:ci` passes locally.
+- `npm run release:check` passes for public beta or MCP/runtime changes.
 - No private source path or generated private lesson is included.

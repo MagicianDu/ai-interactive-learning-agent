@@ -134,7 +134,8 @@ describe("MCP JSON-RPC server", () => {
 
     expect(published).toMatchObject({
       status: "preview_ready",
-      preview: { devCommand: "npm run dev", localUrl: "http://127.0.0.1:5173/" }
+      preview: { devCommand: "npm run dev", localUrl: "http://127.0.0.1:5173/#/preview/learner-hash" },
+      qualityReport: { status: "passed" }
     });
     expect(preview).toMatchObject({
       status: "preview_ready",
@@ -173,7 +174,8 @@ describe("MCP JSON-RPC server", () => {
       sourceIngest: {
         anchorCount: expect.any(Number)
       },
-      preview: { devCommand: "npm run dev", localUrl: "http://127.0.0.1:5173/" }
+      preview: { devCommand: "npm run dev", localUrl: "http://127.0.0.1:5173/#/preview/mcp-grounded-blog" },
+      qualityReport: { status: "passed" }
     });
     await expect(readFile(path.join(root, "runs", "mcp-grounded-blog", "learning-preview.json"), "utf8")).resolves.toContain(
       "preview_ready"

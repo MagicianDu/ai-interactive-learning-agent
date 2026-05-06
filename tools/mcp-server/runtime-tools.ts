@@ -164,7 +164,8 @@ export class LearningAgentRuntimeTools {
       runId: requiredString(options, "runId"),
       lessons: requiredArray(options, "lessons"),
       coursePack: options.coursePack,
-      publishNotes: optionalString(options.publishNotes)
+      publishNotes: optionalString(options.publishNotes),
+      outputMode: optionalOutputMode(options.outputMode)
     });
   }
 
@@ -508,6 +509,16 @@ function requiredArray(input: Record<string, unknown>, key: string): unknown[] {
 
 function optionalString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+function optionalOutputMode(value: unknown): "preview" | "source" | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (value === "preview" || value === "source") {
+    return value;
+  }
+  throw new Error("outputMode must be preview or source");
 }
 
 function optionalStringArray(value: unknown): string[] | undefined {

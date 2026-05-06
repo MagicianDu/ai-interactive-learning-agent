@@ -48,6 +48,8 @@ Clarify only learner-visible choices when missing:
 - unit size: pages per unit; default to the existing product default when unspecified
 - output: preview link, exported course pack, or both
 
+Ask at most three clarification questions. If the learner already gave source, audience, strategy, and unit size, do not ask more questions; proceed to MCP.
+
 ## Default Learner Workflow
 
 Use this flow for normal Codex/Claude-style natural language operation. It should produce a previewable learning course without asking the learner to approve source maps, concept maps, curriculum plans, or other internal artifacts. Codex should author the course content; MCP should provide context, validate, and publish.
@@ -70,6 +72,8 @@ Use this flow for normal Codex/Claude-style natural language operation. It shoul
 {"method":"tools/call","params":{"name":"learning_agent.publish_learning_course","arguments":{"runId":"<run-id>","coursePack":{},"lessons":[]}}}
 ```
 
+Default publishing writes clean preview JSON under `runs/<run-id>/preview/` and returns a compact `qualityReport`. Do not pass `outputMode=source` unless maintaining repository fixtures.
+
 4. Open a learner-visible preview:
 
 ```json
@@ -91,6 +95,17 @@ Use this flow for normal Codex/Claude-style natural language operation. It shoul
 ```
 
 Use `learning_agent.generate_grounded_course` only for deterministic quick drafts or smoke previews when the user explicitly prioritizes speed over content quality.
+
+## Learner-Facing Response Shape
+
+After publish, preview, revision, or export, respond with only learner-actionable information:
+
+- Preview URL, usually `http://127.0.0.1:5173/#/preview/<run-id>`
+- Course shape: unit count, strategy, pages per unit, source kind
+- Compact quality summary: `qualityReport.status`, score, major checks, required fix count
+- One suggested next action: open preview, give feedback, revise, or export
+
+Do not paste large source maps, concept maps, curriculum plans, full critic reports, or raw nested JSON unless the user explicitly asks for expert/operator details.
 
 ## Expert/Operator Mode
 

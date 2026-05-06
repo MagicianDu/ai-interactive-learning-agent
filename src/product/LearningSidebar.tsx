@@ -1,6 +1,7 @@
-import { BookOpen, FolderOpen, Layers3 } from "lucide-react";
+import { BookOpen, CheckCircle2, FolderOpen, Layers3, MessageSquareText } from "lucide-react";
 
 import type { CoursePackRegistryEntry } from "../course-packs/registry";
+import { pageFeedbackOptions, type PageFeedbackOption, type PageFeedbackRevisionBrief } from "./learning-progress";
 import { productModeTabs, type CourseView } from "./ProductModeTabs";
 
 export type WorkspaceView = CourseView | "library" | "structure" | "sources";
@@ -22,10 +23,17 @@ type LearningSidebarProps = {
   activeView: WorkspaceView;
   coursePacks: CoursePackRegistryEntry[];
   currentPage: CurrentPageContext;
+  latestFeedback?: PageFeedbackRevisionBrief;
   lessonChoices: LessonChoice[];
+  onSubmitFeedback: (option: PageFeedbackOption) => void;
   onSelectCourse: (coursePackId: string) => void;
   onSelectLesson: (lessonId: string) => void;
   onSelectView: (view: WorkspaceView) => void;
+  progress: {
+    completedPages: number;
+    totalPages: number;
+    quizAttempts: number;
+  };
   selectedCoursePackId: string;
   selectedLessonId: string;
   title: string;
@@ -35,10 +43,13 @@ export function LearningSidebar({
   activeView,
   coursePacks,
   currentPage,
+  latestFeedback,
   lessonChoices,
+  onSubmitFeedback,
   onSelectCourse,
   onSelectLesson,
   onSelectView,
+  progress,
   selectedCoursePackId,
   selectedLessonId,
   title
@@ -156,7 +167,52 @@ export function LearningSidebar({
         </p>
         <p className="mt-1 line-clamp-2 text-sm font-bold text-slate-950">{currentPage.title}</p>
         <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">{currentPage.learningGoal}</p>
-        <p className="mt-2 text-xs font-semibold text-emerald-700">来源锚点 {currentPage.sourceAnchorIds.length}</p>
+        <div className="mt-3 grid gap-2">
+          <div className="rounded-md bg-slate-50 px-3 py-2">
+            <div className="flex items-center justify-between gap-2 text-xs font-bold text-slate-600">
+              <span className="inline-flex items-center gap-1">
+                <CheckCircle2 aria-hidden className="size-3.5" />
+                完成进度
+              </span>
+              <span>
+                {progress.completedPages}/{progress.totalPages}
+              </span>
+            </div>
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200">
+              <div
+                className="h-full rounded-full bg-emerald-500"
+                style={{ width: `${progressPercent(progress.completedPages, progress.totalPages)}%` }}
+              />
+            </div>
+            <p className="mt-2 text-xs font-semibold text-slate-500">答题记录 {progress.quizAttempts}</p>
+          </div>
+
+          <div className="rounded-md border border-slate-200 bg-white p-3">
+            <p className="inline-flex items-center gap-1 text-xs font-bold text-slate-600">
+              <MessageSquareText aria-hidden className="size-3.5" />
+              本页反馈
+            </p>
+            <div className="mt-2 grid grid-cols-2 gap-1.5">
+              {pageFeedbackOptions.map((option) => (
+                <button
+                  className="min-h-8 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-700 hover:border-sky-300 hover:bg-sky-50 hover:text-sky-900"
+                  key={option.id}
+                  onClick={() => onSubmitFeedback(option.id)}
+                  type="button"
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            {latestFeedback ? (
+              <p className="mt-2 rounded-md bg-emerald-50 px-2 py-1.5 text-xs font-semibold leading-5 text-emerald-800">
+                已记录：第 {latestFeedback.pageNumber} 页，{feedbackLabel(latestFeedback.option)}
+              </p>
+            ) : null}
+          </div>
+
+          <p className="text-xs font-semibold text-emerald-700">来源锚点 {currentPage.sourceAnchorIds.length}</p>
+        </div>
       </section>
     </aside>
   );
@@ -167,4 +223,15 @@ function navButtonClass(active: boolean): string {
     "flex min-h-12 w-full items-center gap-3 rounded-md border px-3 py-2 text-left transition",
     active ? "border-sky-300 bg-sky-50 text-sky-900" : "border-transparent bg-white text-slate-700 hover:border-slate-200 hover:bg-slate-50"
   ].join(" ");
+}
+
+function progressPercent(completedPages: number, totalPages: number): number {
+  if (totalPages <= 0) {
+    return 0;
+  }
+  return Math.min(100, Math.round((completedPages / totalPages) * 100));
+}
+
+function feedbackLabel(option: PageFeedbackOption): string {
+  return pageFeedbackOptions.find((item) => item.id === option)?.label ?? "已反馈";
 }

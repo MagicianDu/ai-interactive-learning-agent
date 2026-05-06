@@ -3,7 +3,14 @@ import path from "node:path";
 
 import { AgentRuntimeError } from "../errors.js";
 import { validateChineseFirstLesson } from "../quality/chinese-first-validator.js";
+import {
+  buildCourseQualityReport,
+  toCompactCourseQualityReport,
+  writeCourseQualityReport,
+  type CompactCourseQualityReport
+} from "../quality/course-quality-report.js";
 import { validateLessonQuality } from "../quality/lesson-quality-validator.js";
+import { analyzeSourceEvidence } from "../quality/source-evidence-analyzer.js";
 import { validateSourceGrounding } from "../quality/source-grounding-validator.js";
 import type { QualityIssue } from "../quality/validation-result.js";
 import { isNonEmptyString, isRecord, isStringArray } from "../quality/validation-result.js";
@@ -57,6 +64,7 @@ export type PublishLearningCourseInput = {
   lessons: unknown[];
   coursePack: unknown;
   publishNotes?: string;
+  outputMode?: "preview" | "source";
 };
 
 type LearnerProjectFile = {
@@ -78,9 +86,12 @@ export type PublishLearningCourseResult =
       status: "preview_ready";
       runId: string;
       coursePackId: string;
+      outputMode: "preview" | "source";
       coursePackPath: string;
       lessonPaths: string[];
+      previewManifestPath: string;
       preview: LearningPreviewInfo;
+      qualityReport: CompactCourseQualityReport;
       quality: {
         checkedLessons: number;
         blockingIssueCount: 0;
@@ -90,6 +101,7 @@ export type PublishLearningCourseResult =
       status: "revision_required";
       runId: string;
       userMessage: string;
+      qualityReport: CompactCourseQualityReport;
       issues: Array<{
         lessonId: string;
         rule: string;
@@ -102,7 +114,7 @@ export type PublishLearningCourseResult =
 
 type LearningPreviewInfo = {
   devCommand: "npm run dev";
-  localUrl: "http://127.0.0.1:5173/";
+  localUrl: string;
   instructions: string[];
 };
 
@@ -124,6 +136,16 @@ export class LearningCoursePublisher {
     }
     const coursePack = normalizeCoursePack(input.coursePack, input.runId, new Set(lessons.map((lesson) => lesson.id)));
     const sourceGroundingConfig = await this.resolveSourceGroundingConfig(input.runId);
+    const sourceEvidence = sourceGroundingConfig ? analyzeSourceEvidence(lessons, sourceGroundingConfig) : undefined;
+    const courseQualityReport = buildCourseQualityReport({
+      runId: input.runId,
+      coursePackId: coursePack.id,
+      lessons,
+      sourceGroundingConfig,
+      sourceEvidence
+    });
+    const courseQualityReportPath = await writeCourseQualityReport(this.workspaceRoot, input.runId, courseQualityReport);
+    const compactQualityReport = toCompactCourseQualityReport(courseQualityReport, courseQualityReportPath);
 
     const blockingIssues = collectBlockingIssues(lessons, sourceGroundingConfig);
     if (blockingIssues.length > 0) {
@@ -131,6 +153,7 @@ export class LearningCoursePublisher {
         status: "revision_required",
         runId: input.runId,
         userMessage: "课程还不能发布：需要 Codex 先修订中文学习内容和质量问题。",
+        qualityReport: compactQualityReport,
         issues: blockingIssues.map((issue) => ({
           lessonId: issue.lessonId,
           rule: issue.issue.rule,
@@ -142,22 +165,71 @@ export class LearningCoursePublisher {
       };
     }
 
-    const lessonPaths = await Promise.all(lessons.map((lesson) => this.writeLesson(lesson)));
-    const coursePackPath = await this.writeCoursePack(coursePack);
-    const preview = buildPreviewInfo(coursePack);
-    await this.writePreviewManifest(input.runId, coursePack, lessonPaths, coursePackPath, preview, input.publishNotes);
+    const outputMode = input.outputMode ?? "preview";
+    const preview = buildPreviewInfo(input.runId, coursePack);
+    const publishedPaths =
+      outputMode === "source" ? await this.writeSourceBundle(lessons, coursePack) : await this.writePreviewBundle(input.runId, lessons, coursePack);
+    const previewManifestPath = await this.writePreviewManifest({
+      runId: input.runId,
+      coursePack,
+      lessonPaths: publishedPaths.lessonPaths,
+      coursePackPath: publishedPaths.coursePackPath,
+      preview,
+      publishNotes: input.publishNotes,
+      outputMode,
+      qualityReport: compactQualityReport,
+      previewRelativeCoursePackPath: publishedPaths.previewRelativeCoursePackPath,
+      previewRelativeLessonPaths: publishedPaths.previewRelativeLessonPaths
+    });
 
     return {
       status: "preview_ready",
       runId: input.runId,
       coursePackId: coursePack.id,
-      coursePackPath,
-      lessonPaths,
+      outputMode,
+      coursePackPath: publishedPaths.coursePackPath,
+      lessonPaths: publishedPaths.lessonPaths,
+      previewManifestPath,
       preview,
+      qualityReport: compactQualityReport,
       quality: {
         checkedLessons: lessons.length,
         blockingIssueCount: 0
       }
+    };
+  }
+
+  private async writeSourceBundle(lessons: LessonLike[], coursePack: CoursePackLike): Promise<PublishedPaths> {
+    const lessonPaths = await Promise.all(lessons.map((lesson) => this.writeLessonSource(lesson)));
+    const coursePackPath = await this.writeCoursePackSource(coursePack);
+    return {
+      coursePackPath,
+      lessonPaths,
+      previewRelativeCoursePackPath: undefined,
+      previewRelativeLessonPaths: undefined
+    };
+  }
+
+  private async writePreviewBundle(runId: string, lessons: LessonLike[], coursePack: CoursePackLike): Promise<PublishedPaths> {
+    const previewDir = assertSafeChildPath(path.join(this.workspaceRoot, "runs"), runId, "runId");
+    const previewRoot = path.join(previewDir, "preview");
+    const lessonsDir = path.join(previewRoot, "lessons");
+    await mkdir(lessonsDir, { recursive: true });
+    const coursePackPath = path.join(previewRoot, "course-pack.json");
+    await writeJsonFile(coursePackPath, coursePack);
+    const lessonPaths = await Promise.all(
+      lessons.map(async (lesson) => {
+        const lessonPath = path.join(lessonsDir, `${lesson.id}.json`);
+        await writeJsonFile(lessonPath, lesson);
+        return lessonPath;
+      })
+    );
+
+    return {
+      coursePackPath,
+      lessonPaths,
+      previewRelativeCoursePackPath: "course-pack.json",
+      previewRelativeLessonPaths: lessons.map((lesson) => `lessons/${lesson.id}.json`)
     };
   }
 
@@ -197,7 +269,7 @@ export class LearningCoursePublisher {
     });
   }
 
-  private async writeLesson(lesson: LessonLike): Promise<string> {
+  private async writeLessonSource(lesson: LessonLike): Promise<string> {
     const lessonDir = assertSafeChildPath(path.join(this.workspaceRoot, "src", "lessons"), lesson.id, "lesson id");
     await mkdir(lessonDir, { recursive: true });
     const lessonPath = path.join(lessonDir, "lesson.ts");
@@ -205,7 +277,7 @@ export class LearningCoursePublisher {
     return lessonPath;
   }
 
-  private async writeCoursePack(coursePack: CoursePackLike): Promise<string> {
+  private async writeCoursePackSource(coursePack: CoursePackLike): Promise<string> {
     const coursePackDir = assertSafeChildPath(path.join(this.workspaceRoot, "src", "course-packs"), coursePack.id, "course pack id");
     await mkdir(coursePackDir, { recursive: true });
     const coursePackPath = path.join(coursePackDir, "coursePack.ts");
@@ -213,28 +285,65 @@ export class LearningCoursePublisher {
     return coursePackPath;
   }
 
-  private async writePreviewManifest(
-    runId: string,
-    coursePack: CoursePackLike,
-    lessonPaths: string[],
-    coursePackPath: string,
-    preview: LearningPreviewInfo,
-    publishNotes: string | undefined
-  ): Promise<void> {
+  private async writePreviewManifest({
+    runId,
+    coursePack,
+    lessonPaths,
+    coursePackPath,
+    preview,
+    publishNotes,
+    outputMode,
+    qualityReport,
+    previewRelativeCoursePackPath,
+    previewRelativeLessonPaths
+  }: {
+    runId: string;
+    coursePack: CoursePackLike;
+    lessonPaths: string[];
+    coursePackPath: string;
+    preview: LearningPreviewInfo;
+    publishNotes: string | undefined;
+    outputMode: "preview" | "source";
+    qualityReport: CompactCourseQualityReport;
+    previewRelativeCoursePackPath: string | undefined;
+    previewRelativeLessonPaths: string[] | undefined;
+  }): Promise<string> {
     const runDir = assertSafeChildPath(path.join(this.workspaceRoot, "runs"), runId, "runId");
+    const previewDir = path.join(runDir, "preview");
     await mkdir(runDir, { recursive: true });
+    await mkdir(previewDir, { recursive: true });
+    const previewManifestPath = path.join(previewDir, "manifest.json");
+    const previewManifest = {
+      schemaVersion: 1,
+      status: "preview_ready",
+      outputMode,
+      runId,
+      coursePackId: coursePack.id,
+      courseTitle: coursePack.title,
+      lessonCount: lessonPaths.length,
+      coursePackPath: previewRelativeCoursePackPath ?? coursePackPath,
+      lessonPaths: previewRelativeLessonPaths ?? lessonPaths,
+      preview,
+      qualityReport,
+      publishNotes
+    };
+    await writeJsonFile(previewManifestPath, previewManifest);
     await writeFile(
       path.join(runDir, "learning-preview.json"),
       JSON.stringify(
         {
           status: "preview_ready",
+          schemaVersion: 2,
+          outputMode,
           runId,
           coursePackId: coursePack.id,
           courseTitle: coursePack.title,
           lessonCount: lessonPaths.length,
           coursePackPath,
           lessonPaths,
+          previewManifestPath,
           preview,
+          qualityReport,
           publishNotes
         },
         null,
@@ -242,8 +351,16 @@ export class LearningCoursePublisher {
       ),
       "utf8"
     );
+    return previewManifestPath;
   }
 }
+
+type PublishedPaths = {
+  coursePackPath: string;
+  lessonPaths: string[];
+  previewRelativeCoursePackPath: string | undefined;
+  previewRelativeLessonPaths: string[] | undefined;
+};
 
 function collectBlockingIssues(lessons: LessonLike[], sourceGroundingConfig: RunConfig | undefined): Array<{ lessonId: string; issue: QualityIssue }> {
   return lessons.flatMap((lesson) =>
@@ -358,16 +475,20 @@ function normalizeCoursePackUnit(value: unknown, lessonIds: Set<string>): Course
   }) as CoursePackUnitLike;
 }
 
-function buildPreviewInfo(coursePack: CoursePackLike): LearningPreviewInfo {
+function buildPreviewInfo(runId: string, coursePack: CoursePackLike): LearningPreviewInfo {
   return {
     devCommand: "npm run dev",
-    localUrl: "http://127.0.0.1:5173/",
+    localUrl: `http://127.0.0.1:5173/#/preview/${runId}`,
     instructions: [
       "在项目根目录运行 npm run dev。",
-      `打开 http://127.0.0.1:5173/，在课程包列表中选择「${coursePack.title}」。`,
-      "如果页面仍显示旧课程，请刷新浏览器或重启 Vite dev server。"
+      `打开 http://127.0.0.1:5173/#/preview/${runId}，直接查看「${coursePack.title}」。`,
+      "预览数据从 runs/<run-id>/preview/ 读取，不需要写入 src。"
     ]
   };
+}
+
+async function writeJsonFile(filePath: string, value: unknown): Promise<void> {
+  await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
 }
 
 function renderLessonSource(lesson: LessonLike): string {

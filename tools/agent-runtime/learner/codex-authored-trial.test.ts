@@ -25,10 +25,13 @@ describe("CodexAuthoredTrialService", () => {
       coursePackId: "trial-book",
       preview: {
         devCommand: "npm run dev",
-        localUrl: "http://127.0.0.1:5173/"
+        localUrl: "http://127.0.0.1:5173/#/preview/trial-book"
+      },
+      qualityReport: {
+        status: "passed"
       }
     });
-    await expect(readFile(path.join(root, "src", "lessons", "trial-book-overview", "lesson.ts"), "utf8")).resolves.toContain(
+    await expect(readFile(path.join(root, "runs", "trial-book", "preview", "lessons", "trial-book-overview.json"), "utf8")).resolves.toContain(
       "sourceContext"
     );
   });

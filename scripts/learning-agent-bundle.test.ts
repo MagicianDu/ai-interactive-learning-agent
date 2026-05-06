@@ -30,6 +30,7 @@ describe("learning agent MCP and skills bundle", () => {
       "learning_agent.export_learning_course"
     ]);
     expect(manifest.docs).toContain("docs/runtime/mcp-skills-bundle.md");
+    expect(manifest.docs).toContain("docs/runtime/codex-user-trial-script.md");
   });
 
   test("plans Codex skill installation without changing unrelated skills", () => {
@@ -51,6 +52,7 @@ describe("learning agent MCP and skills bundle", () => {
     expect(report.missing).toEqual([]);
     expect(report.checked).toContain("package.json#scripts.codex:bundle:install");
     expect(report.checked).toContain("docs/runtime/mcp-skills-bundle.md");
+    expect(report.checked).toContain("docs/runtime/codex-user-trial-script.md");
     expect(report.checked).toContain("skills/source-to-course/SKILL.md");
   });
 });
