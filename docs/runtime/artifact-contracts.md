@@ -23,6 +23,20 @@ runs/
     artifacts/
       source-ingest.v1.json
       source-ingest.draft.json
+      source-graph.v1.json
+      source-graph.draft.json
+      source-anchors.v1.json
+      source-anchors.draft.json
+      source-concepts.v1.json
+      source-concepts.draft.json
+      source-coverage.v1.json
+      source-coverage.draft.json
+      course-plan.v1.json
+      course-plan.draft.json
+      unit-plan.v1.json
+      unit-plan.draft.json
+      authoring-context.v1.json
+      authoring-context.draft.json
       learning-architecture.v1.json
       learning-architecture.draft.json
       learning-architecture.approved.json
@@ -88,6 +102,14 @@ For an exact versioned file to count as approved, it must match the `approvedArt
 | `artifacts/curriculum-plan.approved.json` | Optional alias for the approved curriculum-plan artifact. |
 | `artifacts/source-ingest.vN.json` | Concepts, dependencies, examples, misconceptions, and candidate interactions extracted from source. |
 | `artifacts/source-ingest.draft.json` | Optional alias for the latest source-ingest draft. |
+| `artifacts/source-graph.vN.json` | Source Graph V2: source units, anchors, concept candidates, examples, misconceptions, candidate interactions, and coverage metadata. |
+| `artifacts/source-graph.draft.json` | Optional alias for the latest source-graph draft. |
+| `artifacts/source-anchors.vN.json` | Normalized source anchors and sourceAnchorIds used by source-backed authoring. |
+| `artifacts/source-concepts.vN.json` | Concepts, examples, misconceptions, and candidate interactions derived from the source graph. |
+| `artifacts/source-coverage.vN.json` | Source graph coverage counts and source unit mapping. |
+| `artifacts/course-plan.vN.json` | Course Planning V2 output with effective strategy, strategy reason, unit recommendations, and acceptance expectations. |
+| `artifacts/unit-plan.vN.json` | Unit-level plan with source anchors, expected interactions, expected assessments, transfer expectations, and source coverage expectations. |
+| `artifacts/authoring-context.vN.json` | Context returned by `learning_agent.get_authoring_context` for Codex-authored course bundles. |
 | `artifacts/learning-architecture.vN.json` | Audience assumptions, prerequisites, objectives, planned page count, and page sequence. |
 | `artifacts/learning-architecture.draft.json` | Optional alias for the latest learning-architecture draft. |
 | `artifacts/learning-architecture.approved.json` | Optional alias for the approved learning-architecture artifact. |
@@ -130,6 +152,83 @@ Other artifacts may still be reviewed by the operator, but these seven ids are t
 ## Course Pack Planning
 
 For source-backed runs, `curriculum-plan` should include a `coursePack` object. The default strategy is `overview_plus_topic`: create one overview unit, then split core topic units while preserving the original source mapping.
+
+The learner-facing MCP path now also writes Source Graph V2 and Course Planning V2 artifacts during `get_authoring_context` and deterministic grounded generation. These artifacts are audit and quality inputs, not default learner approval gates. In normal learner mode, Codex should summarize the course shape and quality report instead of asking the learner to inspect these internal files.
+
+Source Graph V2 minimal shape:
+
+```json
+{
+  "runId": "agentic-design-book",
+  "sourceKind": "book",
+  "sourceUnits": [
+    {
+      "id": "source-001:chapter-1",
+      "title": "第 1 章 Agent Loop",
+      "kind": "chapter",
+      "role": "chapter",
+      "order": 1,
+      "anchorIds": ["source-001:chapter-1"]
+    }
+  ],
+  "concepts": [
+    {
+      "id": "concept-01",
+      "label": "全局地图",
+      "sourceUnitIds": ["source-001:chapter-1"],
+      "sourceAnchorIds": ["source-001:chapter-1"],
+      "prerequisiteIds": [],
+      "exampleAnchorIds": ["source-001:chapter-1"],
+      "misconceptionIds": ["summary-understanding"]
+    }
+  ],
+  "candidateInteractions": [
+    {
+      "id": "predict-source-support",
+      "conceptId": "concept-01",
+      "kind": "prediction",
+      "learnerAction": "先预测一个解释最可能由哪段来源支持",
+      "expectedObservation": "系统展示预测锚点和真实锚点的差异，帮助学习者建立来源定位能力。"
+    }
+  ],
+  "coverage": {
+    "anchorCount": 12,
+    "sourceUnitCount": 5,
+    "conceptCount": 5,
+    "misconceptionCount": 2,
+    "candidateInteractionCount": 2
+  }
+}
+```
+
+Course Planning V2 minimal shape:
+
+```json
+{
+  "coursePlan": {
+    "strategy": "overview_plus_topic",
+    "strategyReason": "先给总览课，再按核心 topic 拆课，适合大多数长资料学习路径。",
+    "unitPages": 8,
+    "acceptanceExpectations": [
+      {
+        "id": "overview-plus-focused-units",
+        "scope": "course",
+        "required": true,
+        "description": "长资料默认包含一个总览单元和至少两个 focused units。"
+      }
+    ],
+    "recommendedUnits": [
+      {
+        "unitId": "unit-topic-01",
+        "kind": "topic",
+        "expectedInteractions": ["prediction", "comparison"],
+        "expectedAssessments": ["misconception_check", "transfer_challenge"],
+        "transferExpectation": "把该概念迁移到一个新的技术资料或实践场景。"
+      }
+    ]
+  }
+}
+```
 
 Minimal shape:
 

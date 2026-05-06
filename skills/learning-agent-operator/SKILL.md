@@ -22,6 +22,7 @@ Use this skill when the user asks Codex to generate, preview, revise, export, or
 - Codex or Claude authors the final `coursePack` and `lessons`; MCP provides context, validation, publishing, preview, revision, and export.
 - Keep all learner-facing lesson content中文优先.
 - Preserve source grounding with `sourceAnchorIds` at lesson or page level for source-backed courses.
+- `get_authoring_context` records Source Graph V2 and Course Planning V2 artifacts for audit and downstream quality checks. These are not learner approvals in the default flow.
 - 不要让学习者审批内部 artifacts such as source maps, concept maps, curriculum plans, or critic reports in the default learner flow.
 
 ## Natural Language Mapping
@@ -65,6 +66,8 @@ Use this flow for normal Codex/Claude-style natural language operation. It shoul
 ```json
 {"method":"tools/call","params":{"name":"learning_agent.get_authoring_context","arguments":{"runId":"<run-id>"}}}
 ```
+
+Use the returned `coursePlan.strategyReason`, `coursePlan.acceptanceExpectations`, and `coursePlan.recommendedUnits[*].expectedInteractions/expectedAssessments/transferExpectation` as authoring constraints. Do not paste source graph or course-plan artifacts to the learner unless they ask for expert details.
 
 3. Codex authors `coursePack` and `lessons`, then publishes:
 
@@ -242,6 +245,7 @@ npm run build
 - Do not collapse source-backed material into one short lesson unless the user explicitly asks for an overview only.
 - Do not treat a book's total output as `--unit-pages`; it is per-unit.
 - Do not expose internal artifacts or approvals in the default learner workflow.
+- In expert mode, inspect `source-graph`, `course-plan`, `unit-plan`, and `authoring-context` artifacts when debugging source understanding or planning quality.
 - Do not approve artifacts without inspecting versioned files under `runs/<run-id>/artifacts/` when using expert/operator mode.
 - Do not promote low-level draft lessons until the relevant `lesson` artifact is approved.
 - Do not assume old runs match the latest schema; check `run.config.json` and artifact shape first.

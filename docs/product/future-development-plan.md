@@ -4,6 +4,18 @@ Last updated: 2026-05-06
 
 This document defines the next product development path after the seed-ready beta. It should be read together with `docs/product/current-product-state.md`.
 
+The current serial product mainline is:
+
+```text
+docs/superpowers/specs/2026-05-06-product-mainline-development-spec.md
+```
+
+Parallel exploration tracks are recorded for later promotion here:
+
+```text
+docs/product/parallel-exploration-backlog.md
+```
+
 The executable spec for the next quality push is:
 
 ```text

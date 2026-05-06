@@ -21,6 +21,7 @@ For deterministic quick-draft regression only, replace the last sentence with:
 Acceptance:
 
 - Course pack has one overview unit and at least one topic unit.
+- Source Graph V2 includes chapter or section source units when headings are present.
 - Generated unit count is at least 3 for seed regression.
 - Source semantic expectations report at least `全局地图` and `核心机制` as matched concept labels.
 - Semantic status is `passed`; missing concept labels fail seed readiness.
@@ -41,6 +42,7 @@ Prompt pattern:
 Acceptance:
 
 - Overview separates research problem, contribution, assumptions, evidence and limitations.
+- Source Graph V2 classifies available sections into problem, method, experiment, limitation, and conclusion roles when present.
 - Generated unit count is at least 3 for seed regression.
 - Source semantic expectations report `研究问题`, `方法结构`, and `证据边界` as matched concept labels.
 - Semantic status is `passed`; missing concept labels fail seed readiness.
@@ -65,6 +67,7 @@ https://patents.google.com/patent/WO2025085566A1/en
 Acceptance:
 
 - Units cover claims, embodiments, technical solution and transfer/risk.
+- Source Graph V2 classifies available source units into claim, background, embodiment, and figure roles when present.
 - Generated unit count is at least 3 for seed regression.
 - Source semantic expectations report `权利要求边界`, `技术方案`, and `实施例` as matched concept labels.
 - Semantic status is `passed`; missing concept labels fail seed readiness.
@@ -89,6 +92,7 @@ https://techcommunity.microsoft.com/blog/azure-ai-foundry-blog/bonus-rag-time-jo
 Acceptance:
 
 - Lesson starts from a practical problem.
+- Source Graph V2 preserves heading hierarchy and argument-flow units when URL or text extraction succeeds.
 - Generated unit count is at least 3 for seed regression.
 - Source semantic expectations report `实践问题` and `操作流程` as matched concept labels.
 - Semantic status is `passed` when URL content is extracted, or `warning` when URL extraction falls back but the course still generates.
@@ -104,7 +108,9 @@ For all source types:
 - `generate_grounded_course` must return `preview_ready` for deterministic draft regression.
 - If source anchors are missing, the expected result is `revision_required`.
 - `source:regression` reports `generatedUnitCount`, `semanticStatus`, `sourceEvidenceStatus`, `sourceEvidence`, `missingConceptLabels`, and `semanticExpectations` for each source kind.
+- `source:regression` reports `sourceGraphStatus` and source graph artifact paths for each grounded source kind.
 - `seed:check` fails if any source regression item has `semanticStatus=failed`, `sourceEvidenceStatus=failed`, or missing source evidence status.
+- Source Graph V2 should include at least 5 concepts, 2 examples, 2 misconceptions, and 2 candidate interactions for non-trivial source-backed fixtures.
 - User feedback should go through `revise_learning_course`, then `apply_learning_revision`, then `get_learning_preview`.
 - Shareable output should go through `export_learning_course`.
 - `create_learning_project` accepts `strategy`, `selectedChapters`, and `selectedTopics` so Codex can preserve user-specified organization in the learner brief.

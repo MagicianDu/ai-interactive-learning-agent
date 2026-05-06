@@ -1,4 +1,4 @@
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -52,10 +52,28 @@ describe("AuthoringContextService", () => {
       },
       coursePlan: {
         strategy: "task_guided",
+        strategyReason: expect.stringContaining("任务"),
         unitPages: 8,
+        acceptanceExpectations: expect.arrayContaining([
+          expect.objectContaining({
+            id: "overview-plus-focused-units",
+            required: true
+          }),
+          expect.objectContaining({
+            id: "task-transfer-ready",
+            required: true
+          })
+        ]),
         recommendedUnits: expect.arrayContaining([
           expect.objectContaining({ unitId: "unit-overview", kind: "overview", targetPageCount: 8 }),
-          expect.objectContaining({ kind: "task", targetPageCount: 8 })
+          expect.objectContaining({
+            kind: "task",
+            targetPageCount: 8,
+            taskLabel: expect.stringContaining("任务："),
+            transferExpectation: expect.stringContaining("迁移"),
+            expectedInteractions: expect.arrayContaining(["debugging", "comparison"]),
+            expectedAssessments: expect.arrayContaining(["misconception_check", "transfer_challenge"])
+          })
         ])
       },
       authoringContract: {
@@ -80,6 +98,13 @@ describe("AuthoringContextService", () => {
     expect(context.learnerClarificationHints).toEqual(
       expect.arrayContaining([expect.stringContaining("学习目标"), expect.stringContaining("课程组织")])
     );
+    expect(context.artifacts).toMatchObject({
+      coursePlanPath: expect.stringContaining("course-plan"),
+      unitPlanPath: expect.stringContaining("unit-plan"),
+      authoringContextPath: expect.stringContaining("authoring-context")
+    });
+    await expect(readFile(context.artifacts.coursePlanPath, "utf8")).resolves.toContain("acceptanceExpectations");
+    await expect(readFile(context.artifacts.unitPlanPath, "utf8")).resolves.toContain("expectedInteractions");
   });
 
   test("returns topic-only context without requiring source approval artifacts", async () => {

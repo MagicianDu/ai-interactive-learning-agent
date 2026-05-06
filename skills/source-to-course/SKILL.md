@@ -12,6 +12,7 @@ Use this skill to turn learner-supplied material into a course request that the 
 - Codex or Claude authors the final `coursePack` and `lessons` after `learning_agent.get_authoring_context`.
 - Keep learner-facing course output中文优先 unless the learner explicitly asks otherwise.
 - Preserve `sourceAnchorIds` for books, papers, patents, blogs, notes, folders, and other source-backed materials.
+- `learning_agent.get_authoring_context` records Source Graph V2 and Course Planning V2 artifacts for expert audit, but learner mode should only receive course shape, preview, and quality summary.
 - 不要让学习者审批内部 artifacts such as source maps, concept maps, curriculum plans, or critic reports in the default learner flow.
 
 ## Source Routing
@@ -48,11 +49,14 @@ Call the learner-facing tools in this order:
 
 Normal outputs should be compact: preview URL, course shape, and `qualityReport` status/score/checks. Keep detailed artifacts available only when the learner explicitly asks for expert review.
 
+When inspecting expert details, prefer the latest `source-graph`, `course-plan`, `unit-plan`, and `authoring-context` artifacts. Do not turn those artifacts into learner approval steps.
+
 ## Quality Checklist
 
 - Keep generated learning content Chinese-first unless requested otherwise.
 - Codex should author the course content from the authoring context; MCP validates and publishes it.
 - For long sources, prefer an overview unit followed by focused units instead of compressing the entire source into one short lesson.
+- Use Course Planning V2 expectations from authoring context to preserve strategy reason, source mapping, expected interactions, expected assessments, and transfer expectations.
 - Do not ask the learner to approve internal artifacts such as source maps, concept maps, or curriculum plans.
 - Preserve chapter or section mappings when the learner asks for them.
 - Keep every unit's page count aligned with the requested `unitPages`.

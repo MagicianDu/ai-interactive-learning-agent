@@ -49,6 +49,14 @@ describe("GroundedCourseService", () => {
         anchorCount: expect.any(Number),
         warningCount: 0
       },
+      sourceGraph: {
+        status: "passed",
+        sourceKind: "book",
+        sourceUnitCount: expect.any(Number),
+        conceptCount: expect.any(Number),
+        misconceptionCount: expect.any(Number),
+        candidateInteractionCount: expect.any(Number)
+      },
       sourceEvidence: {
         status: "passed",
         unsupportedPages: 0
@@ -73,7 +81,15 @@ describe("GroundedCourseService", () => {
     expect(result.criticReports.every((report) => report.sourceEvidence.status === "passed")).toBe(true);
     expect(result.criticReports.flatMap((report) => report.pageScores).every((score) => score.sourceSupport === "supported")).toBe(true);
     expect(result.sourceIngest.anchorCount).toBeGreaterThanOrEqual(3);
+    expect(result.sourceGraph.sourceUnitCount).toBeGreaterThanOrEqual(3);
+    expect(result.sourceGraph.conceptCount).toBeGreaterThanOrEqual(5);
+    expect(result.sourceGraph.misconceptionCount).toBeGreaterThanOrEqual(2);
+    expect(result.sourceGraph.candidateInteractionCount).toBeGreaterThanOrEqual(2);
     await expect(readFile(result.sourceIngest.artifactPath, "utf8")).resolves.toContain("candidateInteractions");
+    await expect(readFile(result.sourceGraph.graphPath, "utf8")).resolves.toContain("\"sourceKind\": \"book\"");
+    await expect(readFile(result.sourceGraph.anchorsPath, "utf8")).resolves.toContain("sourceAnchorIds");
+    await expect(readFile(result.sourceGraph.conceptsPath, "utf8")).resolves.toContain("\"concepts\"");
+    await expect(readFile(result.sourceGraph.coveragePath, "utf8")).resolves.toContain("\"sourceUnitCount\"");
     await expect(readFile(result.qualityReport.reportPath, "utf8")).resolves.toContain("\"coursePackId\": \"grounded-agent\"");
     const coursePack = JSON.parse(await readFile(result.coursePackPath, "utf8")) as { units: Array<{ unitId: string; lessonId?: string }> };
     const unitIds = coursePack.units.map((unit) => unit.unitId);

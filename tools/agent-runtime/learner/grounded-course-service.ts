@@ -8,10 +8,11 @@ import { buildLessonCriticReport, type LessonCriticReport } from "../quality/les
 import { analyzeSourceEvidence, type SourceEvidenceSummary } from "../quality/source-evidence-analyzer.js";
 import { createRunConfigFromArgs } from "../run-config.js";
 import type { RunConfig } from "../types.js";
+import { buildSourceGraph, type SourceGraph } from "../source/source-graph.js";
 import { normalizeSources } from "../source/source-normalizer.js";
 import { planCourseUnits, type PlannedCourseUnit } from "./course-unit-planner.js";
 import { LearningCoursePublisher, type PublishLearningCourseResult } from "./learning-course-publisher.js";
-import { extractSourceSemantics } from "./source-semantic-extractor.js";
+import { extractSourceSemantics, type SourceSemantics } from "./source-semantic-extractor.js";
 
 type LearnerProjectFile = {
   request?: string;
@@ -46,6 +47,18 @@ export type GenerateGroundedCourseResult = PublishLearningCourseResult & {
     anchorCount: number;
     warningCount: number;
   };
+  sourceGraph: {
+    status: "passed" | "warning" | "failed";
+    sourceKind: SourceGraph["sourceKind"];
+    graphPath: string;
+    anchorsPath: string;
+    conceptsPath: string;
+    coveragePath: string;
+    sourceUnitCount: number;
+    conceptCount: number;
+    misconceptionCount: number;
+    candidateInteractionCount: number;
+  };
   sourceEvidence: SourceEvidenceSummary;
   criticReports: LessonCriticReport[];
   revisionApplied?: RevisionBrief;
@@ -70,9 +83,52 @@ export class GroundedCourseService {
       normalizedSources.anchors.map((anchor) => anchor.anchorId),
       config
     );
-    const sourceIngest = buildSourceIngestArtifact(config, normalizedSources.anchors, sourceAnchorIds, normalizedSources.extractionWarnings);
+    const semantics = extractSourceSemantics({
+      sourceKind: config.sourceKind ?? "unknown",
+      anchors: normalizedSources.anchors
+    });
+    const sourceIngest = buildSourceIngestArtifact(config, normalizedSources.anchors, sourceAnchorIds, normalizedSources.extractionWarnings, semantics);
+    const sourceGraph = buildSourceGraph({
+      runId: input.runId,
+      sourceKind: config.sourceKind ?? "unknown",
+      structure: normalizedSources.structure,
+      anchors: normalizedSources.anchors,
+      semantics
+    });
     const artifactStore = new ArtifactStore(path.join(this.workspaceRoot, "runs", input.runId));
     const sourceIngestWrite = await artifactStore.writeDraft("source-ingest", sourceIngest);
+    const sourceGraphWrites = {
+      graph: await artifactStore.writeDraft("source-graph", sourceGraph),
+      anchors: await artifactStore.writeDraft("source-anchors", {
+        artifactId: "source-anchors",
+        roleId: "source-ingest",
+        runId: input.runId,
+        sourceAnchorIds,
+        anchors: normalizedSources.anchors
+      }),
+      concepts: await artifactStore.writeDraft("source-concepts", {
+        artifactId: "source-concepts",
+        roleId: "source-ingest",
+        runId: input.runId,
+        concepts: sourceGraph.concepts,
+        examples: sourceGraph.examples,
+        misconceptions: sourceGraph.misconceptions,
+        candidateInteractions: sourceGraph.candidateInteractions
+      }),
+      coverage: await artifactStore.writeDraft("source-coverage", {
+        artifactId: "source-coverage",
+        roleId: "source-ingest",
+        runId: input.runId,
+        coverage: sourceGraph.coverage,
+        sourceUnits: sourceGraph.sourceUnits.map((unit) => ({
+          id: unit.id,
+          title: unit.title,
+          kind: unit.kind,
+          role: unit.role,
+          anchorIds: unit.anchorIds
+        }))
+      })
+    };
     const revision = await readLatestRevisionBrief(this.workspaceRoot, input.runId);
     const bundle = buildGroundedBundle({
       config,
@@ -105,6 +161,18 @@ export class GroundedCourseService {
         draftPath: sourceIngestWrite.draftPath,
         anchorCount: normalizedSources.anchors.length,
         warningCount: normalizedSources.extractionWarnings.length
+      },
+      sourceGraph: {
+        status: sourceGraphStatus(sourceGraph),
+        sourceKind: sourceGraph.sourceKind,
+        graphPath: sourceGraphWrites.graph.path,
+        anchorsPath: sourceGraphWrites.anchors.path,
+        conceptsPath: sourceGraphWrites.concepts.path,
+        coveragePath: sourceGraphWrites.coverage.path,
+        sourceUnitCount: sourceGraph.coverage.sourceUnitCount,
+        conceptCount: sourceGraph.coverage.conceptCount,
+        misconceptionCount: sourceGraph.coverage.misconceptionCount,
+        candidateInteractionCount: sourceGraph.coverage.candidateInteractionCount
       },
       sourceEvidence,
       criticReports,
@@ -144,7 +212,8 @@ function buildSourceIngestArtifact(
   config: RunConfig,
   anchors: SourceAnchor[],
   sourceAnchorIds: string[],
-  extractionWarnings: unknown[]
+  extractionWarnings: unknown[],
+  semantics: SourceSemantics
 ): {
   artifactId: "source-ingest";
   roleId: "source-ingest";
@@ -160,7 +229,6 @@ function buildSourceIngestArtifact(
   anchors: SourceAnchor[];
   extractionWarnings: unknown[];
 } {
-  const semantics = extractSourceSemantics({ sourceKind: config.sourceKind ?? "unknown", anchors });
   const concepts = withFallbackAnchorIds(semantics.concepts, sourceAnchorIds);
 
   return {
@@ -198,6 +266,20 @@ function buildSourceIngestArtifact(
     anchors,
     extractionWarnings
   };
+}
+
+function sourceGraphStatus(sourceGraph: SourceGraph): "passed" | "warning" | "failed" {
+  if (sourceGraph.coverage.sourceUnitCount === 0 || sourceGraph.coverage.conceptCount === 0) {
+    return "failed";
+  }
+  if (
+    sourceGraph.coverage.conceptCount < 5 ||
+    sourceGraph.coverage.misconceptionCount < 2 ||
+    sourceGraph.coverage.candidateInteractionCount < 2
+  ) {
+    return "warning";
+  }
+  return "passed";
 }
 
 function buildGroundedBundle({
@@ -263,7 +345,12 @@ function toCoursePackUnit(unit: PlannedCourseUnit): Record<string, unknown> {
     sourceAnchorIds: unit.sourceAnchorIds,
     sourceNodeIds: unit.sourceNodeIds,
     chapterRefs: unit.chapterRefs,
-    conceptIds: unit.conceptIds
+    conceptIds: unit.conceptIds,
+    ...(unit.taskLabel ? { taskLabel: unit.taskLabel } : {}),
+    transferExpectation: unit.transferExpectation,
+    expectedInteractions: unit.expectedInteractions,
+    expectedAssessments: unit.expectedAssessments,
+    expectedSourceCoverage: unit.expectedSourceCoverage
   };
 }
 

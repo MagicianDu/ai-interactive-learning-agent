@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
+import { ArtifactStore } from "../artifact-store.js";
 import type { SourceAnchor } from "../corpus-types.js";
 import { AgentRuntimeError } from "../errors.js";
 import { createRunConfigFromArgs } from "../run-config.js";
@@ -58,7 +59,14 @@ export type AuthoringContextResult = {
   };
   coursePlan: {
     strategy: string;
+    strategyReason: string;
     unitPages: number;
+    acceptanceExpectations: Array<{
+      id: string;
+      scope: "course" | "unit";
+      required: boolean;
+      description: string;
+    }>;
     recommendedUnits: Array<{
       unitId: string;
       title: string;
@@ -69,7 +77,20 @@ export type AuthoringContextResult = {
       sourceAnchorCount: number;
       focusConcepts: string[];
       chapterRefs: string[];
+      taskLabel?: string;
+      transferExpectation: string;
+      expectedInteractions: string[];
+      expectedAssessments: string[];
+      expectedSourceCoverage: {
+        minSourceAnchorCount: number;
+        preserveChapterRefs: boolean;
+      };
     }>;
+  };
+  artifacts: {
+    coursePlanPath: string;
+    unitPlanPath: string;
+    authoringContextPath: string;
   };
   authoringContract: {
     defaultTool: "learning_agent.publish_learning_course";
@@ -150,7 +171,7 @@ export class AuthoringContextService {
       language: "zh-CN" as const
     };
 
-    return {
+    const contextWithoutArtifacts = {
       status: "authoring_context_ready",
       runId: input.runId,
       brief,
@@ -168,8 +189,10 @@ export class AuthoringContextService {
         }))
       },
       coursePlan: {
-        strategy: brief.strategy,
+        strategy: unitPlan.strategy,
+        strategyReason: unitPlan.strategyReason,
         unitPages: brief.unitPages,
+        acceptanceExpectations: unitPlan.acceptanceExpectations,
         recommendedUnits: unitPlan.units.map((unit) => ({
           unitId: unit.unitId,
           title: unit.title,
@@ -179,7 +202,12 @@ export class AuthoringContextService {
           sourceAnchorIds: unit.sourceAnchorIds,
           sourceAnchorCount: unit.sourceAnchorIds.length,
           focusConcepts: unit.focusConcepts,
-          chapterRefs: unit.chapterRefs ?? []
+          chapterRefs: unit.chapterRefs ?? [],
+          ...(unit.taskLabel ? { taskLabel: unit.taskLabel } : {}),
+          transferExpectation: unit.transferExpectation,
+          expectedInteractions: unit.expectedInteractions,
+          expectedAssessments: unit.expectedAssessments,
+          expectedSourceCoverage: unit.expectedSourceCoverage
         }))
       },
       authoringContract: {
@@ -196,6 +224,43 @@ export class AuthoringContextService {
       qualityContract: buildQualityContract(brief),
       learnerClarificationHints: buildLearnerClarificationHints(brief),
       codexInstruction: buildCodexInstruction(brief, unitPlan.units.length)
+    } satisfies Omit<AuthoringContextResult, "artifacts">;
+
+    const artifactStore = new ArtifactStore(path.join(this.workspaceRoot, "runs", input.runId));
+    const coursePlanWrite = await artifactStore.writeDraft("course-plan", {
+      artifactId: "course-plan",
+      roleId: "learning-architecture",
+      runId: input.runId,
+      brief,
+      coursePlan: contextWithoutArtifacts.coursePlan
+    });
+    const unitPlanWrite = await artifactStore.writeDraft("unit-plan", {
+      artifactId: "unit-plan",
+      roleId: "learning-architecture",
+      runId: input.runId,
+      units: unitPlan.units
+    });
+    const contextWithPartialArtifacts = {
+      ...contextWithoutArtifacts,
+      artifacts: {
+        coursePlanPath: coursePlanWrite.path,
+        unitPlanPath: unitPlanWrite.path,
+        authoringContextPath: ""
+      }
+    };
+    const authoringContextWrite = await artifactStore.writeDraft("authoring-context", {
+      artifactId: "authoring-context",
+      roleId: "learning-architecture",
+      ...contextWithPartialArtifacts
+    });
+
+    return {
+      ...contextWithoutArtifacts,
+      artifacts: {
+        coursePlanPath: coursePlanWrite.path,
+        unitPlanPath: unitPlanWrite.path,
+        authoringContextPath: authoringContextWrite.path
+      }
     };
   }
 }

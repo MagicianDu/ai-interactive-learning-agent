@@ -88,6 +88,13 @@ describe("real source regression suite", () => {
           generatedUnitCount: expect.any(Number),
           semanticStatus: "passed",
           sourceEvidenceStatus: "passed",
+          sourceGraphStatus: "passed",
+          sourceGraph: expect.objectContaining({
+            sourceUnitCount: expect.any(Number),
+            conceptCount: expect.any(Number),
+            misconceptionCount: expect.any(Number),
+            candidateInteractionCount: expect.any(Number)
+          }),
           missingConceptLabels: [],
           sourceAnchorCount: expect.any(Number),
           sourceEvidence: expect.objectContaining({
@@ -109,6 +116,11 @@ describe("real source regression suite", () => {
           generatedUnitCount: expect.any(Number),
           semanticStatus: "passed",
           sourceEvidenceStatus: "passed",
+          sourceGraphStatus: "passed",
+          sourceGraph: expect.objectContaining({
+            conceptCount: expect.any(Number),
+            sourceUnitCount: expect.any(Number)
+          }),
           missingConceptLabels: [],
           sourceAnchorCount: expect.any(Number),
           sourceEvidence: expect.objectContaining({
@@ -130,6 +142,11 @@ describe("real source regression suite", () => {
           generatedUnitCount: expect.any(Number),
           semanticStatus: "warning",
           sourceEvidenceStatus: "passed",
+          sourceGraphStatus: "passed",
+          sourceGraph: expect.objectContaining({
+            conceptCount: expect.any(Number),
+            sourceUnitCount: expect.any(Number)
+          }),
           missingConceptLabels: [],
           sourceAnchorCount: expect.any(Number),
           sourceEvidence: expect.objectContaining({
@@ -149,6 +166,8 @@ describe("real source regression suite", () => {
       expect(sample.generatedUnitCount).toBeGreaterThanOrEqual(3);
       expect(sample.semanticStatus).not.toBe("failed");
       expect(sample.sourceEvidenceStatus).not.toBe("failed");
+      expect(sample.sourceGraphStatus).not.toBe("failed");
+      expect(sample.sourceGraph?.graphPath).toContain("source-graph");
       expect(sample.sourceAnchorCount).toBeGreaterThan(0);
     }
     await expect(readFile(path.join(root, "runs", "regression-book-smoke", "learner-project.json"), "utf8")).resolves.toContain("chapter_guided");

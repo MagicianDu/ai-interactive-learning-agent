@@ -41,6 +41,17 @@ export type RealSourceRegressionSampleResult = {
   semanticStatus: RealSourceRegressionSemanticStatus;
   sourceEvidenceStatus?: SourceEvidenceStatus;
   sourceEvidence?: Omit<SourceEvidenceSummary, "pageSupport">;
+  sourceGraphStatus?: "passed" | "warning" | "failed";
+  sourceGraph?: {
+    graphPath: string;
+    anchorsPath: string;
+    conceptsPath: string;
+    coveragePath: string;
+    sourceUnitCount: number;
+    conceptCount: number;
+    misconceptionCount: number;
+    candidateInteractionCount: number;
+  };
   missingConceptLabels: string[];
   semanticExpectations: {
     expectedConceptLabels: string[];
@@ -206,6 +217,19 @@ export async function runRealSourceRegressionSuite(
             unsupportedPages: groundedCourse.sourceEvidence.unsupportedPages,
             supportRatio: groundedCourse.sourceEvidence.supportRatio,
             unsupportedPageRefs: groundedCourse.sourceEvidence.unsupportedPageRefs
+          }
+        : undefined,
+      sourceGraphStatus: groundedCourse?.sourceGraph.status,
+      sourceGraph: groundedCourse
+        ? {
+            graphPath: groundedCourse.sourceGraph.graphPath,
+            anchorsPath: groundedCourse.sourceGraph.anchorsPath,
+            conceptsPath: groundedCourse.sourceGraph.conceptsPath,
+            coveragePath: groundedCourse.sourceGraph.coveragePath,
+            sourceUnitCount: groundedCourse.sourceGraph.sourceUnitCount,
+            conceptCount: groundedCourse.sourceGraph.conceptCount,
+            misconceptionCount: groundedCourse.sourceGraph.misconceptionCount,
+            candidateInteractionCount: groundedCourse.sourceGraph.candidateInteractionCount
           }
         : undefined,
       missingConceptLabels,
