@@ -3,7 +3,8 @@ import path from "node:path";
 
 import { AgentRuntimeError } from "../errors.js";
 import { LearningPreviewService, type LearningPreviewResult } from "./learning-preview-service.js";
-import { parseRevisionTarget, type RevisionTarget } from "./revision-targeting.js";
+import { buildRevisionBriefV2 } from "./revision-brief.js";
+import { parseRevisionTargetV2, type RevisionTargetV2 } from "./revision-targeting.js";
 
 type ReadyLearningPreview = Extract<LearningPreviewResult, { status: "preview_ready" }>["preview"];
 
@@ -20,7 +21,7 @@ export type RequestLearningRevisionResult = {
   revisionBriefPath: string;
   feedback: string;
   focus?: string;
-  target: RevisionTarget;
+  target: RevisionTargetV2;
   currentPreview?: ReadyLearningPreview;
   next: {
     recommendedTool: "learning_agent.publish_learning_course";
@@ -47,9 +48,12 @@ export class LearningRevisionService {
     const previewResult = await new LearningPreviewService(this.workspaceRoot).getPreview(input.runId);
     const currentPreview = previewResult.status === "preview_ready" ? previewResult.preview : undefined;
     const publishManifest = await readPublishManifest(this.workspaceRoot, input.runId);
-    const target = parseRevisionTarget(feedback, input.focus);
-    const revisionBrief = {
-      schemaVersion: 1,
+    const target = parseRevisionTargetV2(feedback, input.focus);
+    const courseIRPath = await existingFilePath(path.join(this.workspaceRoot, "runs", input.runId, "artifacts", "course-ir.draft.json"));
+    const qualityReportPath = await existingFilePath(
+      path.join(this.workspaceRoot, "runs", input.runId, "quality", "course-quality-report.json")
+    );
+    const revisionBrief = buildRevisionBriefV2({
       runId: input.runId,
       revisionId,
       feedback,
@@ -58,11 +62,11 @@ export class LearningRevisionService {
       currentPreview,
       currentCoursePackPath: publishManifest?.coursePackPath,
       currentLessonPaths: publishManifest?.lessonPaths ?? [],
+      courseIRPath,
+      qualityReportPath,
+      sourceBacked: courseIRPath !== undefined || qualityReportPath !== undefined,
       previousFeedbackCount,
-      createdAt: new Date().toISOString(),
-      instruction:
-        "Codex should read the current published lesson files, revise only the parts affected by learner feedback, preserve source grounding, and call learning_agent.publish_learning_course again."
-    };
+    });
     const revisionBriefPath = path.join(revisionsDir, `${revisionId}.json`);
     await writeFile(revisionBriefPath, `${JSON.stringify(revisionBrief, null, 2)}\n`, "utf8");
 
@@ -127,6 +131,18 @@ async function readPublishManifest(
         ? manifest.lessonPaths
         : undefined
     };
+  } catch (error) {
+    if (isFileNotFound(error)) {
+      return undefined;
+    }
+    throw error;
+  }
+}
+
+async function existingFilePath(filePath: string): Promise<string | undefined> {
+  try {
+    await readFile(filePath, "utf8");
+    return filePath;
   } catch (error) {
     if (isFileNotFound(error)) {
       return undefined;

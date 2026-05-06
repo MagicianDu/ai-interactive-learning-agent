@@ -16,6 +16,24 @@ Use this skill after a learner has seen a generated course preview and wants cha
 - style: make the Chinese explanation simpler, more rigorous, more visual, more practice-oriented, or less text-heavy.
 - export: produce a shareable course package after preview acceptance.
 
+## Feedback Categories
+
+Map learner language into one or more revision categories:
+
+- `too_abstract`: explanation lacks a concrete model or example.
+- `too_dense`: page has too much content for one no-scroll learning screen.
+- `example_missing`: learner needs a concrete case, engineering example, or analogy.
+- `source_unclear`: source anchors, evidence, or claim grounding are unclear.
+- `interaction_weak`: learner action is decorative or not cognitively useful.
+- `feedback_unhelpful`: answer feedback does not explain why.
+- `too_easy` / `too_hard`: difficulty mismatch.
+- `suspicious_claim`: learner flags a possible mistake or unsupported claim.
+- `more_practice`: learner wants more checks, exercises, or transfer tasks.
+- `structure_change`: course/unit order or strategy should change.
+- `style_change`: wording, tone, rigor, or Chinese readability should change.
+
+If the learner says "this page" and current page context is available, target that page. If current page context is not available, ask exactly one learner-answerable question: "你想修改哪一页？请告诉我页码，或先打开要修改的页面。"
+
 ## Workflow
 
 Convert the learner's natural language feedback into a revision request, then call:
@@ -35,6 +53,7 @@ When the learner asks to share or package the accepted result, call:
 ## Guardrails
 
 - Do not ask the learner to approve source maps, concept maps, curriculum plans, or other internal artifacts.
-- Summarize visible changes: what changed in the learning path, units, pages, visuals, interactions, or feedback.
+- Summarize visible changes: changed lessons, changed pages, quality before/after, and preview URL.
+- For source-backed courses, preserve `sourceAnchorIds` unless the learner explicitly asks to re-ground against a different source.
 - If feedback requires behavior the learner-facing MCP tools do not support, explain the limitation and route the work to Codex-authored revision or expert/operator mode.
 - Keep the next acceptance step preview-based.

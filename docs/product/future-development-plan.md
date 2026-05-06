@@ -16,6 +16,13 @@ The execution plan for Milestone B plus bounded parallel pre-research is:
 docs/superpowers/plans/2026-05-06-milestone-b-parallel-workstreams.md
 ```
 
+The current Milestone C feedback-to-revision spec and execution plan are:
+
+```text
+docs/superpowers/specs/2026-05-06-milestone-c-feedback-revision-design.md
+docs/superpowers/plans/2026-05-06-milestone-c-feedback-revision.md
+```
+
 Parallel exploration tracks are recorded for later promotion here:
 
 ```text

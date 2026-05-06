@@ -22,6 +22,21 @@ export type QuizAttemptRecord = {
   createdAt: string;
 };
 
+export type RevisionHistoryItem = {
+  runId: string;
+  revisionId: string;
+  scope: "course" | "unit" | "page" | "interaction" | "assessment" | "source" | "style";
+  summary: string;
+  changedLessonIds: string[];
+  changedPages: Array<{
+    lessonId: string;
+    pageId: string;
+    pageNumber: number;
+  }>;
+  qualityStatus: "passed" | "warning" | "failed";
+  createdAt: string;
+};
+
 export type LearningProgressState = {
   currentCourseId?: string;
   currentUnitId?: string;
@@ -30,6 +45,7 @@ export type LearningProgressState = {
   completedPages: string[];
   quizAttempts: QuizAttemptRecord[];
   feedbackBriefs: PageFeedbackRevisionBrief[];
+  revisionHistory: RevisionHistoryItem[];
 };
 
 export const learningProgressStorageKey = "ai-interactive-learning-agent:learning-progress:v1";
@@ -142,6 +158,13 @@ export function addFeedbackBrief(state: LearningProgressState, brief: PageFeedba
   });
 }
 
+export function addRevisionHistoryItem(state: LearningProgressState, item: RevisionHistoryItem): LearningProgressState {
+  return normalizeProgress({
+    ...state,
+    revisionHistory: [item, ...state.revisionHistory].slice(0, 20)
+  });
+}
+
 export function completedPageCountForCourse(state: LearningProgressState, courseId: string): number {
   return state.completedPages.filter((pageKey) => pageKey.startsWith(`${courseId}:`)).length;
 }
@@ -161,7 +184,8 @@ function normalizeProgress(value: unknown): LearningProgressState {
     currentPageIndex: typeof value.currentPageIndex === "number" ? value.currentPageIndex : undefined,
     completedPages: stringArray(value.completedPages),
     quizAttempts: Array.isArray(value.quizAttempts) ? value.quizAttempts.filter(isQuizAttemptRecord) : [],
-    feedbackBriefs: Array.isArray(value.feedbackBriefs) ? value.feedbackBriefs.filter(isFeedbackBrief) : []
+    feedbackBriefs: Array.isArray(value.feedbackBriefs) ? value.feedbackBriefs.filter(isFeedbackBrief) : [],
+    revisionHistory: Array.isArray(value.revisionHistory) ? value.revisionHistory.filter(isRevisionHistoryItem) : []
   };
 }
 
@@ -169,7 +193,8 @@ function emptyProgress(): LearningProgressState {
   return {
     completedPages: [],
     quizAttempts: [],
-    feedbackBriefs: []
+    feedbackBriefs: [],
+    revisionHistory: []
   };
 }
 
@@ -199,6 +224,50 @@ function isFeedbackBrief(value: unknown): value is PageFeedbackRevisionBrief {
 
 function isQuizAttemptRecord(value: unknown): value is QuizAttemptRecord {
   return isRecord(value) && typeof value.courseId === "string" && typeof value.lessonId === "string" && typeof value.correct === "boolean";
+}
+
+function isRevisionHistoryItem(value: unknown): value is RevisionHistoryItem {
+  return (
+    isRecord(value) &&
+    typeof value.runId === "string" &&
+    typeof value.revisionId === "string" &&
+    typeof value.summary === "string" &&
+    isRevisionScope(value.scope) &&
+    isQualityStatus(value.qualityStatus) &&
+    isStringArray(value.changedLessonIds) &&
+    Array.isArray(value.changedPages) &&
+    value.changedPages.every(isRevisionChangedPage) &&
+    typeof value.createdAt === "string"
+  );
+}
+
+function isRevisionChangedPage(value: unknown): value is RevisionHistoryItem["changedPages"][number] {
+  return (
+    isRecord(value) &&
+    typeof value.lessonId === "string" &&
+    typeof value.pageId === "string" &&
+    typeof value.pageNumber === "number"
+  );
+}
+
+function isRevisionScope(value: unknown): value is RevisionHistoryItem["scope"] {
+  return (
+    value === "course" ||
+    value === "unit" ||
+    value === "page" ||
+    value === "interaction" ||
+    value === "assessment" ||
+    value === "source" ||
+    value === "style"
+  );
+}
+
+function isQualityStatus(value: unknown): value is RevisionHistoryItem["qualityStatus"] {
+  return value === "passed" || value === "warning" || value === "failed";
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

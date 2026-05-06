@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import {
   addFeedbackBrief,
+  addRevisionHistoryItem,
   buildPageKey,
   completedPageCountForCourse,
   createPageFeedbackRevisionBrief,
@@ -58,6 +59,56 @@ describe("learning-progress", () => {
     });
     expect(brief.feedback).toContain("来源依据不清楚");
     expect(state.feedbackBriefs[0]).toEqual(brief);
+  });
+
+  test("stores learner-facing revision history and restores it from storage", () => {
+    const storage = new MemoryStorage();
+    const state = addRevisionHistoryItem(loadLearningProgress(storage), {
+      runId: "course-a",
+      revisionId: "revision-001",
+      scope: "page",
+      summary: "第 3 页增加了工程例子。",
+      changedLessonIds: ["lesson-a"],
+      changedPages: [{ lessonId: "lesson-a", pageId: "page-03", pageNumber: 3 }],
+      qualityStatus: "passed",
+      createdAt: "2026-05-06T00:00:00.000Z"
+    });
+
+    saveLearningProgress(state, storage);
+
+    expect(loadLearningProgress(storage).revisionHistory).toEqual([
+      {
+        runId: "course-a",
+        revisionId: "revision-001",
+        scope: "page",
+        summary: "第 3 页增加了工程例子。",
+        changedLessonIds: ["lesson-a"],
+        changedPages: [{ lessonId: "lesson-a", pageId: "page-03", pageNumber: 3 }],
+        qualityStatus: "passed",
+        createdAt: "2026-05-06T00:00:00.000Z"
+      }
+    ]);
+  });
+
+  test("keeps revision history newest first and caps it", () => {
+    const state = Array.from({ length: 25 }, (_, index) => index + 1).reduce(
+      (current, index) =>
+        addRevisionHistoryItem(current, {
+          runId: "course-a",
+          revisionId: `revision-${String(index).padStart(3, "0")}`,
+          scope: "page",
+          summary: `第 ${index} 次修订`,
+          changedLessonIds: ["lesson-a"],
+          changedPages: [{ lessonId: "lesson-a", pageId: `page-${index}`, pageNumber: index }],
+          qualityStatus: "passed",
+          createdAt: `2026-05-06T00:00:${String(index).padStart(2, "0")}.000Z`
+        }),
+      loadLearningProgress(new MemoryStorage())
+    );
+
+    expect(state.revisionHistory).toHaveLength(20);
+    expect(state.revisionHistory[0]?.revisionId).toBe("revision-025");
+    expect(state.revisionHistory[state.revisionHistory.length - 1]?.revisionId).toBe("revision-006");
   });
 });
 

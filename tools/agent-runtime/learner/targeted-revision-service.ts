@@ -6,7 +6,7 @@ import { AgentRuntimeError } from "../errors.js";
 import type { CompactCourseQualityReport } from "../quality/course-quality-report.js";
 import { LearningCoursePublisher } from "./learning-course-publisher.js";
 import { LearningPreviewService, type LearningPreviewResult } from "./learning-preview-service.js";
-import { parseRevisionTarget, type RevisionTarget } from "./revision-targeting.js";
+import { parseRevisionTargetV2, type RevisionTargetV2 } from "./revision-targeting.js";
 
 type ReadyLearningPreview = Extract<LearningPreviewResult, { status: "preview_ready" }>["preview"];
 
@@ -14,7 +14,7 @@ type RevisionBrief = {
   revisionId: string;
   feedback: string;
   focus?: string;
-  target?: RevisionTarget;
+  target?: RevisionTargetV2;
 };
 
 type PreviewManifest = {
@@ -37,11 +37,26 @@ export type ApplyLearningRevisionResult = {
   runId: string;
   revisionId: string;
   changedLessonIds: string[];
+  changedPages: ChangedPage[];
+  qualityBefore?: QualitySnapshot;
+  qualityAfter: QualitySnapshot;
   preview: ReadyLearningPreview;
   qualityReport: CompactCourseQualityReport;
 };
 
 const RUN_ID_PATTERN = /^[a-z][a-z0-9-]{0,63}$/;
+
+type ChangedPage = {
+  lessonId: string;
+  pageId: string;
+  pageIndex: number;
+  changeSummary: string;
+};
+
+type QualitySnapshot = {
+  status: CompactCourseQualityReport["status"];
+  score: number;
+};
 
 export class TargetedRevisionService {
   private readonly workspaceRoot: string;
@@ -53,8 +68,13 @@ export class TargetedRevisionService {
   async applyLatestRevision(input: ApplyLearningRevisionInput): Promise<ApplyLearningRevisionResult> {
     assertSafeRunId(input.runId);
     const revisionBrief = await this.readLatestRevisionBrief(input.runId);
-    const target = revisionBrief.target ?? parseRevisionTarget(revisionBrief.feedback, revisionBrief.focus);
+    const target = revisionBrief.target ?? parseRevisionTargetV2(revisionBrief.feedback, revisionBrief.focus);
     const previewManifest = await this.readPreviewManifest(input.runId);
+    const previewBefore = await new LearningPreviewService(this.workspaceRoot).getPreview(input.runId);
+    const qualityBefore =
+      previewBefore.status === "preview_ready" && previewBefore.preview.qualityReport
+        ? qualitySnapshot(previewBefore.preview.qualityReport)
+        : undefined;
     const lessons = await Promise.all(
       previewManifest.lessonPaths.map(async (lessonPath) =>
         readPublishedObject(resolveWorkspacePath(this.workspaceRoot, lessonPath), previewManifest.outputMode, "generatedLesson", "Lesson")
@@ -67,7 +87,8 @@ export class TargetedRevisionService {
       "CoursePack"
     );
 
-    const changedLessonIds = applyTarget(lessons.map(normalizeLesson), target);
+    const changedPages = applyTarget(lessons.map(normalizeLesson), target);
+    const changedLessonIds = Array.from(new Set(changedPages.map((page) => page.lessonId)));
     const publishResult = await new LearningCoursePublisher(this.workspaceRoot).publish({
       runId: input.runId,
       lessons,
@@ -91,6 +112,9 @@ export class TargetedRevisionService {
       runId: input.runId,
       revisionId: revisionBrief.revisionId,
       changedLessonIds,
+      changedPages,
+      ...(qualityBefore ? { qualityBefore } : {}),
+      qualityAfter: qualitySnapshot(publishResult.qualityReport),
       preview: previewResult.preview,
       qualityReport: publishResult.qualityReport
     };
@@ -140,21 +164,29 @@ export class TargetedRevisionService {
   }
 }
 
-function applyTarget(lessons: LessonLike[], target: RevisionTarget): string[] {
+function applyTarget(lessons: LessonLike[], target: RevisionTargetV2): ChangedPage[] {
   if (target.scope !== "page") {
     return [];
   }
 
   for (const lesson of lessons) {
-    const page = lesson.pages[target.pageIndex];
+    const pageIndex = target.pageIndex ?? 0;
+    const page = lesson.pages[pageIndex];
     if (page) {
       const narrative = typeof page.narrative === "string" ? page.narrative : "";
       page.narrative = `${narrative}\n\n修订说明：${target.requestedChange}`;
-      return [lesson.id];
+      return [
+        {
+          lessonId: lesson.id,
+          pageId: typeof page.id === "string" && page.id.trim().length > 0 ? page.id : `page-${pageIndex + 1}`,
+          pageIndex,
+          changeSummary: target.requestedChange
+        }
+      ];
     }
   }
 
-  throw new AgentRuntimeError(`page target is out of range: ${target.pageIndex + 1}`, "INVALID_LESSON");
+  throw new AgentRuntimeError(`page target is out of range: ${(target.pageIndex ?? 0) + 1}`, "INVALID_LESSON");
 }
 
 function normalizeLesson(value: Record<string, unknown>): LessonLike {
@@ -214,14 +246,21 @@ function assertSafeRunId(runId: string): void {
   }
 }
 
-function isRevisionTarget(value: unknown): value is RevisionTarget {
+function isRevisionTarget(value: unknown): value is RevisionTargetV2 {
   if (!isRecord(value) || typeof value.scope !== "string" || typeof value.requestedChange !== "string") {
     return false;
   }
   if (value.scope === "page") {
-    return Number.isInteger(value.pageIndex);
+    return Number.isInteger(value.pageIndex) || typeof value.clarificationQuestion === "string";
   }
-  return ["course", "unit", "interaction", "assessment", "source"].includes(value.scope);
+  return ["course", "unit", "interaction", "assessment", "source", "style"].includes(value.scope);
+}
+
+function qualitySnapshot(report: CompactCourseQualityReport): QualitySnapshot {
+  return {
+    status: report.status,
+    score: report.score
+  };
 }
 
 function isStringArray(value: unknown): value is string[] {

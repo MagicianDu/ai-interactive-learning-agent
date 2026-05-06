@@ -49,6 +49,20 @@ describe("TargetedRevisionService", () => {
       runId: "target-course",
       revisionId: "revision-001",
       changedLessonIds: ["target-lesson"],
+      changedPages: [
+        {
+          lessonId: "target-lesson",
+          pageId: "p3",
+          pageIndex: 2,
+          changeSummary: "第 3 页太抽象，换成工程例子"
+        }
+      ],
+      qualityBefore: {
+        status: "passed"
+      },
+      qualityAfter: {
+        status: "passed"
+      },
       preview: {
         coursePackId: "target-course",
         lessonCount: 1
@@ -104,7 +118,15 @@ describe("TargetedRevisionService", () => {
 
     expect(result).toMatchObject({
       revisionId: "revision-002",
-      changedLessonIds: ["latest-lesson"]
+      changedLessonIds: ["latest-lesson"],
+      changedPages: [
+        {
+          lessonId: "latest-lesson",
+          pageId: "p5",
+          pageIndex: 4,
+          changeSummary: "第 5 页增加真实排障例子"
+        }
+      ]
     });
     expect(revisedLesson.pages[4]?.narrative).toBe("第5页原文\n\n修订说明：第 5 页增加真实排障例子");
     expect(revisedLesson.pages[1]?.narrative).toBe("第2页原文");

@@ -1,4 +1,4 @@
-import { mkdtemp, readFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -25,12 +25,14 @@ describe("LearningRevisionService", () => {
       revisionId: "revision-001",
       target: {
         scope: "unit",
-        requestedChange: "整体太难了，请减少术语、增加一个生活化例子，并保留中文解释。"
+        requestedChange: "整体太难了，请减少术语、增加一个生活化例子，并保留中文解释。",
+        confidence: "medium"
       },
       next: {
         recommendedTool: "learning_agent.publish_learning_course"
       }
     });
+    expect(result.target.categories).toEqual(expect.arrayContaining(["too_hard", "example_missing", "style_change"]));
     await expect(readFile(result.revisionBriefPath, "utf8")).resolves.toContain("整体太难了");
   });
 
@@ -61,8 +63,14 @@ describe("LearningRevisionService", () => {
     const revisionBrief = JSON.parse(await readFile(second.revisionBriefPath, "utf8")) as Record<string, unknown>;
 
     expect(revisionBrief.previousFeedbackCount).toBe(1);
+    expect(revisionBrief.schemaVersion).toBe(2);
     expect(revisionBrief.currentCoursePackPath).toContain("preview/course-pack.json");
     expect(revisionBrief.currentLessonPaths).toEqual([expect.stringContaining("preview/lessons/feedback-lesson.json")]);
+    expect(revisionBrief.sourceConstraints).toMatchObject({
+      preserveSourceAnchors: true,
+      allowInferredGrounding: true
+    });
+    expect(revisionBrief.expectedQualityChecks).toEqual(expect.arrayContaining(["Chinese-first", "publish validation", "quality report"]));
   });
 
   test("stores parsed revision targets in the brief", async () => {
@@ -79,9 +87,39 @@ describe("LearningRevisionService", () => {
       target: {
         scope: "page",
         pageIndex: 3,
+        pageNumber: 4,
+        categories: ["interaction_weak"],
+        confidence: "high",
         requestedChange: "第 4 页互动选择太弱，请换成操作实验"
       }
     });
     expect(revisionBrief.target).toEqual(result.target);
+  });
+
+  test("includes Course IR and quality report paths when publish artifacts exist", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-revision-artifacts-"));
+    const runDir = path.join(root, "runs", "artifact-course");
+    await mkdir(path.join(runDir, "artifacts"), { recursive: true });
+    await mkdir(path.join(runDir, "quality"), { recursive: true });
+    await writeFile(path.join(runDir, "artifacts", "course-ir.draft.json"), "{}\n", "utf8");
+    await writeFile(path.join(runDir, "quality", "course-quality-report.json"), "{}\n", "utf8");
+
+    const result = await new LearningRevisionService(root).requestRevision({
+      runId: "artifact-course",
+      feedback: "这页来源依据不清楚",
+      focus: "第 2 页"
+    });
+    const revisionBrief = JSON.parse(await readFile(result.revisionBriefPath, "utf8")) as Record<string, unknown>;
+
+    expect(revisionBrief).toMatchObject({
+      schemaVersion: 2,
+      courseIRPath: path.join(runDir, "artifacts", "course-ir.draft.json"),
+      qualityReportPath: path.join(runDir, "quality", "course-quality-report.json"),
+      sourceConstraints: {
+        preserveSourceAnchors: true,
+        sourceBacked: true
+      }
+    });
+    expect(revisionBrief.expectedQualityChecks).toEqual(expect.arrayContaining(["source grounding"]));
   });
 });
