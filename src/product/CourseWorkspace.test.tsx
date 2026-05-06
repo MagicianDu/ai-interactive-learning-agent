@@ -72,7 +72,13 @@ describe("CourseWorkspace", () => {
           coursePackId: "public-smoke",
           courseTitle: "公开示例：课程包",
           coursePackPath: "course-pack.json",
-          lessonPaths: ["lessons/public-smoke-overview.json"]
+          lessonPaths: ["lessons/public-smoke-overview.json"],
+          publishNotes: "revision-002: 补充来源依据和学习反馈。",
+          qualityReport: {
+            status: "passed",
+            score: 96,
+            summary: "课程质量检查通过。"
+          }
         });
       }
       if (url === "/__learning-preview/public-smoke/course-pack.json") {
@@ -131,6 +137,8 @@ describe("CourseWorkspace", () => {
 
     expect((await screen.findAllByText("公开示例：课程包")).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/第 2 \//).length).toBeGreaterThan(0);
+    expect(screen.getByText("质量：passed · 96")).toBeInTheDocument();
+    expect(screen.getByText("发布：revision-002: 补充来源依据和学习反馈。")).toBeInTheDocument();
     expect(window.location.hash).toBe("#/preview/public-smoke/unit/unit-overview/page/2");
   });
 
@@ -187,6 +195,36 @@ describe("CourseWorkspace", () => {
     });
     expect(progress.feedbackBriefs?.[0]?.feedback).toContain("太抽象");
     expect(screen.getByText(/已记录：第 2 页，太抽象/u)).toBeInTheDocument();
+  });
+
+  test("shows learner-readable revision history in the sidebar", () => {
+    window.localStorage.setItem(
+      learningProgressStorageKey,
+      JSON.stringify({
+        completedPages: [],
+        quizAttempts: [],
+        feedbackBriefs: [],
+        revisionHistory: [
+          {
+            runId: "demo-agentic-design-grounded",
+            revisionId: "revision-001",
+            scope: "page",
+            summary: "第 3 页增加了工程例子。",
+            changedLessonIds: ["demo-agentic-design-grounded-overview"],
+            changedPages: [{ lessonId: "demo-agentic-design-grounded-overview", pageId: "p3", pageNumber: 3 }],
+            qualityStatus: "passed",
+            createdAt: "2026-05-06T00:00:00.000Z"
+          }
+        ]
+      })
+    );
+
+    render(<CourseWorkspace coursePacks={coursePackRegistry} lessons={lessonRegistry} />);
+
+    expect(screen.getByText("修订历史")).toBeInTheDocument();
+    expect(screen.getByText("revision-001")).toBeInTheDocument();
+    expect(screen.getByText("第 3 页增加了工程例子。")).toBeInTheDocument();
+    expect(screen.getByText("质量：passed")).toBeInTheDocument();
   });
 
   test("sidebar product modes show actionable learner surfaces", async () => {

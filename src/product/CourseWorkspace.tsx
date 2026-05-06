@@ -158,12 +158,22 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
   };
   const selectedCoursePackUnit = selectedCoursePack?.units.find((unit) => unit.lessonId === selectedLesson?.id);
   const totalCoursePages = countCoursePages(selectedCoursePack, workspaceLessons);
+  const selectedGeneratedPreview = generatedPreview?.coursePackEntry.id === selectedCoursePackId ? generatedPreview : undefined;
   const latestFeedback = learningProgress.feedbackBriefs.find(
     (brief) =>
       brief.courseId === selectedCoursePackId &&
       brief.lessonId === selectedLesson?.id &&
       brief.pageId === (currentPage?.id ?? "")
   );
+  const selectedRevisionRunIds = new Set(
+    [selectedCoursePackId, selectedCoursePack?.parentRunId, generatedPreview?.previewRunId].filter((id): id is string => Boolean(id))
+  );
+  const selectedRevisionLessonIds = new Set(selectedCoursePack?.units.map((unit) => unit.lessonId).filter((id): id is string => Boolean(id)) ?? []);
+  const courseRevisionHistory = learningProgress.revisionHistory.filter(
+    (item) =>
+      selectedRevisionRunIds.has(item.runId) || item.changedLessonIds.some((lessonId) => selectedRevisionLessonIds.has(lessonId))
+  );
+  const visibleRevisionHistory = courseRevisionHistory.length > 0 ? courseRevisionHistory : learningProgress.revisionHistory;
 
   useEffect(() => {
     if (!selectedCoursePackId || !selectedLesson?.id || !currentPage?.id) {
@@ -247,6 +257,7 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
               totalPages: totalCoursePages,
               quizAttempts: learningProgress.quizAttempts.filter((attempt) => attempt.courseId === selectedCoursePackId).length
             }}
+            revisionHistory={visibleRevisionHistory}
             selectedCoursePackId={selectedCoursePackId}
             selectedLessonId={selectedLessonId}
             title={selectedCoursePack?.title ?? selectedLesson.title}
@@ -258,6 +269,8 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
             activeView={activeView}
             coursePack={selectedCoursePack}
             pageNumber={currentPageContext.pageNumber}
+            publishNotes={selectedGeneratedPreview?.publishNotes}
+            qualityReport={selectedGeneratedPreview?.qualityReport}
             selectedUnit={selectedCoursePackUnit}
             totalPages={currentPageContext.totalPages}
           />
@@ -373,12 +386,16 @@ function WorkspaceStatusStrip({
   activeView,
   coursePack,
   pageNumber,
+  publishNotes,
+  qualityReport,
   selectedUnit,
   totalPages
 }: {
   activeView: WorkspaceView;
   coursePack: CoursePackRegistryEntry["coursePack"] | undefined;
   pageNumber: number;
+  publishNotes?: string;
+  qualityReport?: GeneratedPreviewLoadResult["qualityReport"];
   selectedUnit: CoursePackRegistryEntry["coursePack"]["units"][number] | undefined;
   totalPages: number;
 }) {
@@ -399,6 +416,16 @@ function WorkspaceStatusStrip({
           </span>
           <span className="rounded-full bg-slate-100 px-2.5 py-1">来源：{coursePack?.sourceKind ?? "topic"}</span>
           <span className="rounded-full bg-slate-100 px-2.5 py-1">策略：{coursePack?.strategy ?? "single_lesson"}</span>
+          {qualityReport ? (
+            <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">
+              质量：{qualityReport.status} · {qualityReport.score}
+            </span>
+          ) : null}
+          {publishNotes ? (
+            <span className="max-w-72 truncate rounded-full bg-sky-50 px-2.5 py-1 text-sky-700" title={publishNotes}>
+              发布：{publishNotes}
+            </span>
+          ) : null}
         </div>
       </div>
     </section>
