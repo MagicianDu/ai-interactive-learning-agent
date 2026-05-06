@@ -17,6 +17,7 @@ The product problem is that MCP can validate and publish lessons, but content qu
 5. The blueprint remains authoring guidance, not a new lesson schema and not a learner approval artifact.
 6. Publish-time validation checks whether Codex-authored pages actually follow the persisted blueprint before showing a preview.
 7. Long source authoring context samples learner-relevant content anchors instead of blindly taking the first pages of a book or paper.
+8. Codex-authored courses default to an upper-undergraduate / graduate-course posture, not generic explainer content.
 
 ## Non-Goals
 
@@ -67,4 +68,6 @@ contentBlueprint: {
 - User-selected topics or chapters are prioritized in `source.anchors`, `coursePlan.recommendedUnits[*].sourceAnchorIds`, and `contentBlueprint.units[*].sourceAnchorIds`.
 - Codex-facing skills mention following `contentBlueprint.units[*].pageBlueprints`.
 - `publish_learning_course` returns `revision_required` with `publish.blueprint.*` issues when a persisted blueprint detects page type drift, missing learner action, missing feedback, missing source support, or missing visual structure.
+- `qualityContract.academicRigor` is present and tells Codex to produce university / graduate-level lessons with prerequisites, formal terms, source reading mapping, classroom discussion, and homework-style transfer.
+- `contentBlueprint.globalRules` explicitly rejects generic popularization and requires upper-undergraduate / graduate course density.
 - Targeted unit tests, typecheck, lint, and seed checks pass.

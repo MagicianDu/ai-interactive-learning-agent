@@ -113,6 +113,11 @@ describe("AuthoringContextService", () => {
     expect(context.source.anchors.length).toBeLessThanOrEqual(4);
     expect(context.qualityContract).toMatchObject({
       language: "zh-CN",
+      academicRigor: {
+        positioning: "upper_undergraduate_or_graduate",
+        requirements: expect.arrayContaining([expect.stringContaining("大学高年级/研究生课程")]),
+        assessmentExpectations: expect.arrayContaining([expect.stringContaining("课堂讨论"), expect.stringContaining("课后作业")])
+      },
       requiredPageTypes: expect.arrayContaining(["problem_scene", "interactive_model", "quiz", "misconception_check", "transfer_challenge"]),
       requiredLearningActions: expect.arrayContaining(["predict", "manipulate", "explain", "transfer"]),
       sourceKindGuidance: expect.objectContaining({
@@ -120,6 +125,7 @@ describe("AuthoringContextService", () => {
       }),
       supportedStrategies: expect.arrayContaining(["overview_plus_topic", "chapter_guided", "topic_guided", "task_guided", "hybrid"])
     });
+    expect(context.codexInstruction).toContain("大学高年级/研究生课程");
     expect(context.qualityContract.feedbackRules.join("\n")).toContain("为什么");
     expect(context.qualityContract.groundingRules.join("\n")).toContain("sourceAnchorIds");
     expect(context.learnerClarificationHints).toEqual(

@@ -22,7 +22,9 @@ describe("content-quality-blueprint", () => {
         }
       ]
     });
-    expect(blueprint.globalRules).toEqual(expect.arrayContaining([expect.stringContaining("中文优先")]));
+    expect(blueprint.globalRules).toEqual(
+      expect.arrayContaining([expect.stringContaining("中文优先"), expect.stringContaining("大学高年级/研究生课程")])
+    );
     expect(blueprint.units[0]?.pageBlueprints.map((page) => page.pageType)).toEqual([
       "problem_scene",
       "intuition_visual",
@@ -36,12 +38,17 @@ describe("content-quality-blueprint", () => {
     expect(blueprint.units[0]?.pageBlueprints[0]).toMatchObject({
       pageNumber: 1,
       learnerAction: expect.stringContaining("判断"),
-      visualRequirement: expect.stringContaining("问题")
+      visualRequirement: expect.stringContaining("问题"),
+      mustInclude: expect.arrayContaining([expect.stringContaining("课程定位")])
     });
     expect(blueprint.units[0]?.pageBlueprints[3]).toMatchObject({
       pageType: "interactive_model",
       learnerAction: expect.stringContaining("操作"),
       feedbackRequirement: expect.stringContaining("因果")
+    });
+    expect(blueprint.units[0]?.pageBlueprints[4]).toMatchObject({
+      pageType: "quiz",
+      mustInclude: expect.arrayContaining([expect.stringContaining("大学课程")])
     });
   });
 

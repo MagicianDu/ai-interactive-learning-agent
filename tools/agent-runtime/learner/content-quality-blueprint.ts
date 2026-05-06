@@ -50,6 +50,7 @@ export function buildContentBlueprint(input: BuildContentBlueprintInput): Conten
 function globalRules(input: BuildContentBlueprintInput): string[] {
   return [
     `所有 learner-facing 内容必须中文优先，围绕 ${input.audience} 的已有知识和阅读习惯设计。`,
+    "默认定位为大学高年级/研究生课程：要有先修概念、正式术语、来源阅读映射、课堂讨论题和课后作业感，避免泛泛科普。",
     "不要把资料改写成摘要；每页必须有一个学习动作、一个可见结构或一个可检查判断。",
     "术语、公式、代码和定义必须放在直觉、视觉模型和 learner action 之后。",
     "反馈必须解释为什么，指出错误假设、因果机制和可迁移规则。",
@@ -130,7 +131,7 @@ const standardTemplates: PageTemplate[] = [
     learnerAction: "判断当前问题为什么值得学，以及如果没有该概念会卡在哪里。",
     visualRequirement: "画出问题场景、输入输出、失败状态或决策分叉。",
     feedbackRequirement: "解释这个问题暴露了哪个心智模型缺口。",
-    mustInclude: (unit) => [`聚焦概念：${focusLabel(unit)}`, "一个真实或接近真实的问题"]
+    mustInclude: (unit) => [`聚焦概念：${focusLabel(unit)}`, "课程定位：大学高年级/研究生课程", "一个真实或接近真实的问题"]
   },
   {
     pageType: "intuition_visual",
@@ -162,7 +163,7 @@ const standardTemplates: PageTemplate[] = [
     learnerAction: "选择、排序或预测一个非 trivia 问题。",
     visualRequirement: "题目应关联前面的结构或过程图。",
     feedbackRequirement: "正确和错误反馈都必须解释为什么。",
-    mustInclude: (unit) => [`检查类型：${unit.expectedAssessments[0] ?? "prediction_check"}`, "解释性 feedbackSpec"]
+    mustInclude: (unit) => [`检查类型：${unit.expectedAssessments[0] ?? "prediction_check"}`, "大学课程级非 trivia 判断题", "解释性 feedbackSpec"]
   },
   {
     pageType: "misconception_check",

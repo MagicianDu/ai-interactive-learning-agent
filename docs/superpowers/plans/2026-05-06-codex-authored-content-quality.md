@@ -65,6 +65,14 @@
 - [ ] Re-run the same tests; expected pass.
 - [ ] Re-run a real book context against `Agentic_Design_Patterns.pdf` and confirm sampled anchors start from content pages rather than table of contents / dedication.
 
+## Task 6: Academic Course Rigor Contract
+
+- [ ] Add failing tests that require `contentBlueprint.globalRules` and `qualityContract.academicRigor` to position authored lessons as upper-undergraduate / graduate coursework.
+- [ ] Run `npm run test:unit -- tools/agent-runtime/learner/content-quality-blueprint.test.ts tools/agent-runtime/learner/authoring-context-service.test.ts`; expected failure.
+- [ ] Add academic rigor rules to `ContentBlueprint`, `AuthoringContextService.qualityContract`, and Codex instructions.
+- [ ] Re-run the same tests; expected pass.
+- [ ] Republish the current real-source preview with prerequisites, formal terms, source reading mapping, classroom discussion, and homework-style transfer.
+
 ## Validation
 
 Run:
@@ -73,6 +81,7 @@ Run:
 npm run test:unit -- tools/agent-runtime/learner/content-quality-blueprint.test.ts tools/agent-runtime/learner/authoring-context-service.test.ts tools/mcp-server/skill-mcp-contract.test.ts
 npm run test:unit -- tools/agent-runtime/learner/content-blueprint-compliance.test.ts tools/agent-runtime/learner/learning-course-publisher.test.ts
 npm run test:unit -- tools/agent-runtime/learner/source-anchor-sampler.test.ts tools/agent-runtime/learner/authoring-context-service.test.ts
+npm run test:unit -- tools/agent-runtime/learner/content-quality-blueprint.test.ts tools/agent-runtime/learner/authoring-context-service.test.ts
 npm run typecheck
 npm run lint
 npm run test:unit
@@ -89,4 +98,5 @@ npm run seed:check
 - Skills route Codex to the blueprint before writing lessons.
 - `publish_learning_course` blocks persisted-blueprint drift through `publish.blueprint.*` issues.
 - Long-source authoring context samples content anchors and prioritizes selected topics/chapters before building the course plan.
+- Authoring context and content blueprint require upper-undergraduate / graduate course rigor by default.
 - Validation commands pass.

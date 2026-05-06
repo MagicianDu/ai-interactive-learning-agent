@@ -9,6 +9,7 @@ import { learningProgressStorageKey } from "./learning-progress";
 
 describe("CourseWorkspace", () => {
   beforeEach(() => {
+    window.history.replaceState(null, "", "#/");
     Object.defineProperty(window, "localStorage", {
       configurable: true,
       value: new MemoryStorage()

@@ -28,6 +28,7 @@ Codex should inspect get_authoring_context.coursePlan and contentBlueprint.units
 Each lesson page should follow the blueprint's pageType, learnerAction, visualRequirement, feedbackRequirement, and sourceRequirement.
 If publish_learning_course returns publish.blueprint.* issues, Codex should revise the lesson directly instead of asking the learner to approve internal artifacts.
 For long books, get_authoring_context should surface content anchors instead of table-of-contents or dedication anchors; if the first anchors are front matter, revise the source sampling before authoring.
+Default course posture is upper-undergraduate / graduate: include prerequisites, formal terms, source reading anchors, classroom discussion prompts, and homework-style transfer tasks.
 ```
 
 Expected response:
