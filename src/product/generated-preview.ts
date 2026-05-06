@@ -2,6 +2,7 @@ import type { CoursePackRegistryEntry } from "../course-packs/registry";
 import type { LessonRegistryEntry } from "../lessons/registry";
 import type { CoursePack } from "../schemas/course-pack.schema";
 import type { Lesson } from "../schemas/lesson.schema";
+import type { RevisionHistoryItem } from "./learning-progress";
 
 type PreviewManifest = {
   schemaVersion: number;
@@ -12,6 +13,7 @@ type PreviewManifest = {
   lessonPaths: string[];
   publishNotes?: unknown;
   qualityReport?: unknown;
+  revisionHistory?: unknown;
 };
 
 export type GeneratedPreviewQualityReport = {
@@ -27,6 +29,7 @@ export type GeneratedPreviewLoadResult = {
   lessonEntries: LessonRegistryEntry[];
   publishNotes?: string;
   qualityReport?: GeneratedPreviewQualityReport;
+  revisionHistory: RevisionHistoryItem[];
 };
 
 export async function fetchGeneratedPreview(runId: string): Promise<GeneratedPreviewLoadResult> {
@@ -54,7 +57,8 @@ export async function fetchGeneratedPreview(runId: string): Promise<GeneratedPre
       modulePath: `runs/${runId}/preview/${manifest.lessonPaths[index] ?? lesson.id}`
     })),
     ...(publishNotes ? { publishNotes } : {}),
-    ...(isPreviewQualityReport(manifest.qualityReport) ? { qualityReport: manifest.qualityReport } : {})
+    ...(isPreviewQualityReport(manifest.qualityReport) ? { qualityReport: manifest.qualityReport } : {}),
+    revisionHistory: Array.isArray(manifest.revisionHistory) ? manifest.revisionHistory.filter(isRevisionHistoryItem) : []
   };
 }
 
@@ -107,4 +111,49 @@ function isPreviewQualityStatus(value: unknown): value is GeneratedPreviewQualit
 
 function optionalString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim().length > 0 ? value : undefined;
+}
+
+function isRevisionHistoryItem(value: unknown): value is RevisionHistoryItem {
+  return (
+    isRecord(value) &&
+    typeof value.runId === "string" &&
+    typeof value.revisionId === "string" &&
+    isRevisionScope(value.scope) &&
+    typeof value.summary === "string" &&
+    Array.isArray(value.changedLessonIds) &&
+    value.changedLessonIds.every((item) => typeof item === "string") &&
+    Array.isArray(value.changedPages) &&
+    value.changedPages.every(isRevisionChangedPage) &&
+    isQualityStatus(value.qualityStatus) &&
+    typeof value.createdAt === "string"
+  );
+}
+
+function isRevisionChangedPage(value: unknown): value is RevisionHistoryItem["changedPages"][number] {
+  return (
+    isRecord(value) &&
+    typeof value.lessonId === "string" &&
+    typeof value.pageId === "string" &&
+    typeof value.pageNumber === "number"
+  );
+}
+
+function isRevisionScope(value: unknown): value is RevisionHistoryItem["scope"] {
+  return (
+    value === "course" ||
+    value === "unit" ||
+    value === "page" ||
+    value === "interaction" ||
+    value === "assessment" ||
+    value === "source" ||
+    value === "style"
+  );
+}
+
+function isQualityStatus(value: unknown): value is RevisionHistoryItem["qualityStatus"] {
+  return value === "passed" || value === "warning" || value === "failed";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

@@ -93,7 +93,18 @@ export class TargetedRevisionService {
       runId: input.runId,
       lessons,
       coursePack,
-      publishNotes: `${revisionBrief.revisionId}: ${target.requestedChange}`
+      publishNotes: `${revisionBrief.revisionId}: ${target.requestedChange}`,
+      revisionHistoryItem: {
+        revisionId: revisionBrief.revisionId,
+        scope: target.scope,
+        summary: target.requestedChange,
+        changedLessonIds,
+        changedPages: changedPages.map((page) => ({
+          lessonId: page.lessonId,
+          pageId: page.pageId,
+          pageNumber: page.pageIndex + 1
+        }))
+      }
     });
     if (publishResult.status !== "preview_ready") {
       throw new AgentRuntimeError(

@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import type { CompactCourseQualityReport } from "../quality/course-quality-report.js";
+import type { PublishedRevisionHistoryItem } from "./learning-course-publisher.js";
 
 export type LearningPreviewResult =
   | {
@@ -15,6 +16,7 @@ export type LearningPreviewResult =
         lessonCount: number;
         previewManifestPath: string;
         qualityReport?: CompactCourseQualityReport;
+        revisionHistory?: PublishedRevisionHistoryItem[];
       };
     }
   | {
@@ -52,7 +54,8 @@ export class LearningPreviewService {
         courseTitle: stringOr(manifest.courseTitle, "未命名课程包"),
         lessonCount: numberOr(manifest.lessonCount, 0),
         previewManifestPath: stringOr(manifest.previewManifestPath, path.join(this.workspaceRoot, "runs", runId, "preview", "manifest.json")),
-        ...(isCompactQualityReport(manifest.qualityReport) ? { qualityReport: manifest.qualityReport } : {})
+        ...(isCompactQualityReport(manifest.qualityReport) ? { qualityReport: manifest.qualityReport } : {}),
+        revisionHistory: Array.isArray(manifest.revisionHistory) ? manifest.revisionHistory.filter(isPublishedRevisionHistoryItem) : []
       }
     };
   }
@@ -60,6 +63,50 @@ export class LearningPreviewService {
 
 function isCompactQualityReport(value: unknown): value is CompactCourseQualityReport {
   return isRecord(value) && typeof value.status === "string" && typeof value.score === "number" && typeof value.summary === "string";
+}
+
+function isPublishedRevisionHistoryItem(value: unknown): value is PublishedRevisionHistoryItem {
+  return (
+    isRecord(value) &&
+    typeof value.runId === "string" &&
+    typeof value.revisionId === "string" &&
+    isRevisionScope(value.scope) &&
+    typeof value.summary === "string" &&
+    isStringArray(value.changedLessonIds) &&
+    Array.isArray(value.changedPages) &&
+    value.changedPages.every(isRevisionChangedPage) &&
+    isQualityStatus(value.qualityStatus) &&
+    typeof value.createdAt === "string"
+  );
+}
+
+function isRevisionChangedPage(value: unknown): value is PublishedRevisionHistoryItem["changedPages"][number] {
+  return (
+    isRecord(value) &&
+    typeof value.lessonId === "string" &&
+    typeof value.pageId === "string" &&
+    typeof value.pageNumber === "number"
+  );
+}
+
+function isRevisionScope(value: unknown): value is PublishedRevisionHistoryItem["scope"] {
+  return (
+    value === "course" ||
+    value === "unit" ||
+    value === "page" ||
+    value === "interaction" ||
+    value === "assessment" ||
+    value === "source" ||
+    value === "style"
+  );
+}
+
+function isQualityStatus(value: unknown): value is PublishedRevisionHistoryItem["qualityStatus"] {
+  return value === "passed" || value === "warning" || value === "failed";
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
 function isFileNotFound(error: unknown): boolean {

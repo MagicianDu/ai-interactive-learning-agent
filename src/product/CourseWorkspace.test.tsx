@@ -78,7 +78,19 @@ describe("CourseWorkspace", () => {
             status: "passed",
             score: 96,
             summary: "课程质量检查通过。"
-          }
+          },
+          revisionHistory: [
+            {
+              runId: "public-smoke",
+              revisionId: "revision-002",
+              scope: "page",
+              summary: "第 2 页补充来源依据。",
+              changedLessonIds: ["public-smoke-overview"],
+              changedPages: [{ lessonId: "public-smoke-overview", pageId: "page-02", pageNumber: 2 }],
+              qualityStatus: "passed",
+              createdAt: "2026-05-06T00:00:00.000Z"
+            }
+          ]
         });
       }
       if (url === "/__learning-preview/public-smoke/course-pack.json") {
@@ -139,6 +151,9 @@ describe("CourseWorkspace", () => {
     expect(screen.getAllByText(/第 2 \//).length).toBeGreaterThan(0);
     expect(screen.getByText("质量：passed · 96")).toBeInTheDocument();
     expect(screen.getByText("发布：revision-002: 补充来源依据和学习反馈。")).toBeInTheDocument();
+    expect(screen.getByText("修订历史")).toBeInTheDocument();
+    expect(screen.getByText("revision-002")).toBeInTheDocument();
+    expect(screen.getByText("第 2 页补充来源依据。")).toBeInTheDocument();
     expect(window.location.hash).toBe("#/preview/public-smoke/unit/unit-overview/page/2");
   });
 

@@ -169,11 +169,12 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
     [selectedCoursePackId, selectedCoursePack?.parentRunId, generatedPreview?.previewRunId].filter((id): id is string => Boolean(id))
   );
   const selectedRevisionLessonIds = new Set(selectedCoursePack?.units.map((unit) => unit.lessonId).filter((id): id is string => Boolean(id)) ?? []);
-  const courseRevisionHistory = learningProgress.revisionHistory.filter(
+  const allRevisionHistory = mergeRevisionHistory(selectedGeneratedPreview?.revisionHistory ?? [], learningProgress.revisionHistory);
+  const courseRevisionHistory = allRevisionHistory.filter(
     (item) =>
       selectedRevisionRunIds.has(item.runId) || item.changedLessonIds.some((lessonId) => selectedRevisionLessonIds.has(lessonId))
   );
-  const visibleRevisionHistory = courseRevisionHistory.length > 0 ? courseRevisionHistory : learningProgress.revisionHistory;
+  const visibleRevisionHistory = courseRevisionHistory.length > 0 ? courseRevisionHistory : allRevisionHistory;
 
   useEffect(() => {
     if (!selectedCoursePackId || !selectedLesson?.id || !currentPage?.id) {
@@ -567,6 +568,18 @@ function mergeLessons(base: LessonRegistryEntry[], generated: LessonRegistryEntr
   }
   const generatedIds = new Set(generated.map((entry) => entry.id));
   return [...generated, ...base.filter((entry) => !generatedIds.has(entry.id))];
+}
+
+function mergeRevisionHistory<T extends { runId: string; revisionId: string }>(primary: T[], secondary: T[]): T[] {
+  const seen = new Set<string>();
+  return [...primary, ...secondary].filter((item) => {
+    const key = `${item.runId}:${item.revisionId}`;
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
 }
 
 function countCoursePages(
