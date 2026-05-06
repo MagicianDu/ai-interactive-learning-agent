@@ -7,6 +7,7 @@ import { AgentRuntimeError } from "../errors.js";
 import { createRunConfigFromArgs } from "../run-config.js";
 import { normalizeSources } from "../source/source-normalizer.js";
 import type { RunConfig } from "../types.js";
+import { buildContentBlueprint, type ContentBlueprint } from "./content-quality-blueprint.js";
 import { planCourseUnits } from "./course-unit-planner.js";
 import { extractSourceSemantics } from "./source-semantic-extractor.js";
 
@@ -87,6 +88,7 @@ export type AuthoringContextResult = {
       };
     }>;
   };
+  contentBlueprint: ContentBlueprint;
   artifacts: {
     coursePlanPath: string;
     unitPlanPath: string;
@@ -157,7 +159,6 @@ export class AuthoringContextService {
       sourceAnchorIds: sampledAnchorIds,
       sourceNodeIds: config.sources.map((source) => `${source.id}:root`)
     });
-
     const displaySourceKind = project.brief?.sourceKind === "topic" && !project.brief.sourcePath ? "topic" : (config.sourceKind ?? "topic");
     const brief = {
       topic: config.topic,
@@ -170,6 +171,11 @@ export class AuthoringContextService {
       selectedTopics: config.coursePack?.selectedTopics ?? [],
       language: "zh-CN" as const
     };
+    const contentBlueprint = buildContentBlueprint({
+      audience: brief.audience,
+      sourceKind: brief.sourceKind,
+      units: unitPlan.units
+    });
 
     const contextWithoutArtifacts = {
       status: "authoring_context_ready",
@@ -210,6 +216,7 @@ export class AuthoringContextService {
           expectedSourceCoverage: unit.expectedSourceCoverage
         }))
       },
+      contentBlueprint,
       authoringContract: {
         defaultTool: "learning_agent.publish_learning_course",
         language: "zh-CN",
@@ -369,6 +376,7 @@ function buildLearnerClarificationHints(brief: AuthoringContextResult["brief"]):
 function buildCodexInstruction(brief: AuthoringContextResult["brief"], unitCount: number): string {
   return [
     "请由 Codex 创作 coursePack 和 lessons，然后调用 learning_agent.publish_learning_course。",
+    "写 lesson 前先逐项遵循 contentBlueprint.units[*].pageBlueprints：pageType、teachingMove、learnerAction、visualRequirement、feedbackRequirement、sourceRequirement。",
     `输出语言：${brief.language}。`,
     `课程策略：${brief.strategy}。`,
     `每个单元页数：${brief.unitPages}。`,

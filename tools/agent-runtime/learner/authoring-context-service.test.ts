@@ -79,10 +79,37 @@ describe("AuthoringContextService", () => {
       authoringContract: {
         defaultTool: "learning_agent.publish_learning_course",
         language: "zh-CN"
+      },
+      contentBlueprint: {
+        version: "content-blueprint/v1",
+        units: expect.arrayContaining([
+          expect.objectContaining({
+            unitId: "unit-overview",
+            lessonId: "context-blog-overview",
+            targetPageCount: 8,
+            sourceRequirement: expect.stringContaining("sourceAnchorIds"),
+            pageBlueprints: expect.arrayContaining([
+              expect.objectContaining({
+                pageNumber: 1,
+                pageType: "problem_scene",
+                learnerAction: expect.stringContaining("判断")
+              }),
+              expect.objectContaining({
+                pageType: "interactive_model",
+                feedbackRequirement: expect.stringContaining("因果")
+              }),
+              expect.objectContaining({
+                pageType: "transfer_challenge",
+                mustInclude: expect.arrayContaining([expect.stringContaining("迁移")])
+              })
+            ])
+          })
+        ])
       }
     });
     expect(context.codexInstruction).toContain("请由 Codex 创作 coursePack 和 lessons");
     expect(context.codexInstruction).toContain("learning_agent.publish_learning_course");
+    expect(context.codexInstruction).toContain("contentBlueprint.units[*].pageBlueprints");
     expect(context.source.anchors.length).toBeLessThanOrEqual(4);
     expect(context.qualityContract).toMatchObject({
       language: "zh-CN",
@@ -105,6 +132,7 @@ describe("AuthoringContextService", () => {
     });
     await expect(readFile(context.artifacts.coursePlanPath, "utf8")).resolves.toContain("acceptanceExpectations");
     await expect(readFile(context.artifacts.unitPlanPath, "utf8")).resolves.toContain("expectedInteractions");
+    await expect(readFile(context.artifacts.authoringContextPath, "utf8")).resolves.toContain("content-blueprint/v1");
   });
 
   test("returns topic-only context without requiring source approval artifacts", async () => {
@@ -137,6 +165,7 @@ describe("AuthoringContextService", () => {
     expect(context.coursePlan.recommendedUnits[0]?.title).toContain("哈希表");
     expect(context.qualityContract.sourceKindGuidance.sourceKind).toBe("topic");
     expect(context.qualityContract.sourceKindGuidance.authoringFocus.join("\n")).toContain("心智模型");
+    expect(context.contentBlueprint.units[0]?.pageBlueprints[0]?.sourceRequirement).toContain("不要伪造 sourceAnchorIds");
   });
 
   test.each([

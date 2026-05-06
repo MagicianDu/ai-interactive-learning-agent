@@ -66,6 +66,7 @@ describe("skill and MCP contracts", () => {
   });
 
   test("source routing and feedback revision skills exist and use current learner-facing tools", async () => {
+    const operator = await readSkill("learning-agent-operator");
     const sourceToCourse = await readSkill("source-to-course");
     const feedbackRevision = await readSkill("learner-feedback-revision");
 
@@ -74,6 +75,8 @@ describe("skill and MCP contracts", () => {
     expect(sourceToCourse).toContain("paper");
     expect(sourceToCourse).toContain("patent");
     expect(sourceToCourse).toContain("blog");
+    expect(sourceToCourse).toContain("contentBlueprint.units[*].pageBlueprints");
+    expect(operator).toContain("contentBlueprint.units[*].pageBlueprints");
     expectContainsInOrder(sourceToCourse, learnerDefaultTools);
 
     expect(feedbackRevision).toContain("name: learner-feedback-revision");

@@ -67,7 +67,7 @@ Use this flow for normal Codex/Claude-style natural language operation. It shoul
 {"method":"tools/call","params":{"name":"learning_agent.get_authoring_context","arguments":{"runId":"<run-id>"}}}
 ```
 
-Use the returned `coursePlan.strategyReason`, `coursePlan.acceptanceExpectations`, and `coursePlan.recommendedUnits[*].expectedInteractions/expectedAssessments/transferExpectation` as authoring constraints. Do not paste source graph or course-plan artifacts to the learner unless they ask for expert details.
+Use the returned `coursePlan.strategyReason`, `coursePlan.acceptanceExpectations`, `coursePlan.recommendedUnits[*].expectedInteractions/expectedAssessments/transferExpectation`, and `contentBlueprint.units[*].pageBlueprints` as authoring constraints. Do not paste source graph, course-plan, or content-blueprint artifacts to the learner unless they ask for expert details.
 
 3. Codex authors `coursePack` and `lessons`, then publishes:
 

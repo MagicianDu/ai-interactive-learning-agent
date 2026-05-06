@@ -21,6 +21,13 @@ learning_agent.publish_learning_course
 learning_agent.get_learning_preview
 ```
 
+Expected authoring behavior:
+
+```text
+Codex should inspect get_authoring_context.coursePlan and contentBlueprint.units[*].pageBlueprints before writing lessons.
+Each lesson page should follow the blueprint's pageType, learnerAction, visualRequirement, feedbackRequirement, and sourceRequirement.
+```
+
 Expected response:
 
 ```text
