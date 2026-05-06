@@ -4,6 +4,7 @@ import path from "node:path";
 
 import { describe, expect, test } from "vitest";
 
+import { ArtifactStore } from "../artifact-store.js";
 import { publishableLessonFixture } from "../quality/test-fixtures.js";
 import { LearnerProjectService } from "./learner-project-service.js";
 import { LearningCoursePublisher } from "./learning-course-publisher.js";
@@ -236,6 +237,62 @@ describe("LearningCoursePublisher", () => {
     });
   });
 
+  test("returns revision_required when a persisted content blueprint detects authored page drift", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-course-publisher-blueprint-"));
+    const publisher = new LearningCoursePublisher(root);
+    const lesson = blueprintCompliantLessonFixture();
+    const driftedLesson = {
+      ...lesson,
+      pages: lesson.pages.map((page, index) => {
+        if (index === 1) {
+          return { ...page, type: "structure_diagram" };
+        }
+        if (index === 2) {
+          return { ...page, type: "intuition_visual" };
+        }
+        return page;
+      })
+    };
+    await new ArtifactStore(path.join(root, "runs", "blueprint-course")).writeDraft("authoring-context", {
+      artifactId: "authoring-context",
+      roleId: "learning-architecture",
+      runId: "blueprint-course",
+      contentBlueprint: contentBlueprintFixture()
+    });
+
+    const result = await publisher.publish({
+      runId: "blueprint-course",
+      lessons: [driftedLesson],
+      coursePack: coursePackFixture("blueprint-course", "hash-lesson")
+    });
+
+    expect(result).toMatchObject({
+      status: "revision_required",
+      runId: "blueprint-course",
+      qualityReport: {
+        status: "passed"
+      },
+      publishValidation: {
+        status: "failed",
+        errorCount: 2
+      }
+    });
+    if (result.status !== "revision_required") {
+      throw new Error("expected revision_required");
+    }
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule: "publish.blueprint.page-type-mismatch",
+          message: expect.stringContaining("contentBlueprint")
+        })
+      ])
+    );
+    await expect(readFile(path.join(root, "runs", "blueprint-course", "artifacts", "publish-validation.v1.json"), "utf8")).resolves.toContain(
+      "publish.blueprint.page-type-mismatch"
+    );
+  });
+
   test("rejects unsafe lesson and course pack ids before writing files", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "learning-course-publisher-"));
     const publisher = new LearningCoursePublisher(root);
@@ -268,5 +325,120 @@ function coursePackFixture(coursePackId: string, lessonId: string, sourceAnchorI
         conceptIds: ["hash-table"]
       }
     ]
+  };
+}
+
+function contentBlueprintFixture(): Record<string, unknown> {
+  const sourceRequirement = "topic-only 页面必须清楚区分常识、推理和示例；不要伪造 sourceAnchorIds。";
+  return {
+    version: "content-blueprint/v1",
+    globalRules: ["中文优先"],
+    units: [
+      {
+        unitId: "unit-overview",
+        lessonId: "hash-lesson",
+        title: "哈希表：总览课",
+        targetPageCount: 8,
+        unitKind: "overview",
+        focusConcepts: ["哈希表"],
+        sourceAnchorIds: [],
+        sourceRequirement,
+        pageBlueprints: [
+          "problem_scene",
+          "intuition_visual",
+          "structure_diagram",
+          "interactive_model",
+          "quiz",
+          "misconception_check",
+          "transfer_challenge",
+          "summary_card"
+        ].map((pageType, index) => ({
+          pageNumber: index + 1,
+          pageType,
+          teachingMove: "围绕一个清晰学习目标推进。",
+          learnerAction: "让学习者做判断、预测或操作。",
+          visualRequirement: "页面需要可见结构。",
+          feedbackRequirement: "反馈解释为什么。",
+          sourceRequirement,
+          mustInclude: ["中文学习目标"]
+        }))
+      }
+    ]
+  };
+}
+
+function blueprintCompliantLessonFixture(): ReturnType<typeof publishableLessonFixture> {
+  const base = publishableLessonFixture({ id: "hash-lesson", title: "哈希表：总览课", targetPageCount: 8 });
+  const pages = [
+    lessonPage("p1", "problem_scene", { visual: true }),
+    lessonPage("p2", "intuition_visual", { visual: true }),
+    lessonPage("p3", "structure_diagram", { visual: true }),
+    lessonPage("p4", "interactive_model", { visual: true, interaction: true }),
+    lessonPage("p5", "quiz", { assessment: true }),
+    lessonPage("p6", "misconception_check", { assessment: true }),
+    lessonPage("p7", "transfer_challenge", { assessment: true, interaction: true }),
+    lessonPage("p8", "summary_card", { visual: true })
+  ];
+
+  return {
+    ...base,
+    pages
+  };
+}
+
+function lessonPage(
+  id: string,
+  type: string,
+  options: { visual?: boolean; interaction?: boolean; assessment?: boolean }
+): Record<string, unknown> {
+  return {
+    id,
+    type,
+    title: `${id} 中文页`,
+    learningGoal: "理解哈希表为什么快，建立可迁移的中文心智模型",
+    narrative: "这是一段围绕哈希表访问路径的中文学习内容。",
+    ...(options.visual
+      ? {
+          visualSpec: {
+            kind: "diagram",
+            description: "中文结构图",
+            keyElements: ["键", "桶", "候选范围"]
+          }
+        }
+      : {}),
+    ...(options.interaction
+      ? {
+          interactionSpec: {
+            kind: "choice",
+            learnerAction: "选择访问路径",
+            expectedObservation: "看到候选范围变化",
+            cognitivePurpose: "理解搜索空间缩小",
+            options: [
+              {
+                id: "indexed",
+                label: "选择索引路径",
+                resultTitle: "候选范围缩小",
+                outcomeId: "indexed",
+                resultTone: "success",
+                explanation: "因为 key 改变了访问路径。"
+              }
+            ]
+          }
+        }
+      : {}),
+    ...(options.assessment
+      ? {
+          assessmentSpec: {
+            kind: "multiple_choice",
+            prompt: "哪种判断更符合哈希表心智模型？",
+            options: ["用 key 缩小候选范围", "随机让程序变快"],
+            correctAnswer: "用 key 缩小候选范围"
+          },
+          feedbackSpec: {
+            correctFeedback: "正确，因为 key 决定访问路径。",
+            incorrectFeedback: "不对，这忽略了搜索空间缩小。"
+          }
+        }
+      : {})
   };
 }

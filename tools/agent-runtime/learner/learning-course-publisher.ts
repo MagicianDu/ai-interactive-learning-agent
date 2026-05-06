@@ -18,6 +18,8 @@ import { isNonEmptyString, isRecord, isStringArray } from "../quality/validation
 import { createRunConfigFromArgs } from "../run-config.js";
 import { RunStore } from "../run-store.js";
 import type { RunConfig } from "../types.js";
+import { extractContentBlueprint } from "./content-blueprint-compliance.js";
+import type { ContentBlueprint } from "./content-quality-blueprint.js";
 import { buildCourseIR, type CourseIR } from "./course-ir.js";
 import { validatePublishBundle, type PublishValidationIssue, type PublishValidationResult } from "./publish-validation.js";
 
@@ -190,9 +192,11 @@ export class LearningCoursePublisher {
         summary: courseQualityReport.summary
       }
     });
+    const contentBlueprint = await this.resolveContentBlueprint(input.runId);
     const publishValidation = validatePublishBundle({
       courseIR,
-      sourceBacked: sourceGroundingConfig !== undefined
+      sourceBacked: sourceGroundingConfig !== undefined,
+      contentBlueprint
     });
     const compactPublishValidation = toCompactPublishValidation(publishValidation);
     await this.writeAuthoringArtifacts(input.runId, {
@@ -360,6 +364,18 @@ export class LearningCoursePublisher {
       language: brief.language,
       adapter: "mock"
     });
+  }
+
+  private async resolveContentBlueprint(runId: string): Promise<ContentBlueprint | undefined> {
+    try {
+      const artifactStore = new ArtifactStore(path.join(this.workspaceRoot, "runs", runId));
+      return extractContentBlueprint(await artifactStore.readDraft<unknown>("authoring-context"));
+    } catch (error) {
+      if (error instanceof AgentRuntimeError && error.code === "MISSING_ARTIFACT") {
+        return undefined;
+      }
+      throw error;
+    }
   }
 
   private async writeLessonSource(lesson: LessonLike): Promise<string> {

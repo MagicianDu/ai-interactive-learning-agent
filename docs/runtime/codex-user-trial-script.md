@@ -26,6 +26,7 @@ Expected authoring behavior:
 ```text
 Codex should inspect get_authoring_context.coursePlan and contentBlueprint.units[*].pageBlueprints before writing lessons.
 Each lesson page should follow the blueprint's pageType, learnerAction, visualRequirement, feedbackRequirement, and sourceRequirement.
+If publish_learning_course returns publish.blueprint.* issues, Codex should revise the lesson directly instead of asking the learner to approve internal artifacts.
 ```
 
 Expected response:

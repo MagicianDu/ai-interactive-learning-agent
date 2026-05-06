@@ -1,4 +1,6 @@
 import type { CourseIR, CourseIRPage, CourseIRUnit } from "./course-ir.js";
+import type { ContentBlueprint } from "./content-quality-blueprint.js";
+import { validateContentBlueprintCompliance } from "./content-blueprint-compliance.js";
 
 export type PublishValidationStatus = "passed" | "failed";
 
@@ -25,12 +27,19 @@ export type PublishValidationResult = {
 export type ValidatePublishBundleInput = {
   courseIR: CourseIR;
   sourceBacked?: boolean;
+  contentBlueprint?: ContentBlueprint;
 };
 
 export function validatePublishBundle(input: ValidatePublishBundleInput): PublishValidationResult {
   const issues = [
     ...validateUnits(input.courseIR),
-    ...validateLessons(input.courseIR, input.sourceBacked ?? false)
+    ...validateLessons(input.courseIR, input.sourceBacked ?? false),
+    ...(input.contentBlueprint
+      ? validateContentBlueprintCompliance({
+          courseIR: input.courseIR,
+          contentBlueprint: input.contentBlueprint
+        })
+      : [])
   ];
   const blockingIssueCount = issues.filter((issue) => issue.severity === "error").length;
 
