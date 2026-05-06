@@ -16,6 +16,7 @@ The product problem is that MCP can validate and publish lessons, but content qu
 4. The blueprint preserves user-selected page count while warning when fewer than eight pages requires compact combined pages.
 5. The blueprint remains authoring guidance, not a new lesson schema and not a learner approval artifact.
 6. Publish-time validation checks whether Codex-authored pages actually follow the persisted blueprint before showing a preview.
+7. Long source authoring context samples learner-relevant content anchors instead of blindly taking the first pages of a book or paper.
 
 ## Non-Goals
 
@@ -62,6 +63,8 @@ contentBlueprint: {
 - A compact unit under 8 pages keeps learner action and transfer, and emits a compact-page warning in `globalRules`.
 - Source-backed units require page-level `sourceAnchorIds` or explicit inferred/analogy grounding.
 - `get_authoring_context` returns `contentBlueprint` and writes it into the authoring-context artifact.
+- For long books, sampled authoring anchors skip obvious front matter such as table of contents, dedication, acknowledgments, and foreword when content anchors are available.
+- User-selected topics or chapters are prioritized in `source.anchors`, `coursePlan.recommendedUnits[*].sourceAnchorIds`, and `contentBlueprint.units[*].sourceAnchorIds`.
 - Codex-facing skills mention following `contentBlueprint.units[*].pageBlueprints`.
 - `publish_learning_course` returns `revision_required` with `publish.blueprint.*` issues when a persisted blueprint detects page type drift, missing learner action, missing feedback, missing source support, or missing visual structure.
 - Targeted unit tests, typecheck, lint, and seed checks pass.

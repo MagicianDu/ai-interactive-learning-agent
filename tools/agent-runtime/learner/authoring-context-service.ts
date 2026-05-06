@@ -9,6 +9,7 @@ import { normalizeSources } from "../source/source-normalizer.js";
 import type { RunConfig } from "../types.js";
 import { buildContentBlueprint, type ContentBlueprint } from "./content-quality-blueprint.js";
 import { planCourseUnits } from "./course-unit-planner.js";
+import { sampleAuthoringAnchors } from "./source-anchor-sampler.js";
 import { extractSourceSemantics } from "./source-semantic-extractor.js";
 
 type LearnerProjectFile = {
@@ -133,20 +134,27 @@ export class AuthoringContextService {
     const project = await readLearnerProject(this.workspaceRoot, input.runId);
     const config = buildRunConfig(input.runId, project);
     const normalizedSources = await normalizeSources(config.sources);
-    const sourceAnchorIds = ensureAnchorIds(
-      normalizedSources.anchors.map((anchor) => anchor.anchorId),
-      config
-    );
+    const sampledAnchors = sampleAuthoringAnchors({
+      anchors: normalizedSources.anchors,
+      sourceKind: config.sourceKind ?? "topic",
+      maxAnchors,
+      selectedTopics: config.coursePack?.selectedTopics ?? [],
+      selectedChapters: config.coursePack?.selectedChapters ?? [],
+      topic: config.topic
+    });
     const semantics = extractSourceSemantics({
       sourceKind: config.sourceKind ?? "topic",
-      anchors: normalizedSources.anchors
+      anchors: sampledAnchors.length > 0 ? sampledAnchors : normalizedSources.anchors
     });
     const concepts = uniqueStrings([
       semantics.concepts[0]?.label ?? "全局地图",
       ...(config.coursePack?.selectedTopics ?? []),
       ...semantics.concepts.map((concept) => concept.label)
     ]);
-    const sampledAnchorIds = sourceAnchorIds.slice(0, maxAnchors);
+    const sampledAnchorIds = ensureAnchorIds(
+      sampledAnchors.map((anchor) => anchor.anchorId),
+      config
+    );
     const unitPlan = planCourseUnits({
       runId: config.runId,
       topic: config.topic,
@@ -186,7 +194,7 @@ export class AuthoringContextService {
         ...(brief.sourcePath ? { sourcePath: brief.sourcePath } : {}),
         anchorCount: normalizedSources.anchors.length,
         warningCount: normalizedSources.extractionWarnings.length,
-        anchors: normalizedSources.anchors.slice(0, maxAnchors).map((anchor) => ({
+        anchors: sampledAnchors.slice(0, maxAnchors).map((anchor) => ({
           anchorId: anchor.anchorId,
           label: anchor.label,
           locator: anchor.locator,

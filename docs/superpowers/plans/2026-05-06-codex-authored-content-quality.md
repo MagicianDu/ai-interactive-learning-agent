@@ -16,6 +16,8 @@
 - Create: `tools/agent-runtime/learner/content-quality-blueprint.test.ts`
 - Create: `tools/agent-runtime/learner/content-blueprint-compliance.ts`
 - Create: `tools/agent-runtime/learner/content-blueprint-compliance.test.ts`
+- Create: `tools/agent-runtime/learner/source-anchor-sampler.ts`
+- Create: `tools/agent-runtime/learner/source-anchor-sampler.test.ts`
 - Modify: `tools/agent-runtime/learner/authoring-context-service.ts`
 - Modify: `tools/agent-runtime/learner/authoring-context-service.test.ts`
 - Modify: `tools/agent-runtime/learner/publish-validation.ts`
@@ -55,6 +57,14 @@
 - [ ] Teach `LearningCoursePublisher` to read `authoring-context.draft.json` and pass `contentBlueprint` into publish validation.
 - [ ] Re-run the same tests; expected pass.
 
+## Task 5: Long Source Anchor Sampling
+
+- [ ] Write failing tests proving long book context skips front matter and prioritizes selected topics.
+- [ ] Run `npm run test:unit -- tools/agent-runtime/learner/source-anchor-sampler.test.ts tools/agent-runtime/learner/authoring-context-service.test.ts`; expected failure.
+- [ ] Implement `sampleAuthoringAnchors` and use it in `AuthoringContextService` for `source.anchors`, unit planning, and content blueprints.
+- [ ] Re-run the same tests; expected pass.
+- [ ] Re-run a real book context against `Agentic_Design_Patterns.pdf` and confirm sampled anchors start from content pages rather than table of contents / dedication.
+
 ## Validation
 
 Run:
@@ -62,6 +72,7 @@ Run:
 ```bash
 npm run test:unit -- tools/agent-runtime/learner/content-quality-blueprint.test.ts tools/agent-runtime/learner/authoring-context-service.test.ts tools/mcp-server/skill-mcp-contract.test.ts
 npm run test:unit -- tools/agent-runtime/learner/content-blueprint-compliance.test.ts tools/agent-runtime/learner/learning-course-publisher.test.ts
+npm run test:unit -- tools/agent-runtime/learner/source-anchor-sampler.test.ts tools/agent-runtime/learner/authoring-context-service.test.ts
 npm run typecheck
 npm run lint
 npm run test:unit
@@ -77,4 +88,5 @@ npm run seed:check
 - Compact page counts are explicitly flagged.
 - Skills route Codex to the blueprint before writing lessons.
 - `publish_learning_course` blocks persisted-blueprint drift through `publish.blueprint.*` issues.
+- Long-source authoring context samples content anchors and prioritizes selected topics/chapters before building the course plan.
 - Validation commands pass.

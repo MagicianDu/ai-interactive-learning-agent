@@ -168,6 +168,51 @@ describe("AuthoringContextService", () => {
     expect(context.contentBlueprint.units[0]?.pageBlueprints[0]?.sourceRequirement).toContain("不要伪造 sourceAnchorIds");
   });
 
+  test("samples long book anchors from content pages instead of front matter", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-authoring-context-"));
+    const sourcePath = path.join(root, "agentic-book.md");
+    await writeFile(
+      sourcePath,
+      [
+        "# Table of Contents",
+        "Agentic Design Patterns Table of Contents total 424 pages Dedication Acknowledgment Foreword.",
+        "# Dedication",
+        "To my son Bruno and family.",
+        "# Acknowledgment",
+        "Thanks to reviewers and friends.",
+        "# Preface",
+        "Agentic systems evolve from reactive programs to autonomous systems.",
+        "# What makes an AI system an Agent?",
+        "An agent perceives its environment and takes actions to achieve a goal.",
+        "# Why Patterns Matter in Agent Development",
+        "Patterns help designers address state, tool use, communication, and feedback challenges.",
+        "# Tool Use",
+        "Tool use connects reasoning to external APIs and observable actions."
+      ].join("\n\n"),
+      "utf8"
+    );
+    await new LearnerProjectService(root).createProject({
+      request: `请用 "${sourcePath}" 这本书生成中文互动学习网页，面向中文学习者，每个单元 4 页，先总览再按核心 topic 拆课。`,
+      runId: "context-long-book",
+      sourcePath,
+      sourceKind: "book",
+      audience: "中文学习者",
+      unitPages: 4,
+      strategy: "overview_plus_topic",
+      selectedTopics: ["tool use"]
+    });
+
+    const context = await new AuthoringContextService(root).getContext({ runId: "context-long-book", maxAnchors: 4 });
+    const quoteText = context.source.anchors.map((anchor) => anchor.quote ?? anchor.label).join("\n");
+
+    expect(context.source.anchors).toHaveLength(4);
+    expect(context.source.anchors[0]?.quote).toMatch(/Tool use/iu);
+    expect(quoteText).toContain("Patterns help designers");
+    expect(quoteText).not.toContain("Table of Contents total 424 pages");
+    expect(context.coursePlan.recommendedUnits[0]?.sourceAnchorIds).toContain(context.source.anchors[0]?.anchorId);
+    expect(context.contentBlueprint.units[0]?.sourceAnchorIds).toContain(context.source.anchors[0]?.anchorId);
+  });
+
   test.each([
     ["book", "章节映射"],
     ["paper", "研究问题"],
