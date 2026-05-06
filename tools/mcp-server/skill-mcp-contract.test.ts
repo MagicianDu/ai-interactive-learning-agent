@@ -53,6 +53,18 @@ describe("skill and MCP contracts", () => {
     expect(markdown.indexOf("## Default Learner Workflow")).toBeLessThan(markdown.indexOf("## Expert/Operator Mode"));
   });
 
+  test("feedback revision skills make preview revision history the acceptance checkpoint", async () => {
+    const operator = await readSkill("learning-agent-operator");
+    const feedbackRevision = await readSkill("learner-feedback-revision");
+    const responseShape = section(operator, "## Learner-Facing Response Shape");
+
+    expect(responseShape).toContain("revisionHistory");
+    expect(feedbackRevision).toContain("revisionHistory");
+    expect(feedbackRevision).toContain("changedPages");
+    expect(feedbackRevision).toContain("qualityAfter");
+    expect(feedbackRevision).toContain("preview-based acceptance");
+  });
+
   test("source routing and feedback revision skills exist and use current learner-facing tools", async () => {
     const sourceToCourse = await readSkill("source-to-course");
     const feedbackRevision = await readSkill("learner-feedback-revision");

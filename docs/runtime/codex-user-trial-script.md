@@ -78,10 +78,21 @@ learning_agent.apply_learning_revision
 learning_agent.get_learning_preview
 ```
 
+Expected revision response:
+
+```text
+新版预览：http://127.0.0.1:5173/#/preview/<run-id>
+本次修订：revisionHistory[0].summary
+修改范围：changedPages 中的页码和 lesson
+质量状态：qualityAfter.status / qualityAfter.score
+下一步：刷新或打开新版预览，确认侧边栏出现“修订历史”。
+```
+
 ## Guardrails
 
 - Do not ask learners to approve `source-map`, `concept-map`, `curriculum-plan`, or `critic-report`.
 - Do not paste raw nested artifacts into the normal answer.
 - Do not write generated preview output under `src/` unless maintaining sample fixtures.
 - Return the preview URL and compact `qualityReport` summary.
+- After feedback revision, return the preview URL plus `revisionHistory` summary and `qualityAfter` status.
 - Keep generated content Chinese-first unless the learner explicitly requests another language.

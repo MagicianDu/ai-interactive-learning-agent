@@ -44,6 +44,23 @@ Convert the learner's natural language feedback into a revision request, then ca
 {"method":"tools/call","params":{"name":"learning_agent.get_learning_preview","arguments":{"runId":"<run-id>"}}}
 ```
 
+After `apply_learning_revision`, use `get_learning_preview` as the preview-based acceptance checkpoint. Confirm that the returned preview metadata includes:
+
+- `revisionHistory`: learner-readable revision records persisted into the preview manifest.
+- `changedPages`: the page numbers and lesson IDs that visibly changed.
+- `qualityAfter`: the post-revision quality status and score from the apply result.
+- preview URL: the same `#/preview/<run-id>` route the learner should open.
+
+Then answer in learner language:
+
+```text
+已生成新版预览：<preview URL>
+本次修订：<revisionHistory[0].summary>
+修改范围：第 X 页 / <lesson title or lessonId>
+质量状态：<qualityAfter.status>，score=<qualityAfter.score>
+下一步：请打开新版预览，看这次修改是否解决你的反馈。
+```
+
 When the learner asks to share or package the accepted result, call:
 
 ```json
@@ -54,6 +71,7 @@ When the learner asks to share or package the accepted result, call:
 
 - Do not ask the learner to approve source maps, concept maps, curriculum plans, or other internal artifacts.
 - Summarize visible changes: changed lessons, changed pages, quality before/after, and preview URL.
+- Treat `revisionHistory` in `get_learning_preview` as the durable source of truth for what the learner should see after refresh.
 - For source-backed courses, preserve `sourceAnchorIds` unless the learner explicitly asks to re-ground against a different source.
 - If feedback requires behavior the learner-facing MCP tools do not support, explain the limitation and route the work to Codex-authored revision or expert/operator mode.
 - Keep the next acceptance step preview-based.

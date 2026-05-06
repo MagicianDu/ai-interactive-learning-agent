@@ -132,6 +132,7 @@ describe("LearningAgentRuntimeTools", () => {
     });
 
     const result = await tools.callTool("learning_agent.apply_learning_revision", { runId: "mcp-revision" });
+    const previewResult = await tools.callTool("learning_agent.get_learning_preview", { runId: "mcp-revision" });
     const lessonText = await readFile(path.join(root, "runs", "mcp-revision", "preview", "lessons", "hash-table.json"), "utf8");
 
     expect(result).toMatchObject({
@@ -145,6 +146,21 @@ describe("LearningAgentRuntimeTools", () => {
       },
       qualityReport: {
         status: "passed"
+      }
+    });
+    expect(previewResult).toMatchObject({
+      status: "preview_ready",
+      preview: {
+        localUrl: "http://127.0.0.1:5173/#/preview/mcp-revision",
+        revisionHistory: [
+          {
+            runId: "mcp-revision",
+            revisionId: "revision-001",
+            summary: "第 3 页补一个工程排障例子",
+            changedPages: [{ lessonId: "hash-table", pageId: "p3", pageNumber: 3 }],
+            qualityStatus: "passed"
+          }
+        ]
       }
     });
     expect(lessonText).toContain('"narrative": "第3页原文\\n\\n修订说明：第 3 页补一个工程排障例子"');

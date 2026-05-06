@@ -91,6 +91,8 @@ Default publishing writes clean preview JSON under `runs/<run-id>/preview/` and 
 {"method":"tools/call","params":{"name":"learning_agent.get_learning_preview","arguments":{"runId":"<run-id>"}}}
 ```
 
+Use `apply_learning_revision.changedPages` and `qualityAfter`, then confirm `get_learning_preview.preview.revisionHistory` includes the new revision. This is the durable preview-based acceptance point: if the learner refreshes `#/preview/<run-id>`, the sidebar should still show the same learner-readable revision history.
+
 6. Export only after the visible preview matches the learner's request:
 
 ```json
@@ -108,6 +110,7 @@ After publish, preview, revision, or export, respond with only learner-actionabl
 - Preview URL, usually `http://127.0.0.1:5173/#/preview/<run-id>`
 - Course shape: unit count, strategy, pages per unit, source kind
 - Compact quality summary: `qualityReport.status`, score, major checks, `issueSummary`, and the first few `topIssues`
+- For revisions: latest `revisionHistory` summary, changed page numbers, `qualityAfter.status`, and preview URL
 - One suggested next action: open preview, give feedback, revise, or export
 
 Do not paste large source maps, concept maps, curriculum plans, full critic reports, or raw nested JSON unless the user explicitly asks for expert/operator details.
