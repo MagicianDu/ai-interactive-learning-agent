@@ -57,6 +57,8 @@ Normal MCP responses should remain learner-facing. Summarize `qualityReport.stat
 
 Normal users should not review internal artifacts. The default flow is:
 
+Before `create_learning_project`, confirm learner-visible requirements: source scope, audience, teaching difficulty level, course organization, and pages per unit. Teaching difficulty should be one of 入门衔接, 本科核心课程, 大学高年级/研究生课程, or 研究论文精读/前沿讨论 unless the user gives a custom equivalent.
+
 ```text
 learning_agent.create_learning_project
 learning_agent.get_authoring_context

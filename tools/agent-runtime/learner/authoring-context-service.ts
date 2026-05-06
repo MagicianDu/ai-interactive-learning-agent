@@ -9,6 +9,7 @@ import { normalizeSources } from "../source/source-normalizer.js";
 import type { RunConfig } from "../types.js";
 import { buildContentBlueprint, type ContentBlueprint } from "./content-quality-blueprint.js";
 import { planCourseUnits } from "./course-unit-planner.js";
+import { difficultyLabel, type TeachingDifficultyLevel } from "./learner-project-service.js";
 import { sampleAuthoringAnchors } from "./source-anchor-sampler.js";
 import { extractSourceSemantics } from "./source-semantic-extractor.js";
 
@@ -19,6 +20,7 @@ type LearnerProjectFile = {
     sourcePath?: string;
     sourceKind?: string;
     audience?: string;
+    difficultyLevel?: TeachingDifficultyLevel;
     unitPages?: number;
     strategy?: string;
     selectedChapters?: string[];
@@ -40,6 +42,7 @@ export type AuthoringContextResult = {
     sourcePath?: string;
     sourceKind: string;
     audience: string;
+    difficultyLevel: TeachingDifficultyLevel;
     unitPages: number;
     strategy: string;
     selectedChapters: string[];
@@ -103,7 +106,8 @@ export type AuthoringContextResult = {
   qualityContract: {
     language: "zh-CN";
     academicRigor: {
-      positioning: "upper_undergraduate_or_graduate";
+      positioning: TeachingDifficultyLevel;
+      label: string;
       requirements: string[];
       assessmentExpectations: string[];
       avoid: string[];
@@ -179,6 +183,7 @@ export class AuthoringContextService {
       ...(project.brief?.sourcePath ? { sourcePath: project.brief.sourcePath } : {}),
       sourceKind: displaySourceKind,
       audience: config.audience,
+      difficultyLevel: project.brief?.difficultyLevel ?? "upper_undergraduate_or_graduate",
       unitPages: config.coursePack?.unitPageCount ?? config.pageCount.target,
       strategy: config.coursePack?.strategy ?? "overview_plus_topic",
       selectedChapters: config.coursePack?.selectedChapters ?? [],
@@ -187,6 +192,7 @@ export class AuthoringContextService {
     };
     const contentBlueprint = buildContentBlueprint({
       audience: brief.audience,
+      difficultyLevel: brief.difficultyLevel,
       sourceKind: brief.sourceKind,
       units: unitPlan.units
     });
@@ -287,12 +293,14 @@ export class AuthoringContextService {
 }
 
 function buildQualityContract(brief: AuthoringContextResult["brief"]): AuthoringContextResult["qualityContract"] {
+  const levelLabel = difficultyLabel(brief.difficultyLevel);
   return {
     language: "zh-CN",
     academicRigor: {
-      positioning: "upper_undergraduate_or_graduate",
+      positioning: brief.difficultyLevel,
+      label: levelLabel,
       requirements: [
-        "默认按大学高年级/研究生课程设计，不做泛泛科普或轻量博客摘要。",
+        `按${levelLabel}设计，不做泛泛科普或轻量博客摘要。`,
         "每个 unit 必须显式给出先修概念、核心术语、来源阅读映射和可迁移的分析框架。",
         "解释必须有学术密度：问题定义、机制模型、证据/来源边界、反例和适用条件。",
         "长资料要保留章节或主题的课程结构，让学习者知道课前读什么、课上讨论什么、课后练什么。"
@@ -321,7 +329,7 @@ function buildQualityContract(brief: AuthoringContextResult["brief"]): Authoring
     ],
     requiredLearningActions: ["predict", "manipulate", "compare", "explain", "debug", "transfer"],
     pageRules: [
-      "页面应像大学课堂 slide：有问题、模型、来源依据、讨论或练习，而不是只有解释性段落。",
+      `页面应符合${levelLabel}的课堂 slide 密度：有问题、模型、来源依据、讨论或练习，而不是只有解释性段落。`,
       "每页只承载一个学习目标，正文应短，优先使用图、流程、状态变化或可操作模型。",
       "不要把一整章压缩进一页；内容过多时拆成多个 unit 或多页。",
       "先从问题、情境、视觉模型和学习动作进入，再引入术语、公式、代码或定义。",
@@ -340,7 +348,7 @@ function buildQualityContract(brief: AuthoringContextResult["brief"]): Authoring
     sourceKindGuidance: sourceKindGuidance(brief.sourceKind),
     publishChecklist: [
       "coursePack.units 引用的 lessonId 必须存在。",
-      "每个 lesson 的 prerequisites、learningObjectives、pages、summary 要体现大学高年级/研究生课程定位。",
+      `每个 lesson 的 prerequisites、learningObjectives、pages、summary 要体现${levelLabel}定位。`,
       "每个 lesson 必须中文优先，并包含 objectives、prerequisites、pages、misconceptions、transferTasks、summary。",
       "每个 lesson 至少包含 3 个 visualSpec、2 个 interactionSpec、2 个 assessmentSpec、1 个 misconception_check 和 1 个 transfer_challenge。",
       "每个 interactionSpec 必须说明 learnerAction、expectedObservation、cognitivePurpose，并提供解释性结果。",
@@ -402,6 +410,7 @@ function sourceKindGuidance(sourceKind: string): AuthoringContextResult["quality
 function buildLearnerClarificationHints(brief: AuthoringContextResult["brief"]): string[] {
   return [
     `确认学习目标：这套课程要让学习者最终能做什么，而不只是知道什么？`,
+    `确认难度层级：当前为 ${difficultyLabel(brief.difficultyLevel)}；用户也可以选择入门衔接、本科核心、大学高年级/研究生课程或研究论文精读。`,
     `确认课程组织：当前为 ${brief.strategy}；用户也可以选择按章节、按 topic、按任务或混合路径。`,
     `确认阅读习惯：每个单元当前 ${brief.unitPages} 页，可按用户耐心和基础调整。`,
     `确认受众水平：当前为 ${brief.audience}；内容深度、例子和练习都应围绕该画像。`
@@ -411,7 +420,7 @@ function buildLearnerClarificationHints(brief: AuthoringContextResult["brief"]):
 function buildCodexInstruction(brief: AuthoringContextResult["brief"], unitCount: number): string {
   return [
     "请由 Codex 创作 coursePack 和 lessons，然后调用 learning_agent.publish_learning_course。",
-    "默认定位：大学高年级/研究生课程；不要写成泛泛科普、博客摘要或产品介绍。",
+    `教学难度层级：${difficultyLabel(brief.difficultyLevel)}（${brief.difficultyLevel}）；不要写成泛泛科普、博客摘要或产品介绍。`,
     "写 lesson 前先逐项遵循 contentBlueprint.units[*].pageBlueprints：pageType、teachingMove、learnerAction、visualRequirement、feedbackRequirement、sourceRequirement。",
     `输出语言：${brief.language}。`,
     `课程策略：${brief.strategy}。`,

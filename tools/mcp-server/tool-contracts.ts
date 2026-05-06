@@ -59,6 +59,7 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
         sourcePath: stringSchema,
         sourceKind: stringSchema,
         audience: stringSchema,
+        difficultyLevel: stringSchema,
         unitPages: numberSchema,
         strategy: stringSchema,
         selectedChapters: stringArraySchema,

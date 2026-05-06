@@ -142,7 +142,7 @@ Run a learner-first smoke flow against the public mock source:
 ```bash
 printf '%s\n' \
   '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"public-mock-smoke","version":"0.0.0"}}}' \
-  '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"learning_agent.create_learning_project","arguments":{"request":"请把这份资料生成中文学习网页，先给总览课，再按核心 topic 拆课，每个单元 8 页，面向有编程基础的中文学习者。","runId":"public-mock-smoke","sourcePath":"examples/sources/agent-workflow-notes.md","sourceKind":"book","audience":"有编程基础但缺少系统心智模型的中文学习者","unitPages":8,"strategy":"overview_plus_topic"}}}' \
+  '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"learning_agent.create_learning_project","arguments":{"request":"请把这份资料生成中文学习网页，先给总览课，再按核心 topic 拆课，每个单元 8 页，面向有编程基础的中文学习者，教学难度为大学高年级/研究生课程。","runId":"public-mock-smoke","sourcePath":"examples/sources/agent-workflow-notes.md","sourceKind":"book","audience":"有编程基础但缺少系统心智模型的中文学习者","difficultyLevel":"upper_undergraduate_or_graduate","unitPages":8,"strategy":"overview_plus_topic"}}}' \
   '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"learning_agent.generate_grounded_course","arguments":{"runId":"public-mock-smoke"}}}' \
   '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"learning_agent.get_learning_preview","arguments":{"runId":"public-mock-smoke"}}}' \
   | npm run mcp

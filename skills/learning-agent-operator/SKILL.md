@@ -46,10 +46,11 @@ Clarify only learner-visible choices when missing:
 
 - source scope: whole source, selected chapters, selected topics, or a practical task path
 - audience: beginner, experienced programmer, practitioner, researcher, or custom description
+- teaching difficulty: 入门衔接, 本科核心课程, 大学高年级/研究生课程, or 研究论文精读/前沿讨论
 - unit size: pages per unit; default to the existing product default when unspecified
 - output: preview link, exported course pack, or both
 
-Ask at most three clarification questions. If the learner already gave source, audience, strategy, and unit size, do not ask more questions; proceed to MCP.
+Ask at most three clarification questions. If the learner already gave source, audience, teaching difficulty, strategy, and unit size, do not ask more questions; proceed to MCP.
 
 ## Default Learner Workflow
 

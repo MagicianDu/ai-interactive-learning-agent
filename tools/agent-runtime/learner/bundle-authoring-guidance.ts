@@ -1,4 +1,5 @@
 import type { LearnerBrief } from "./learner-project-service.js";
+import { difficultyLabel } from "./learner-project-service.js";
 
 export function buildBundleAuthoringGuidance(brief: LearnerBrief): string {
   const sourceGroundingRule = brief.sourcePath
@@ -8,6 +9,7 @@ export function buildBundleAuthoringGuidance(brief: LearnerBrief): string {
   return [
     "请基于 learner brief 和用户资料生成 coursePack 与 lessons，然后调用 learning_agent.publish_learning_course。",
     `目标学习者：${brief.audience ?? "中文学习者"}`,
+    brief.difficultyLevel ? `教学难度层级：${difficultyLabel(brief.difficultyLevel)}（${brief.difficultyLevel}）。` : undefined,
     `课程组织：${brief.strategy}，每个单元 ${brief.unitPages} 页，输出语言 ${brief.language}。`,
     strategyInstruction(brief.strategy),
     brief.selectedChapters?.length ? `指定章节：${brief.selectedChapters.join("、")}。` : undefined,

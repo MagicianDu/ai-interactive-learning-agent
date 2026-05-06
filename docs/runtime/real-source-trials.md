@@ -23,7 +23,7 @@ import { QuickPreviewService } from './tools/agent-runtime/learner/quick-preview
 const sourcePath = 'examples/sources/agent-workflow-notes.md';
 const root = await mkdtemp(path.join(tmpdir(), 'learning-agent-real-source-'));
 await new LearnerProjectService(root).createProject({
-  request: `请用 ${sourcePath} 这本书生成中文学习材料，面向有编程基础但缺少智能体系统心智模型的中文学习者，每个单元 8 页。`,
+  request: `请用 ${sourcePath} 这本书生成中文学习材料，面向有编程基础但缺少智能体系统心智模型的中文学习者，教学难度为大学高年级/研究生课程，每个单元 8 页。`,
   runId: 'real-agentic-design'
 });
 const result = await new QuickPreviewService(root).generate({ runId: 'real-agentic-design', maxSteps: 80 });

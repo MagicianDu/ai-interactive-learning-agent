@@ -11,7 +11,7 @@ describe("RunPlanService", () => {
   test("creates a reviewable plan from Chinese natural language", () => {
     const service = new RunPlanService("/workspace");
     const plan = service.createPlan(
-      "用 \"examples/sources/agent-workflow-notes.md\" 这本书生成中文课程，先做总览课，再按核心 topic 拆课。每个单元 10 页，面向中文开发者。",
+      "用 \"examples/sources/agent-workflow-notes.md\" 这本书生成中文课程，先做总览课，再按核心 topic 拆课。每个单元 10 页，面向中文开发者，教学难度为大学高年级/研究生课程。",
       { runId: "agentic-design-plan" }
     );
 
@@ -24,17 +24,20 @@ describe("RunPlanService", () => {
       unitPages: "10",
       strategy: "overview_plus_topic",
       planningMode: "topic_guided",
+      difficultyLevel: "upper_undergraduate_or_graduate",
       language: "zh-CN",
       adapter: "codex",
       run: "agentic-design-plan"
     });
+    expect(plan.summary).toContain("difficultyLevel=upper_undergraduate_or_graduate");
     expect(plan.reviewItems).toContain("确认 sourceKind=book 是否符合输入资料。");
+    expect(plan.reviewItems).toContain("确认 teaching difficulty=大学高年级/研究生课程 是否符合学习目标。");
   });
 
   test("writes a run plan to the run directory", async () => {
     const workspaceRoot = await mkdtemp(path.join(tmpdir(), "learning-agent-plan-"));
     const service = new RunPlanService(workspaceRoot);
-    const plan = service.createPlan("用哈希表生成 8 页中文课，面向中文学习者。", { runId: "hash-plan" });
+    const plan = service.createPlan("用哈希表生成 8 页中文课，面向中文学习者，教学难度为本科核心课程。", { runId: "hash-plan" });
 
     const planPath = await service.writePlan(plan);
     const rawPlan = await readFile(planPath, "utf8");
@@ -46,6 +49,7 @@ describe("RunPlanService", () => {
       initArgs: {
         topic: "哈希表",
         unitPages: "8",
+        difficultyLevel: "undergraduate_core",
         language: "zh-CN",
         run: "hash-plan"
       }
@@ -54,7 +58,7 @@ describe("RunPlanService", () => {
 
   test("allows adapter override for automated natural-language smoke runs", () => {
     const service = new RunPlanService("/workspace");
-    const plan = service.createPlan("用哈希表生成 8 页中文课，面向中文学习者。", {
+    const plan = service.createPlan("用哈希表生成 8 页中文课，面向中文学习者，教学难度为本科核心课程。", {
       runId: "hash-plan",
       adapter: "mock"
     });
@@ -66,7 +70,7 @@ describe("RunPlanService", () => {
   test("requires approval before initializing a run from a plan", async () => {
     const workspaceRoot = await mkdtemp(path.join(tmpdir(), "learning-agent-plan-"));
     const service = new RunPlanService(workspaceRoot);
-    await service.writePlan(service.createPlan("用哈希表生成 8 页中文课。", { runId: "hash-plan" }));
+    await service.writePlan(service.createPlan("用哈希表生成 8 页中文课，教学难度为本科核心课程。", { runId: "hash-plan" }));
 
     await expect(service.initializeRunFromPlan("hash-plan")).rejects.toThrow(/plan must be approved/);
   });
@@ -74,7 +78,7 @@ describe("RunPlanService", () => {
   test("approves and initializes a run from a plan", async () => {
     const workspaceRoot = await mkdtemp(path.join(tmpdir(), "learning-agent-plan-"));
     const service = new RunPlanService(workspaceRoot);
-    await service.writePlan(service.createPlan("用哈希表生成 8 页中文课，面向中文学习者。", { runId: "hash-plan" }));
+    await service.writePlan(service.createPlan("用哈希表生成 8 页中文课，面向中文学习者，教学难度为研究论文精读。", { runId: "hash-plan" }));
 
     const result = await service.initializeRunFromPlan("hash-plan", { approve: true });
     const config = await new RunStore(workspaceRoot).readConfig("hash-plan");
@@ -83,6 +87,7 @@ describe("RunPlanService", () => {
     expect(config.runId).toBe("hash-plan");
     expect(config.topic).toBe("哈希表");
     expect(config.pageCount.target).toBe(8);
+    expect(config.userLearningProfile.level).toBe("expert");
     expect(config.runtime.adapter).toBe("codex-manual");
   });
 });

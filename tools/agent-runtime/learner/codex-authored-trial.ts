@@ -22,11 +22,12 @@ export class CodexAuthoredTrialService {
     const sourceTitle = deriveSourceTitle(input.sourcePath);
     const anchorId = "source-001:page-1";
     await new LearnerProjectService(this.workspaceRoot).createProject({
-      request: `请用 ${input.sourcePath} 生成中文学习材料，面向${input.audience}，每个单元 ${input.unitPages} 页。`,
+      request: `请用 ${input.sourcePath} 生成中文学习材料，面向${input.audience}，教学难度为大学高年级/研究生课程，每个单元 ${input.unitPages} 页。`,
       runId: input.runId,
       sourcePath: input.sourcePath,
       sourceKind: input.sourceKind,
       audience: input.audience,
+      difficultyLevel: "upper_undergraduate_or_graduate",
       unitPages: input.unitPages,
       strategy: "overview_plus_topic"
     });

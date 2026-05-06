@@ -23,7 +23,7 @@ AI Interactive Learning Agent 把书籍、论文、专利、博客、笔记和�
 - Codex 自然语言请求：适合直接贴给 Codex 或 Claude。
 - CLI 命令：适合本地通过 `npm run agent:plan` 创建计划。
 
-建议默认使用 `总览课 + 核心 topic` 策略。长书不应该只生成 12 页课程，而应该先生成总览课，再按核心 topic 拆成多个单元，每个单元页数由用户指定。
+建议默认使用 `总览课 + 核心 topic` 策略。长书不应该只生成 12 页课程，而应该先生成总览课，再按核心 topic 拆成多个单元，每个单元页数由用户指定。使用时还要引导用户说出教学难度层级：入门衔接、本科核心课程、大学高年级/研究生课程，或研究论文精读/前沿讨论。
 
 ## 4. 连接 Codex 或 Claude
 
@@ -49,7 +49,7 @@ npm run codex:mcp:check
 npm run mcp -- --list-tools
 ```
 
-外部客户端应优先调用 learner-facing tools：`learning_agent.create_learning_project`、`learning_agent.get_authoring_context`、`learning_agent.publish_learning_course`、`learning_agent.get_learning_preview`。Codex/Claude 应基于 authoring context 自己创作 coursePack 和 lessons，MCP 负责校验与发布。如果用户看完课程后提出“太难 / 加代码 / 多例子 / 拆细”，调用 `learning_agent.revise_learning_course` 记录反馈，再调用 `learning_agent.apply_learning_revision` 应用修订并重新预览。用户接受后再调用 `learning_agent.export_learning_course`。如果只想快速看低保真 deterministic 样例，可以调用 `learning_agent.generate_grounded_course` 或 `learning_agent.generate_quick_preview`。
+外部客户端应优先调用 learner-facing tools：`learning_agent.create_learning_project`、`learning_agent.get_authoring_context`、`learning_agent.publish_learning_course`、`learning_agent.get_learning_preview`。Codex/Claude 应先确认 source、audience、教学难度、课程组织和每单元页数，再基于 authoring context 自己创作 coursePack 和 lessons，MCP 负责校验与发布。如果用户看完课程后提出“太难 / 加代码 / 多例子 / 拆细”，调用 `learning_agent.revise_learning_course` 记录反馈，再调用 `learning_agent.apply_learning_revision` 应用修订并重新预览。用户接受后再调用 `learning_agent.export_learning_course`。如果只想快速看低保真 deterministic 样例，可以调用 `learning_agent.generate_grounded_course` 或 `learning_agent.generate_quick_preview`。
 
 真实资料项目发布时必须保留来源依据。`get_authoring_context` 会返回来源锚点和推荐单元；通过 `publish_learning_course` 发布时，lesson 需要包含 `sourceContext.sourceAnchorIds`、页级 source anchors，或显式 inferred/analogy grounding。
 

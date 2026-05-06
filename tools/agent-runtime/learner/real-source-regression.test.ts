@@ -50,6 +50,7 @@ describe("real source regression suite", () => {
           selectedChapters: ["第 1 章"],
           unitPages: 8,
           audience: "中文学习者",
+          difficultyLevel: "upper_undergraduate_or_graduate",
           acceptanceChecks: ["project ready", "chapter strategy", "source path retained"]
         },
         {
@@ -62,6 +63,7 @@ describe("real source regression suite", () => {
           selectedTopics: ["method"],
           unitPages: 8,
           audience: "中文学习者",
+          difficultyLevel: "research",
           acceptanceChecks: ["project ready", "topic strategy", "source path retained"]
         },
         {
@@ -70,10 +72,11 @@ describe("real source regression suite", () => {
           sourceKind: "blog",
           sourcePath: "https://example.com/blog",
           sourceType: "url",
-            strategy: "task_guided",
-            unitPages: 8,
-            audience: "中文学习者",
-            acceptanceChecks: ["project ready", "url retained", "task strategy"]
+          strategy: "task_guided",
+          unitPages: 8,
+          audience: "中文学习者",
+          difficultyLevel: "undergraduate_core",
+          acceptanceChecks: ["project ready", "url retained", "task strategy"]
         }
       ]
     });

@@ -83,7 +83,7 @@ describe("MCP JSON-RPC server", () => {
     );
   });
 
-  test("create_learning_project schema exposes chapter and topic selection", async () => {
+  test("create_learning_project schema exposes difficulty, chapter, and topic selection", async () => {
     const tools = new LearningAgentRuntimeTools(await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-rpc-")));
 
     const response = await handleMcpRequest({ jsonrpc: "2.0", id: "tools", method: "tools/list" }, tools);
@@ -92,6 +92,7 @@ describe("MCP JSON-RPC server", () => {
 
     expect(createTool?.inputSchema).toMatchObject({
       properties: {
+        difficultyLevel: { type: "string" },
         selectedChapters: { type: "array", items: { type: "string" } },
         selectedTopics: { type: "array", items: { type: "string" } }
       }
@@ -102,7 +103,7 @@ describe("MCP JSON-RPC server", () => {
     const root = await mkdtemp(path.join(tmpdir(), "learning-agent-learner-mcp-"));
     const tools = new LearningAgentRuntimeTools(root);
     const project = await callMcpTool(tools, "learning_agent.create_learning_project", {
-      request: "请生成哈希表中文学习材料，面向有编程基础的学习者，每个单元 8 页。",
+      request: "请生成哈希表中文学习材料，面向有编程基础的学习者，教学难度为本科核心课程，每个单元 8 页。",
       runId: "learner-hash"
     });
 
@@ -154,11 +155,12 @@ describe("MCP JSON-RPC server", () => {
     await writeFile(sourcePath, "# Agentic RAG\nAgentic RAG 先判断任务，再选择检索、工具调用或生成路径。", "utf8");
     const tools = new LearningAgentRuntimeTools(root);
     await callMcpTool(tools, "learning_agent.create_learning_project", {
-      request: `请用 "${sourcePath}" 这篇博客生成中文学习网页，面向中文学习者，每个单元 8 页。`,
+      request: `请用 "${sourcePath}" 这篇博客生成中文学习网页，面向中文学习者，教学难度为本科核心课程，每个单元 8 页。`,
       runId: "mcp-grounded-blog",
       sourcePath,
       sourceKind: "blog",
       audience: "中文学习者",
+      difficultyLevel: "undergraduate_core",
       unitPages: 8,
       strategy: "task_guided",
       selectedTopics: ["任务判断", "工具选择"]
@@ -188,11 +190,12 @@ describe("MCP JSON-RPC server", () => {
     await writeFile(sourcePath, "# Agentic RAG\n先判断任务，再决定是否检索、调用工具或生成。", "utf8");
     const tools = new LearningAgentRuntimeTools(root);
     await callMcpTool(tools, "learning_agent.create_learning_project", {
-      request: `请用 "${sourcePath}" 生成中文学习网页，面向中文学习者，每个单元 8 页。`,
+      request: `请用 "${sourcePath}" 生成中文学习网页，面向中文学习者，教学难度为大学高年级/研究生课程，每个单元 8 页。`,
       runId: "rpc-authoring",
       sourcePath,
       sourceKind: "blog",
       audience: "中文学习者",
+      difficultyLevel: "upper_undergraduate_or_graduate",
       unitPages: 8
     });
 

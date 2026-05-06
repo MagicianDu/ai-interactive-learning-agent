@@ -197,7 +197,7 @@ describe("LearningCoursePublisher", () => {
     const sourcePath = path.join(root, "source.pdf");
     const publisher = new LearningCoursePublisher(root);
     await new LearnerProjectService(root).createProject({
-      request: `请用 ${sourcePath} 这本书生成中文学习材料，面向有编程基础的学习者，每个单元 8 页。`,
+      request: `请用 ${sourcePath} 这本书生成中文学习材料，面向有编程基础的学习者，教学难度为大学高年级/研究生课程，每个单元 8 页。`,
       runId: "source-course"
     });
 

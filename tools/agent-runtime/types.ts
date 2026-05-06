@@ -79,6 +79,7 @@ export type CliInitArgs = {
   chapters?: string;
   topics?: string;
   audience?: string;
+  difficultyLevel?: string;
   language?: string;
   adapter?: string;
   run?: string;

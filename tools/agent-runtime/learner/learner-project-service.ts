@@ -3,12 +3,15 @@ import path from "node:path";
 
 import { ProjectRegistry } from "./project-registry.js";
 
+export type TeachingDifficultyLevel = "introductory" | "undergraduate_core" | "upper_undergraduate_or_graduate" | "research";
+
 export type CreateLearnerProjectInput = {
   request: string;
   runId?: string;
   sourcePath?: string;
   sourceKind?: string;
   audience?: string;
+  difficultyLevel?: TeachingDifficultyLevel;
   unitPages?: number;
   strategy?: string;
   selectedChapters?: string[];
@@ -20,6 +23,7 @@ export type LearnerBrief = {
   sourcePath?: string;
   sourceKind: string;
   audience?: string;
+  difficultyLevel?: TeachingDifficultyLevel;
   unitPages: number;
   strategy: string;
   selectedChapters?: string[];
@@ -81,6 +85,7 @@ export class LearnerProjectService {
       sourceKind: brief.sourceKind,
       sourceRefs: brief.sourcePath ? [brief.sourcePath] : [],
       audience: brief.audience,
+      difficultyLevel: brief.difficultyLevel,
       language: "zh-CN",
       strategy: brief.strategy,
       unitPageCount: brief.unitPages,
@@ -100,6 +105,7 @@ function buildAuthoringContextGuidance(runId: string, brief: LearnerBrief): stri
     `runId：${runId}`,
     `输出语言：${brief.language}`,
     `目标学习者：${brief.audience ?? "中文学习者"}`,
+    brief.difficultyLevel ? `教学难度层级：${difficultyLabel(brief.difficultyLevel)}（${brief.difficultyLevel}）。` : undefined,
     `课程组织：${brief.strategy}，每个单元 ${brief.unitPages} 页。`,
     brief.sourcePath ? `资料路径：${brief.sourcePath}` : undefined,
     `资料类型：${brief.sourceKind}`,
@@ -118,6 +124,7 @@ function buildBrief(input: CreateLearnerProjectInput): LearnerBrief {
     sourcePath: input.sourcePath ?? inferPath(request),
     sourceKind: input.sourceKind ?? inferSourceKind(request),
     audience: input.audience ?? inferAudience(request),
+    difficultyLevel: input.difficultyLevel ?? inferTeachingDifficultyLevel(request),
     unitPages: input.unitPages ?? inferPages(request) ?? 8,
     strategy: input.strategy ?? inferStrategy(request),
     selectedChapters: normalizeList(input.selectedChapters) ?? inferSelectedChapters(request),
@@ -133,6 +140,9 @@ function buildClarificationQuestions(brief: LearnerBrief): string[] {
   }
   if (!brief.audience) {
     questions.push("这套材料面向谁？例如：有编程基础但缺少系统心智模型的中文学习者。");
+  }
+  if (!brief.difficultyLevel) {
+    questions.push("希望教学内容难度层级是什么？例如：入门衔接、本科核心、大学高年级/研究生课程，或研究论文精读/前沿讨论。");
   }
   return questions;
 }
@@ -179,6 +189,28 @@ function inferSourceKind(request: string): string {
 
 function inferAudience(request: string): string | undefined {
   return /面向(?<audience>[^，。；,;]+)/u.exec(request)?.groups?.audience?.trim();
+}
+
+export function inferTeachingDifficultyLevel(request: string): TeachingDifficultyLevel | undefined {
+  const explicit = /(?:教学)?难度(?:层级)?\s*[=＝:：]?\s*(?<level>introductory|undergraduate_core|upper_undergraduate_or_graduate|research)\b/iu.exec(
+    request
+  )?.groups?.level;
+  if (explicit) {
+    return explicit.toLowerCase() as TeachingDifficultyLevel;
+  }
+  if (/研究论文精读|论文精读|前沿讨论|研究前沿|博士|专家级|research/iu.test(request)) {
+    return "research";
+  }
+  if (/大学高年级|研究生课程|研究生级|研究生/u.test(request)) {
+    return "upper_undergraduate_or_graduate";
+  }
+  if (/本科核心|本科课程|大学本科|本科/u.test(request)) {
+    return "undergraduate_core";
+  }
+  if (/入门衔接|零基础|入门|基础课/u.test(request)) {
+    return "introductory";
+  }
+  return undefined;
 }
 
 function inferPages(request: string): number | undefined {
@@ -246,4 +278,17 @@ function inferTopic(request: string): string | undefined {
 
 function looksLikePathOrUrl(value: string): boolean {
   return value.startsWith("/") || /^https?:\/\//u.test(value);
+}
+
+export function difficultyLabel(level: TeachingDifficultyLevel): string {
+  switch (level) {
+    case "introductory":
+      return "入门衔接";
+    case "undergraduate_core":
+      return "本科核心课程";
+    case "upper_undergraduate_or_graduate":
+      return "大学高年级/研究生课程";
+    case "research":
+      return "研究论文精读/前沿讨论";
+  }
 }

@@ -25,7 +25,7 @@ describe("GroundedCourseService", () => {
       "utf8"
     );
     await new LearnerProjectService(root).createProject({
-      request: `请用 "${sourcePath}" 这本书生成中文课程：先给总览课，再按核心 topic 拆课。每个单元 8 页，面向有编程基础但缺少智能体系统心智模型的中文学习者。`,
+      request: `请用 "${sourcePath}" 这本书生成中文课程：先给总览课，再按核心 topic 拆课。教学难度为大学高年级/研究生课程，每个单元 8 页，面向有编程基础但缺少智能体系统心智模型的中文学习者。`,
       runId: "grounded-agent",
       sourcePath,
       sourceKind: "book",
@@ -108,7 +108,7 @@ describe("GroundedCourseService", () => {
     const sourcePath = path.join(root, "rag-notes.md");
     await writeFile(sourcePath, "# Agentic RAG\nAgentic RAG 会先判断任务，再选择检索、工具或生成路径。", "utf8");
     await new LearnerProjectService(root).createProject({
-      request: `请用 "${sourcePath}" 这篇博客生成中文学习网页，面向中文学习者，每个单元 8 页。`,
+      request: `请用 "${sourcePath}" 这篇博客生成中文学习网页，面向中文学习者，教学难度为入门衔接，每个单元 8 页。`,
       runId: "grounded-rag",
       sourcePath,
       sourceKind: "blog",

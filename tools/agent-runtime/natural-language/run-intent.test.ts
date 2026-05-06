@@ -48,7 +48,7 @@ describe("parseRunIntent", () => {
   });
 
   test("falls back to a topic intent when no file or url is present", () => {
-    const intent = parseRunIntent("用哈希表生成 8 页中文课，面向有基础编程经验的学习者。");
+    const intent = parseRunIntent("用哈希表生成 8 页中文课，面向有基础编程经验的学习者，教学难度为本科核心课程。");
 
     expect(intent.source).toEqual({
       type: "topic",
@@ -57,5 +57,6 @@ describe("parseRunIntent", () => {
     });
     expect(intent.unitPages).toBe(8);
     expect(intent.audience).toBe("有基础编程经验的学习者");
+    expect(intent.difficultyLevel).toBe("undergraduate_core");
   });
 });

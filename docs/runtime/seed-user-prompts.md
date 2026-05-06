@@ -7,7 +7,7 @@
 ```text
 请使用 learningAgent MCP 服务帮我把这本书生成中文学习网页。
 资料是：/absolute/path/to/book.pdf
-我希望先有总览课，再按核心 topic 拆课。每个单元 8 页，面向有基础编程经验但还没有建立该领域心智模型的中文学习者。
+我希望先有总览课，再按核心 topic 拆课。每个单元 8 页，面向有基础编程经验但还没有建立该领域心智模型的中文学习者。教学难度定位为大学高年级/研究生课程。
 请先问我最多 3 个你必须知道的问题。明确后，不要让我审批 source-map、concept-map、curriculum-plan 这些内部 artifacts。
 请调用 learning_agent.get_authoring_context 获取来源锚点、推荐单元和发布约束。然后由 Codex 创作 coursePack 与 lessons，并调用 learning_agent.publish_learning_course 发布中文网页。
 发布后告诉我运行 npm run dev，并说明我应该打开哪个页面查看。

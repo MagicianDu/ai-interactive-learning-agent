@@ -21,7 +21,7 @@ describe("AuthoringContextService", () => {
       "utf8"
     );
     await new LearnerProjectService(root).createProject({
-      request: `请用 "${sourcePath}" 生成中文互动学习网页，面向有 RAG 基础的中文学习者，每个单元 8 页，按任务组织。`,
+      request: `请用 "${sourcePath}" 生成中文互动学习网页，面向有 RAG 基础的中文学习者，教学难度定位为大学高年级/研究生课程，每个单元 8 页，按任务组织。`,
       runId: "context-blog",
       sourcePath,
       sourceKind: "blog",
@@ -39,6 +39,7 @@ describe("AuthoringContextService", () => {
       brief: {
         sourceKind: "blog",
         strategy: "task_guided",
+        difficultyLevel: "upper_undergraduate_or_graduate",
         unitPages: 8
       },
       source: {
@@ -115,6 +116,7 @@ describe("AuthoringContextService", () => {
       language: "zh-CN",
       academicRigor: {
         positioning: "upper_undergraduate_or_graduate",
+        label: "大学高年级/研究生课程",
         requirements: expect.arrayContaining([expect.stringContaining("大学高年级/研究生课程")]),
         assessmentExpectations: expect.arrayContaining([expect.stringContaining("课堂讨论"), expect.stringContaining("课后作业")])
       },
@@ -126,10 +128,11 @@ describe("AuthoringContextService", () => {
       supportedStrategies: expect.arrayContaining(["overview_plus_topic", "chapter_guided", "topic_guided", "task_guided", "hybrid"])
     });
     expect(context.codexInstruction).toContain("大学高年级/研究生课程");
+    expect(context.codexInstruction).toContain("教学难度层级");
     expect(context.qualityContract.feedbackRules.join("\n")).toContain("为什么");
     expect(context.qualityContract.groundingRules.join("\n")).toContain("sourceAnchorIds");
     expect(context.learnerClarificationHints).toEqual(
-      expect.arrayContaining([expect.stringContaining("学习目标"), expect.stringContaining("课程组织")])
+      expect.arrayContaining([expect.stringContaining("学习目标"), expect.stringContaining("课程组织"), expect.stringContaining("难度层级")])
     );
     expect(context.artifacts).toMatchObject({
       coursePlanPath: expect.stringContaining("course-plan"),
@@ -144,7 +147,7 @@ describe("AuthoringContextService", () => {
   test("returns topic-only context without requiring source approval artifacts", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "learning-authoring-context-"));
     await new LearnerProjectService(root).createProject({
-      request: "请生成哈希表中文互动学习网页，面向有编程基础的学习者，每个单元 8 页。",
+      request: "请生成哈希表中文互动学习网页，面向有编程基础的学习者，教学难度为本科核心课程，每个单元 8 页。",
       runId: "context-topic",
       audience: "有编程基础的学习者",
       unitPages: 8
@@ -157,6 +160,7 @@ describe("AuthoringContextService", () => {
       runId: "context-topic",
       brief: {
         sourceKind: "topic",
+        difficultyLevel: "undergraduate_core",
         unitPages: 8,
         language: "zh-CN"
       },
@@ -198,7 +202,7 @@ describe("AuthoringContextService", () => {
       "utf8"
     );
     await new LearnerProjectService(root).createProject({
-      request: `请用 "${sourcePath}" 这本书生成中文互动学习网页，面向中文学习者，每个单元 4 页，先总览再按核心 topic 拆课。`,
+      request: `请用 "${sourcePath}" 这本书生成中文互动学习网页，面向中文学习者，教学难度为大学高年级/研究生课程，每个单元 4 页，先总览再按核心 topic 拆课。`,
       runId: "context-long-book",
       sourcePath,
       sourceKind: "book",
@@ -228,7 +232,7 @@ describe("AuthoringContextService", () => {
   ])("adds source-kind guidance for %s projects", async (sourceKind, expectedFocus) => {
     const root = await mkdtemp(path.join(tmpdir(), "learning-authoring-context-"));
     await new LearnerProjectService(root).createProject({
-      request: `请生成 ${sourceKind} 中文互动学习网页，面向中文学习者，每个单元 8 页。`,
+      request: `请生成 ${sourceKind} 中文互动学习网页，面向中文学习者，教学难度为研究生课程，每个单元 8 页。`,
       runId: `context-${sourceKind}`,
       sourceKind,
       audience: "中文学习者",

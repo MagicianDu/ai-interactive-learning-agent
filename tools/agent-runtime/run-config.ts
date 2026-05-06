@@ -62,6 +62,7 @@ const allowedLearningLevels = new Set<UserLearningProfile["level"]>([
   "advanced",
   "expert"
 ]);
+const allowedDifficultyLevels = new Set(["introductory", "undergraduate_core", "upper_undergraduate_or_graduate", "research"]);
 const allowedReadingHabits = new Set<UserLearningProfile["readingHabit"]>([
   "follow_original",
   "visual_first",
@@ -143,6 +144,7 @@ export function createRunConfigFromArgs(args: CliInitArgs): RunConfig {
   const sourceKind = normalizeSourceKind(args.sourceKind, sourceInput);
   const planningMode = normalizePlanningMode(args.planningMode);
   const strategy = normalizeCoursePackStrategy(args.strategy);
+  const difficultyLevel = normalizeDifficultyLevel(args.difficultyLevel);
   const preferredUnitCount = parseOptionalPositiveInteger(args.units, "units", 20);
   const selectedChapters = parseList(args.chapters);
   const selectedTopics = parseList(args.topics);
@@ -166,10 +168,11 @@ export function createRunConfigFromArgs(args: CliInitArgs): RunConfig {
     sources: [toSourceRecord(sourceInput, sourceKind, outputLanguage)],
     audience: args.audience?.trim() || "具备基础技术背景、希望通过中文互动课程建立心智模型的学习者。",
     userLearningProfile: {
-      level: "basic",
+      level: learningProfileLevel(difficultyLevel),
       readingHabit: "visual_first",
       goal: "understand",
-      preferredPageCountPerUnit: targetPages
+      preferredPageCountPerUnit: targetPages,
+      notes: `teachingDifficulty=${difficultyLevel}`
     },
     curriculumPlanningMode: planningMode,
     coveragePolicy: buildDefaultCoveragePolicy(sourceInput.type, strategy),
@@ -306,6 +309,30 @@ function normalizeCoursePackStrategy(strategy: string | undefined): CoursePackSt
     );
   }
   return normalized as CoursePackStrategy;
+}
+
+function normalizeDifficultyLevel(value: string | undefined): string {
+  const normalized = value?.trim().toLowerCase() || "upper_undergraduate_or_graduate";
+  if (!allowedDifficultyLevels.has(normalized)) {
+    throw new AgentRuntimeError(
+      "difficultyLevel must be introductory, undergraduate_core, upper_undergraduate_or_graduate, or research",
+      "INVALID_RUN_CONFIG"
+    );
+  }
+  return normalized;
+}
+
+function learningProfileLevel(difficultyLevel: string): UserLearningProfile["level"] {
+  if (difficultyLevel === "introductory") {
+    return "beginner";
+  }
+  if (difficultyLevel === "undergraduate_core") {
+    return "intermediate";
+  }
+  if (difficultyLevel === "research") {
+    return "expert";
+  }
+  return "advanced";
 }
 
 function parseOptionalPositiveInteger(value: string | undefined, fieldName: string, max: number): number | undefined {

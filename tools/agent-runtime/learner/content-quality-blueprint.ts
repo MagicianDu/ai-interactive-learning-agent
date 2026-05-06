@@ -1,4 +1,5 @@
 import type { PlannedCourseUnit } from "./course-unit-planner.js";
+import { difficultyLabel, type TeachingDifficultyLevel } from "./learner-project-service.js";
 
 export type ContentBlueprint = {
   version: "content-blueprint/v1";
@@ -31,6 +32,7 @@ export type PageContentBlueprint = {
 
 export type BuildContentBlueprintInput = {
   audience: string;
+  difficultyLevel?: TeachingDifficultyLevel;
   sourceKind: string;
   units: PlannedCourseUnit[];
 };
@@ -48,9 +50,10 @@ export function buildContentBlueprint(input: BuildContentBlueprintInput): Conten
 }
 
 function globalRules(input: BuildContentBlueprintInput): string[] {
+  const levelLabel = difficultyLabel(input.difficultyLevel ?? "upper_undergraduate_or_graduate");
   return [
     `所有 learner-facing 内容必须中文优先，围绕 ${input.audience} 的已有知识和阅读习惯设计。`,
-    "默认定位为大学高年级/研究生课程：要有先修概念、正式术语、来源阅读映射、课堂讨论题和课后作业感，避免泛泛科普。",
+    `教学难度层级为${levelLabel}：要有先修概念、正式术语、来源阅读映射、课堂讨论题和课后作业感，避免泛泛科普。`,
     "不要把资料改写成摘要；每页必须有一个学习动作、一个可见结构或一个可检查判断。",
     "术语、公式、代码和定义必须放在直觉、视觉模型和 learner action 之后。",
     "反馈必须解释为什么，指出错误假设、因果机制和可迁移规则。",

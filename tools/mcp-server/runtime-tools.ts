@@ -117,6 +117,7 @@ export class LearningAgentRuntimeTools {
       sourcePath: optionalString(options.sourcePath),
       sourceKind: optionalString(options.sourceKind),
       audience: optionalString(options.audience),
+      difficultyLevel: optionalDifficultyLevel(options.difficultyLevel),
       unitPages: optionalNumber(options.unitPages),
       strategy: optionalString(options.strategy),
       selectedChapters: optionalStringArray(options.selectedChapters),
@@ -511,6 +512,19 @@ function requiredArray(input: Record<string, unknown>, key: string): unknown[] {
 
 function optionalString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+function optionalDifficultyLevel(value: unknown): "introductory" | "undergraduate_core" | "upper_undergraduate_or_graduate" | "research" | undefined {
+  const normalized = optionalString(value);
+  if (
+    normalized === "introductory" ||
+    normalized === "undergraduate_core" ||
+    normalized === "upper_undergraduate_or_graduate" ||
+    normalized === "research"
+  ) {
+    return normalized;
+  }
+  return undefined;
 }
 
 function optionalOutputMode(value: unknown): "preview" | "source" | undefined {

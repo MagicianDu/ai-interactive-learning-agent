@@ -1,7 +1,7 @@
 import { access, readFile } from "node:fs/promises";
 
 import { GroundedCourseService } from "./grounded-course-service.js";
-import { LearnerProjectService } from "./learner-project-service.js";
+import { difficultyLabel, LearnerProjectService, type TeachingDifficultyLevel } from "./learner-project-service.js";
 import type { SourceEvidenceStatus, SourceEvidenceSummary } from "../quality/source-evidence-analyzer.js";
 
 export type RealSourceRegressionSemanticStatus = "passed" | "warning" | "failed";
@@ -17,6 +17,7 @@ export type RealSourceRegressionSample = {
   selectedTopics?: string[];
   unitPages: number;
   audience: string;
+  difficultyLevel: TeachingDifficultyLevel;
   acceptanceChecks: string[];
 };
 
@@ -87,6 +88,7 @@ export const realSourceRegressionSamples: RealSourceRegressionSample[] = [
     selectedTopics: ["agent loop", "tool use", "multi-agent review"],
     unitPages: 8,
     audience: "有编程基础但缺少智能体系统心智模型的中文学习者",
+    difficultyLevel: "upper_undergraduate_or_graduate",
     acceptanceChecks: [
       "overview unit covers the whole book map",
       "topic units preserve chapter/source mapping",
@@ -103,6 +105,7 @@ export const realSourceRegressionSamples: RealSourceRegressionSample[] = [
     selectedTopics: ["problem", "architecture", "evaluation", "limitations", "transfer"],
     unitPages: 8,
     audience: "希望用中文理解智能体论文方法边界和系统结构的学习者",
+    difficultyLevel: "research",
     acceptanceChecks: [
       "overview separates problem, method, evidence, and limitations",
       "method units preserve source anchors",
@@ -119,6 +122,7 @@ export const realSourceRegressionSamples: RealSourceRegressionSample[] = [
     selectedTopics: ["claims", "technical solution", "embodiments", "risk boundary"],
     unitPages: 8,
     audience: "需要用中文理解 AI 专利权利要求和技术边界的学习者",
+    difficultyLevel: "upper_undergraduate_or_graduate",
     acceptanceChecks: [
       "claim units distinguish claim text from explanatory analogy",
       "technical solution units preserve source anchors",
@@ -135,6 +139,7 @@ export const realSourceRegressionSamples: RealSourceRegressionSample[] = [
     selectedTopics: ["agentic RAG workflow", "tool choice", "evaluation"],
     unitPages: 8,
     audience: "希望把技术博客转成可操作中文教程的学习者",
+    difficultyLevel: "undergraduate_core",
     acceptanceChecks: [
       "lesson starts from a practical implementation problem",
       "at least two interactions require learner decisions",
@@ -168,6 +173,7 @@ export async function runRealSourceRegressionSuite(
       sourcePath: sample.sourcePath,
       sourceKind: sample.sourceKind,
       audience: sample.audience,
+      difficultyLevel: sample.difficultyLevel,
       unitPages: sample.unitPages,
       strategy: sample.strategy,
       selectedChapters: sample.selectedChapters,
@@ -319,6 +325,7 @@ function buildRegressionRequest(sample: RealSourceRegressionSample): string {
   return [
     `请使用 learningAgent MCP 服务把这份${sample.sourceKind}生成中文学习网页：${sample.sourcePath}`,
     `课程组织方式：strategy=${sample.strategy}。每个单元 ${sample.unitPages} 页。`,
+    `教学难度层级：${difficultyLabel(sample.difficultyLevel)}，教学难度=${sample.difficultyLevel}。`,
     sample.selectedChapters?.length ? `指定章节：${sample.selectedChapters.join("、")}。` : undefined,
     sample.selectedTopics?.length ? `指定 topics：${sample.selectedTopics.join("、")}。` : undefined,
     `面向${sample.audience}。`,

@@ -33,16 +33,16 @@ Use this skill to turn learner-supplied material into a course request that the 
 - `task_guided`: use when the learner wants practical workflow, exercises, or application tasks.
 - `hybrid`: use when the learner wants chapter traceability and topic-first learning.
 
-Track selected chapters, selected topics, audience, language, and `unitPages` as learner-visible choices. `unitPages` means pages per unit.
+Track selected chapters, selected topics, audience, teaching difficulty level, language, and `unitPages` as learner-visible choices. `unitPages` means pages per unit.
 
-Ask at most three learner-answerable clarification questions. Never ask a learner to approve source maps, concept maps, curriculum plans, or critic reports in the default flow.
+Ask at most three learner-answerable clarification questions. If the learner did not state teaching difficulty, ask them to choose one of: 入门衔接, 本科核心课程, 大学高年级/研究生课程, 研究论文精读/前沿讨论. Never ask a learner to approve source maps, concept maps, curriculum plans, or critic reports in the default flow.
 
 ## Apply The Plan Through MCP
 
 Call the learner-facing tools in this order:
 
 ```json
-{"method":"tools/call","params":{"name":"learning_agent.create_learning_project","arguments":{"request":"<Chinese learner request with source path or URL, audience, strategy, and unitPages>"}}}
+{"method":"tools/call","params":{"name":"learning_agent.create_learning_project","arguments":{"request":"<Chinese learner request with source path or URL, audience, difficulty level, strategy, and unitPages>"}}}
 {"method":"tools/call","params":{"name":"learning_agent.get_authoring_context","arguments":{"runId":"<run-id>"}}}
 {"method":"tools/call","params":{"name":"learning_agent.publish_learning_course","arguments":{"runId":"<run-id>","coursePack":{},"lessons":[]}}}
 {"method":"tools/call","params":{"name":"learning_agent.get_learning_preview","arguments":{"runId":"<run-id>"}}}
@@ -56,6 +56,7 @@ When inspecting expert details, prefer the latest `source-graph`, `course-plan`,
 
 - Keep generated learning content Chinese-first unless requested otherwise.
 - Codex should author the course content from the authoring context; MCP validates and publishes it.
+- Preserve the learner's requested teaching difficulty level in lesson prerequisites, examples, assessments, and transfer tasks.
 - For long sources, prefer an overview unit followed by focused units instead of compressing the entire source into one short lesson.
 - Use Course Planning V2 expectations from authoring context to preserve strategy reason, source mapping, expected interactions, expected assessments, and transfer expectations.
 - Use `contentBlueprint.units[*].pageBlueprints` as the page-by-page authoring checklist; do not collapse it into long prose.

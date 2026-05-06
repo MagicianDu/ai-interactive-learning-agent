@@ -172,7 +172,7 @@ describe("LearningAgentRuntimeTools", () => {
     const tools = new LearningAgentRuntimeTools(root);
 
     await tools.callTool("learning_agent.create_learning_project", {
-      request: "请用 /tmp/book.pdf 生成中文学习材料，面向有编程基础的学习者，每个单元 8 页，先总览再按核心 topic 拆课。",
+      request: "请用 /tmp/book.pdf 生成中文学习材料，面向有编程基础的学习者，教学难度为本科核心课程，每个单元 8 页，先总览再按核心 topic 拆课。",
       runId: "mcp-book-project"
     });
 
@@ -213,11 +213,12 @@ describe("LearningAgentRuntimeTools", () => {
     await writeFile(sourcePath, "# 工具选择\n先判断任务，再决定是否检索和调用工具。", "utf8");
     const tools = new LearningAgentRuntimeTools(root);
     await tools.callTool("learning_agent.create_learning_project", {
-      request: `请用 "${sourcePath}" 生成中文学习网页，面向中文学习者，每个单元 8 页。`,
+      request: `请用 "${sourcePath}" 生成中文学习网页，面向中文学习者，教学难度为本科核心课程，每个单元 8 页。`,
       runId: "mcp-authoring-context",
       sourcePath,
       sourceKind: "notes",
       audience: "中文学习者",
+      difficultyLevel: "undergraduate_core",
       unitPages: 8
     });
 

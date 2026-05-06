@@ -10,6 +10,7 @@ describe("bundle authoring guidance", () => {
       sourcePath: "/tmp/book.pdf",
       sourceKind: "book",
       audience: "中文学习者",
+      difficultyLevel: "upper_undergraduate_or_graduate",
       unitPages: 8,
       strategy: "overview_plus_topic",
       language: "zh-CN"
@@ -25,7 +26,7 @@ describe("bundle authoring guidance", () => {
   test("project_ready points Codex to authoring context before publishing", async () => {
     const service = new LearnerProjectService(await import("node:fs/promises").then(({ mkdtemp }) => mkdtemp("/tmp/learner-guidance-")));
     const result = await service.createProject({
-      request: "请用 /tmp/book.pdf 生成中文学习材料，面向中文学习者，每个单元 8 页。",
+      request: "请用 /tmp/book.pdf 生成中文学习材料，面向中文学习者，教学难度为大学高年级/研究生课程，每个单元 8 页。",
       runId: "guidance-run"
     });
 
