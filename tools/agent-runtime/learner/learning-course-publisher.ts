@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { ArtifactStore } from "../artifact-store.js";
 import { AgentRuntimeError } from "../errors.js";
 import { validateChineseFirstLesson } from "../quality/chinese-first-validator.js";
 import {
@@ -17,6 +18,8 @@ import { isNonEmptyString, isRecord, isStringArray } from "../quality/validation
 import { createRunConfigFromArgs } from "../run-config.js";
 import { RunStore } from "../run-store.js";
 import type { RunConfig } from "../types.js";
+import { buildCourseIR, type CourseIR } from "./course-ir.js";
+import { validatePublishBundle, type PublishValidationIssue, type PublishValidationResult } from "./publish-validation.js";
 
 type LessonLike = Record<string, unknown> & {
   id: string;
@@ -59,6 +62,13 @@ type CoursePackUnitLike = {
   conceptIds: string[];
 };
 
+type CompactPublishValidation = {
+  status: PublishValidationResult["status"];
+  issueCount: number;
+  errorCount: number;
+  warningCount: number;
+};
+
 export type PublishLearningCourseInput = {
   runId: string;
   lessons: unknown[];
@@ -92,6 +102,7 @@ export type PublishLearningCourseResult =
       previewManifestPath: string;
       preview: LearningPreviewInfo;
       qualityReport: CompactCourseQualityReport;
+      publishValidation: CompactPublishValidation;
       quality: {
         checkedLessons: number;
         blockingIssueCount: 0;
@@ -102,6 +113,7 @@ export type PublishLearningCourseResult =
       runId: string;
       userMessage: string;
       qualityReport: CompactCourseQualityReport;
+      publishValidation: CompactPublishValidation;
       issues: Array<{
         lessonId: string;
         rule: string;
@@ -146,14 +158,47 @@ export class LearningCoursePublisher {
     });
     const courseQualityReportPath = await writeCourseQualityReport(this.workspaceRoot, input.runId, courseQualityReport);
     const compactQualityReport = toCompactCourseQualityReport(courseQualityReport, courseQualityReportPath);
+    const courseIR = buildCourseIR({
+      runId: input.runId,
+      coursePack,
+      lessons,
+      sourceEvidence,
+      qualityReport: {
+        status: courseQualityReport.status,
+        score: courseQualityReport.score,
+        summary: courseQualityReport.summary
+      }
+    });
+    const publishValidation = validatePublishBundle({
+      courseIR,
+      sourceBacked: sourceGroundingConfig !== undefined
+    });
+    const compactPublishValidation = toCompactPublishValidation(publishValidation);
+    await this.writeAuthoringArtifacts(input.runId, {
+      courseIR,
+      lessonBundle: {
+        artifactId: "lesson-bundle",
+        roleId: "publish-package",
+        runId: input.runId,
+        coursePack,
+        lessons
+      },
+      publishValidation
+    });
 
-    const blockingIssues = collectBlockingIssues(lessons, sourceGroundingConfig);
+    const blockingIssues = [
+      ...publishValidation.issues
+        .filter((issue) => issue.severity === "error")
+        .map((issue) => publishValidationIssueToBlockingIssue(issue)),
+      ...collectBlockingIssues(lessons, sourceGroundingConfig)
+    ];
     if (blockingIssues.length > 0) {
       return {
         status: "revision_required",
         runId: input.runId,
         userMessage: "课程还不能发布：需要 Codex 先修订中文学习内容和质量问题。",
         qualityReport: compactQualityReport,
+        publishValidation: compactPublishValidation,
         issues: blockingIssues.map((issue) => ({
           lessonId: issue.lessonId,
           rule: issue.issue.rule,
@@ -192,6 +237,7 @@ export class LearningCoursePublisher {
       previewManifestPath,
       preview,
       qualityReport: compactQualityReport,
+      publishValidation: compactPublishValidation,
       quality: {
         checkedLessons: lessons.length,
         blockingIssueCount: 0
@@ -231,6 +277,29 @@ export class LearningCoursePublisher {
       previewRelativeCoursePackPath: "course-pack.json",
       previewRelativeLessonPaths: lessons.map((lesson) => `lessons/${lesson.id}.json`)
     };
+  }
+
+  private async writeAuthoringArtifacts(
+    runId: string,
+    payload: {
+      courseIR: CourseIR;
+      lessonBundle: Record<string, unknown>;
+      publishValidation: PublishValidationResult;
+    }
+  ): Promise<void> {
+    const artifactStore = new ArtifactStore(path.join(this.workspaceRoot, "runs", runId));
+    await artifactStore.writeDraft("course-ir", {
+      artifactId: "course-ir",
+      roleId: "publish-package",
+      ...payload.courseIR
+    });
+    await artifactStore.writeDraft("lesson-bundle", payload.lessonBundle);
+    await artifactStore.writeDraft("publish-validation", {
+      artifactId: "publish-validation",
+      roleId: "publish-package",
+      runId,
+      ...payload.publishValidation
+    });
   }
 
   private async resolveSourceGroundingConfig(runId: string): Promise<RunConfig | undefined> {
@@ -372,6 +441,27 @@ function collectBlockingIssues(lessons: LessonLike[], sourceGroundingConfig: Run
       .filter((issue) => issue.severity === "error")
       .map((issue) => ({ lessonId: lesson.id, issue }))
   );
+}
+
+function publishValidationIssueToBlockingIssue(issue: PublishValidationIssue): { lessonId: string; issue: QualityIssue } {
+  return {
+    lessonId: issue.lessonId ?? issue.unitId ?? "course",
+    issue: {
+      rule: issue.issueId,
+      path: [issue.scope, issue.unitId, issue.lessonId, issue.pageId].filter(Boolean).join("."),
+      message: issue.requiredFix,
+      severity: issue.severity
+    }
+  };
+}
+
+function toCompactPublishValidation(result: PublishValidationResult): CompactPublishValidation {
+  return {
+    status: result.status,
+    issueCount: result.issues.length,
+    errorCount: result.issues.filter((issue) => issue.severity === "error").length,
+    warningCount: result.issues.filter((issue) => issue.severity === "warning").length
+  };
 }
 
 async function readLearnerProject(workspaceRoot: string, runId: string): Promise<LearnerProjectFile | undefined> {

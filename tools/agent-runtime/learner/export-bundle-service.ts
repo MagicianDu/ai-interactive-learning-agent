@@ -6,6 +6,7 @@ import type { CompactCourseQualityReport } from "../quality/course-quality-repor
 
 export type ExportBundleInput = {
   runId: string;
+  expertOverrideReason?: string;
 };
 
 export type ExportBundleResult = {
@@ -36,6 +37,13 @@ export class ExportBundleService {
       qualityReport?: CompactCourseQualityReport;
     };
 
+    if (preview.qualityReport?.status === "failed" && !hasExpertOverrideReason(input.expertOverrideReason)) {
+      throw new AgentRuntimeError(
+        "Cannot export because the course quality report failed. Provide expertOverrideReason only for maintainer/debug exports.",
+        "INVALID_LESSON"
+      );
+    }
+
     const exportDir = path.join(this.workspaceRoot, "runs", input.runId, "exports", "static-course");
     await mkdir(exportDir, { recursive: true });
     const manifest = {
@@ -48,6 +56,7 @@ export class ExportBundleService {
       lessonPaths: preview.lessonPaths ?? [],
       qualityReport: preview.qualityReport,
       publishNotes: preview.publishNotes,
+      ...(hasExpertOverrideReason(input.expertOverrideReason) ? { expertOverrideReason: input.expertOverrideReason.trim() } : {}),
       artifactVersions: [],
       exportedAt: new Date().toISOString(),
       instructions: ["在项目根目录运行 npm run build。", "用 npm run preview 或静态服务器打开 dist。"]
@@ -66,4 +75,8 @@ export class ExportBundleService {
 
 function isFileNotFound(error: unknown): boolean {
   return typeof error === "object" && error !== null && "code" in error && error.code === "ENOENT";
+}
+
+function hasExpertOverrideReason(value: string | undefined): value is string {
+  return typeof value === "string" && value.trim().length > 0;
 }

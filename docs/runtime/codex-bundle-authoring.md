@@ -71,6 +71,20 @@ For book, paper, patent, blog, documentation, or notes-backed projects:
 
 If source grounding is missing, `publish_learning_course` returns `revision_required`.
 
+## Publish Artifacts And Quality
+
+Publishing writes machine-readable audit artifacts under `runs/<run-id>/artifacts/`:
+
+- `course-ir.vN.json`: versioned Course IR for preview, revision, export, and future runtimes.
+- `lesson-bundle.vN.json`: normalized submitted `coursePack` and `lessons`.
+- `publish-validation.vN.json`: blocking publish validation issues.
+
+It also writes `runs/<run-id>/quality/course-quality-report.json`.
+
+The normal learner response should stay compact: preview URL, course shape, and `qualityReport.status/score/checks/issueSummary/topIssues`. Do not ask learners to approve these artifacts. Use `topIssues` to revise the bundle and call `publish_learning_course` again.
+
+`export_learning_course` blocks export when `qualityReport.status` is `failed`. Use `expertOverrideReason` only for maintainer/debug exports, never as the default learner path.
+
 ## Feedback Quality
 
 Feedback must explain the cause of the result. Avoid only saying "正确 / 错误". Good feedback names:

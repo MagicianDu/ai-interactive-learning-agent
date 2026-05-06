@@ -10,6 +10,43 @@ import { analyzeSourceEvidence, type SourceEvidenceSummary, type SourceEvidenceS
 import { isRecord, type QualityIssue } from "./validation-result.js";
 
 export type CourseQualityStatus = "passed" | "warning" | "failed";
+export type CourseQualityIssueScope = "course" | "unit" | "lesson" | "page";
+export type CourseQualityIssueCategory =
+  | "source_evidence"
+  | "source_anchor"
+  | "generic_page"
+  | "decorative_interaction"
+  | "missing_feedback"
+  | "dense_page"
+  | "learner_level_mismatch"
+  | "page_structure"
+  | "assessment"
+  | "interaction"
+  | "transfer";
+
+export type CourseQualityIssue = {
+  issueId: string;
+  scope: CourseQualityIssueScope;
+  severity: QualityIssue["severity"];
+  category: CourseQualityIssueCategory;
+  reason: string;
+  requiredFix: string;
+  rule: string;
+  path: string;
+  unitId?: string;
+  lessonId?: string;
+  pageId?: string;
+};
+
+export type CourseQualityIssueSummary = {
+  course: number;
+  unit: number;
+  lesson: number;
+  page: number;
+  errors: number;
+  warnings: number;
+  byCategory: Partial<Record<CourseQualityIssueCategory, number>>;
+};
 
 export type CourseQualityReport = {
   status: CourseQualityStatus;
@@ -32,6 +69,8 @@ export type CourseQualityReport = {
     assessmentCoverage: CourseQualityStatus;
     transferCoverage: CourseQualityStatus;
   };
+  issues: CourseQualityIssue[];
+  issueSummary: CourseQualityIssueSummary;
   requiredFixes: string[];
   optionalImprovements: string[];
   sourceEvidence?: SourceEvidenceSummary;
@@ -44,6 +83,8 @@ export type CompactCourseQualityReport = {
   reportPath: string;
   requiredFixCount: number;
   optionalImprovementCount: number;
+  issueSummary: CourseQualityIssueSummary;
+  topIssues: Array<Pick<CourseQualityIssue, "issueId" | "scope" | "severity" | "category" | "reason" | "requiredFix" | "lessonId" | "pageId">>;
   checks: CourseQualityReport["checks"];
   lessonScores: Array<{
     lessonId: string;
@@ -66,21 +107,31 @@ export function buildCourseQualityReport(input: BuildCourseQualityReportInput): 
   const sourceEvidence =
     input.sourceEvidence ?? (input.sourceGroundingConfig ? analyzeSourceEvidence(input.lessons, input.sourceGroundingConfig) : undefined);
   const sourceEvidenceIssue = sourceEvidenceToIssue(sourceEvidence);
-  const allIssues = [...lessonIssueGroups.flatMap((group) => group.issues), ...(sourceEvidenceIssue ? [sourceEvidenceIssue] : [])];
-  const requiredFixes = allIssues.filter((issue) => issue.severity === "error").map(formatIssue);
-  const optionalImprovements = allIssues.filter((issue) => issue.severity === "warning").map(formatIssue);
+  const heuristicIssues = input.lessons.flatMap(collectPageHeuristicIssues);
+  const issues = sortCourseQualityIssues([
+    ...lessonIssueGroups.flatMap((group) => group.issues.map((issue) => toCourseQualityIssue(issue, group.lessonId))),
+    ...(sourceEvidenceIssue ? [toCourseQualityIssue(sourceEvidenceIssue)] : []),
+    ...heuristicIssues
+  ]);
+  const issueSummary = summarizeCourseQualityIssues(issues);
+  const requiredFixes = issues.filter((issue) => issue.severity === "error").map(formatCourseQualityIssue);
+  const optionalImprovements = issues.filter((issue) => issue.severity === "warning").map(formatCourseQualityIssue);
   const checks = {
     sourceEvidence: statusFromSourceEvidence(sourceEvidence),
     chineseFirst: statusFromIssues(lessonIssueGroups.flatMap((group) => group.issues.filter((issue) => issue.rule === "chinese-first"))),
-    pageStructure: statusFromIssues(lessonIssueGroups.flatMap((group) => group.issues.filter(isPageStructureIssue))),
+    pageStructure: statusFromCourseQualityIssues([
+      ...lessonIssueGroups.flatMap((group) => group.issues.filter(isPageStructureIssue).map((issue) => toCourseQualityIssue(issue, group.lessonId))),
+      ...heuristicIssues.filter((issue) => issue.category === "dense_page" || issue.category === "generic_page")
+    ]),
     interactionQuality: statusFromIssues(lessonIssueGroups.flatMap((group) => group.issues.filter(isInteractionIssue))),
     assessmentCoverage: statusFromIssues(lessonIssueGroups.flatMap((group) => group.issues.filter(isAssessmentIssue))),
     transferCoverage: statusFromIssues(lessonIssueGroups.flatMap((group) => group.issues.filter((issue) => issue.rule === "transfer-challenge")))
   };
   const lessonScores = lessonIssueGroups.map((group, index) => {
     const critic = input.criticReports?.[index];
-    const required = group.issues.filter((issue) => issue.severity === "error").map(formatIssue);
-    const optional = group.issues.filter((issue) => issue.severity === "warning").map(formatIssue);
+    const lessonIssues = issues.filter((issue) => issue.lessonId === group.lessonId);
+    const required = lessonIssues.filter((issue) => issue.severity === "error").map(formatCourseQualityIssue);
+    const optional = lessonIssues.filter((issue) => issue.severity === "warning").map(formatCourseQualityIssue);
     return {
       lessonId: group.lessonId,
       score: critic?.score ?? scoreFromIssues(required.length, optional.length),
@@ -103,6 +154,8 @@ export function buildCourseQualityReport(input: BuildCourseQualityReportInput): 
     summary: summarizeCourseQuality(status, score, requiredFixes.length, optionalImprovements.length),
     lessonScores,
     checks,
+    issues,
+    issueSummary,
     requiredFixes,
     optionalImprovements,
     ...(sourceEvidence ? { sourceEvidence } : {})
@@ -129,6 +182,17 @@ export function toCompactCourseQualityReport(report: CourseQualityReport, report
     reportPath,
     requiredFixCount: report.requiredFixes.length,
     optionalImprovementCount: report.optionalImprovements.length,
+    issueSummary: report.issueSummary,
+    topIssues: report.issues.slice(0, 5).map((issue) => ({
+      issueId: issue.issueId,
+      scope: issue.scope,
+      severity: issue.severity,
+      category: issue.category,
+      reason: issue.reason,
+      requiredFix: issue.requiredFix,
+      ...(issue.lessonId ? { lessonId: issue.lessonId } : {}),
+      ...(issue.pageId ? { pageId: issue.pageId } : {})
+    })),
     checks: report.checks,
     lessonScores: report.lessonScores.map((lesson) => ({
       lessonId: lesson.lessonId,
@@ -154,6 +218,16 @@ function lessonIdOf(lesson: unknown): string {
 }
 
 function statusFromIssues(issues: QualityIssue[]): CourseQualityStatus {
+  if (issues.some((issue) => issue.severity === "error")) {
+    return "failed";
+  }
+  if (issues.some((issue) => issue.severity === "warning")) {
+    return "warning";
+  }
+  return "passed";
+}
+
+function statusFromCourseQualityIssues(issues: CourseQualityIssue[]): CourseQualityStatus {
   if (issues.some((issue) => issue.severity === "error")) {
     return "failed";
   }
@@ -203,6 +277,195 @@ function isAssessmentIssue(issue: QualityIssue): boolean {
   return issue.rule === "assessment-count" || issue.rule === "assessment-feedback" || issue.path.includes("misconception");
 }
 
+function collectPageHeuristicIssues(lesson: unknown): CourseQualityIssue[] {
+  if (!isRecord(lesson)) {
+    return [];
+  }
+
+  const lessonId = lessonIdOf(lesson);
+  const pages = Array.isArray(lesson.pages) ? lesson.pages.filter(isRecord) : [];
+  return pages.flatMap((page) => {
+    const pageId = typeof page.id === "string" && page.id.trim().length > 0 ? page.id : "unknown";
+    const issues: CourseQualityIssue[] = [];
+    if (typeof page.narrative === "string" && page.narrative.trim().length > 900) {
+      issues.push({
+        issueId: "quality.page.dense",
+        scope: "page",
+        severity: "warning",
+        category: "dense_page",
+        reason: "page narrative is too dense for a no-scroll learning screen",
+        requiredFix: "Split secondary details into visual labels, interaction feedback, or a separate page so one screen carries one learning goal.",
+        rule: "dense-page",
+        path: `pages.${pageId}.narrative`,
+        lessonId,
+        pageId
+      });
+    }
+    return issues;
+  });
+}
+
+function toCourseQualityIssue(issue: QualityIssue, lessonId?: string): CourseQualityIssue {
+  const pageId = extractPageId(issue.path);
+  const category = categoryForIssue(issue);
+  const scope = scopeForIssue(issue, pageId);
+
+  return {
+    issueId: issueIdForIssue(issue, category, scope),
+    scope,
+    severity: issue.severity,
+    category,
+    reason: issue.message,
+    requiredFix: requiredFixForIssue(issue, category),
+    rule: issue.rule,
+    path: issue.path,
+    ...(lessonId && scope !== "course" ? { lessonId } : {}),
+    ...(pageId ? { pageId } : {})
+  };
+}
+
+function categoryForIssue(issue: QualityIssue): CourseQualityIssueCategory {
+  if (issue.rule === "source-evidence") {
+    return "source_evidence";
+  }
+  if (issue.rule === "source-grounding") {
+    return "source_anchor";
+  }
+  if (issue.rule === "interaction-feedback") {
+    return "decorative_interaction";
+  }
+  if (issue.rule === "assessment-feedback") {
+    return "missing_feedback";
+  }
+  if (issue.rule === "assessment-count" || issue.path.includes("misconception")) {
+    return "assessment";
+  }
+  if (issue.rule === "interaction-count") {
+    return "interaction";
+  }
+  if (issue.rule === "transfer-challenge") {
+    return "transfer";
+  }
+  if (issue.rule === "chinese-first") {
+    return "learner_level_mismatch";
+  }
+  return "page_structure";
+}
+
+function scopeForIssue(issue: QualityIssue, pageId: string | undefined): CourseQualityIssueScope {
+  if (issue.path === "sourceEvidence" || issue.rule === "source-evidence") {
+    return "course";
+  }
+  if (pageId) {
+    return "page";
+  }
+  return "lesson";
+}
+
+function issueIdForIssue(issue: QualityIssue, category: CourseQualityIssueCategory, scope: CourseQualityIssueScope): string {
+  if (issue.rule === "source-evidence") {
+    return `quality.source-evidence.${issue.severity === "error" ? "failed" : "warning"}`;
+  }
+  if (issue.rule === "assessment-feedback") {
+    return "quality.page.feedback-missing";
+  }
+  if (issue.rule === "interaction-feedback") {
+    return "quality.interaction.feedback-missing";
+  }
+  if (issue.rule === "source-grounding" && scope === "page") {
+    return "quality.page.source-anchor-missing";
+  }
+  if (issue.rule === "source-grounding") {
+    return "quality.lesson.source-anchor-missing";
+  }
+  return `quality.${scope}.${sanitizeRule(issue.rule || category)}`;
+}
+
+function requiredFixForIssue(issue: QualityIssue, category: CourseQualityIssueCategory): string {
+  if (category === "source_evidence") {
+    return "Add page.sourceAnchorIds for source-backed pages, or mark grounding.kind as inferred/analogy with a clear source rationale.";
+  }
+  if (category === "source_anchor") {
+    return "Attach sourceAnchorIds to the affected lesson/page so claims can be traced back to the source material.";
+  }
+  if (category === "missing_feedback") {
+    return "Add feedbackSpec.correctFeedback and incorrectFeedback with mechanism-level explanations, not only correct/incorrect labels.";
+  }
+  if (category === "decorative_interaction") {
+    return "Define learnerAction, expectedObservation, and cognitivePurpose so the interaction changes the learner's mental model.";
+  }
+  if (category === "assessment") {
+    return "Add or repair mental-model checks: recall, prediction, misconception, and transfer should have explanatory feedback.";
+  }
+  if (category === "interaction") {
+    return "Add at least two meaningful learner actions that expose cause and effect.";
+  }
+  if (category === "transfer") {
+    return "Add a transfer challenge that asks the learner to apply the concept in a new but related context.";
+  }
+  if (category === "learner_level_mismatch") {
+    return "Rewrite learner-facing text in Chinese and match it to the declared audience level.";
+  }
+  return issue.severity === "error"
+    ? "Repair the lesson structure so required page types, objectives, visuals, and summary are complete."
+    : "Improve the page structure so each screen focuses on one learning goal.";
+}
+
+function extractPageId(pathValue: string): string | undefined {
+  const match = /^pages\.([^.]+)/u.exec(pathValue);
+  return match?.[1];
+}
+
+function sanitizeRule(rule: string): string {
+  return rule.replace(/[^a-z0-9-]+/giu, "-").replace(/^-|-$/gu, "");
+}
+
+function sortCourseQualityIssues(issues: CourseQualityIssue[]): CourseQualityIssue[] {
+  return [...issues].sort((left, right) => {
+    const severityDelta = severityPriority(left.severity) - severityPriority(right.severity);
+    if (severityDelta !== 0) {
+      return severityDelta;
+    }
+    const scopeDelta = scopePriority(left.scope) - scopePriority(right.scope);
+    if (scopeDelta !== 0) {
+      return scopeDelta;
+    }
+    return left.issueId.localeCompare(right.issueId);
+  });
+}
+
+function severityPriority(severity: QualityIssue["severity"]): number {
+  return severity === "error" ? 0 : 1;
+}
+
+function scopePriority(scope: CourseQualityIssueScope): number {
+  return { course: 0, unit: 1, lesson: 2, page: 3 }[scope];
+}
+
+function summarizeCourseQualityIssues(issues: CourseQualityIssue[]): CourseQualityIssueSummary {
+  const summary: CourseQualityIssueSummary = {
+    course: 0,
+    unit: 0,
+    lesson: 0,
+    page: 0,
+    errors: 0,
+    warnings: 0,
+    byCategory: {}
+  };
+
+  for (const issue of issues) {
+    summary[issue.scope] += 1;
+    if (issue.severity === "error") {
+      summary.errors += 1;
+    } else {
+      summary.warnings += 1;
+    }
+    summary.byCategory[issue.category] = (summary.byCategory[issue.category] ?? 0) + 1;
+  }
+
+  return summary;
+}
+
 function resolveCourseStatus(
   checks: CourseQualityReport["checks"],
   requiredFixes: string[],
@@ -221,8 +484,8 @@ function scoreFromIssues(requiredFixCount: number, optionalImprovementCount: num
   return Math.max(0, 100 - requiredFixCount * 15 - optionalImprovementCount * 5);
 }
 
-function formatIssue(issue: QualityIssue): string {
-  return `${issue.rule}: ${issue.path}: ${issue.message}`;
+function formatCourseQualityIssue(issue: CourseQualityIssue): string {
+  return `${issue.issueId}: ${issue.path}: ${issue.reason} Required fix: ${issue.requiredFix}`;
 }
 
 function summarizeCourseQuality(status: CourseQualityStatus, score: number, requiredFixCount: number, optionalImprovementCount: number): string {

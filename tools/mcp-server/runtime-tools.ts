@@ -197,8 +197,10 @@ export class LearningAgentRuntimeTools {
   }
 
   private async exportLearningCourse(input: unknown): Promise<unknown> {
+    const options = expectRecord(input);
     return new ExportBundleService(this.workspaceRoot).exportRun({
-      runId: requiredString(expectRecord(input), "runId")
+      runId: requiredString(options, "runId"),
+      expertOverrideReason: optionalString(options.expertOverrideReason)
     });
   }
 

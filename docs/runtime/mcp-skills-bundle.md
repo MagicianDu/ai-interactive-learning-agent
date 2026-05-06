@@ -38,6 +38,21 @@ skills/learning-agent-runner
 
 Use `learning-agent-operator` as the default entry skill for user-facing operation. Use `source-to-course` when turning books, papers, patents, blogs, notes, folders, or topic-only prompts into project inputs. Use `learner-feedback-revision` after the learner has seen a preview and asks for changes.
 
+## Current Publish Contract
+
+`learning_agent.publish_learning_course` writes a clean preview plus machine-readable runtime contracts:
+
+```text
+runs/<run-id>/artifacts/course-ir.vN.json
+runs/<run-id>/artifacts/lesson-bundle.vN.json
+runs/<run-id>/artifacts/publish-validation.vN.json
+runs/<run-id>/quality/course-quality-report.json
+```
+
+Normal MCP responses should remain learner-facing. Summarize `qualityReport.status`, score, checks, `issueSummary`, and the first few `topIssues`; do not ask learners to approve the internal artifacts.
+
+`learning_agent.export_learning_course` refuses to export when the quality report is `failed` unless a maintainer explicitly passes `expertOverrideReason`.
+
 ## Default Learner Flow
 
 Normal users should not review internal artifacts. The default flow is:

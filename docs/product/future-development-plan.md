@@ -10,6 +10,12 @@ The current serial product mainline is:
 docs/superpowers/specs/2026-05-06-product-mainline-development-spec.md
 ```
 
+The execution plan for Milestone B plus bounded parallel pre-research is:
+
+```text
+docs/superpowers/plans/2026-05-06-milestone-b-parallel-workstreams.md
+```
+
 Parallel exploration tracks are recorded for later promotion here:
 
 ```text

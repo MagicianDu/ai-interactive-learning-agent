@@ -60,4 +60,71 @@ describe("course-quality-report", () => {
     expect(report.checks.sourceEvidence).toBe("failed");
     expect(report.requiredFixes.some((fix) => fix.includes("source-evidence"))).toBe(true);
   });
+
+  test("returns structured issue objects that support targeted revision", () => {
+    const lesson = publishableLessonFixture({ id: "quality-issues-overview", targetPageCount: 8 });
+    lesson.pages[0] = {
+      ...lesson.pages[0],
+      narrative: "哈希表查询过程需要同时理解数组桶、哈希函数、冲突链、负载因子、扩容阈值和查询路径。".repeat(80)
+    };
+    lesson.pages[5] = {
+      ...lesson.pages[5],
+      feedbackSpec: undefined
+    };
+
+    const report = buildCourseQualityReport({
+      runId: "quality-issues",
+      coursePackId: "quality-issues",
+      lessons: [lesson],
+      sourceEvidence: {
+        status: "failed",
+        totalLessons: 1,
+        totalPages: 8,
+        supportedPages: 0,
+        inferredPages: 0,
+        unsupportedPages: 8,
+        supportRatio: 0,
+        unsupportedPageRefs: ["quality-issues-overview:p1"],
+        pageSupport: []
+      }
+    });
+    const compact = toCompactCourseQualityReport(report, "/tmp/course-quality-report.json");
+
+    expect(report.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          issueId: "quality.source-evidence.failed",
+          scope: "course",
+          severity: "error",
+          category: "source_evidence",
+          requiredFix: expect.stringContaining("source")
+        }),
+        expect.objectContaining({
+          issueId: "quality.page.dense",
+          scope: "page",
+          lessonId: "quality-issues-overview",
+          pageId: "p1",
+          category: "dense_page"
+        }),
+        expect.objectContaining({
+          issueId: "quality.page.feedback-missing",
+          scope: "page",
+          lessonId: "quality-issues-overview",
+          pageId: "p6",
+          category: "missing_feedback"
+        })
+      ])
+    );
+    expect(report.issueSummary).toMatchObject({
+      course: 1,
+      page: 2,
+      errors: 2,
+      warnings: 1
+    });
+    expect(compact.issueSummary).toMatchObject({ course: 1, page: 2 });
+    expect(compact.topIssues[0]).toMatchObject({
+      issueId: "quality.source-evidence.failed",
+      requiredFix: expect.stringContaining("source")
+    });
+  });
 });

@@ -27,7 +27,26 @@ Use before implementation, after implementation, and before publishing.
 {
   "score": 0,
   "strengths": [],
-  "issues": [],
+  "issues": [
+    {
+      "issueId": "",
+      "scope": "course|unit|lesson|page",
+      "severity": "error|warning",
+      "category": "source_evidence|source_anchor|generic_page|decorative_interaction|missing_feedback|dense_page|learner_level_mismatch|page_structure|assessment|interaction|transfer",
+      "reason": "",
+      "requiredFix": "",
+      "lessonId": "",
+      "pageId": ""
+    }
+  ],
+  "issueSummary": {
+    "course": 0,
+    "unit": 0,
+    "lesson": 0,
+    "page": 0,
+    "errors": 0,
+    "warnings": 0
+  },
   "requiredFixes": [],
   "optionalImprovements": []
 }
@@ -42,10 +61,12 @@ Use before implementation, after implementation, and before publishing.
 5. Check transfer quality.
 6. Identify required fixes before implementation or release.
 7. Separate blocking issues from optional polish.
+8. Prefer structured issue IDs and page/unit/lesson scope so Codex can revise the exact affected content.
 
 ## Quality Checklist
 
 - Findings are specific and actionable.
+- Issues include severity, scope, reason, and required fix.
 - Required fixes map to learning or product risk.
 - Feedback does not only comment on visual styling.
 - The critique protects the mental model goal.

@@ -47,9 +47,9 @@ Call the learner-facing tools in this order:
 {"method":"tools/call","params":{"name":"learning_agent.get_learning_preview","arguments":{"runId":"<run-id>"}}}
 ```
 
-Normal outputs should be compact: preview URL, course shape, and `qualityReport` status/score/checks. Keep detailed artifacts available only when the learner explicitly asks for expert review.
+Normal outputs should be compact: preview URL, course shape, and `qualityReport` status/score/checks/issueSummary/topIssues. Keep detailed artifacts available only when the learner explicitly asks for expert review.
 
-When inspecting expert details, prefer the latest `source-graph`, `course-plan`, `unit-plan`, and `authoring-context` artifacts. Do not turn those artifacts into learner approval steps.
+When inspecting expert details, prefer the latest `source-graph`, `course-plan`, `unit-plan`, `authoring-context`, `course-ir`, `lesson-bundle`, and `publish-validation` artifacts. Do not turn those artifacts into learner approval steps.
 
 ## Quality Checklist
 
@@ -61,3 +61,4 @@ When inspecting expert details, prefer the latest `source-graph`, `course-plan`,
 - Preserve chapter or section mappings when the learner asks for them.
 - Keep every unit's page count aligned with the requested `unitPages`.
 - Make the preview the main acceptance surface.
+- If `qualityReport.status=failed`, revise from `topIssues` and republish; do not export unless a maintainer explicitly uses an expert override for debugging.

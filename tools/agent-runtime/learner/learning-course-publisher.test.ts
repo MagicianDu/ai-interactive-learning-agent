@@ -45,6 +45,12 @@ describe("LearningCoursePublisher", () => {
         score: 100,
         requiredFixCount: 0
       },
+      publishValidation: {
+        status: "passed",
+        issueCount: 0,
+        errorCount: 0,
+        warningCount: 0
+      },
       quality: { checkedLessons: 1, blockingIssueCount: 0 }
     });
     if (result.status !== "preview_ready") {
@@ -61,6 +67,15 @@ describe("LearningCoursePublisher", () => {
       "#/preview/hash-course"
     );
     await expect(readFile(path.join(root, "runs", "hash-course", "quality", "course-quality-report.json"), "utf8")).resolves.toContain(
+      "\"status\": \"passed\""
+    );
+    await expect(readFile(path.join(root, "runs", "hash-course", "artifacts", "course-ir.v1.json"), "utf8")).resolves.toContain(
+      "\"irVersion\": \"course-ir/v1\""
+    );
+    await expect(readFile(path.join(root, "runs", "hash-course", "artifacts", "lesson-bundle.v1.json"), "utf8")).resolves.toContain(
+      "\"lessons\""
+    );
+    await expect(readFile(path.join(root, "runs", "hash-course", "artifacts", "publish-validation.v1.json"), "utf8")).resolves.toContain(
       "\"status\": \"passed\""
     );
     await expect(readFile(path.join(root, "src", "lessons", "hash-table-overview", "lesson.ts"), "utf8")).rejects.toMatchObject({
@@ -129,6 +144,53 @@ describe("LearningCoursePublisher", () => {
     expect(result.issues.some((issue) => issue.rule === "chinese-first")).toBe(true);
   });
 
+  test("returns revision_required when publish validation finds malformed authored pages", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-course-publisher-validation-"));
+    const lesson = {
+      ...publishableLessonFixture({ id: "bad-page-lesson", title: "坏页面课程", targetPageCount: 8 }),
+      pages: [
+        {
+          ...publishableLessonFixture({ id: "bad-page-lesson", title: "坏页面课程", targetPageCount: 8 }).pages[0],
+          learningGoal: ""
+        }
+      ]
+    };
+    const publisher = new LearningCoursePublisher(root);
+
+    const result = await publisher.publish({
+      runId: "bad-page-course",
+      lessons: [lesson],
+      coursePack: coursePackFixture("bad-page-course", "bad-page-lesson")
+    });
+
+    expect(result).toMatchObject({
+      status: "revision_required",
+      runId: "bad-page-course",
+      qualityReport: {
+        status: "failed"
+      },
+      publishValidation: {
+        status: "failed",
+        issueCount: 1,
+        errorCount: 1
+      }
+    });
+    if (result.status !== "revision_required") {
+      throw new Error("expected revision_required");
+    }
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule: "publish.page.learning-goal-missing",
+          message: expect.stringContaining("Set page.learningGoal")
+        })
+      ])
+    );
+    await expect(readFile(path.join(root, "runs", "bad-page-course", "artifacts", "publish-validation.v1.json"), "utf8")).resolves.toContain(
+      "\"status\": \"failed\""
+    );
+  });
+
   test("requires source grounding when publishing a source-backed learner project", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "learning-course-publisher-"));
     const sourcePath = path.join(root, "source.pdf");
@@ -155,7 +217,11 @@ describe("LearningCoursePublisher", () => {
       sourceContext: {
         sourceAnchorIds: ["source-001:page-1"],
         sourcePath
-      }
+      },
+      pages: publishableLessonFixture({ id: "source-lesson", title: "资料总览课", targetPageCount: 8 }).pages.map((page) => ({
+        ...page,
+        sourceAnchorIds: ["source-001:page-1"]
+      }))
     };
 
     const grounded = await publisher.publish({

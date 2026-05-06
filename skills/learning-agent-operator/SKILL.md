@@ -99,13 +99,15 @@ Default publishing writes clean preview JSON under `runs/<run-id>/preview/` and 
 
 Use `learning_agent.generate_grounded_course` only for deterministic quick drafts or smoke previews when the user explicitly prioritizes speed over content quality.
 
+When `qualityReport.status=failed`, do not export in the default learner flow. Revise the affected lesson/page from `topIssues` and call `learning_agent.publish_learning_course` again. `expertOverrideReason` is only for maintainer/debug exports.
+
 ## Learner-Facing Response Shape
 
 After publish, preview, revision, or export, respond with only learner-actionable information:
 
 - Preview URL, usually `http://127.0.0.1:5173/#/preview/<run-id>`
 - Course shape: unit count, strategy, pages per unit, source kind
-- Compact quality summary: `qualityReport.status`, score, major checks, required fix count
+- Compact quality summary: `qualityReport.status`, score, major checks, `issueSummary`, and the first few `topIssues`
 - One suggested next action: open preview, give feedback, revise, or export
 
 Do not paste large source maps, concept maps, curriculum plans, full critic reports, or raw nested JSON unless the user explicitly asks for expert/operator details.

@@ -49,12 +49,20 @@ runs/
       lesson.v1.json
       lesson.draft.json
       lesson.approved.json
+      course-ir.v1.json
+      course-ir.draft.json
+      lesson-bundle.v1.json
+      lesson-bundle.draft.json
+      publish-validation.v1.json
+      publish-validation.draft.json
       critic-report.v1.json
       critic-report.draft.json
       critic-report.approved.json
       publish-package.v1.json
       publish-package.draft.json
       publish-package.approved.json
+    quality/
+      course-quality-report.json
     logs/
       orchestration.md
       runtime-events.jsonl
@@ -122,6 +130,12 @@ For an exact versioned file to count as approved, it must match the `approvedArt
 | `artifacts/lesson.vN.json` | Assembled renderer-ready lesson object. |
 | `artifacts/lesson.draft.json` | Optional alias for the latest lesson draft. |
 | `artifacts/lesson.approved.json` | Optional alias for the approved lesson artifact. |
+| `artifacts/course-ir.vN.json` | Course IR V1: versioned intermediate representation shared by publishing, revision, export, and future learning-object runtimes. |
+| `artifacts/course-ir.draft.json` | Alias for the latest Course IR draft written by `publish_learning_course` or deterministic draft publishing. |
+| `artifacts/lesson-bundle.vN.json` | Normalized `coursePack` plus `lessons` payload submitted for publishing. |
+| `artifacts/lesson-bundle.draft.json` | Alias for the latest normalized publish bundle. |
+| `artifacts/publish-validation.vN.json` | Machine-readable publish validation result for missing unit references, page goals, source support, and assessment feedback. |
+| `artifacts/publish-validation.draft.json` | Alias for the latest publish validation result. |
 | `artifacts/critic-report.vN.json` | Review report with strengths, issues, required fixes, and optional improvements. |
 | `artifacts/critic-report.draft.json` | Optional alias for the latest critic-report draft. |
 | `artifacts/critic-report.approved.json` | Optional alias for the approved critic-report artifact. |
@@ -130,6 +144,7 @@ For an exact versioned file to count as approved, it must match the `approvedArt
 | `artifacts/publish-package.approved.json` | Optional alias for the approved publish-package artifact. |
 | `logs/orchestration.md` | Human-readable record of major decisions, approvals, revisions, and blockers. |
 | `logs/runtime-events.jsonl` | Structured event stream for runtime adapters that support event logging. |
+| `quality/course-quality-report.json` | Course-level quality report with compact learner status plus structured course/unit/lesson/page issues for targeted revision. |
 | `approvals/*.approved.json` | Operator approval records for configured gates. |
 | `exports/<target-output>/` | Generated or packaged output for preview, sharing, or deployment. |
 
@@ -154,6 +169,17 @@ Other artifacts may still be reviewed by the operator, but these seven ids are t
 For source-backed runs, `curriculum-plan` should include a `coursePack` object. The default strategy is `overview_plus_topic`: create one overview unit, then split core topic units while preserving the original source mapping.
 
 The learner-facing MCP path now also writes Source Graph V2 and Course Planning V2 artifacts during `get_authoring_context` and deterministic grounded generation. These artifacts are audit and quality inputs, not default learner approval gates. In normal learner mode, Codex should summarize the course shape and quality report instead of asking the learner to inspect these internal files.
+
+Publishing now also writes Course IR and validation artifacts. These are stable machine contracts for agent runtimes and should not become default learner approval gates:
+
+```text
+runs/<run-id>/artifacts/course-ir.vN.json
+runs/<run-id>/artifacts/lesson-bundle.vN.json
+runs/<run-id>/artifacts/publish-validation.vN.json
+runs/<run-id>/quality/course-quality-report.json
+```
+
+`course-quality-report.json` includes `issues[]` and `issueSummary`. Each issue must carry `issueId`, `scope`, `severity`, `category`, `reason`, and `requiredFix`; page-level issues should also include `lessonId` and `pageId`. Learner-facing MCP responses should expose only the compact `qualityReport` summary, including `issueSummary` and `topIssues`, unless the user asks for expert details.
 
 Source Graph V2 minimal shape:
 

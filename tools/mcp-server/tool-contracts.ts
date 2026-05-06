@@ -123,8 +123,9 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
   },
   {
     name: "learning_agent.export_learning_course",
-    description: "Learner-facing tool. Export a preview-ready learning course bundle with a static-course manifest.",
-    inputSchema: objectSchema({ runId: stringSchema }, ["runId"])
+    description:
+      "Learner-facing tool. Export a preview-ready learning course bundle with a static-course manifest. Blocks failed quality reports unless a maintainer provides expertOverrideReason.",
+    inputSchema: objectSchema({ runId: stringSchema, expertOverrideReason: stringSchema }, ["runId"])
   },
   {
     name: "learning_agent.init_run",
