@@ -81,6 +81,21 @@ describe("LearningAgentRuntimeTools", () => {
     );
   });
 
+  test("direct runtime tool handler still supports operator tools", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
+    const tools = new LearningAgentRuntimeTools(root);
+
+    const result = await tools.callTool("learning_agent.plan_run", {
+      request: "请用 /tmp/book.pdf 生成中文学习课程，面向中文工程师，教学难度为本科核心课程，每个单元 8 页。",
+      runId: "operator-plan-still-supported"
+    });
+
+    expect(result).toMatchObject({
+      status: "plan_written",
+      runId: "operator-plan-still-supported"
+    });
+  });
+
   test("initializes and reads run status through tool handlers", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
     const tools = new LearningAgentRuntimeTools(root);

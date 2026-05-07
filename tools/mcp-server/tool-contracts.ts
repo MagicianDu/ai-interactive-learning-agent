@@ -30,6 +30,8 @@ export type LearningAgentToolName =
   | "learning_agent.promote_units"
   | "learning_agent.promote_lesson";
 
+export type LearningAgentToolProfile = "learner" | "authoring" | "operator";
+
 export type LearningAgentToolContract = {
   name: LearningAgentToolName;
   description: string;
@@ -284,3 +286,41 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
     inputSchema: objectSchema({ runId: stringSchema }, ["runId"])
   }
 ];
+
+const learnerToolNames = [
+  "learning_agent.prepare_learning_course",
+  "learning_agent.list_learning_projects",
+  "learning_agent.archive_learning_project",
+  "learning_agent.publish_learning_course",
+  "learning_agent.get_learning_preview",
+  "learning_agent.revise_learning_course",
+  "learning_agent.apply_learning_revision",
+  "learning_agent.export_learning_course"
+] satisfies LearningAgentToolName[];
+
+const authoringToolNames = [
+  ...learnerToolNames,
+  "learning_agent.create_learning_project",
+  "learning_agent.get_authoring_context",
+  "learning_agent.compare_authoring_quality",
+  "learning_agent.create_quality_revision",
+  "learning_agent.generate_grounded_course"
+] satisfies LearningAgentToolName[];
+
+export function learningAgentToolContractsForProfile(
+  profile: LearningAgentToolProfile = "learner"
+): LearningAgentToolContract[] {
+  if (profile === "operator") {
+    return learningAgentToolContracts;
+  }
+
+  const contractsByName = new Map(learningAgentToolContracts.map((tool) => [tool.name, tool]));
+  const profileToolNames = profile === "authoring" ? authoringToolNames : learnerToolNames;
+  return profileToolNames.map((name) => {
+    const contract = contractsByName.get(name);
+    if (!contract) {
+      throw new Error(`missing learning agent tool contract: ${name}`);
+    }
+    return contract;
+  });
+}

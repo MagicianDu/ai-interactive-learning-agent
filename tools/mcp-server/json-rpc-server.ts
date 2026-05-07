@@ -1,4 +1,4 @@
-import { learningAgentToolContracts } from "./tool-contracts.js";
+import { learningAgentToolContractsForProfile, type LearningAgentToolProfile } from "./tool-contracts.js";
 import type { LearningAgentRuntimeTools } from "./runtime-tools.js";
 
 export type JsonRpcId = string | number | null;
@@ -32,7 +32,8 @@ const serverInfo = {
 
 export async function handleMcpRequest(
   request: JsonRpcRequest,
-  tools: LearningAgentRuntimeTools
+  tools: LearningAgentRuntimeTools,
+  profile: LearningAgentToolProfile = "learner"
 ): Promise<JsonRpcResponse | undefined> {
   if (request.method?.startsWith("notifications/")) {
     return undefined;
@@ -53,7 +54,7 @@ export async function handleMcpRequest(
       case "ping":
         return result(id, {});
       case "tools/list":
-        return result(id, { tools: learningAgentToolContracts });
+        return result(id, { tools: learningAgentToolContractsForProfile(profile) });
       case "tools/call":
         return result(id, await callTool(request.params, tools));
       default:
@@ -64,7 +65,11 @@ export async function handleMcpRequest(
   }
 }
 
-export async function handleMcpLine(line: string, tools: LearningAgentRuntimeTools): Promise<string | undefined> {
+export async function handleMcpLine(
+  line: string,
+  tools: LearningAgentRuntimeTools,
+  profile: LearningAgentToolProfile = "learner"
+): Promise<string | undefined> {
   const trimmed = line.trim();
   if (!trimmed) {
     return undefined;
@@ -77,7 +82,7 @@ export async function handleMcpLine(line: string, tools: LearningAgentRuntimeToo
       return JSON.stringify({ id: parsed.id, result: legacyResult });
     }
 
-    const response = await handleMcpRequest(expectRecord(parsed, "JSON-RPC request") as JsonRpcRequest, tools);
+    const response = await handleMcpRequest(expectRecord(parsed, "JSON-RPC request") as JsonRpcRequest, tools, profile);
     return response ? JSON.stringify(response) : undefined;
   } catch (caught) {
     return JSON.stringify({
