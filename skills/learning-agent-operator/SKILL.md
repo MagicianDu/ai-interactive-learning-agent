@@ -19,11 +19,11 @@ Use this skill when the user asks Codex to generate, preview, revise, export, or
 
 ## Product Contract
 
-- Codex or Claude authors the final `coursePack` and `lessons`; MCP provides preparation, context, validation, publishing, preview, revision, and export.
+- Codex or Claude authors the final `coursePack` and `lessons`; MCP provides preparation, validation, publishing, preview, revision, and export in the default learner profile.
 - Keep all learner-facing lesson content中文优先.
 - Preserve source grounding with `sourceAnchorIds` at lesson or page level for source-backed courses.
 - Follow `docs/runtime/codex-authoring-protocol-v2.md` (Codex Authoring Protocol V2) before writing `coursePack` and `lessons`: every page needs a mental-model move, source synthesis, learner action or check, feedback mechanism, and `cognitivePurpose` when interactive.
-- `get_authoring_context` records Source Graph V2 and Course Planning V2 artifacts for audit and downstream quality checks. These are not learner approvals in the default flow.
+- Advanced authoring tools can record Source Graph V2 and Course Planning V2 artifacts for audit and downstream quality checks. These are not learner approvals in the default flow.
 - 不要让学习者审批内部 artifacts such as source maps, concept maps, curriculum plans, or critic reports in the default learner flow.
 
 ## Natural Language Mapping
@@ -63,12 +63,7 @@ Use this flow for normal Codex/Claude-style natural language operation. It shoul
 {"method":"tools/call","params":{"name":"learning_agent.prepare_learning_course","arguments":{"request":"<Chinese natural-language course request>"}}}
 ```
 
-If this returns `clarification_required`, ask only those learner-visible questions and call `learning_agent.prepare_learning_course` again. If the user explicitly wants separated steps, use the fallback:
-
-```json
-{"method":"tools/call","params":{"name":"learning_agent.create_learning_project","arguments":{"request":"<Chinese natural-language course request>"}}}
-{"method":"tools/call","params":{"name":"learning_agent.get_authoring_context","arguments":{"runId":"<run-id>"}}}
-```
+If this returns `clarification_required`, ask only those learner-visible questions and call `learning_agent.prepare_learning_course` again.
 
 2. Use Codex Authoring Protocol V2 with the returned `sourceSemantics`, `coursePlan.strategyReason`, `coursePlan.estimatedTotalPages`, `coursePlan.sourceCoveragePlan`, `coursePlan.acceptanceExpectations`, `coursePlan.recommendedUnits[*].expectedInteractions/expectedAssessments/transferExpectation`, and `contentBlueprint.units[*].pageBlueprints` as authoring constraints. For long books, `unitPages` is per unit and `estimatedTotalPages` is the approximate whole-course page budget. Do not paste source graph, course-plan, or content-blueprint artifacts to the learner unless they ask for expert details.
 
@@ -79,20 +74,6 @@ If this returns `clarification_required`, ask only those learner-visible questio
 ```
 
 Default publishing writes clean preview JSON under `runs/<run-id>/preview/` and returns a compact `qualityReport`. Do not pass `outputMode=source` unless maintaining repository fixtures.
-
-If you created a deterministic baseline under a separate run, compare it after publishing:
-
-```json
-{"method":"tools/call","params":{"name":"learning_agent.compare_authoring_quality","arguments":{"authoredRunId":"<authored-run-id>","draftRunId":"<draft-run-id>"}}}
-```
-
-Summarize improvements and remaining gaps in learner-facing language. If `remainingGaps` is non-empty, call `learning_agent.create_quality_revision` to turn comparison `revisionInstructions` into a Codex-ready revision brief, then revise the authored course and publish again.
-
-```json
-{"method":"tools/call","params":{"name":"learning_agent.create_quality_revision","arguments":{"runId":"<authored-run-id>"}}}
-```
-
-Do not present deterministic drafts as the default high-quality product.
 
 4. Open a learner-visible preview:
 
@@ -116,9 +97,6 @@ Use `apply_learning_revision.changedPages` and `qualityAfter`, then confirm `get
 {"method":"tools/call","params":{"name":"learning_agent.export_learning_course","arguments":{"runId":"<run-id>"}}}
 ```
 
-Use `learning_agent.generate_grounded_course` only for deterministic quick drafts or smoke previews when the user explicitly prioritizes speed over content quality.
-Use `learning_agent.compare_authoring_quality` when both a deterministic draft run and a Codex-authored run exist, so the quality delta is concrete instead of subjective.
-
 When `qualityReport.status=failed`, do not export in the default learner flow. Revise the affected lesson/page from `topIssues` and call `learning_agent.publish_learning_course` again. `expertOverrideReason` is only for maintainer/debug exports.
 
 ## Learner-Facing Response Shape
@@ -129,11 +107,25 @@ After publish, preview, revision, or export, respond with only learner-actionabl
 - Course shape: unit count, strategy, pages per unit, source kind
 - Compact quality summary: `qualityReport.status`, score, major checks, `issueSummary`, and the first few `topIssues`
 - Academic depth signal when relevant: `qualityReport.checks.academicDepth` and the missing `depthRubric` moves, summarized in learner-friendly language
-- Optional authored-vs-draft comparison: improvements, remaining gaps, and recommended next action from `compare_authoring_quality`
+- Optional authored-vs-draft comparison only when the user explicitly asks for advanced authoring comparison
 - For revisions: latest `revisionHistory` summary, changed page numbers, `qualityAfter.status`, and preview URL
 - One suggested next action: open preview, give feedback, revise, or export
 
 Do not paste large source maps, concept maps, curriculum plans, full critic reports, or raw nested JSON unless the user explicitly asks for expert/operator details.
+
+## Advanced Authoring
+
+Use this mode only when the user explicitly asks for separated authoring context, deterministic drafts, or authored-vs-draft comparison.
+
+```json
+{"method":"tools/call","params":{"name":"learning_agent.create_learning_project","arguments":{"request":"<Chinese natural-language course request>"}}}
+{"method":"tools/call","params":{"name":"learning_agent.get_authoring_context","arguments":{"runId":"<run-id>"}}}
+{"method":"tools/call","params":{"name":"learning_agent.generate_grounded_course","arguments":{"runId":"<draft-run-id>"}}}
+{"method":"tools/call","params":{"name":"learning_agent.compare_authoring_quality","arguments":{"authoredRunId":"<authored-run-id>","draftRunId":"<draft-run-id>"}}}
+{"method":"tools/call","params":{"name":"learning_agent.create_quality_revision","arguments":{"runId":"<authored-run-id>"}}}
+```
+
+Do not present deterministic drafts as the default high-quality product.
 
 ## Expert/Operator Mode
 

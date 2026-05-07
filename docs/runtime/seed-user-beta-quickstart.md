@@ -23,7 +23,7 @@ http://127.0.0.1:5173/#/preview/<run-id>
 
 ## Default Learner Flow
 
-Prefer the one-call preparation tool:
+Use the default learner profile. Prefer the one-call preparation tool:
 
 ```json
 {"method":"tools/call","params":{"name":"learning_agent.prepare_learning_course","arguments":{"request":"请用 /path/to/source.pdf 生成中文学习课程，面向有编程基础的中文学习者，教学难度为大学高年级/研究生课程，每个单元 8 页，先总览再按核心 topic 拆课。","runId":"my-course","sourcePath":"/path/to/source.pdf","sourceKind":"book","audience":"有编程基础的中文学习者","difficultyLevel":"upper_undergraduate_or_graduate","unitPages":8,"strategy":"overview_plus_topic"}}}
@@ -58,9 +58,9 @@ Then preview:
 - Notes or folder: `sourceKind=notes`, preserve the user's structure when useful.
 - Topic only: omit `sourcePath`; keep claims general or mark inferred pages clearly.
 
-## Quality Loop
+## Advanced Authoring Profile
 
-For a deterministic baseline, create a separate draft run with `learning_agent.generate_grounded_course`, then compare after Codex-authored publish:
+Use the advanced authoring profile only when a maintainer or authoring agent wants a deterministic baseline or authored-vs-draft comparison. For a deterministic baseline, create a separate draft run with `learning_agent.generate_grounded_course`, then compare after Codex-authored publish:
 
 ```json
 {"method":"tools/call","params":{"name":"learning_agent.compare_authoring_quality","arguments":{"authoredRunId":"my-course","draftRunId":"my-course-draft"}}}
@@ -69,7 +69,7 @@ For a deterministic baseline, create a separate draft run with `learning_agent.g
 Acceptance for seed users:
 
 - `qualityReport.status` is `passed`.
-- `compare_authoring_quality.remainingGaps` is empty when a draft comparison exists.
+- `compare_authoring_quality.remainingGaps` is empty when an advanced draft comparison exists.
 - The preview shows the requested unit structure, page count, difficulty, source grounding, interactions, feedback, and transfer tasks.
 
 ## Feedback And Export

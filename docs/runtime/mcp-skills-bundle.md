@@ -4,7 +4,7 @@ This document defines the local product bundle for AI Interactive Learning Agent
 
 The bundle has two parts:
 
-- MCP server: stable callable tools for creating projects, preparing authoring context, validating/publishing Codex-authored courses, generating deterministic drafts, comparing authored content against drafts, previewing, revising, exporting, and running expert workflows.
+- MCP server: stable callable tools for preparing learner requests, validating/publishing Codex-authored courses, previewing, revising, exporting, and running explicit advanced workflows.
 - Skills: operating instructions for Codex, Claude, OpenClaw-style clients, and future agent runtimes so natural-language learner requests follow the right path.
 
 ## Codex Install
@@ -33,7 +33,6 @@ The Codex skill install copies these folders:
 skills/learning-agent-operator
 skills/source-to-course
 skills/learner-feedback-revision
-skills/learning-agent-runner
 ```
 
 Use `learning-agent-operator` as the default entry skill for user-facing operation. Use `source-to-course` when turning books, papers, patents, blogs, notes, folders, or topic-only prompts into project inputs. Use `learner-feedback-revision` after the learner has seen a preview and asks for changes.
@@ -51,13 +50,13 @@ runs/<run-id>/quality/course-quality-report.json
 
 Normal MCP responses should remain learner-facing. Summarize `qualityReport.status`, score, checks, `issueSummary`, and the first few `topIssues`; do not ask learners to approve the internal artifacts.
 
-`learning_agent.compare_authoring_quality` writes:
+Advanced authoring profile can expose `learning_agent.compare_authoring_quality`, which writes:
 
 ```text
 runs/<authored-run-id>/quality/authoring-quality-comparison.json
 ```
 
-Use it when a deterministic draft run exists and Codex has published a higher-quality authored run. Summarize the concrete improvements, remaining gaps, and `revisionInstructions`; do not present the draft as the product-quality default.
+Use it only when a deterministic draft run exists and Codex has published a higher-quality authored run. Summarize the concrete improvements, remaining gaps, and `revisionInstructions`; do not present the draft as the product-quality default.
 
 `learning_agent.create_quality_revision` converts those comparison `revisionInstructions` into:
 
@@ -71,25 +70,24 @@ Use it when `compare_authoring_quality.remainingGaps` is non-empty. Codex should
 
 ## Default Learner Flow
 
-Normal users should not review internal artifacts. The default flow is:
+Normal users should not review internal artifacts. The default learner profile is:
 
-Before `create_learning_project` or `prepare_learning_course`, confirm learner-visible requirements: source scope, audience, teaching difficulty level, course organization, and pages per unit. Teaching difficulty should be one of 入门衔接, 本科核心课程, 大学高年级/研究生课程, or 研究论文精读/前沿讨论 unless the user gives a custom equivalent. Missing teaching difficulty or pages per unit should return a learner-facing clarification instead of silently defaulting.
+Before `prepare_learning_course`, confirm learner-visible requirements: source scope, audience, teaching difficulty level, course organization, and pages per unit. Teaching difficulty should be one of 入门衔接, 本科核心课程, 大学高年级/研究生课程, or 研究论文精读/前沿讨论 unless the user gives a custom equivalent. Missing teaching difficulty or pages per unit should return a learner-facing clarification instead of silently defaulting.
 
 ```text
-learning_agent.create_learning_project
-learning_agent.get_authoring_context
+learning_agent.prepare_learning_course
 learning_agent.publish_learning_course
-learning_agent.compare_authoring_quality   # optional, when a draft baseline exists
-learning_agent.create_quality_revision     # when comparison remainingGaps is non-empty
 learning_agent.get_learning_preview
 learning_agent.revise_learning_course
 learning_agent.apply_learning_revision
 learning_agent.export_learning_course
 ```
 
-Use expert/operator tools only when the user explicitly asks to inspect artifacts, debug generation, or audit source coverage.
+Advanced authoring profile adds source-context and quality-delta tools: `create_learning_project`, `get_authoring_context`, `compare_authoring_quality`, `create_quality_revision`, and `generate_grounded_course`.
 
-Use `learning_agent.generate_grounded_course` only for quick deterministic drafts or smoke previews. If you generate such a draft and later publish Codex-authored content under another run, call `learning_agent.compare_authoring_quality` to make the quality delta explicit.
+Operator profile adds artifact gates, debug tools, child-run orchestration, and promotion tools. Use it only when the user explicitly asks to inspect artifacts, debug generation, or audit source coverage.
+
+Use `learning_agent.generate_grounded_course` only in advanced authoring mode for quick deterministic drafts or smoke previews. If you generate such a draft and later publish Codex-authored content under another run, call `learning_agent.compare_authoring_quality` to make the quality delta explicit.
 
 ## Upgrade
 

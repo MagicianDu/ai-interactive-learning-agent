@@ -9,10 +9,10 @@ Use this skill to turn learner-supplied material into a course request that the 
 
 ## Product Contract
 
-- Codex or Claude authors the final `coursePack` and `lessons` after `learning_agent.prepare_learning_course` or the explicit `create_learning_project` -> `get_authoring_context` fallback.
+- Codex or Claude authors the final `coursePack` and `lessons` after `learning_agent.prepare_learning_course` in the default learner profile.
 - Keep learner-facing course output中文优先 unless the learner explicitly asks otherwise.
 - Preserve `sourceAnchorIds` for books, papers, patents, blogs, notes, folders, and other source-backed materials.
-- `learning_agent.get_authoring_context` records Source Graph V2 and Course Planning V2 artifacts for expert audit, but learner mode should only receive course shape, preview, and quality summary.
+- Advanced authoring tools can record Source Graph V2 and Course Planning V2 artifacts for expert audit, but learner mode should only receive course shape, preview, and quality summary.
 - Codex should follow `contentBlueprint.units[*].pageBlueprints` before writing lessons: page type, teaching move, learner action, visual requirement, feedback requirement, and source requirement.
 - Codex should follow `docs/runtime/codex-authoring-protocol-v2.md` (Codex Authoring Protocol V2) and the returned `sourceSemantics`: every page needs a mental-model move, source synthesis, learner action or check, feedback mechanism, and `cognitivePurpose` when interactive.
 - 不要让学习者审批内部 artifacts such as source maps, concept maps, curriculum plans, or critic reports in the default learner flow.
@@ -48,11 +48,21 @@ Call the learner-facing tools in this order for the default flow:
 {"method":"tools/call","params":{"name":"learning_agent.get_learning_preview","arguments":{"runId":"<run-id>"}}}
 ```
 
-Use the explicit `learning_agent.create_learning_project` -> `learning_agent.get_authoring_context` flow only when the user specifically asks to inspect or separate those steps.
-
 Normal outputs should be compact: preview URL, course shape, `coursePlan.estimatedTotalPages` when available, and `qualityReport` status/score/checks/issueSummary/topIssues. Keep detailed artifacts available only when the learner explicitly asks for expert review.
 
-If the workflow produced both a deterministic draft run and a Codex-authored run, call `learning_agent.compare_authoring_quality` and summarize the authored-vs-draft improvements plus remaining gaps. If there are remaining gaps, call `learning_agent.create_quality_revision` for the authored run and use the resulting brief as Codex's revision worklist. This is a quality delta report and revision loop, not a learner approval artifact.
+## Advanced Authoring
+
+Use this mode only when the user specifically asks to inspect separated source context, create deterministic drafts, or compare authored content against a draft baseline.
+
+```json
+{"method":"tools/call","params":{"name":"learning_agent.create_learning_project","arguments":{"request":"<Chinese learner request>"}}}
+{"method":"tools/call","params":{"name":"learning_agent.get_authoring_context","arguments":{"runId":"<run-id>"}}}
+{"method":"tools/call","params":{"name":"learning_agent.generate_grounded_course","arguments":{"runId":"<draft-run-id>"}}}
+{"method":"tools/call","params":{"name":"learning_agent.compare_authoring_quality","arguments":{"authoredRunId":"<authored-run-id>","draftRunId":"<draft-run-id>"}}}
+{"method":"tools/call","params":{"name":"learning_agent.create_quality_revision","arguments":{"runId":"<authored-run-id>"}}}
+```
+
+If the workflow produced both a deterministic draft run and a Codex-authored run, summarize the authored-vs-draft improvements plus remaining gaps. If there are remaining gaps, use the resulting brief as Codex's revision worklist. This is a quality delta report and revision loop, not a learner approval artifact.
 
 When inspecting expert details, prefer the latest `source-graph`, `course-plan`, `unit-plan`, `authoring-context`, `course-ir`, `lesson-bundle`, and `publish-validation` artifacts. Do not turn those artifacts into learner approval steps.
 

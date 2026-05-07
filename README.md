@@ -10,15 +10,17 @@ knowledge into lessons that help learners build durable mental models through
 visual structure, learner action, feedback, misconception checks, and transfer
 tasks.
 
-The current product form is a React/Vite Web Deck. The long-term product shape
-is an AI-native learning system that combines:
+The current product form is a React/Vite Web Deck operated through a default
+learner MCP profile. The long-term product shape is an AI-native learning system
+that combines:
 
 - MCP tools for stable local capabilities such as source intake, course
   creation, publishing, preview, feedback revision, and export.
 - Skills for Codex, Claude, OpenClaw-style clients, and future agent runtimes
   to operate those tools through natural language.
 - Structured lesson and course-pack data that can later power canvas maps,
-  playgrounds, tutor mode, teacher mode, and assessment mode.
+  playgrounds, tutor mode, teacher mode, and assessment mode. These modes are
+  experimental and hidden from the default learner path.
 
 Generated learner-facing content is Chinese-first by default.
 
@@ -29,10 +31,11 @@ This repository is in OSS alpha.
 What works today:
 
 - React/Vite learning workspace with side navigation, web-deck lessons, course
-  packs, knowledge-map view, and project-library view.
+  packs, learner feedback, source evidence, and project-library view.
 - Structured lesson and course-pack registries.
-- Local MCP server with learner-facing tools and advanced operator tools.
-- Source-backed quick draft flow using public mock fixtures.
+- Local MCP server with a default learner profile plus explicit authoring and
+  operator profiles.
+- Source-backed Codex-authored flow using public mock fixtures.
 - Feedback revision and static-course export paths.
 - Stable CI gate and slower source-regression gate.
 
@@ -42,7 +45,8 @@ What is intentionally still evolving:
 - High-quality AI-authored content generation across full books, papers,
   patents, blogs, and documentation sets.
 - Hosted multi-user service, accounts, sharing, telemetry, and billing.
-- Rich playground/tutor/teacher modes.
+- Rich playground/tutor/teacher modes; these are experimental until they
+  improve the core learner loop.
 
 ## Quickstart
 
@@ -131,24 +135,36 @@ lessons, or local machine paths. Runtime artifacts belong under ignored
 
 ## MCP Server
 
-List available MCP tools:
+List available learner-profile MCP tools:
 
 ```bash
 npm run mcp -- --list-tools
 ```
 
-Run a learner-first smoke flow against the public mock source:
+Advanced profiles are explicit:
+
+```bash
+npm run mcp -- --list-tools --profile authoring
+npm run mcp -- --list-tools --profile operator
+```
+
+The default learner profile is intentionally small:
+
+```text
+prepare_learning_course -> publish_learning_course -> get_learning_preview -> revise/apply_revision -> export
+```
+
+Prepare a learner-first course request against the public mock source:
 
 ```bash
 printf '%s\n' \
   '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"public-mock-smoke","version":"0.0.0"}}}' \
-  '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"learning_agent.create_learning_project","arguments":{"request":"请把这份资料生成中文学习网页，先给总览课，再按核心 topic 拆课，每个单元 8 页，面向有编程基础的中文学习者，教学难度为大学高年级/研究生课程。","runId":"public-mock-smoke","sourcePath":"examples/sources/agent-workflow-notes.md","sourceKind":"book","audience":"有编程基础但缺少系统心智模型的中文学习者","difficultyLevel":"upper_undergraduate_or_graduate","unitPages":8,"strategy":"overview_plus_topic"}}}' \
-  '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"learning_agent.generate_grounded_course","arguments":{"runId":"public-mock-smoke"}}}' \
-  '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"learning_agent.get_learning_preview","arguments":{"runId":"public-mock-smoke"}}}' \
+  '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"learning_agent.prepare_learning_course","arguments":{"request":"请把这份资料生成中文学习网页，先给总览课，再按核心 topic 拆课，每个单元 8 页，面向有编程基础的中文学习者，教学难度为大学高年级/研究生课程。","runId":"public-mock-smoke","sourcePath":"examples/sources/agent-workflow-notes.md","sourceKind":"book","audience":"有编程基础但缺少系统心智模型的中文学习者","difficultyLevel":"upper_undergraduate_or_graduate","unitPages":8,"strategy":"overview_plus_topic"}}}' \
   | npm run mcp
 ```
 
-After generating and publishing a course, run the app and open:
+After Codex or Claude authors and publishes the returned `coursePack` and
+`lessons`, run the app and open:
 
 ```text
 http://127.0.0.1:5173/#/preview/public-mock-smoke
@@ -156,21 +172,23 @@ http://127.0.0.1:5173/#/preview/public-mock-smoke
 
 Learner-facing tools:
 
-- `learning_agent.create_learning_project`
+- `learning_agent.prepare_learning_course`
 - `learning_agent.list_learning_projects`
 - `learning_agent.archive_learning_project`
-- `learning_agent.get_authoring_context`
-- `learning_agent.generate_grounded_course`
 - `learning_agent.publish_learning_course`
 - `learning_agent.get_learning_preview`
-- `learning_agent.generate_quick_preview`
 - `learning_agent.revise_learning_course`
 - `learning_agent.apply_learning_revision`
 - `learning_agent.export_learning_course`
 
-Advanced operator tools are still available for explicit expert review flows,
-including `plan_run`, `init_from_plan`, `beta_status`, `read_artifact`,
-`approve_gate`, `run_course`, and `promote_units`.
+Advanced authoring profile adds source context and quality-comparison tools such
+as `create_learning_project`, `get_authoring_context`,
+`compare_authoring_quality`, `create_quality_revision`, and
+`generate_grounded_course`.
+
+Operator profile adds explicit expert review and debug tools, including
+`plan_run`, `init_from_plan`, `beta_status`, `read_artifact`, `approve_gate`,
+`run_course`, and `promote_units`.
 
 Default learner-facing clients should not ask users to approve internal
 `source-map`, `concept-map`, or `curriculum-plan` artifacts. Use those gates only
@@ -191,7 +209,6 @@ The relevant local skills live under `skills/`:
 - `learning-agent-operator`
 - `source-to-course`
 - `learner-feedback-revision`
-- `learning-agent-runner`
 
 Copyable trial prompts are in:
 
@@ -202,15 +219,14 @@ docs/runtime/codex-user-trial-script.md
 The intended natural-language flow is:
 
 1. Clarify the learning goal and source constraints in a few questions.
-2. Call `learning_agent.create_learning_project`.
-3. Call `learning_agent.get_authoring_context`.
-4. Let Codex or another capable agent author the Chinese course pack and
+2. Call `learning_agent.prepare_learning_course`.
+3. Let Codex or another capable agent author the Chinese course pack and
    lessons.
-5. Call `learning_agent.publish_learning_course`.
-6. Call `learning_agent.get_learning_preview`.
-7. Use `revise_learning_course` and `apply_learning_revision` for learner
+4. Call `learning_agent.publish_learning_course`.
+5. Call `learning_agent.get_learning_preview`.
+6. Use `revise_learning_course` and `apply_learning_revision` for learner
    feedback.
-8. Use `export_learning_course` for a shareable static artifact.
+7. Use `export_learning_course` for a shareable static artifact.
 
 Default learner-facing answers should return the preview URL and compact
 `qualityReport` summary. They should not ask learners to approve internal
@@ -230,7 +246,11 @@ tools/
   agent-runtime/       Local generation runtime and CLI
   mcp-server/          stdio MCP entrypoint
 skills/                Agent operating skills
-docs/                  Runtime, product, and planning documentation
+docs/
+  product/             Current product definition and core learner loop
+  runtime/             MCP, Codex, source grounding, preview, and export guides
+  archive/             How to interpret historical planning documents
+  superpowers/         Historical specs and implementation plans from development
 examples/sources/      Public mock source fixtures
 ```
 

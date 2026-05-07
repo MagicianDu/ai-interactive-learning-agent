@@ -47,11 +47,11 @@ export type CodexSkillInstallPlan = {
 const requiredSkills = [
   "learning-agent-operator",
   "source-to-course",
-  "learner-feedback-revision",
-  "learning-agent-runner"
+  "learner-feedback-revision"
 ] as const;
 
 const requiredDocs = [
+  "docs/product/product-core.md",
   "docs/runtime/mcp-skills-bundle.md",
   "docs/runtime/mcp-client-setup.md",
   "docs/runtime/codex-mcp-trial.md",
@@ -73,7 +73,6 @@ const requiredPackageScripts = [
 const learnerToolFlow = [
   "learning_agent.prepare_learning_course",
   "learning_agent.publish_learning_course",
-  "learning_agent.compare_authoring_quality",
   "learning_agent.get_learning_preview",
   "learning_agent.revise_learning_course",
   "learning_agent.apply_learning_revision",

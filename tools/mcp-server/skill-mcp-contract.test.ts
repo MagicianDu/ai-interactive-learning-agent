@@ -11,9 +11,12 @@ const learnerDefaultTools = [
   "learning_agent.publish_learning_course",
   "learning_agent.get_learning_preview"
 ];
-const learnerFallbackTools = [
+const advancedAuthoringTools = [
   "learning_agent.create_learning_project",
-  "learning_agent.get_authoring_context"
+  "learning_agent.get_authoring_context",
+  "learning_agent.generate_grounded_course",
+  "learning_agent.compare_authoring_quality",
+  "learning_agent.create_quality_revision"
 ];
 const feedbackTools = [
   "learning_agent.revise_learning_course",
@@ -46,7 +49,9 @@ describe("skill and MCP contracts", () => {
     const defaultWorkflow = section(markdown, "## Default Learner Workflow");
 
     expectContainsInOrder(defaultWorkflow, learnerDefaultTools);
-    expectContainsInOrder(defaultWorkflow, learnerFallbackTools);
+    expect(defaultWorkflow).not.toContain("learning_agent.create_learning_project");
+    expect(defaultWorkflow).not.toContain("learning_agent.get_authoring_context");
+    expect(defaultWorkflow).not.toContain("learning_agent.compare_authoring_quality");
     expect(defaultWorkflow).not.toContain("learning_agent.plan_run");
     expect(defaultWorkflow).not.toContain("learning_agent.approve_gate");
     expect(defaultWorkflow).not.toContain("source-map");
@@ -54,6 +59,7 @@ describe("skill and MCP contracts", () => {
     expect(defaultWorkflow).not.toContain("curriculum-plan");
     expect(section(markdown, "## Learner-Facing Response Shape")).toContain("qualityReport.status");
     expect(section(markdown, "## Learner-Facing Response Shape")).toContain("#/preview/<run-id>");
+    expectContainsInOrder(section(markdown, "## Advanced Authoring"), advancedAuthoringTools);
     expect(markdown.indexOf("## Default Learner Workflow")).toBeLessThan(markdown.indexOf("## Expert/Operator Mode"));
   });
 
