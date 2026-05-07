@@ -1,5 +1,6 @@
 export type LearningAgentToolName =
   | "learning_agent.create_learning_project"
+  | "learning_agent.prepare_learning_course"
   | "learning_agent.list_learning_projects"
   | "learning_agent.archive_learning_project"
   | "learning_agent.get_authoring_context"
@@ -65,6 +66,27 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
         strategy: stringSchema,
         selectedChapters: stringArraySchema,
         selectedTopics: stringArraySchema
+      },
+      ["request"]
+    )
+  },
+  {
+    name: "learning_agent.prepare_learning_course",
+    description:
+      "Learner-facing tool. Create or update a learner project and return source semantics, recommended units, content blueprint, and Codex publishing instructions in one call when no clarification is needed.",
+    inputSchema: objectSchema(
+      {
+        request: stringSchema,
+        runId: stringSchema,
+        sourcePath: stringSchema,
+        sourceKind: stringSchema,
+        audience: stringSchema,
+        difficultyLevel: stringSchema,
+        unitPages: numberSchema,
+        strategy: stringSchema,
+        selectedChapters: stringArraySchema,
+        selectedTopics: stringArraySchema,
+        maxAnchors: numberSchema
       },
       ["request"]
     )

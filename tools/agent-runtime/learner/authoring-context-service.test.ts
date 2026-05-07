@@ -51,6 +51,10 @@ describe("AuthoringContextService", () => {
           })
         ])
       },
+      sourceSemantics: {
+        keyTerms: expect.arrayContaining([expect.objectContaining({ term: expect.any(String) })]),
+        sourceSpecificTeachingMoves: expect.arrayContaining([expect.any(String)])
+      },
       coursePlan: {
         strategy: "task_guided",
         strategyReason: expect.stringContaining("任务"),
@@ -142,6 +146,7 @@ describe("AuthoringContextService", () => {
     await expect(readFile(context.artifacts.coursePlanPath, "utf8")).resolves.toContain("acceptanceExpectations");
     await expect(readFile(context.artifacts.unitPlanPath, "utf8")).resolves.toContain("expectedInteractions");
     await expect(readFile(context.artifacts.authoringContextPath, "utf8")).resolves.toContain("content-blueprint/v1");
+    await expect(readFile(context.artifacts.authoringContextPath, "utf8")).resolves.toContain("sourceSemantics");
   });
 
   test("returns topic-only context without requiring source approval artifacts", async () => {

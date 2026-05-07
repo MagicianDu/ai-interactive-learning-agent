@@ -49,6 +49,7 @@ describe("MCP JSON-RPC server", () => {
       id: "tools",
       result: {
         tools: expect.arrayContaining([
+          expect.objectContaining({ name: "learning_agent.prepare_learning_course" }),
           expect.objectContaining({ name: "learning_agent.plan_run" }),
           expect.objectContaining({ name: "learning_agent.init_from_plan" }),
           expect.objectContaining({ name: "learning_agent.beta_status" }),
@@ -67,6 +68,7 @@ describe("MCP JSON-RPC server", () => {
     const advancedToolIndex = listedTools.findIndex((tool) => tool.description.startsWith("Advanced/operator tool."));
     expect(listedTools.slice(0, advancedToolIndex).map((tool) => tool.name)).toEqual([
       "learning_agent.create_learning_project",
+      "learning_agent.prepare_learning_course",
       "learning_agent.list_learning_projects",
       "learning_agent.archive_learning_project",
       "learning_agent.get_authoring_context",
@@ -97,6 +99,24 @@ describe("MCP JSON-RPC server", () => {
         selectedChapters: { type: "array", items: { type: "string" } },
         selectedTopics: { type: "array", items: { type: "string" } }
       }
+    });
+  });
+
+  test("prepare_learning_course schema exposes one-call learner inputs", async () => {
+    const tools = new LearningAgentRuntimeTools(await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-rpc-")));
+
+    const response = await handleMcpRequest({ jsonrpc: "2.0", id: "tools", method: "tools/list" }, tools);
+    const listedTools = (response as { result: { tools: Array<{ name: string; inputSchema: Record<string, unknown> }> } }).result.tools;
+    const prepareTool = listedTools.find((tool) => tool.name === "learning_agent.prepare_learning_course");
+
+    expect(prepareTool?.inputSchema).toMatchObject({
+      properties: {
+        request: { type: "string" },
+        difficultyLevel: { type: "string" },
+        unitPages: { type: "number" },
+        maxAnchors: { type: "number" }
+      },
+      required: ["request"]
     });
   });
 
@@ -213,6 +233,39 @@ describe("MCP JSON-RPC server", () => {
       },
       coursePlan: {
         recommendedUnits: expect.arrayContaining([expect.objectContaining({ unitId: "unit-overview" })])
+      }
+    });
+  });
+
+  test("prepares a course through MCP tools/call", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-prepare-rpc-"));
+    const sourcePath = path.join(root, "prepare-source.md");
+    await writeFile(
+      sourcePath,
+      "# Evaluation\nTool feedback supports reflection. Experiments show reliability improves. Limitations appear without feedback.",
+      "utf8"
+    );
+    const tools = new LearningAgentRuntimeTools(root);
+
+    const prepared = await callMcpTool(tools, "learning_agent.prepare_learning_course", {
+      request: `请用 "${sourcePath}" 生成中文学习课程，面向中文工程师，教学难度为大学高年级/研究生课程，每个单元 8 页。`,
+      runId: "rpc-prepare",
+      sourcePath,
+      sourceKind: "notes",
+      audience: "中文工程师",
+      difficultyLevel: "upper_undergraduate_or_graduate",
+      unitPages: 8,
+      maxAnchors: 4
+    });
+
+    expect(prepared).toMatchObject({
+      status: "authoring_context_ready",
+      runId: "rpc-prepare",
+      next: {
+        recommendedTool: "learning_agent.publish_learning_course"
+      },
+      sourceSemantics: {
+        limitationHints: expect.arrayContaining([expect.objectContaining({ statement: expect.stringContaining("Limitations appear") })])
       }
     });
   });

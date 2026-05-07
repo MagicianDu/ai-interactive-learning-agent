@@ -21,8 +21,7 @@ describe("learning agent MCP and skills bundle", () => {
       "learning-agent-runner"
     ]);
     expect(manifest.learnerToolFlow).toEqual([
-      "learning_agent.create_learning_project",
-      "learning_agent.get_authoring_context",
+      "learning_agent.prepare_learning_course",
       "learning_agent.publish_learning_course",
       "learning_agent.compare_authoring_quality",
       "learning_agent.get_learning_preview",
@@ -32,6 +31,7 @@ describe("learning agent MCP and skills bundle", () => {
     ]);
     expect(manifest.docs).toContain("docs/runtime/mcp-skills-bundle.md");
     expect(manifest.docs).toContain("docs/runtime/codex-user-trial-script.md");
+    expect(manifest.docs).toContain("docs/runtime/seed-user-beta-quickstart.md");
   });
 
   test("plans Codex skill installation without changing unrelated skills", () => {
@@ -54,6 +54,7 @@ describe("learning agent MCP and skills bundle", () => {
     expect(report.checked).toContain("package.json#scripts.codex:bundle:install");
     expect(report.checked).toContain("docs/runtime/mcp-skills-bundle.md");
     expect(report.checked).toContain("docs/runtime/codex-user-trial-script.md");
+    expect(report.checked).toContain("docs/runtime/seed-user-beta-quickstart.md");
     expect(report.checked).toContain("skills/source-to-course/SKILL.md");
   });
 });

@@ -9,7 +9,7 @@ Use this skill to turn learner-supplied material into a course request that the 
 
 ## Product Contract
 
-- Codex or Claude authors the final `coursePack` and `lessons` after `learning_agent.get_authoring_context`.
+- Codex or Claude authors the final `coursePack` and `lessons` after `learning_agent.prepare_learning_course` or the explicit `create_learning_project` -> `get_authoring_context` fallback.
 - Keep learner-facing course output中文优先 unless the learner explicitly asks otherwise.
 - Preserve `sourceAnchorIds` for books, papers, patents, blogs, notes, folders, and other source-backed materials.
 - `learning_agent.get_authoring_context` records Source Graph V2 and Course Planning V2 artifacts for expert audit, but learner mode should only receive course shape, preview, and quality summary.
@@ -39,14 +39,15 @@ Ask at most three learner-answerable clarification questions. If the learner did
 
 ## Apply The Plan Through MCP
 
-Call the learner-facing tools in this order:
+Call the learner-facing tools in this order for the default flow:
 
 ```json
-{"method":"tools/call","params":{"name":"learning_agent.create_learning_project","arguments":{"request":"<Chinese learner request with source path or URL, audience, difficulty level, strategy, and unitPages>"}}}
-{"method":"tools/call","params":{"name":"learning_agent.get_authoring_context","arguments":{"runId":"<run-id>"}}}
+{"method":"tools/call","params":{"name":"learning_agent.prepare_learning_course","arguments":{"request":"<Chinese learner request with source path or URL, audience, difficulty level, strategy, and unitPages>"}}}
 {"method":"tools/call","params":{"name":"learning_agent.publish_learning_course","arguments":{"runId":"<run-id>","coursePack":{},"lessons":[]}}}
 {"method":"tools/call","params":{"name":"learning_agent.get_learning_preview","arguments":{"runId":"<run-id>"}}}
 ```
+
+Use the explicit `learning_agent.create_learning_project` -> `learning_agent.get_authoring_context` flow only when the user specifically asks to inspect or separate those steps.
 
 Normal outputs should be compact: preview URL, course shape, and `qualityReport` status/score/checks/issueSummary/topIssues. Keep detailed artifacts available only when the learner explicitly asks for expert review.
 

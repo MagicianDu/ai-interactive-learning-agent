@@ -98,6 +98,35 @@ describe("content-quality-blueprint", () => {
       mustInclude: expect.arrayContaining([expect.stringContaining("权利要求边界")])
     });
   });
+
+  test("adds source semantic hints to unit blueprints", () => {
+    const blueprint = buildContentBlueprint({
+      audience: "研究生学习者",
+      sourceKind: "book",
+      sourceSemantics: {
+        concepts: [],
+        keyTerms: [
+          { term: "tool feedback", sourceAnchorIds: ["source-001:page-1"] },
+          { term: "reflection", sourceAnchorIds: ["source-001:page-2"] }
+        ],
+        examples: [],
+        evidenceHints: [{ id: "e1", statement: "Experiments show reflection improves reliability.", sourceAnchorIds: ["source-001:page-2"] }],
+        limitationHints: [{ id: "l1", statement: "Limitations appear when tool feedback is missing.", sourceAnchorIds: ["source-001:page-1"] }],
+        misconceptions: [],
+        teachingAngles: [],
+        sourceSpecificTeachingMoves: ["围绕来源术语 tool feedback 设计预测任务。"]
+      },
+      units: [plannedUnit({ sourceAnchorIds: ["source-001:page-1", "source-001:page-2"] })]
+    });
+
+    expect(blueprint.units[0]?.semanticHints).toMatchObject({
+      keyTerms: ["tool feedback", "reflection"],
+      evidenceHints: ["Experiments show reflection improves reliability."],
+      limitationHints: ["Limitations appear when tool feedback is missing."],
+      teachingMoves: ["围绕来源术语 tool feedback 设计预测任务。"]
+    });
+    expect(blueprint.units[0]?.pageBlueprints[0]?.mustInclude).toEqual(expect.arrayContaining([expect.stringContaining("tool feedback")]));
+  });
 });
 
 function plannedUnit(overrides: Partial<PlannedCourseUnit> = {}): PlannedCourseUnit {

@@ -1,5 +1,6 @@
 import type { PlannedCourseUnit } from "./course-unit-planner.js";
 import { difficultyLabel, type TeachingDifficultyLevel } from "./learner-project-service.js";
+import type { SourceSemantics } from "./source-semantic-extractor.js";
 
 export type ContentBlueprint = {
   version: "content-blueprint/v1";
@@ -15,8 +16,16 @@ export type UnitContentBlueprint = {
   unitKind: PlannedCourseUnit["kind"];
   focusConcepts: string[];
   sourceAnchorIds: string[];
+  semanticHints?: UnitSemanticHints;
   sourceRequirement: string;
   pageBlueprints: PageContentBlueprint[];
+};
+
+export type UnitSemanticHints = {
+  keyTerms: string[];
+  evidenceHints: string[];
+  limitationHints: string[];
+  teachingMoves: string[];
 };
 
 export type PageContentBlueprint = {
@@ -35,6 +44,7 @@ export type BuildContentBlueprintInput = {
   difficultyLevel?: TeachingDifficultyLevel;
   sourceKind: string;
   units: PlannedCourseUnit[];
+  sourceSemantics?: SourceSemantics;
 };
 
 type PageTemplate = Omit<PageContentBlueprint, "pageNumber" | "sourceRequirement" | "mustInclude"> & {
@@ -45,7 +55,7 @@ export function buildContentBlueprint(input: BuildContentBlueprintInput): Conten
   return {
     version: "content-blueprint/v1",
     globalRules: globalRules(input),
-    units: input.units.map((unit) => buildUnitBlueprint(unit, input.sourceKind))
+    units: input.units.map((unit) => buildUnitBlueprint(unit, input.sourceKind, input.sourceSemantics))
   };
 }
 
@@ -63,8 +73,9 @@ function globalRules(input: BuildContentBlueprintInput): string[] {
   ];
 }
 
-function buildUnitBlueprint(unit: PlannedCourseUnit, sourceKind: string): UnitContentBlueprint {
+function buildUnitBlueprint(unit: PlannedCourseUnit, sourceKind: string, sourceSemantics: SourceSemantics | undefined): UnitContentBlueprint {
   const sourceRequirement = sourceRequirementForUnit(unit, sourceKind);
+  const semanticHints = semanticHintsForUnit(unit, sourceSemantics);
   return {
     unitId: unit.unitId,
     lessonId: unit.lessonId,
@@ -73,6 +84,7 @@ function buildUnitBlueprint(unit: PlannedCourseUnit, sourceKind: string): UnitCo
     unitKind: unit.kind,
     focusConcepts: unit.focusConcepts,
     sourceAnchorIds: unit.sourceAnchorIds,
+    ...(semanticHints ? { semanticHints } : {}),
     sourceRequirement,
     pageBlueprints: templatesForPageCount(unit.targetPageCount).map((template, index) => ({
       pageNumber: index + 1,
@@ -82,9 +94,36 @@ function buildUnitBlueprint(unit: PlannedCourseUnit, sourceKind: string): UnitCo
       visualRequirement: template.visualRequirement,
       feedbackRequirement: template.feedbackRequirement,
       sourceRequirement,
-      mustInclude: template.mustInclude(unit, sourceKind)
+      mustInclude: [...template.mustInclude(unit, sourceKind), ...mustIncludeSemanticHints(semanticHints)]
     }))
   };
+}
+
+function semanticHintsForUnit(unit: PlannedCourseUnit, sourceSemantics: SourceSemantics | undefined): UnitSemanticHints | undefined {
+  if (!sourceSemantics) {
+    return undefined;
+  }
+  const unitAnchorIds = new Set(unit.sourceAnchorIds);
+  const matchesUnit = (anchorIds: string[]) => anchorIds.length === 0 || anchorIds.some((anchorId) => unitAnchorIds.has(anchorId));
+  const keyTerms = sourceSemantics.keyTerms.filter((term) => matchesUnit(term.sourceAnchorIds)).map((term) => term.term).slice(0, 6);
+  const evidenceHints = sourceSemantics.evidenceHints.filter((hint) => matchesUnit(hint.sourceAnchorIds)).map((hint) => hint.statement).slice(0, 3);
+  const limitationHints = sourceSemantics.limitationHints.filter((hint) => matchesUnit(hint.sourceAnchorIds)).map((hint) => hint.statement).slice(0, 3);
+  const teachingMoves = sourceSemantics.sourceSpecificTeachingMoves.slice(0, 4);
+  if (keyTerms.length === 0 && evidenceHints.length === 0 && limitationHints.length === 0 && teachingMoves.length === 0) {
+    return undefined;
+  }
+  return { keyTerms, evidenceHints, limitationHints, teachingMoves };
+}
+
+function mustIncludeSemanticHints(semanticHints: UnitSemanticHints | undefined): string[] {
+  if (!semanticHints) {
+    return [];
+  }
+  return [
+    ...(semanticHints.keyTerms.length > 0 ? [`来源术语：${semanticHints.keyTerms.join("、")}`] : []),
+    ...(semanticHints.evidenceHints.length > 0 ? ["来源证据链"] : []),
+    ...(semanticHints.limitationHints.length > 0 ? ["来源局限边界"] : [])
+  ];
 }
 
 function templatesForPageCount(targetPageCount: number): PageTemplate[] {

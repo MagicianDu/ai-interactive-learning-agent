@@ -7,10 +7,13 @@ import { learningAgentToolContracts } from "./tool-contracts.js";
 
 const skillsRoot = path.join(process.cwd(), "skills");
 const learnerDefaultTools = [
-  "learning_agent.create_learning_project",
-  "learning_agent.get_authoring_context",
+  "learning_agent.prepare_learning_course",
   "learning_agent.publish_learning_course",
   "learning_agent.get_learning_preview"
+];
+const learnerFallbackTools = [
+  "learning_agent.create_learning_project",
+  "learning_agent.get_authoring_context"
 ];
 const feedbackTools = [
   "learning_agent.revise_learning_course",
@@ -43,6 +46,7 @@ describe("skill and MCP contracts", () => {
     const defaultWorkflow = section(markdown, "## Default Learner Workflow");
 
     expectContainsInOrder(defaultWorkflow, learnerDefaultTools);
+    expectContainsInOrder(defaultWorkflow, learnerFallbackTools);
     expect(defaultWorkflow).not.toContain("learning_agent.plan_run");
     expect(defaultWorkflow).not.toContain("learning_agent.approve_gate");
     expect(defaultWorkflow).not.toContain("source-map");

@@ -19,6 +19,7 @@ import {
   LearnerProjectService,
   ManualSubmissionService,
   MockRuntimeAdapter,
+  PrepareLearningCourseService,
   QuickPreviewService,
   RunPlanService,
   RunStore
@@ -55,6 +56,8 @@ export class LearningAgentRuntimeTools {
     switch (name) {
       case "learning_agent.create_learning_project":
         return this.createLearningProject(input);
+      case "learning_agent.prepare_learning_course":
+        return this.prepareLearningCourse(input);
       case "learning_agent.list_learning_projects":
         return this.listLearningProjects(input);
       case "learning_agent.archive_learning_project":
@@ -125,6 +128,23 @@ export class LearningAgentRuntimeTools {
       strategy: optionalString(options.strategy),
       selectedChapters: optionalStringArray(options.selectedChapters),
       selectedTopics: optionalStringArray(options.selectedTopics)
+    });
+  }
+
+  private async prepareLearningCourse(input: unknown): Promise<unknown> {
+    const options = expectRecord(input);
+    return new PrepareLearningCourseService(this.workspaceRoot).prepare({
+      request: requiredString(options, "request"),
+      runId: optionalString(options.runId),
+      sourcePath: optionalString(options.sourcePath),
+      sourceKind: optionalString(options.sourceKind),
+      audience: optionalString(options.audience),
+      difficultyLevel: optionalDifficultyLevel(options.difficultyLevel),
+      unitPages: optionalNumber(options.unitPages),
+      strategy: optionalString(options.strategy),
+      selectedChapters: optionalStringArray(options.selectedChapters),
+      selectedTopics: optionalStringArray(options.selectedTopics),
+      maxAnchors: optionalNumber(options.maxAnchors)
     });
   }
 
@@ -465,6 +485,7 @@ export class LearningAgentRuntimeTools {
 function isLearningAgentToolName(name: string): name is LearningAgentToolName {
   return [
     "learning_agent.create_learning_project",
+    "learning_agent.prepare_learning_course",
     "learning_agent.list_learning_projects",
     "learning_agent.archive_learning_project",
     "learning_agent.get_authoring_context",

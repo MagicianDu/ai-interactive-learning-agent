@@ -14,6 +14,7 @@ describe("LearningAgentRuntimeTools", () => {
     expect(learningAgentToolContracts.map((tool) => tool.name)).toEqual(
       expect.arrayContaining([
         "learning_agent.create_learning_project",
+        "learning_agent.prepare_learning_course",
         "learning_agent.list_learning_projects",
         "learning_agent.archive_learning_project",
         "learning_agent.get_authoring_context",
@@ -237,6 +238,41 @@ describe("LearningAgentRuntimeTools", () => {
       },
       authoringContract: {
         defaultTool: "learning_agent.publish_learning_course"
+      }
+    });
+  });
+
+  test("prepares a learner course through one learner-facing tool handler", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
+    const sourcePath = path.join(root, "prepare-source.md");
+    await writeFile(
+      sourcePath,
+      "# Tool Feedback\nTool feedback supports reflection and evaluation. Experiments show reliability gains. Limitations appear when feedback is missing.",
+      "utf8"
+    );
+    const tools = new LearningAgentRuntimeTools(root);
+
+    const result = await tools.callTool("learning_agent.prepare_learning_course", {
+      request: `请用 "${sourcePath}" 生成中文学习课程，面向中文工程师，教学难度为大学高年级/研究生课程，每个单元 8 页。`,
+      runId: "mcp-prepare",
+      sourcePath,
+      sourceKind: "notes",
+      audience: "中文工程师",
+      difficultyLevel: "upper_undergraduate_or_graduate",
+      unitPages: 8
+    });
+
+    expect(result).toMatchObject({
+      status: "authoring_context_ready",
+      runId: "mcp-prepare",
+      next: {
+        recommendedTool: "learning_agent.publish_learning_course"
+      },
+      sourceSemantics: {
+        keyTerms: expect.arrayContaining([expect.objectContaining({ term: "tool feedback" })])
+      },
+      contentBlueprint: {
+        units: expect.arrayContaining([expect.objectContaining({ unitId: "unit-overview" })])
       }
     });
   });

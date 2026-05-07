@@ -11,7 +11,7 @@ import { buildContentBlueprint, type ContentBlueprint } from "./content-quality-
 import { planCourseUnits } from "./course-unit-planner.js";
 import { difficultyLabel, type TeachingDifficultyLevel } from "./learner-project-service.js";
 import { sampleAuthoringAnchors } from "./source-anchor-sampler.js";
-import { extractSourceSemantics } from "./source-semantic-extractor.js";
+import { extractSourceSemantics, type SourceSemantics } from "./source-semantic-extractor.js";
 
 type LearnerProjectFile = {
   request?: string;
@@ -62,6 +62,7 @@ export type AuthoringContextResult = {
       notes?: string;
     }>;
   };
+  sourceSemantics: SourceSemantics;
   coursePlan: {
     strategy: string;
     strategyReason: string;
@@ -194,7 +195,8 @@ export class AuthoringContextService {
       audience: brief.audience,
       difficultyLevel: brief.difficultyLevel,
       sourceKind: brief.sourceKind,
-      units: unitPlan.units
+      units: unitPlan.units,
+      sourceSemantics: semantics
     });
 
     const contextWithoutArtifacts = {
@@ -214,6 +216,7 @@ export class AuthoringContextService {
           ...(anchor.notes ? { notes: anchor.notes } : {})
         }))
       },
+      sourceSemantics: semantics,
       coursePlan: {
         strategy: unitPlan.strategy,
         strategyReason: unitPlan.strategyReason,

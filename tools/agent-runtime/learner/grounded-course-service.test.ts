@@ -7,6 +7,7 @@ import { describe, expect, test } from "vitest";
 import { LearnerProjectService } from "./learner-project-service.js";
 import { LearningRevisionService } from "./learning-revision-service.js";
 import { GroundedCourseService } from "./grounded-course-service.js";
+import { PrepareLearningCourseService } from "./prepare-learning-course-service.js";
 
 describe("GroundedCourseService", () => {
   test("adapts generated lesson content to the requested teaching difficulty", async () => {
@@ -160,6 +161,48 @@ describe("GroundedCourseService", () => {
     expect(lessonText).toContain("工具使用");
     const generatedLessonTexts = await Promise.all(result.lessonPaths.map((lessonPath) => readFile(lessonPath, "utf8")));
     expect(generatedLessonTexts.join("\n")).toContain("多智能体审核");
+  });
+
+  test("generates a deterministic draft after prepare_learning_course without being blocked by authored blueprint", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "grounded-course-after-prepare-"));
+    const sourcePath = path.join(root, "agent-notes.md");
+    await writeFile(
+      sourcePath,
+      [
+        "# Tool Feedback",
+        "Tool feedback lets an agent observe whether a tool call worked before reflection and evaluation.",
+        "Experiments show reliability improves when feedback is preserved.",
+        "Limitations appear when feedback is missing."
+      ].join("\n"),
+      "utf8"
+    );
+
+    await new PrepareLearningCourseService(root).prepare({
+      request: `请用 "${sourcePath}" 生成中文学习课程，面向中文工程师，教学难度为大学高年级/研究生课程，每个单元 8 页。`,
+      runId: "grounded-after-prepare",
+      sourcePath,
+      sourceKind: "notes",
+      audience: "中文工程师",
+      difficultyLevel: "upper_undergraduate_or_graduate",
+      unitPages: 8
+    });
+
+    const result = await new GroundedCourseService(root).generate({ runId: "grounded-after-prepare" });
+
+    expect(result).toMatchObject({
+      status: "preview_ready",
+      runId: "grounded-after-prepare",
+      publishValidation: {
+        status: "passed",
+        errorCount: 0
+      },
+      qualityReport: {
+        status: "passed"
+      }
+    });
+    await expect(readFile(path.join(root, "runs", "grounded-after-prepare", "preview", "manifest.json"), "utf8")).resolves.toContain(
+      "preview_ready"
+    );
   });
 
   test("applies the latest learner feedback when regenerating a grounded course", async () => {

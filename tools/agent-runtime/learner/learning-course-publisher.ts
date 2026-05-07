@@ -96,6 +96,7 @@ export type PublishLearningCourseInput = {
   coursePack: unknown;
   publishNotes?: string;
   outputMode?: "preview" | "source";
+  ignoreContentBlueprint?: boolean;
   revisionHistoryItem?: PublishRevisionHistoryInput;
 };
 
@@ -192,7 +193,7 @@ export class LearningCoursePublisher {
         summary: courseQualityReport.summary
       }
     });
-    const contentBlueprint = await this.resolveContentBlueprint(input.runId);
+    const contentBlueprint = input.ignoreContentBlueprint ? undefined : await this.resolveContentBlueprint(input.runId);
     const publishValidation = validatePublishBundle({
       courseIR,
       sourceBacked: sourceGroundingConfig !== undefined,

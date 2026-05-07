@@ -19,7 +19,7 @@ Use this skill when the user asks Codex to generate, preview, revise, export, or
 
 ## Product Contract
 
-- Codex or Claude authors the final `coursePack` and `lessons`; MCP provides context, validation, publishing, preview, revision, and export.
+- Codex or Claude authors the final `coursePack` and `lessons`; MCP provides preparation, context, validation, publishing, preview, revision, and export.
 - Keep all learner-facing lesson content中文优先.
 - Preserve source grounding with `sourceAnchorIds` at lesson or page level for source-backed courses.
 - `get_authoring_context` records Source Graph V2 and Course Planning V2 artifacts for audit and downstream quality checks. These are not learner approvals in the default flow.
@@ -56,19 +56,20 @@ Ask at most three clarification questions. If the learner already gave source, a
 
 Use this flow for normal Codex/Claude-style natural language operation. It should produce a previewable learning course without asking the learner to approve source maps, concept maps, curriculum plans, or other internal artifacts. Codex should author the course content; MCP should provide context, validate, and publish.
 
-1. Create or load a learner-facing project:
+1. Prepare a learner-facing project and authoring context in one call:
+
+```json
+{"method":"tools/call","params":{"name":"learning_agent.prepare_learning_course","arguments":{"request":"<Chinese natural-language course request>"}}}
+```
+
+If this returns `clarification_required`, ask only those learner-visible questions and call `learning_agent.prepare_learning_course` again. If the user explicitly wants separated steps, use the fallback:
 
 ```json
 {"method":"tools/call","params":{"name":"learning_agent.create_learning_project","arguments":{"request":"<Chinese natural-language course request>"}}}
-```
-
-2. Get source and course authoring context:
-
-```json
 {"method":"tools/call","params":{"name":"learning_agent.get_authoring_context","arguments":{"runId":"<run-id>"}}}
 ```
 
-Use the returned `coursePlan.strategyReason`, `coursePlan.acceptanceExpectations`, `coursePlan.recommendedUnits[*].expectedInteractions/expectedAssessments/transferExpectation`, and `contentBlueprint.units[*].pageBlueprints` as authoring constraints. Do not paste source graph, course-plan, or content-blueprint artifacts to the learner unless they ask for expert details.
+2. Use the returned `sourceSemantics`, `coursePlan.strategyReason`, `coursePlan.acceptanceExpectations`, `coursePlan.recommendedUnits[*].expectedInteractions/expectedAssessments/transferExpectation`, and `contentBlueprint.units[*].pageBlueprints` as authoring constraints. Do not paste source graph, course-plan, or content-blueprint artifacts to the learner unless they ask for expert details.
 
 3. Codex authors `coursePack` and `lessons`, then publishes:
 

@@ -151,6 +151,7 @@ export class GroundedCourseService {
       runId: input.runId,
       lessons: bundle.lessons,
       coursePack: bundle.coursePack,
+      ignoreContentBlueprint: true,
       publishNotes: revision
         ? `Grounded course generated from normalized source anchors. Applied ${revision.revisionId}: ${revision.feedback}`
         : "Grounded course generated from normalized source anchors."
