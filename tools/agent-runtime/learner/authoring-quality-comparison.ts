@@ -77,7 +77,7 @@ export class AuthoringQualityComparisonService {
     const draft = await this.readSnapshot(input.draftRunId);
     const authored = await this.readSnapshot(input.authoredRunId);
     const improvements = buildImprovements(authored, draft);
-    const remainingGaps = buildRemainingGaps(authored);
+    const remainingGaps = buildRemainingGaps(authored, draft);
     const result: AuthoringQualityComparisonResult = {
       status: "authoring_quality_compared",
       authoredRunId: input.authoredRunId,
@@ -219,8 +219,15 @@ function buildImprovements(authored: RunQualitySnapshot, draft: RunQualitySnapsh
   return improvements;
 }
 
-function buildRemainingGaps(authored: RunQualitySnapshot): ComparisonFinding[] {
+function buildRemainingGaps(authored: RunQualitySnapshot, draft: RunQualitySnapshot): ComparisonFinding[] {
   const gaps: ComparisonFinding[] = [];
+  if (authored.lessonCount < draft.lessonCount || authored.metrics.pageCount < draft.metrics.pageCount * 0.8) {
+    gaps.push({
+      id: "scope-coverage",
+      title: "Codex-authored 覆盖范围不足",
+      evidence: `authored=${authored.lessonCount} 个 lesson / ${authored.metrics.pageCount} 页，draft=${draft.lessonCount} 个 lesson / ${draft.metrics.pageCount} 页。不能把较窄 authored 样例当作完整课程验收。`
+    });
+  }
   if (authored.quality?.status && authored.quality.status !== "passed") {
     gaps.push({
       id: "quality-report",

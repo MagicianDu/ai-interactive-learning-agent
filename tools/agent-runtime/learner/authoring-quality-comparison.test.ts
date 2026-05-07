@@ -56,18 +56,65 @@ describe("AuthoringQualityComparisonService", () => {
     expect(result.authored.metrics.academicMarkerCount).toBeGreaterThan(result.draft.metrics.academicMarkerCount);
     await expect(readFile(result.reportPath, "utf8")).resolves.toContain("\"status\": \"authoring_quality_compared\"");
   });
+
+  test("flags scope coverage when the authored preview covers fewer pages than the deterministic draft", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "authoring-quality-scope-"));
+    await writePreviewRun(root, "draft-run", {
+      lessonId: "draft-overview",
+      academic: true,
+      pageSourceAnchors: true,
+      qualityScore: 100,
+      extraLessonCount: 4
+    });
+    await writePreviewRun(root, "authored-run", {
+      lessonId: "authored-overview",
+      academic: true,
+      pageSourceAnchors: true,
+      qualityScore: 100
+    });
+
+    const result = await new AuthoringQualityComparisonService(root).compare({
+      authoredRunId: "authored-run",
+      draftRunId: "draft-run"
+    });
+
+    expect(result).toMatchObject({
+      draft: {
+        lessonCount: 5,
+        metrics: { pageCount: 25 }
+      },
+      authored: {
+        lessonCount: 1,
+        metrics: { pageCount: 5 }
+      },
+      remainingGaps: expect.arrayContaining([
+        expect.objectContaining({
+          id: "scope-coverage",
+          title: "Codex-authored 覆盖范围不足"
+        })
+      ]),
+      recommendedNextActions: expect.arrayContaining([
+        expect.stringContaining("remainingGaps")
+      ])
+    });
+    expect(result.summary.join("\n")).toContain("内容质量 gap");
+  });
 });
 
 async function writePreviewRun(
   root: string,
   runId: string,
-  options: { lessonId: string; academic: boolean; pageSourceAnchors: boolean; qualityScore: number }
+  options: { lessonId: string; academic: boolean; pageSourceAnchors: boolean; qualityScore: number; extraLessonCount?: number }
 ): Promise<void> {
   const lessonDir = path.join(root, "runs", runId, "preview", "lessons");
   const qualityDir = path.join(root, "runs", runId, "quality");
   await mkdir(lessonDir, { recursive: true });
   await mkdir(qualityDir, { recursive: true });
   await writeFile(path.join(lessonDir, `${options.lessonId}.json`), `${JSON.stringify(buildLesson(options), null, 2)}\n`, "utf8");
+  for (let index = 0; index < (options.extraLessonCount ?? 0); index += 1) {
+    const lessonId = `${options.lessonId}-topic-${index + 1}`;
+    await writeFile(path.join(lessonDir, `${lessonId}.json`), `${JSON.stringify(buildLesson({ ...options, lessonId }), null, 2)}\n`, "utf8");
+  }
   await writeFile(
     path.join(qualityDir, "course-quality-report.json"),
     `${JSON.stringify({ status: "passed", score: options.qualityScore, checks: { sourceEvidence: "passed", chineseFirst: "passed" } }, null, 2)}\n`,
