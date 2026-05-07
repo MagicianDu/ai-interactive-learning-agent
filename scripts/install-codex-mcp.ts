@@ -9,6 +9,7 @@ import {
   learningAgentMcpServerName,
   upsertLearningAgentMcpServer
 } from "./codex-mcp-config";
+import { validateMcpProfileToolLists } from "./codex-mcp-tool-check";
 
 const projectRoot = process.cwd();
 const codexHome = process.env.CODEX_HOME ?? path.join(os.homedir(), ".codex");
@@ -55,32 +56,18 @@ async function checkCodexMcpServer() {
 }
 
 async function checkMcpToolList() {
-  const output = await runCommand("npm", ["run", "mcp", "--", "--list-tools"]);
-  const requiredTools = [
-    "learning_agent.create_learning_project",
-    "learning_agent.prepare_learning_course",
-    "learning_agent.get_authoring_context",
-    "learning_agent.generate_grounded_course",
-    "learning_agent.publish_learning_course",
-    "learning_agent.compare_authoring_quality",
-    "learning_agent.revise_learning_course",
-    "learning_agent.plan_run",
-    "learning_agent.beta_status"
-  ];
-  const missingTools = requiredTools.filter((tool) => !output.includes(tool));
-  if (missingTools.length > 0) {
-    throw new Error(`MCP tool list did not include expected learning_agent tools: ${missingTools.join(", ")}`);
-  }
+  const learner = await listMcpToolNames([]);
+  const authoring = await listMcpToolNames(["--profile", "authoring"]);
+  const operator = await listMcpToolNames(["--profile", "operator"]);
 
-  const firstCreateIndex = output.indexOf("learning_agent.create_learning_project");
-  const firstPlanIndex = output.indexOf("learning_agent.plan_run");
-  if (firstPlanIndex >= 0 && firstCreateIndex > firstPlanIndex) {
-    throw new Error("MCP tool list should show learner-facing tools before advanced/operator tools");
-  }
+  validateMcpProfileToolLists({ learner, authoring, operator });
+  console.log("[codex:mcp] MCP profiles are valid: default learner, explicit authoring, explicit operator");
+}
 
-  console.log(
-    "[codex:mcp] MCP tool list includes learner-facing authoring tools plus learning_agent.plan_run and learning_agent.beta_status"
-  );
+async function listMcpToolNames(extraArgs: string[]): Promise<string[]> {
+  const output = await runCommand("npm", ["run", "--silent", "mcp", "--", "--list-tools", ...extraArgs]);
+  const result = JSON.parse(output) as { tools?: Array<{ name?: string }> };
+  return (result.tools ?? []).map((tool) => tool.name).filter((name): name is string => typeof name === "string");
 }
 
 function runCommand(command: string, args: string[]): Promise<string> {
