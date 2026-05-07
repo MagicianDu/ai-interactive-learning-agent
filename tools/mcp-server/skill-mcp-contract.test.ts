@@ -128,6 +128,19 @@ describe("skill and MCP contracts", () => {
 
     expect(missing).toEqual([]);
   });
+
+  test("learner-facing authoring skills require Codex Authoring Protocol V2", async () => {
+    const operator = await readSkill("learning-agent-operator");
+    const sourceToCourse = await readSkill("source-to-course");
+
+    for (const markdown of [operator, sourceToCourse]) {
+      expect(markdown).toContain("Codex Authoring Protocol V2");
+      expect(markdown).toContain("sourceSemantics");
+      expect(markdown).toContain("mental-model move");
+      expect(markdown).toContain("source synthesis");
+      expect(markdown).toContain("cognitivePurpose");
+    }
+  });
 });
 
 async function readSkill(skillName: string): Promise<string> {

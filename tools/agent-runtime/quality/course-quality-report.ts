@@ -24,6 +24,15 @@ export type CourseQualityIssueCategory =
   | "interaction"
   | "transfer";
 
+export type CourseQualityAuthoringContext = {
+  difficultyLevel?: string;
+  sourceSemantics?: {
+    keyTerms?: Array<string | { term?: unknown; label?: unknown }>;
+    evidenceHints?: unknown[];
+    limitationHints?: unknown[];
+  };
+};
+
 export type CourseQualityIssue = {
   issueId: string;
   scope: CourseQualityIssueScope;
@@ -100,6 +109,7 @@ export type BuildCourseQualityReportInput = {
   sourceGroundingConfig?: RunConfig;
   sourceEvidence?: SourceEvidenceSummary;
   criticReports?: LessonCriticReport[];
+  authoringContext?: CourseQualityAuthoringContext;
 };
 
 export function buildCourseQualityReport(input: BuildCourseQualityReportInput): CourseQualityReport {
@@ -107,7 +117,7 @@ export function buildCourseQualityReport(input: BuildCourseQualityReportInput): 
   const sourceEvidence =
     input.sourceEvidence ?? (input.sourceGroundingConfig ? analyzeSourceEvidence(input.lessons, input.sourceGroundingConfig) : undefined);
   const sourceEvidenceIssue = sourceEvidenceToIssue(sourceEvidence);
-  const heuristicIssues = input.lessons.flatMap(collectPageHeuristicIssues);
+  const heuristicIssues = input.lessons.flatMap((lesson) => collectPageHeuristicIssues(lesson, input.authoringContext));
   const issues = sortCourseQualityIssues([
     ...lessonIssueGroups.flatMap((group) => group.issues.map((issue) => toCourseQualityIssue(issue, group.lessonId))),
     ...(sourceEvidenceIssue ? [toCourseQualityIssue(sourceEvidenceIssue)] : []),
@@ -277,16 +287,38 @@ function isAssessmentIssue(issue: QualityIssue): boolean {
   return issue.rule === "assessment-count" || issue.rule === "assessment-feedback" || issue.path.includes("misconception");
 }
 
-function collectPageHeuristicIssues(lesson: unknown): CourseQualityIssue[] {
+function collectPageHeuristicIssues(lesson: unknown, authoringContext: CourseQualityAuthoringContext | undefined): CourseQualityIssue[] {
   if (!isRecord(lesson)) {
     return [];
   }
 
   const lessonId = lessonIdOf(lesson);
   const pages = Array.isArray(lesson.pages) ? lesson.pages.filter(isRecord) : [];
-  return pages.flatMap((page) => {
+  const sourceTerms = sourceTermsFromAuthoringContext(authoringContext);
+  const issues: CourseQualityIssue[] = [];
+  if (requiresAcademicDepth(authoringContext, lesson) && academicMarkerCount(JSON.stringify(lesson)) < 3) {
+    issues.push({
+      issueId: "quality.lesson.academic-depth-shallow",
+      scope: "lesson",
+      severity: "warning",
+      category: "learner_level_mismatch",
+      reason: "graduate or research-level course lacks prerequisites, formal terms, evidence, limitations, critique, or homework-style transfer density",
+      requiredFix:
+        "Add prerequisites, formal terminology, source reading mapping, assumptions, limitations, critique prompts, and homework-style transfer tasks.",
+      rule: "academic-depth",
+      path: "lesson.academicDepth",
+      lessonId
+    });
+  }
+
+  return [
+    ...issues,
+    ...pages.flatMap((page) => {
     const pageId = typeof page.id === "string" && page.id.trim().length > 0 ? page.id : "unknown";
     const issues: CourseQualityIssue[] = [];
+    const pageText = textOf(page);
+    const hasSourceTerm = sourceTerms.some((term) => includesIgnoreCase(pageText, term));
+    const pageSourceAnchorCount = stringArray(page.sourceAnchorIds).length;
     if (typeof page.narrative === "string" && page.narrative.trim().length > 900) {
       issues.push({
         issueId: "quality.page.dense",
@@ -301,8 +333,147 @@ function collectPageHeuristicIssues(lesson: unknown): CourseQualityIssue[] {
         pageId
       });
     }
+    if (sourceTerms.length > 0 && isGenericPage(pageText) && !hasSourceTerm) {
+      issues.push({
+        issueId: "quality.page.generic-source-page",
+        scope: "page",
+        severity: "warning",
+        category: "generic_page",
+        reason: "page uses generic learning language without source-specific terms or mechanism",
+        requiredFix: "Rewrite the page around concrete source terms, mechanism, evidence, limitation, and a learner action.",
+        rule: "generic-page",
+        path: `pages.${pageId}.narrative`,
+        lessonId,
+        pageId
+      });
+    }
+    if (pageSourceAnchorCount > 0 && sourceTerms.length > 0 && !hasSourceTerm) {
+      issues.push({
+        issueId: "quality.page.source-synthesis-weak",
+        scope: "page",
+        severity: "warning",
+        category: "source_evidence",
+        reason: "page has source anchors but does not synthesize source-specific terms, evidence, or limitations",
+        requiredFix: "Use the source anchor to teach a specific source term, evidence chain, example, assumption, or limitation.",
+        rule: "source-synthesis",
+        path: `pages.${pageId}.sourceAnchorIds`,
+        lessonId,
+        pageId
+      });
+    }
+    const interactionSpec = isRecord(page.interactionSpec) ? page.interactionSpec : undefined;
+    const cognitivePurpose = typeof interactionSpec?.cognitivePurpose === "string" ? interactionSpec.cognitivePurpose : "";
+    if (interactionSpec && isVagueCognitivePurpose(cognitivePurpose)) {
+      issues.push({
+        issueId: "quality.interaction.cognitive-purpose-vague",
+        scope: "page",
+        severity: "warning",
+        category: "decorative_interaction",
+        reason: "interaction cognitivePurpose is vague and does not name the mental-model work",
+        requiredFix: "Rewrite the interaction around prediction, decision, comparison, causality, misconception repair, parameter change, or transfer.",
+        rule: "interaction-cognitive-purpose",
+        path: `pages.${pageId}.interactionSpec.cognitivePurpose`,
+        lessonId,
+        pageId
+      });
+    }
     return issues;
-  });
+    })
+  ];
+}
+
+function sourceTermsFromAuthoringContext(authoringContext: CourseQualityAuthoringContext | undefined): string[] {
+  return Array.from(
+    new Set(
+      (authoringContext?.sourceSemantics?.keyTerms ?? [])
+        .map((term) => {
+          if (typeof term === "string") {
+            return term.trim();
+          }
+          if (typeof term.term === "string") {
+            return term.term.trim();
+          }
+          if (typeof term.label === "string") {
+            return term.label.trim();
+          }
+          return "";
+        })
+        .filter((term) => term.length >= 3)
+    )
+  );
+}
+
+function requiresAcademicDepth(authoringContext: CourseQualityAuthoringContext | undefined, lesson: Record<string, unknown>): boolean {
+  const difficulty = authoringContext?.difficultyLevel ?? "";
+  if (difficulty === "upper_undergraduate_or_graduate" || difficulty === "research") {
+    return true;
+  }
+  const learnerLevelText = [lesson.audience, lesson.title].filter((value): value is string => typeof value === "string").join(" ");
+  return /研究生|论文精读|前沿讨论/u.test(learnerLevelText);
+}
+
+const academicDepthMarkers = ["先修", "正式术语", "证据", "局限", "假设", "批判", "课堂讨论", "课后作业", "研究问题", "方法边界"];
+
+function academicMarkerCount(text: string): number {
+  return academicDepthMarkers.reduce((count, marker) => count + (text.includes(marker) ? 1 : 0), 0);
+}
+
+const genericPageMarkers = ["核心概念", "整体内容", "资料大意", "基本概念", "学习重点", "帮助学习者理解", "快速摘要", "本页介绍"];
+
+function isGenericPage(pageText: string): boolean {
+  return genericPageMarkers.filter((marker) => pageText.includes(marker)).length >= 2;
+}
+
+const cognitivePurposeMarkers = [
+  "因果",
+  "结构",
+  "预测",
+  "误区",
+  "决策",
+  "比较",
+  "迁移",
+  "边界",
+  "机制",
+  "证据",
+  "参数",
+  "诊断",
+  "路径",
+  "选择",
+  "权衡",
+  "搜索",
+  "缩小",
+  "候选范围",
+  "讨论",
+  "作业",
+  "审查",
+  "批判",
+  "阅读",
+  "标准判断",
+  "术语"
+];
+const vagueCognitivePurposeMarkers = ["帮助理解", "增加互动", "提升参与", "理解内容", "学习内容", "熟悉内容"];
+
+function isVagueCognitivePurpose(cognitivePurpose: string): boolean {
+  const trimmed = cognitivePurpose.trim();
+  if (trimmed.length === 0) {
+    return true;
+  }
+  if (vagueCognitivePurposeMarkers.some((marker) => trimmed.includes(marker))) {
+    return true;
+  }
+  return !cognitivePurposeMarkers.some((marker) => trimmed.includes(marker));
+}
+
+function textOf(value: unknown): string {
+  return JSON.stringify(value);
+}
+
+function includesIgnoreCase(text: string, term: string): boolean {
+  return text.toLocaleLowerCase().includes(term.toLocaleLowerCase());
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0) : [];
 }
 
 function toCourseQualityIssue(issue: QualityIssue, lessonId?: string): CourseQualityIssue {

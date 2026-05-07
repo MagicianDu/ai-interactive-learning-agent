@@ -8,7 +8,8 @@ import {
   buildCourseQualityReport,
   toCompactCourseQualityReport,
   writeCourseQualityReport,
-  type CompactCourseQualityReport
+  type CompactCourseQualityReport,
+  type CourseQualityAuthoringContext
 } from "../quality/course-quality-report.js";
 import { validateLessonQuality } from "../quality/lesson-quality-validator.js";
 import { analyzeSourceEvidence } from "../quality/source-evidence-analyzer.js";
@@ -111,6 +112,7 @@ type LearnerProjectFile = {
     selectedChapters?: string[];
     selectedTopics?: string[];
     language?: string;
+    difficultyLevel?: string;
   };
 };
 
@@ -173,12 +175,14 @@ export class LearningCoursePublisher {
     const coursePack = normalizeCoursePack(input.coursePack, input.runId, new Set(lessons.map((lesson) => lesson.id)));
     const sourceGroundingConfig = await this.resolveSourceGroundingConfig(input.runId);
     const sourceEvidence = sourceGroundingConfig ? analyzeSourceEvidence(lessons, sourceGroundingConfig) : undefined;
+    const authoringContext = await this.resolveQualityAuthoringContext(input.runId);
     const courseQualityReport = buildCourseQualityReport({
       runId: input.runId,
       coursePackId: coursePack.id,
       lessons,
       sourceGroundingConfig,
-      sourceEvidence
+      sourceEvidence,
+      authoringContext
     });
     const courseQualityReportPath = await writeCourseQualityReport(this.workspaceRoot, input.runId, courseQualityReport);
     const compactQualityReport = toCompactCourseQualityReport(courseQualityReport, courseQualityReportPath);
@@ -377,6 +381,27 @@ export class LearningCoursePublisher {
       }
       throw error;
     }
+  }
+
+  private async resolveQualityAuthoringContext(runId: string): Promise<CourseQualityAuthoringContext | undefined> {
+    try {
+      const artifactStore = new ArtifactStore(path.join(this.workspaceRoot, "runs", runId));
+      const authoringContext = await artifactStore.readDraft<unknown>("authoring-context");
+      if (isRecord(authoringContext)) {
+        const brief = isRecord(authoringContext.brief) ? authoringContext.brief : {};
+        return {
+          ...(typeof brief.difficultyLevel === "string" ? { difficultyLevel: brief.difficultyLevel } : {}),
+          ...(isRecord(authoringContext.sourceSemantics) ? { sourceSemantics: authoringContext.sourceSemantics } : {})
+        };
+      }
+    } catch (error) {
+      if (!(error instanceof AgentRuntimeError && error.code === "MISSING_ARTIFACT")) {
+        throw error;
+      }
+    }
+
+    const learnerProject = await readLearnerProject(this.workspaceRoot, runId);
+    return learnerProject?.brief?.difficultyLevel ? { difficultyLevel: learnerProject.brief.difficultyLevel } : undefined;
   }
 
   private async writeLessonSource(lesson: LessonLike): Promise<string> {

@@ -99,12 +99,52 @@ describe("AuthoringQualityComparisonService", () => {
     });
     expect(result.summary.join("\n")).toContain("内容质量 gap");
   });
+
+  test("flags generic authored content and weak source synthesis", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "authoring-quality-generic-"));
+    await writePreviewRun(root, "draft-run", {
+      lessonId: "draft-overview",
+      academic: true,
+      pageSourceAnchors: true,
+      qualityScore: 92,
+      sourceSpecific: true
+    });
+    await writePreviewRun(root, "authored-run", {
+      lessonId: "authored-overview",
+      academic: true,
+      pageSourceAnchors: true,
+      qualityScore: 92,
+      genericPages: true
+    });
+
+    const result = await new AuthoringQualityComparisonService(root).compare({
+      authoredRunId: "authored-run",
+      draftRunId: "draft-run"
+    });
+
+    expect(result.authored.metrics.genericPageCount).toBeGreaterThan(0);
+    expect(result.authored.metrics.weakSourceSynthesisPageCount).toBeGreaterThan(0);
+    expect(result.remainingGaps).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "generic-content" }),
+        expect.objectContaining({ id: "source-synthesis" })
+      ])
+    );
+  });
 });
 
 async function writePreviewRun(
   root: string,
   runId: string,
-  options: { lessonId: string; academic: boolean; pageSourceAnchors: boolean; qualityScore: number; extraLessonCount?: number }
+  options: {
+    lessonId: string;
+    academic: boolean;
+    pageSourceAnchors: boolean;
+    qualityScore: number;
+    extraLessonCount?: number;
+    genericPages?: boolean;
+    sourceSpecific?: boolean;
+  }
 ): Promise<void> {
   const lessonDir = path.join(root, "runs", runId, "preview", "lessons");
   const qualityDir = path.join(root, "runs", runId, "quality");
@@ -136,11 +176,11 @@ function buildLesson(options: { lessonId: string; academic: boolean; pageSourceA
       ? ["使用正式术语解释机制链", "围绕证据链和局限边界展开课堂讨论", "完成课后作业式迁移"]
       : ["理解资料大意"],
     pages: [
-      page("p1", "problem_scene", "问题场景", options.pageSourceAnchors ? anchorIds : [], options.academic),
-      page("p2", "structure_diagram", "结构图", options.pageSourceAnchors ? anchorIds : [], options.academic),
-      page("p3", "interactive_model", "学习动作", options.pageSourceAnchors ? anchorIds : [], options.academic),
-      page("p4", "quiz", "测验", options.pageSourceAnchors ? anchorIds : [], options.academic),
-      page("p5", "transfer_challenge", "迁移任务", options.pageSourceAnchors ? anchorIds : [], options.academic)
+      page("p1", "problem_scene", "问题场景", options.pageSourceAnchors ? anchorIds : [], options),
+      page("p2", "structure_diagram", "结构图", options.pageSourceAnchors ? anchorIds : [], options),
+      page("p3", "interactive_model", "学习动作", options.pageSourceAnchors ? anchorIds : [], options),
+      page("p4", "quiz", "测验", options.pageSourceAnchors ? anchorIds : [], options),
+      page("p5", "transfer_challenge", "迁移任务", options.pageSourceAnchors ? anchorIds : [], options)
     ],
     transferTasks: options.academic
       ? [{ id: "t1", prompt: "设计一个课后作业：把控制型智能体迁移到新的工程故障排查场景。", targetMentalModel: "先修概念到正式术语再到迁移。" }]
@@ -148,13 +188,22 @@ function buildLesson(options: { lessonId: string; academic: boolean; pageSourceA
   };
 }
 
-function page(id: string, type: string, title: string, sourceAnchorIds: string[], academic: boolean): Record<string, unknown> {
+function page(
+  id: string,
+  type: string,
+  title: string,
+  sourceAnchorIds: string[],
+  options: { academic: boolean; genericPages?: boolean; sourceSpecific?: boolean }
+): Record<string, unknown> {
+  const academicNarrative = options.sourceSpecific
+    ? "先修概念、正式术语、课堂讨论、课后作业、研究问题、证据链、局限边界。tool feedback、reflection loop、evaluation boundary 共同构成来源机制。"
+    : "先修概念、正式术语、课堂讨论、课后作业、研究问题、证据链、局限边界。";
   return {
     id,
     type,
     title,
-    learningGoal: academic ? "用大学高年级/研究生课程方式深化理解" : "理解概要",
-    narrative: academic ? "先修概念、正式术语、课堂讨论、课后作业、研究问题、证据链、局限边界。" : "这是一个快速摘要页面。",
+    learningGoal: options.academic ? "用大学高年级/研究生课程方式深化理解" : "理解概要",
+    narrative: options.genericPages ? "本页介绍核心概念，帮助学习者理解资料大意和整体内容。" : options.academic ? academicNarrative : "这是一个快速摘要页面。",
     sourceAnchorIds,
     ...(type === "structure_diagram" ? { visualSpec: { kind: "diagram", description: "结构图", keyElements: ["机制链"] } } : {}),
     ...(type === "interactive_model"
@@ -172,8 +221,8 @@ function page(id: string, type: string, title: string, sourceAnchorIds: string[]
           assessmentSpec: {
             kind: type === "transfer_challenge" ? "transfer" : "multiple_choice",
             prompt: "哪种解释更可靠？",
-            options: academic ? ["有证据链", "只复述结论"] : ["有依据", "只复述结论"],
-            correctAnswer: academic ? "有证据链" : "有依据"
+            options: options.academic ? ["有证据链", "只复述结论"] : ["有依据", "只复述结论"],
+            correctAnswer: options.academic ? "有证据链" : "有依据"
           },
           feedbackSpec: {
             correctFeedback: "正确，因为它连接了来源证据和机制。",

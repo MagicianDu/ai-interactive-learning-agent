@@ -22,6 +22,7 @@ Use this skill when the user asks Codex to generate, preview, revise, export, or
 - Codex or Claude authors the final `coursePack` and `lessons`; MCP provides preparation, context, validation, publishing, preview, revision, and export.
 - Keep all learner-facing lesson content中文优先.
 - Preserve source grounding with `sourceAnchorIds` at lesson or page level for source-backed courses.
+- Follow `docs/runtime/codex-authoring-protocol-v2.md` (Codex Authoring Protocol V2) before writing `coursePack` and `lessons`: every page needs a mental-model move, source synthesis, learner action or check, feedback mechanism, and `cognitivePurpose` when interactive.
 - `get_authoring_context` records Source Graph V2 and Course Planning V2 artifacts for audit and downstream quality checks. These are not learner approvals in the default flow.
 - 不要让学习者审批内部 artifacts such as source maps, concept maps, curriculum plans, or critic reports in the default learner flow.
 
@@ -69,7 +70,7 @@ If this returns `clarification_required`, ask only those learner-visible questio
 {"method":"tools/call","params":{"name":"learning_agent.get_authoring_context","arguments":{"runId":"<run-id>"}}}
 ```
 
-2. Use the returned `sourceSemantics`, `coursePlan.strategyReason`, `coursePlan.acceptanceExpectations`, `coursePlan.recommendedUnits[*].expectedInteractions/expectedAssessments/transferExpectation`, and `contentBlueprint.units[*].pageBlueprints` as authoring constraints. Do not paste source graph, course-plan, or content-blueprint artifacts to the learner unless they ask for expert details.
+2. Use Codex Authoring Protocol V2 with the returned `sourceSemantics`, `coursePlan.strategyReason`, `coursePlan.acceptanceExpectations`, `coursePlan.recommendedUnits[*].expectedInteractions/expectedAssessments/transferExpectation`, and `contentBlueprint.units[*].pageBlueprints` as authoring constraints. Do not paste source graph, course-plan, or content-blueprint artifacts to the learner unless they ask for expert details.
 
 3. Codex authors `coursePack` and `lessons`, then publishes:
 

@@ -14,6 +14,7 @@ Use this skill to turn learner-supplied material into a course request that the 
 - Preserve `sourceAnchorIds` for books, papers, patents, blogs, notes, folders, and other source-backed materials.
 - `learning_agent.get_authoring_context` records Source Graph V2 and Course Planning V2 artifacts for expert audit, but learner mode should only receive course shape, preview, and quality summary.
 - Codex should follow `contentBlueprint.units[*].pageBlueprints` before writing lessons: page type, teaching move, learner action, visual requirement, feedback requirement, and source requirement.
+- Codex should follow `docs/runtime/codex-authoring-protocol-v2.md` (Codex Authoring Protocol V2) and the returned `sourceSemantics`: every page needs a mental-model move, source synthesis, learner action or check, feedback mechanism, and `cognitivePurpose` when interactive.
 - 不要让学习者审批内部 artifacts such as source maps, concept maps, curriculum plans, or critic reports in the default learner flow.
 
 ## Source Routing

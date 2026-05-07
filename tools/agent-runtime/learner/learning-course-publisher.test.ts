@@ -293,6 +293,61 @@ describe("LearningCoursePublisher", () => {
     );
   });
 
+  test("uses persisted authoring context to warn about generic Codex-authored pages", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-course-publisher-quality-context-"));
+    const publisher = new LearningCoursePublisher(root);
+    const lesson = publishableLessonFixture({ id: "generic-source-lesson", title: "资料总览课", targetPageCount: 8 });
+    lesson.learningObjectives = ["理解资料大意"];
+    lesson.pages[0] = {
+      ...lesson.pages[0],
+      sourceAnchorIds: ["source-001:section-1"],
+      title: "核心概念总览",
+      learningGoal: "了解整体内容",
+      narrative: "本页介绍核心概念，帮助学习者理解资料大意。"
+    };
+    await new ArtifactStore(path.join(root, "runs", "generic-source-course")).writeDraft("authoring-context", {
+      artifactId: "authoring-context",
+      roleId: "learning-architecture",
+      runId: "generic-source-course",
+      brief: {
+        difficultyLevel: "upper_undergraduate_or_graduate"
+      },
+      sourceSemantics: {
+        keyTerms: [{ term: "tool feedback" }, { term: "reflection loop" }, { term: "evaluation boundary" }]
+      }
+    });
+
+    const result = await publisher.publish({
+      runId: "generic-source-course",
+      lessons: [lesson],
+      coursePack: coursePackFixture("generic-source-course", "generic-source-lesson", ["source-001:section-1"])
+    });
+
+    expect(result).toMatchObject({
+      status: "preview_ready",
+      qualityReport: {
+        status: "warning",
+        issueSummary: {
+          byCategory: {
+            generic_page: 1,
+            source_evidence: 1
+          }
+        }
+      }
+    });
+    if (result.status !== "preview_ready") {
+      throw new Error("expected preview_ready");
+    }
+    expect(result.qualityReport.topIssues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          issueId: "quality.page.generic-source-page",
+          pageId: "p1"
+        })
+      ])
+    );
+  });
+
   test("rejects unsafe lesson and course pack ids before writing files", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "learning-course-publisher-"));
     const publisher = new LearningCoursePublisher(root);

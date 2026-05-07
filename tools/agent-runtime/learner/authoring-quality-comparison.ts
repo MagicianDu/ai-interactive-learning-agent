@@ -42,6 +42,9 @@ export type ContentQualityMetrics = {
   sourceAnchoredPageCount: number;
   sourceAnchoredPageRatio: number;
   academicMarkerCount: number;
+  genericPageCount: number;
+  weakSourceSynthesisPageCount: number;
+  cognitiveInteractionPageCount: number;
 };
 
 export type ComparisonFinding = {
@@ -169,7 +172,10 @@ function collectMetrics(lessons: Record<string, unknown>[]): ContentQualityMetri
     transferTaskCount: lessons.reduce((count, lesson) => count + arrayOfRecords(lesson.transferTasks).length, 0) + pages.filter((page) => page.type === "transfer_challenge").length,
     sourceAnchoredPageCount,
     sourceAnchoredPageRatio: pages.length === 0 ? 0 : roundRatio(sourceAnchoredPageCount / pages.length),
-    academicMarkerCount: academicMarkers.reduce((count, marker) => count + occurrences(text, marker), 0)
+    academicMarkerCount: academicMarkers.reduce((count, marker) => count + occurrences(text, marker), 0),
+    genericPageCount: pages.filter((page) => isGenericPage(JSON.stringify(page))).length,
+    weakSourceSynthesisPageCount: pages.filter((page) => stringArray(page.sourceAnchorIds).length > 0 && !hasSourceSynthesisSignal(JSON.stringify(page))).length,
+    cognitiveInteractionPageCount: pages.filter(hasCognitiveInteraction).length
   };
 }
 
@@ -214,6 +220,27 @@ function buildImprovements(authored: RunQualitySnapshot, draft: RunQualitySnapsh
       id: "transfer-design",
       title: "迁移任务更完整",
       evidence: `迁移任务 authored=${authored.metrics.transferTaskCount}，draft=${draft.metrics.transferTaskCount}。`
+    });
+  }
+  if (authored.metrics.genericPageCount < draft.metrics.genericPageCount) {
+    improvements.push({
+      id: "less-generic",
+      title: "泛化页面更少",
+      evidence: `泛化页 authored=${authored.metrics.genericPageCount}，draft=${draft.metrics.genericPageCount}。`
+    });
+  }
+  if (authored.metrics.weakSourceSynthesisPageCount < draft.metrics.weakSourceSynthesisPageCount) {
+    improvements.push({
+      id: "source-synthesis",
+      title: "来源综合更具体",
+      evidence: `弱来源综合页 authored=${authored.metrics.weakSourceSynthesisPageCount}，draft=${draft.metrics.weakSourceSynthesisPageCount}。`
+    });
+  }
+  if (authored.metrics.cognitiveInteractionPageCount > draft.metrics.cognitiveInteractionPageCount) {
+    improvements.push({
+      id: "cognitive-interaction",
+      title: "互动认知目的更清楚",
+      evidence: `认知互动页 authored=${authored.metrics.cognitiveInteractionPageCount}，draft=${draft.metrics.cognitiveInteractionPageCount}。`
     });
   }
   return improvements;
@@ -263,6 +290,20 @@ function buildRemainingGaps(authored: RunQualitySnapshot, draft: RunQualitySnaps
       evidence: "课程还没有明确 transfer task 或 transfer_challenge 页面。"
     });
   }
+  if (authored.metrics.genericPageCount > 0) {
+    gaps.push({
+      id: "generic-content",
+      title: "Codex-authored 内容仍有泛化页面",
+      evidence: `泛化页数量=${authored.metrics.genericPageCount}。这些页面像学习网页说明，而不是来源重构后的课程页面。`
+    });
+  }
+  if (authored.metrics.weakSourceSynthesisPageCount > 0) {
+    gaps.push({
+      id: "source-synthesis",
+      title: "来源综合仍不足",
+      evidence: `弱来源综合页=${authored.metrics.weakSourceSynthesisPageCount}。这些页面有 sourceAnchorIds，但没有把来源术语、证据、限制或机制转化为教学内容。`
+    });
+  }
   return gaps;
 }
 
@@ -295,6 +336,68 @@ function arrayOfRecords(value: unknown): Record<string, unknown>[] {
 
 function stringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.length > 0) : [];
+}
+
+const genericPageMarkers = ["核心概念", "整体内容", "资料大意", "基本概念", "学习重点", "帮助学习者理解", "快速摘要", "本页介绍"];
+const sourceSynthesisMarkers = [
+  "证据链",
+  "局限边界",
+  "方法假设",
+  "来源机制",
+  "来源术语",
+  "权利要求",
+  "实施例",
+  "tool feedback",
+  "reflection",
+  "evaluation",
+  "limitation",
+  "boundary"
+];
+const cognitivePurposeMarkers = [
+  "因果",
+  "结构",
+  "预测",
+  "误区",
+  "决策",
+  "比较",
+  "迁移",
+  "边界",
+  "机制",
+  "证据",
+  "参数",
+  "诊断",
+  "路径",
+  "选择",
+  "权衡",
+  "搜索",
+  "缩小",
+  "候选范围",
+  "讨论",
+  "作业",
+  "审查",
+  "批判",
+  "阅读",
+  "标准判断",
+  "术语"
+];
+const vagueCognitivePurposeMarkers = ["帮助理解", "增加互动", "提升参与", "理解内容", "学习内容", "熟悉内容"];
+
+function isGenericPage(pageText: string): boolean {
+  return genericPageMarkers.filter((marker) => pageText.includes(marker)).length >= 2;
+}
+
+function hasSourceSynthesisSignal(pageText: string): boolean {
+  const normalized = pageText.toLocaleLowerCase();
+  return sourceSynthesisMarkers.some((marker) => normalized.includes(marker.toLocaleLowerCase()));
+}
+
+function hasCognitiveInteraction(page: Record<string, unknown>): boolean {
+  const interactionSpec = isRecord(page.interactionSpec) ? page.interactionSpec : undefined;
+  const cognitivePurpose = typeof interactionSpec?.cognitivePurpose === "string" ? interactionSpec.cognitivePurpose : "";
+  if (cognitivePurpose.length === 0 || vagueCognitivePurposeMarkers.some((marker) => cognitivePurpose.includes(marker))) {
+    return false;
+  }
+  return cognitivePurposeMarkers.some((marker) => cognitivePurpose.includes(marker));
 }
 
 function occurrences(text: string, marker: string): number {

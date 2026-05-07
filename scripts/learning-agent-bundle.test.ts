@@ -32,6 +32,8 @@ describe("learning agent MCP and skills bundle", () => {
     expect(manifest.docs).toContain("docs/runtime/mcp-skills-bundle.md");
     expect(manifest.docs).toContain("docs/runtime/codex-user-trial-script.md");
     expect(manifest.docs).toContain("docs/runtime/seed-user-beta-quickstart.md");
+    expect(manifest.docs).toContain("docs/runtime/codex-authoring-protocol-v2.md");
+    expect(manifest.docs).toContain("docs/runtime/real-source-quality-benchmark.md");
   });
 
   test("plans Codex skill installation without changing unrelated skills", () => {
@@ -55,6 +57,16 @@ describe("learning agent MCP and skills bundle", () => {
     expect(report.checked).toContain("docs/runtime/mcp-skills-bundle.md");
     expect(report.checked).toContain("docs/runtime/codex-user-trial-script.md");
     expect(report.checked).toContain("docs/runtime/seed-user-beta-quickstart.md");
+    expect(report.checked).toContain("docs/runtime/codex-authoring-protocol-v2.md");
+    expect(report.checked).toContain("docs/runtime/real-source-quality-benchmark.md");
     expect(report.checked).toContain("skills/source-to-course/SKILL.md");
+  });
+
+  test("ships Codex authoring quality docs for all beta source kinds", async () => {
+    const report = await checkLearningAgentBundleReadiness(process.cwd());
+
+    expect(report.ok).toBe(true);
+    expect(report.checked).toContain("docs/runtime/codex-authoring-protocol-v2.md");
+    expect(report.checked).toContain("docs/runtime/real-source-quality-benchmark.md");
   });
 });

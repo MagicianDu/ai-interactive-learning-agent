@@ -5,6 +5,14 @@ import { difficultyLabel, LearnerProjectService, type TeachingDifficultyLevel } 
 import type { SourceEvidenceStatus, SourceEvidenceSummary } from "../quality/source-evidence-analyzer.js";
 
 export type RealSourceRegressionSemanticStatus = "passed" | "warning" | "failed";
+export type RealSourceRegressionQualityFocus =
+  | "source_semantics"
+  | "source_synthesis"
+  | "academic_depth"
+  | "learner_action"
+  | "feedback_mechanism"
+  | "visual_purpose"
+  | "transfer";
 
 export type RealSourceRegressionSample = {
   id: string;
@@ -19,6 +27,7 @@ export type RealSourceRegressionSample = {
   audience: string;
   difficultyLevel: TeachingDifficultyLevel;
   acceptanceChecks: string[];
+  qualityFocus: RealSourceRegressionQualityFocus[];
 };
 
 export type RealSourceRegressionSampleResult = {
@@ -38,6 +47,7 @@ export type RealSourceRegressionSampleResult = {
   selectedTopics?: string[];
   unitPages: number;
   acceptanceChecks: string[];
+  qualityFocus: RealSourceRegressionQualityFocus[];
   generatedUnitCount: number;
   semanticStatus: RealSourceRegressionSemanticStatus;
   sourceEvidenceStatus?: SourceEvidenceStatus;
@@ -93,7 +103,8 @@ export const realSourceRegressionSamples: RealSourceRegressionSample[] = [
       "overview unit covers the whole book map",
       "topic units preserve chapter/source mapping",
       "source-backed lessons require source anchors"
-    ]
+    ],
+    qualityFocus: ["source_semantics", "source_synthesis", "academic_depth", "learner_action", "feedback_mechanism", "visual_purpose", "transfer"]
   },
   {
     id: "paper-talk-reasoner",
@@ -110,7 +121,8 @@ export const realSourceRegressionSamples: RealSourceRegressionSample[] = [
       "overview separates problem, method, evidence, and limitations",
       "method units preserve source anchors",
       "transfer task asks learner to apply the method boundary to a new system"
-    ]
+    ],
+    qualityFocus: ["source_semantics", "source_synthesis", "academic_depth", "learner_action", "feedback_mechanism", "visual_purpose", "transfer"]
   },
   {
     id: "patent-rag-legal-research",
@@ -127,7 +139,8 @@ export const realSourceRegressionSamples: RealSourceRegressionSample[] = [
       "claim units distinguish claim text from explanatory analogy",
       "technical solution units preserve source anchors",
       "risk transfer task asks learner to evaluate claim boundary"
-    ]
+    ],
+    qualityFocus: ["source_semantics", "source_synthesis", "academic_depth", "learner_action", "feedback_mechanism", "visual_purpose", "transfer"]
   },
   {
     id: "blog-agentic-rag",
@@ -144,7 +157,8 @@ export const realSourceRegressionSamples: RealSourceRegressionSample[] = [
       "lesson starts from a practical implementation problem",
       "at least two interactions require learner decisions",
       "source-backed claims cite blog anchors or mark inferred background"
-    ]
+    ],
+    qualityFocus: ["source_semantics", "source_synthesis", "learner_action", "feedback_mechanism", "visual_purpose", "transfer"]
   }
 ];
 
@@ -210,6 +224,7 @@ export async function runRealSourceRegressionSuite(
       selectedTopics: project.brief.selectedTopics,
       unitPages: project.brief.unitPages,
       acceptanceChecks: sample.acceptanceChecks,
+      qualityFocus: sample.qualityFocus,
       generatedUnitCount,
       semanticStatus,
       sourceEvidenceStatus: groundedCourse?.sourceEvidence.status,

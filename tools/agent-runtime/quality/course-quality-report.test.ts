@@ -127,4 +127,89 @@ describe("course-quality-report", () => {
       requiredFix: expect.stringContaining("source")
     });
   });
+
+  test("flags generic pages and weak source synthesis even when source anchors are present", () => {
+    const lesson = publishableLessonFixture({ id: "quality-generic-overview", targetPageCount: 8 });
+    lesson.learningObjectives = ["理解资料大意"];
+    lesson.pages[0] = {
+      ...lesson.pages[0],
+      sourceAnchorIds: ["source-001:section-1"],
+      title: "核心概念总览",
+      learningGoal: "了解整体内容",
+      narrative: "本页介绍核心概念，帮助学习者理解资料大意。"
+    };
+
+    const report = buildCourseQualityReport({
+      runId: "quality-generic",
+      coursePackId: "quality-generic",
+      lessons: [lesson],
+      authoringContext: {
+        sourceSemantics: {
+          keyTerms: [{ term: "tool feedback" }, { term: "reflection loop" }, { term: "evaluation boundary" }],
+          evidenceHints: [{ hint: "source compares tool feedback with evaluator feedback" }],
+          limitationHints: [{ hint: "reflection only works when observations are reliable" }]
+        }
+      }
+    });
+
+    expect(report.status).toBe("warning");
+    expect(report.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          issueId: "quality.page.generic-source-page",
+          category: "generic_page",
+          lessonId: "quality-generic-overview",
+          pageId: "p1"
+        }),
+        expect.objectContaining({
+          issueId: "quality.page.source-synthesis-weak",
+          category: "source_evidence",
+          lessonId: "quality-generic-overview",
+          pageId: "p1"
+        })
+      ])
+    );
+  });
+
+  test("flags shallow graduate/research lessons and decorative interactions", () => {
+    const lesson = publishableLessonFixture({ id: "quality-shallow-graduate", targetPageCount: 8 });
+    lesson.audience = "研究生课程学习者";
+    lesson.prerequisites = ["能阅读中文材料"];
+    lesson.learningObjectives = ["建立中文心智模型"];
+    lesson.pages[3] = {
+      ...lesson.pages[3],
+      interactionSpec: {
+        kind: "choice",
+        learnerAction: "点击一个选项",
+        expectedObservation: "看到提示",
+        cognitivePurpose: "帮助理解内容"
+      }
+    };
+
+    const report = buildCourseQualityReport({
+      runId: "quality-shallow",
+      coursePackId: "quality-shallow",
+      lessons: [lesson],
+      authoringContext: {
+        difficultyLevel: "upper_undergraduate_or_graduate"
+      }
+    });
+
+    expect(report.status).toBe("warning");
+    expect(report.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          issueId: "quality.lesson.academic-depth-shallow",
+          category: "learner_level_mismatch",
+          lessonId: "quality-shallow-graduate"
+        }),
+        expect.objectContaining({
+          issueId: "quality.interaction.cognitive-purpose-vague",
+          category: "decorative_interaction",
+          lessonId: "quality-shallow-graduate",
+          pageId: "p4"
+        })
+      ])
+    );
+  });
 });

@@ -56,7 +56,9 @@ const requiredDocs = [
   "docs/runtime/mcp-client-setup.md",
   "docs/runtime/codex-mcp-trial.md",
   "docs/runtime/codex-user-trial-script.md",
-  "docs/runtime/seed-user-beta-quickstart.md"
+  "docs/runtime/seed-user-beta-quickstart.md",
+  "docs/runtime/codex-authoring-protocol-v2.md",
+  "docs/runtime/real-source-quality-benchmark.md"
 ] as const;
 
 const requiredPackageScripts = [
