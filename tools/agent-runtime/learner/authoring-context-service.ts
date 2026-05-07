@@ -129,6 +129,12 @@ export type AuthoringContextResult = {
       pageExpectations: string[];
       avoid: string[];
     };
+    sourceKindDepthContract?: {
+      sourceKind: "patent" | "blog";
+      requiredMoves: string[];
+      pageExpectations: string[];
+      avoid: string[];
+    };
     publishChecklist: string[];
   };
   learnerClarificationHints: string[];
@@ -355,6 +361,7 @@ function buildQualityContract(brief: AuthoringContextResult["brief"]): Authoring
     ],
     sourceKindGuidance: sourceKindGuidance(brief.sourceKind),
     ...(requiresResearchReadingContract(brief) ? { researchReadingContract: researchReadingContract() } : {}),
+    ...(sourceKindDepthContract(brief.sourceKind) ? { sourceKindDepthContract: sourceKindDepthContract(brief.sourceKind) } : {}),
     publishChecklist: [
       "coursePack.units 引用的 lessonId 必须存在。",
       `每个 lesson 的 prerequisites、learningObjectives、pages、summary 要体现${levelLabel}定位。`,
@@ -434,6 +441,38 @@ function researchReadingContract(): NonNullable<AuthoringContextResult["qualityC
   };
 }
 
+function sourceKindDepthContract(sourceKind: string): AuthoringContextResult["qualityContract"]["sourceKindDepthContract"] | undefined {
+  if (sourceKind === "patent") {
+    return {
+      sourceKind,
+      requiredMoves: ["权利要求边界", "现有技术问题", "技术方案/机制", "实施例", "法律/适用边界", "规避或迁移判断"],
+      pageExpectations: [
+        "problem_scene 必须明确现有技术问题和权利要求要划定的保护边界。",
+        "structure_diagram 必须区分权利要求、技术方案/机制、实施例和推理补充。",
+        "quiz / interactive_model 必须让学习者判断某个方案落在权利要求边界内还是实施例描述内。",
+        "misconception_check 必须处理把专利文本当成学术结论或产品承诺的误区。",
+        "transfer_challenge 必须要求学习者做规避或迁移判断，并显式说明法律/适用边界。"
+      ],
+      avoid: ["不要把权利要求讲成普通概念定义。", "不要混淆保护边界、实施例和 Codex 推理。", "不要把法律边界弱化成泛泛工程建议。"]
+    };
+  }
+  if (sourceKind === "blog") {
+    return {
+      sourceKind,
+      requiredMoves: ["实际问题", "作者方案", "实现路径", "caveat/失败模式", "可操作检查", "迁移边界"],
+      pageExpectations: [
+        "problem_scene 必须明确作者面对的实际问题和实践上下文。",
+        "structure_diagram 必须画出作者方案、实现路径、关键选择和约束。",
+        "quiz / interactive_model 必须让学习者用 caveat 或失败模式判断步骤是否可复用。",
+        "misconception_check 必须处理把单个实践案例泛化成绝对规则的误区。",
+        "transfer_challenge 必须给出可操作检查，并说明迁移边界。"
+      ],
+      avoid: ["不要把博客改写成观点摘录。", "不要跳过 caveat、失败模式或实践上下文。", "不要把作者示例泛化成所有系统都适用的规则。"]
+    };
+  }
+  return undefined;
+}
+
 function buildLearnerClarificationHints(brief: AuthoringContextResult["brief"]): string[] {
   return [
     `确认学习目标：这套课程要让学习者最终能做什么，而不只是知道什么？`,
@@ -450,6 +489,12 @@ function buildCodexInstruction(brief: AuthoringContextResult["brief"], unitCount
     `教学难度层级：${difficultyLabel(brief.difficultyLevel)}（${brief.difficultyLevel}）；不要写成泛泛科普、博客摘要或产品介绍。`,
     ...(requiresResearchReadingContract(brief)
       ? ["这是一套论文精读课；每个相关 lesson 必须显式覆盖：研究问题、论文贡献、方法机制、实验/证据、局限/威胁、迁移判断。"]
+      : []),
+    ...(brief.sourceKind === "patent"
+      ? ["这是一套专利解读课；每个相关 lesson 必须显式覆盖：权利要求边界、现有技术问题、技术方案/机制、实施例、法律/适用边界、规避或迁移判断。"]
+      : []),
+    ...(brief.sourceKind === "blog"
+      ? ["这是一套实践案例课；每个相关 lesson 必须显式覆盖：实际问题、作者方案、实现路径、caveat/失败模式、可操作检查、迁移边界。"]
       : []),
     "写 lesson 前先逐项遵循 contentBlueprint.units[*].pageBlueprints：pageType、teachingMove、learnerAction、visualRequirement、feedbackRequirement、sourceRequirement。",
     `输出语言：${brief.language}。`,

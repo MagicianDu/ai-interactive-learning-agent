@@ -33,12 +33,14 @@ Every source-backed course should be checked for:
 - Distinguish claim boundary, technical solution, embodiment, and implementation example.
 - Make learner tasks compare what is protected, what is merely described, and what is inferred.
 - Preserve risk boundaries and prior-art framing.
+- Required depth moves: 权利要求边界, 现有技术问题, 技术方案/机制, 实施例, 法律/适用边界, 规避或迁移判断.
 
 ### blog
 
 - Extract the practical problem, workflow, implementation choices, caveats, and failure modes.
 - Convert steps into learner decisions, not just a checklist.
 - Mark inferred background separately from source-backed claims.
+- Required depth moves: 实际问题, 作者方案, 实现路径, caveat/失败模式, 可操作检查, 迁移边界.
 
 ### documentation
 

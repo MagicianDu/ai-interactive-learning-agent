@@ -96,23 +96,14 @@ function buildTrialLesson(input: CodexAuthoredTrialInput, unit: TrialUnitBluepri
       {
         id: "m1",
         statement: `只要能复述${focus}的文字说明，就等于真正理解。`,
-        correction:
-          input.sourceKind === "paper"
-            ? "论文精读必须同时说明研究问题、论文贡献、方法机制、实验/证据、局限边界和迁移边界。"
-            : "研究生课程级理解必须能说明先修概念、正式术语、证据链、局限边界、反例和迁移条件。"
+        correction: misconceptionCorrectionForLesson(input.sourceKind)
       }
     ],
     transferTasks: [
       {
         id: "t1",
-        prompt:
-          input.sourceKind === "paper"
-            ? `把${focus}迁移到另一篇论文或一个新 agent 系统设计中，并说明哪些方法假设仍然成立。`
-            : `把${focus}迁移到另一份技术资料或一个新系统设计问题中。`,
-        targetMentalModel:
-          input.sourceKind === "paper"
-            ? "先确认研究问题是否同构，再判断论文贡献、方法机制、实验/证据和局限边界能否迁移。"
-            : "先确认结构同构，再判断来源证据、边界条件和失败模式。"
+        prompt: transferPromptForLesson(input.sourceKind, focus),
+        targetMentalModel: transferMentalModelForLesson(input.sourceKind)
       }
     ],
     summary: summaryForLesson(input.sourceKind, focus)
@@ -127,6 +118,20 @@ function learningObjectivesForLesson(sourceKind: string, focus: string): string[
       `用局限边界判断${focus}的迁移边界`
     ];
   }
+  if (sourceKind === "patent") {
+    return [
+      `拆解${focus}的权利要求边界和现有技术问题`,
+      `解释${focus}的技术方案/机制与实施例`,
+      `用法律/适用边界完成规避或迁移判断`
+    ];
+  }
+  if (sourceKind === "blog") {
+    return [
+      `定位${focus}的实际问题和实践上下文`,
+      `解释${focus}中的作者方案与实现路径`,
+      `用 caveat/失败模式形成可操作检查和迁移边界`
+    ];
+  }
   return [`建立${focus}的课程级心智模型`, `用${focus}完成预测、误区检查和迁移应用`];
 }
 
@@ -138,11 +143,64 @@ function summaryForLesson(sourceKind: string, focus: string): string[] {
       "迁移边界决定这篇论文能否用于另一篇论文、专利、博客或真实系统设计。"
     ];
   }
+  if (sourceKind === "patent") {
+    return [
+      `${focus}先定位权利要求边界，再回看现有技术问题。`,
+      "技术方案/机制必须和实施例、法律/适用边界分开阅读。",
+      "规避或迁移判断必须说明哪些要素仍落在保护边界内，哪些只是实现示例。"
+    ];
+  }
+  if (sourceKind === "blog") {
+    return [
+      `${focus}先定位实际问题，再判断作者方案解决了哪个实践上下文。`,
+      "实现路径必须和 caveat/失败模式、可操作检查一起阅读。",
+      "迁移边界决定这个实践案例能否用于另一套系统或团队流程。"
+    ];
+  }
   return [
     `${focus}要从问题定义进入，并回扣先修概念和正式术语。`,
     "机制模型必须连接证据链、局限边界、反例和适用条件。",
     "课堂讨论负责检验边界，课后作业负责完成迁移应用。"
   ];
+}
+
+function misconceptionCorrectionForLesson(sourceKind: string): string {
+  if (sourceKind === "paper") {
+    return "论文精读必须同时说明研究问题、论文贡献、方法机制、实验/证据、局限边界和迁移边界。";
+  }
+  if (sourceKind === "patent") {
+    return "专利解读必须同时说明权利要求边界、现有技术问题、技术方案/机制、实施例、法律/适用边界和规避或迁移判断。";
+  }
+  if (sourceKind === "blog") {
+    return "实践案例学习必须同时说明实际问题、作者方案、实现路径、caveat/失败模式、可操作检查和迁移边界。";
+  }
+  return "研究生课程级理解必须能说明先修概念、正式术语、证据链、局限边界、反例和迁移条件。";
+}
+
+function transferPromptForLesson(sourceKind: string, focus: string): string {
+  if (sourceKind === "paper") {
+    return `把${focus}迁移到另一篇论文或一个新 agent 系统设计中，并说明哪些方法假设仍然成立。`;
+  }
+  if (sourceKind === "patent") {
+    return `把${focus}迁移到一个相邻技术方案中，并做一次规避或迁移判断。`;
+  }
+  if (sourceKind === "blog") {
+    return `把${focus}迁移到另一套工程流程中，并写出可操作检查和迁移边界。`;
+  }
+  return `把${focus}迁移到另一份技术资料或一个新系统设计问题中。`;
+}
+
+function transferMentalModelForLesson(sourceKind: string): string {
+  if (sourceKind === "paper") {
+    return "先确认研究问题是否同构，再判断论文贡献、方法机制、实验/证据和局限边界能否迁移。";
+  }
+  if (sourceKind === "patent") {
+    return "先确认权利要求边界和必要技术要素，再判断技术方案/机制、实施例和法律/适用边界是否支持迁移。";
+  }
+  if (sourceKind === "blog") {
+    return "先确认实际问题和实践上下文是否同构，再判断作者方案、实现路径、caveat/失败模式和可操作检查能否迁移。";
+  }
+  return "先确认结构同构，再判断来源证据、边界条件和失败模式。";
 }
 
 function buildPage(input: CodexAuthoredTrialInput, unit: TrialUnitBlueprint, pageBlueprint: TrialPageBlueprint, index: number): Record<string, unknown> {
@@ -192,28 +250,70 @@ function buildPage(input: CodexAuthoredTrialInput, unit: TrialUnitBlueprint, pag
       ? {
           assessmentSpec: {
             kind: assessmentKind(pageType),
-            prompt:
-              input.sourceKind === "paper"
-                ? `关于${focus}，哪种回答最能说明你已经读懂这篇论文？`
-                : `关于${focus}，哪种回答最能说明你已经形成可迁移的心智模型？`,
+            prompt: assessmentPromptForPage(input.sourceKind, focus),
             options: ["能说明机制、证据边界、反例和迁移条件", "能流畅复述来源材料中的几个术语"],
             correctAnswer: "能说明机制、证据边界、反例和迁移条件"
           },
           feedbackSpec: {
-            correctFeedback:
-              input.sourceKind === "paper"
-                ? "正确。论文精读要求把研究问题、论文贡献、方法机制、实验/证据、局限边界和迁移边界连成可审查的论证链。"
-                : "正确。课程级理解要求你能把问题定义、机制模型、证据边界和迁移条件连成一条可检验的推理链。",
-            incorrectFeedback:
-              input.sourceKind === "paper"
-                ? "不对。只复述术语无法判断论文贡献是否被证据支持，也无法判断方法假设在新场景是否成立。"
-                : "不对。术语复述只能证明记忆，不足以证明你能判断反例、边界条件或新场景中的适用性。",
-            misconceptionAddressed:
-              input.sourceKind === "paper" ? `把${focus}当成论文摘要，而不是可审查、可迁移的研究论证。` : `把${focus}当成可复述知识，而不是可迁移模型。`
+            correctFeedback: correctFeedbackForPage(input.sourceKind),
+            incorrectFeedback: incorrectFeedbackForPage(input.sourceKind),
+            misconceptionAddressed: misconceptionAddressedForPage(input.sourceKind, focus)
           }
         }
       : {})
   };
+}
+
+function assessmentPromptForPage(sourceKind: string, focus: string): string {
+  if (sourceKind === "paper") {
+    return `关于${focus}，哪种回答最能说明你已经读懂这篇论文？`;
+  }
+  if (sourceKind === "patent") {
+    return `关于${focus}，哪种回答最能说明你已经读懂这份专利？`;
+  }
+  if (sourceKind === "blog") {
+    return `关于${focus}，哪种回答最能说明你已经读懂这个实践案例？`;
+  }
+  return `关于${focus}，哪种回答最能说明你已经形成可迁移的心智模型？`;
+}
+
+function correctFeedbackForPage(sourceKind: string): string {
+  if (sourceKind === "paper") {
+    return "正确。论文精读要求把研究问题、论文贡献、方法机制、实验/证据、局限边界和迁移边界连成可审查的论证链。";
+  }
+  if (sourceKind === "patent") {
+    return "正确。专利解读要求把权利要求边界、现有技术问题、技术方案/机制、实施例、法律/适用边界和规避或迁移判断连成可审查的边界判断。";
+  }
+  if (sourceKind === "blog") {
+    return "正确。实践案例学习要求把实际问题、作者方案、实现路径、caveat/失败模式、可操作检查和迁移边界连成可执行的判断链。";
+  }
+  return "正确。课程级理解要求你能把问题定义、机制模型、证据边界和迁移条件连成一条可检验的推理链。";
+}
+
+function incorrectFeedbackForPage(sourceKind: string): string {
+  if (sourceKind === "paper") {
+    return "不对。只复述术语无法判断论文贡献是否被证据支持，也无法判断方法假设在新场景是否成立。";
+  }
+  if (sourceKind === "patent") {
+    return "不对。只复述术语无法判断方案是否落在权利要求边界内，也无法区分实施例和保护范围。";
+  }
+  if (sourceKind === "blog") {
+    return "不对。只复述步骤无法判断作者方案在哪些 caveat/失败模式下失效，也无法形成可操作检查。";
+  }
+  return "不对。术语复述只能证明记忆，不足以证明你能判断反例、边界条件或新场景中的适用性。";
+}
+
+function misconceptionAddressedForPage(sourceKind: string, focus: string): string {
+  if (sourceKind === "paper") {
+    return `把${focus}当成论文摘要，而不是可审查、可迁移的研究论证。`;
+  }
+  if (sourceKind === "patent") {
+    return `把${focus}当成普通技术说明，而不是有权利要求边界和法律/适用边界的专利文本。`;
+  }
+  if (sourceKind === "blog") {
+    return `把${focus}当成通用最佳实践，而不是受实践上下文和 caveat/失败模式限制的案例。`;
+  }
+  return `把${focus}当成可复述知识，而不是可迁移模型。`;
 }
 
 function learningGoalForPage(sourceKind: string, focus: string, pageType: string): string {
@@ -231,6 +331,36 @@ function learningGoalForPage(sourceKind: string, focus: string, pageType: string
       summary_card: `压缩${focus}的论文精读模型`
     };
     return goals[pageType] ?? `建立${focus}的论文精读模型`;
+  }
+  if (sourceKind === "patent") {
+    const goals: Record<string, string> = {
+      problem_scene: `定位${focus}的现有技术问题`,
+      intuition_visual: `建立${focus}的专利阅读直觉`,
+      structure_diagram: `画出${focus}的技术方案/机制`,
+      process_animation: `追踪${focus}从权利要求到实施例的路径`,
+      interactive_model: `判断${focus}的权利要求边界`,
+      code_walkthrough: `连接${focus}的正式要素表达`,
+      quiz: `区分${focus}的权利要求和实施例`,
+      misconception_check: `修正关于${focus}保护范围的误读`,
+      transfer_challenge: `完成${focus}的规避或迁移判断`,
+      summary_card: `压缩${focus}的专利解读模型`
+    };
+    return goals[pageType] ?? `建立${focus}的专利解读模型`;
+  }
+  if (sourceKind === "blog") {
+    const goals: Record<string, string> = {
+      problem_scene: `定位${focus}的实际问题`,
+      intuition_visual: `建立${focus}的实践案例直觉`,
+      structure_diagram: `画出${focus}的作者方案和实现路径`,
+      process_animation: `追踪${focus}的执行流程`,
+      interactive_model: `用 caveat 检查${focus}`,
+      code_walkthrough: `连接${focus}的具体实现表达`,
+      quiz: `判断${focus}的可操作检查是否成立`,
+      misconception_check: `修正关于${focus}的过度泛化`,
+      transfer_challenge: `判断${focus}的迁移边界`,
+      summary_card: `压缩${focus}的实践案例模型`
+    };
+    return goals[pageType] ?? `建立${focus}的实践案例模型`;
   }
   const goals: Record<string, string> = {
     problem_scene: `识别${focus}要解决的真实问题`,
@@ -253,6 +383,12 @@ function narrativeForPage(unit: TrialUnitBlueprint, pageBlueprint: TrialPageBlue
   if (sourceKind === "paper") {
     return paperNarrativeForPage(pageBlueprint, focus, context, mustInclude);
   }
+  if (sourceKind === "patent") {
+    return patentNarrativeForPage(pageBlueprint, focus, context, mustInclude);
+  }
+  if (sourceKind === "blog") {
+    return blogNarrativeForPage(pageBlueprint, focus, context, mustInclude);
+  }
   const academicFrame = "先修概念和正式术语用来定位问题；证据链与局限边界用来判断结论强度。";
   const templates: Record<string, string> = {
     problem_scene: `先看一个失败场景：如果只会复述${focus}，遇到边界条件时就无法判断方案是否适用。${context}${academicFrame}课堂讨论从“问题为什么存在”开始。`,
@@ -265,6 +401,38 @@ function narrativeForPage(unit: TrialUnitBlueprint, pageBlueprint: TrialPageBlue
     misconception_check: `常见误区是把${focus}当成可复述结论。${context}反例会显示：缺少边界条件时，同一句话在新场景可能失效。`,
     transfer_challenge: `迁移任务换一个表层场景，但保留相同结构。${context}课后作业要求写出哪些结构可迁移，哪些假设不能迁移。`,
     summary_card: `最后把${focus}压缩成一张记忆卡：问题、机制、证据、边界、迁移各一句。${context}复习时先复述模型，再检查反例。`
+  };
+  return `${templates[pageBlueprint.pageType] ?? templates.problem_scene}${mustInclude ? ` 你要抓住：${mustInclude}。` : ""}`;
+}
+
+function patentNarrativeForPage(pageBlueprint: TrialPageBlueprint, focus: string, context: string, mustInclude: string): string {
+  const templates: Record<string, string> = {
+    problem_scene: `先把${focus}当作专利解读对象：现有技术问题是什么，权利要求边界试图保护哪些必要要素？${context}学习者要先区分保护范围、实施例和推理补充。`,
+    intuition_visual: `${focus}的直觉模型是一张边界图：权利要求边界、现有技术问题、技术方案/机制、实施例、法律/适用边界、规避或迁移判断。${context}学习者先预测哪个要素最影响边界判断。`,
+    structure_diagram: `把${focus}画成专利结构图：现有技术问题、必要技术要素、技术方案/机制、实施例和法律/适用边界。${context}实施例必须和权利要求边界分开标注。`,
+    process_animation: `沿专利阅读路径追踪${focus}：现有技术问题进入，技术方案/机制回应，实施例演示，法律/适用边界收束。${context}每一步都要问是否仍落在权利要求边界内。`,
+    interactive_model: `让学习者在两种读法中选择：先审查权利要求边界，或先接受实施例。${context}反馈要说明为什么边界优先能降低误读保护范围的风险。`,
+    code_walkthrough: `正式表达只服务于边界判断：用短伪代码、模块表或要素清单描述${focus}的技术方案/机制。${context}不要把实施例误读成完整保护范围。`,
+    quiz: `这个检查题要求学习者判断某个变体是否落入${focus}的权利要求边界，还是只是接近实施例。${context}正确回答必须指出技术方案/机制和法律/适用边界。`,
+    misconception_check: `常见误区是把专利文本当成普通技术教程。${context}法律/适用边界说明了哪些结论不能被当作工程最优解。`,
+    transfer_challenge: `迁移任务要求把${focus}放到相邻技术方案中做规避或迁移判断。${context}只有必要要素、技术方案/机制和法律/适用边界都被检查时，判断才成立。`,
+    summary_card: `最后用六格卡片压缩${focus}：权利要求边界、现有技术问题、技术方案/机制、实施例、法律/适用边界、规避或迁移判断。${context}复习时先检查边界，再复述术语。`
+  };
+  return `${templates[pageBlueprint.pageType] ?? templates.problem_scene}${mustInclude ? ` 你要抓住：${mustInclude}。` : ""}`;
+}
+
+function blogNarrativeForPage(pageBlueprint: TrialPageBlueprint, focus: string, context: string, mustInclude: string): string {
+  const templates: Record<string, string> = {
+    problem_scene: `先把${focus}当作实践案例：实际问题是什么，作者方案在什么实践上下文里出现？${context}学习者要先区分作者亲历问题和 Codex 补充背景。`,
+    intuition_visual: `${focus}的直觉模型是一张实践路径图：实际问题、作者方案、实现路径、caveat/失败模式、可操作检查、迁移边界。${context}学习者先预测最容易失效的步骤。`,
+    structure_diagram: `把${focus}画成实践结构图：触发问题、作者方案、实现路径、关键选择、caveat/失败模式和可操作检查。${context}实现路径必须和迁移边界分开标注。`,
+    process_animation: `沿实践执行路径追踪${focus}：实际问题出现、作者方案展开、实现路径执行、caveat/失败模式暴露、可操作检查收束。${context}每一步都要问在什么上下文才成立。`,
+    interactive_model: `让学习者在两种读法中选择：先审查 caveat/失败模式，或先照搬作者方案。${context}反馈要说明为什么 caveat 优先能降低过度泛化风险。`,
+    code_walkthrough: `正式表达只服务于实践复现：用短伪代码、检查清单或流程片段描述${focus}的实现路径。${context}不要把作者方案误读成所有系统都适用的规则。`,
+    quiz: `这个检查题要求学习者判断${focus}的可操作检查是否足以支持迁移。${context}正确回答必须指出实际问题、作者方案、实现路径和 caveat/失败模式。`,
+    misconception_check: `常见误区是把博客案例当成通用最佳实践。${context}caveat/失败模式和迁移边界说明了哪些步骤还不能照搬。`,
+    transfer_challenge: `迁移任务要求把${focus}放到另一套工程流程中。${context}只有实际问题同构、作者方案约束保留、可操作检查可执行时，迁移边界才成立。`,
+    summary_card: `最后用六格卡片压缩${focus}：实际问题、作者方案、实现路径、caveat/失败模式、可操作检查、迁移边界。${context}复习时先检查失败模式，再复述步骤。`
   };
   return `${templates[pageBlueprint.pageType] ?? templates.problem_scene}${mustInclude ? ` 你要抓住：${mustInclude}。` : ""}`;
 }

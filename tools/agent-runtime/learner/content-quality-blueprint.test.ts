@@ -148,6 +148,39 @@ describe("content-quality-blueprint", () => {
     expect(blueprint.units[0]?.pageBlueprints[5]?.mustInclude).toEqual(expect.arrayContaining([expect.stringContaining("局限/威胁")]));
     expect(blueprint.units[0]?.pageBlueprints[6]?.mustInclude).toEqual(expect.arrayContaining([expect.stringContaining("迁移判断")]));
   });
+
+  test("adds source-kind depth moves for patent and blog units", () => {
+    const patentBlueprint = buildContentBlueprint({
+      audience: "技术产品经理",
+      sourceKind: "patent",
+      units: [plannedUnit({ targetPageCount: 8, kind: "topic", focusConcepts: ["缓存一致性专利"] })]
+    });
+    const blogBlueprint = buildContentBlueprint({
+      audience: "工程师",
+      sourceKind: "blog",
+      units: [plannedUnit({ targetPageCount: 8, kind: "task", focusConcepts: ["Agent 调试流程"] })]
+    });
+
+    expect(patentBlueprint.globalRules.join("\n")).toContain("专利解读");
+    expect(patentBlueprint.units[0]?.pageBlueprints[0]?.mustInclude).toEqual(
+      expect.arrayContaining([expect.stringContaining("权利要求边界"), expect.stringContaining("现有技术问题")])
+    );
+    expect(patentBlueprint.units[0]?.pageBlueprints[2]?.mustInclude).toEqual(
+      expect.arrayContaining([expect.stringContaining("技术方案"), expect.stringContaining("实施例")])
+    );
+    expect(patentBlueprint.units[0]?.pageBlueprints[5]?.mustInclude).toEqual(expect.arrayContaining([expect.stringContaining("法律/适用边界")]));
+    expect(patentBlueprint.units[0]?.pageBlueprints[6]?.mustInclude).toEqual(expect.arrayContaining([expect.stringContaining("规避或迁移判断")]));
+
+    expect(blogBlueprint.globalRules.join("\n")).toContain("实践案例");
+    expect(blogBlueprint.units[0]?.pageBlueprints[0]?.mustInclude).toEqual(
+      expect.arrayContaining([expect.stringContaining("实际问题"), expect.stringContaining("实践上下文")])
+    );
+    expect(blogBlueprint.units[0]?.pageBlueprints[2]?.mustInclude).toEqual(
+      expect.arrayContaining([expect.stringContaining("作者方案"), expect.stringContaining("实现路径")])
+    );
+    expect(blogBlueprint.units[0]?.pageBlueprints[5]?.mustInclude).toEqual(expect.arrayContaining([expect.stringContaining("caveat/失败模式")]));
+    expect(blogBlueprint.units[0]?.pageBlueprints[6]?.mustInclude).toEqual(expect.arrayContaining([expect.stringContaining("迁移边界")]));
+  });
 });
 
 function plannedUnit(overrides: Partial<PlannedCourseUnit> = {}): PlannedCourseUnit {

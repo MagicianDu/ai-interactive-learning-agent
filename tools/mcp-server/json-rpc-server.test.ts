@@ -198,7 +198,14 @@ describe("MCP JSON-RPC server", () => {
         anchorCount: expect.any(Number)
       },
       preview: { devCommand: "npm run dev", localUrl: "http://127.0.0.1:5173/#/preview/mcp-grounded-blog" },
-      qualityReport: { status: "passed" }
+      qualityReport: {
+        status: "warning",
+        topIssues: expect.arrayContaining([
+          expect.objectContaining({
+            issueId: "quality.lesson.blog-practice-depth-shallow"
+          })
+        ])
+      }
     });
     await expect(readFile(path.join(root, "runs", "mcp-grounded-blog", "learning-preview.json"), "utf8")).resolves.toContain(
       "preview_ready"

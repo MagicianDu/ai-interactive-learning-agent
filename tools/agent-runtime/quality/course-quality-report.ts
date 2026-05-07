@@ -329,6 +329,34 @@ function collectPageHeuristicIssues(lesson: unknown, authoringContext: CourseQua
       lessonId
     });
   }
+  if (authoringContext?.sourceKind === "patent" && sourceKindDepthMarkerCount("patent", JSON.stringify(lesson)) < 5) {
+    issues.push({
+      issueId: "quality.lesson.patent-depth-shallow",
+      scope: "lesson",
+      severity: "warning",
+      category: "learner_level_mismatch",
+      reason: "patent course lacks explicit claim boundary, prior-art problem, technical mechanism, embodiment, legal/applicability boundary, or design-around transfer moves",
+      requiredFix:
+        "Rewrite the lesson as a patent-reading course: cover claim boundary, prior-art problem, technical solution/mechanism, embodiment, legal/applicability boundary, and design-around or transfer judgment.",
+      rule: "patent-depth",
+      path: "lesson.patentDepth",
+      lessonId
+    });
+  }
+  if (authoringContext?.sourceKind === "blog" && sourceKindDepthMarkerCount("blog", JSON.stringify(lesson)) < 5) {
+    issues.push({
+      issueId: "quality.lesson.blog-practice-depth-shallow",
+      scope: "lesson",
+      severity: "warning",
+      category: "learner_level_mismatch",
+      reason: "blog course lacks explicit practical problem, author solution, implementation path, caveat/failure mode, actionable check, or transfer-boundary moves",
+      requiredFix:
+        "Rewrite the lesson as a practice-case course: cover practical problem, author solution, implementation path, caveats/failure modes, actionable checks, and transfer boundaries.",
+      rule: "blog-practice-depth",
+      path: "lesson.blogPracticeDepth",
+      lessonId
+    });
+  }
 
   return [
     ...issues,
@@ -521,6 +549,33 @@ const paperResearchMarkerGroups = [
 function paperResearchMarkerCount(text: string): number {
   const normalized = text.toLocaleLowerCase();
   return paperResearchMarkerGroups.reduce(
+    (count, group) => count + (group.some((marker) => normalized.includes(marker.toLocaleLowerCase())) ? 1 : 0),
+    0
+  );
+}
+
+const sourceKindDepthMarkerGroups = {
+  patent: [
+    ["权利要求边界", "claim boundary"],
+    ["现有技术问题", "prior-art problem", "prior art"],
+    ["技术方案/机制", "技术方案", "technical solution", "mechanism"],
+    ["实施例", "embodiment"],
+    ["法律/适用边界", "法律边界", "适用边界", "legal boundary"],
+    ["规避或迁移判断", "规避设计", "design-around", "迁移判断"]
+  ],
+  blog: [
+    ["实际问题", "practical problem"],
+    ["作者方案", "author solution"],
+    ["实现路径", "implementation path"],
+    ["caveat/失败模式", "caveat", "失败模式", "failure mode"],
+    ["可操作检查", "actionable check"],
+    ["迁移边界", "transfer boundary"]
+  ]
+} satisfies Record<"patent" | "blog", string[][]>;
+
+function sourceKindDepthMarkerCount(sourceKind: "patent" | "blog", text: string): number {
+  const normalized = text.toLocaleLowerCase();
+  return sourceKindDepthMarkerGroups[sourceKind].reduce(
     (count, group) => count + (group.some((marker) => normalized.includes(marker.toLocaleLowerCase())) ? 1 : 0),
     0
   );

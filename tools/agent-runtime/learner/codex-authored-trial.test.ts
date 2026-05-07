@@ -155,4 +155,67 @@ describe("CodexAuthoredTrialService", () => {
     expect(joinedLessons).not.toContain("课堂 slide");
     expect(joinedLessons).not.toContain("课堂材料需覆盖");
   });
+
+  test("publishes patent and blog trials with source-kind-specific teaching frames", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "codex-authored-source-kind-trial-"));
+    const patentPath = path.join(root, "cache-patent.md");
+    const blogPath = path.join(root, "agent-blog.md");
+    await writeFile(
+      patentPath,
+      [
+        "# 缓存一致性专利",
+        "权利要求1描述一种缓存一致性系统。",
+        "现有技术问题是边缘节点缓存失效通知延迟。",
+        "技术方案通过键映射和失效控制模块完成。",
+        "实施例说明在移动网络中的处理流程。"
+      ].join("\n"),
+      "utf8"
+    );
+    await writeFile(
+      blogPath,
+      [
+        "# Debugging Tool-Using Agents",
+        "The practical problem is failed tool calls in production.",
+        "The author solution combines tracing, retry policy, and rollout checks.",
+        "Implementation path starts from observation capture.",
+        "Caveats include missing observations and unsafe retries."
+      ].join("\n"),
+      "utf8"
+    );
+
+    const patentResult = await new CodexAuthoredTrialService(root).runTrial({
+      runId: "trial-patent-depth",
+      sourcePath: patentPath,
+      sourceKind: "patent",
+      audience: "技术产品经理",
+      unitPages: 8
+    });
+    const blogResult = await new CodexAuthoredTrialService(root).runTrial({
+      runId: "trial-blog-depth",
+      sourcePath: blogPath,
+      sourceKind: "blog",
+      audience: "工程师",
+      unitPages: 8
+    });
+
+    expect(patentResult.status).toBe("preview_ready");
+    expect(blogResult.status).toBe("preview_ready");
+    if (patentResult.status !== "preview_ready" || blogResult.status !== "preview_ready") {
+      return;
+    }
+    expect(patentResult.qualityReport).toMatchObject({ status: "passed" });
+    expect(blogResult.qualityReport).toMatchObject({ status: "passed" });
+
+    const patentText = (await Promise.all(patentResult.lessonPaths.map((lessonPath) => readFile(lessonPath, "utf8")))).join("\n");
+    const blogText = (await Promise.all(blogResult.lessonPaths.map((lessonPath) => readFile(lessonPath, "utf8")))).join("\n");
+    for (const marker of ["权利要求边界", "现有技术问题", "技术方案/机制", "实施例", "法律/适用边界", "规避或迁移判断"]) {
+      expect(patentText).toContain(marker);
+    }
+    for (const marker of ["实际问题", "作者方案", "实现路径", "caveat/失败模式", "可操作检查", "迁移边界"]) {
+      expect(blogText).toContain(marker);
+    }
+    expect(`${patentText}\n${blogText}`).not.toContain("本页围绕");
+    expect(`${patentText}\n${blogText}`).not.toContain("课堂 slide");
+    expect(`${patentText}\n${blogText}`).not.toContain("课堂材料需覆盖");
+  });
 });

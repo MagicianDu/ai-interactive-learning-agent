@@ -228,6 +228,68 @@ describe("AuthoringContextService", () => {
     expect(context.contentBlueprint.units[0]?.pageBlueprints[5]?.mustInclude).toEqual(expect.arrayContaining([expect.stringContaining("局限")]));
   });
 
+  test("adds source-kind depth contracts for patent and blog authoring", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-source-kind-depth-context-"));
+    const patentPath = path.join(root, "cache-patent.md");
+    const blogPath = path.join(root, "agent-workflow-blog.md");
+    await writeFile(
+      patentPath,
+      [
+        "# 缓存系统专利",
+        "权利要求1：一种缓存系统，包括键映射模块和失效控制模块。",
+        "现有技术问题在于缓存一致性和命中率之间难以权衡。",
+        "实施例说明该系统如何在边缘节点处理失效通知。"
+      ].join("\n\n"),
+      "utf8"
+    );
+    await writeFile(
+      blogPath,
+      [
+        "# Agent Workflow in Production",
+        "The post explains a production workflow for tool-using agents.",
+        "The practical problem is debugging failed tool calls.",
+        "Caveats include retries, missing observations, and rollout safety checks."
+      ].join("\n\n"),
+      "utf8"
+    );
+
+    await new LearnerProjectService(root).createProject({
+      request: `请用 "${patentPath}" 生成中文专利解读课程，面向技术产品经理，教学难度为大学高年级课程，每个单元 8 页。`,
+      runId: "context-patent-depth",
+      sourcePath: patentPath,
+      sourceKind: "patent",
+      audience: "技术产品经理",
+      difficultyLevel: "upper_undergraduate_or_graduate",
+      unitPages: 8
+    });
+    await new LearnerProjectService(root).createProject({
+      request: `请用 "${blogPath}" 生成中文实践案例课程，面向工程师，教学难度为大学高年级课程，每个单元 8 页。`,
+      runId: "context-blog-depth",
+      sourcePath: blogPath,
+      sourceKind: "blog",
+      audience: "工程师",
+      difficultyLevel: "upper_undergraduate_or_graduate",
+      unitPages: 8
+    });
+
+    const patentContext = await new AuthoringContextService(root).getContext({ runId: "context-patent-depth", maxAnchors: 8 });
+    const blogContext = await new AuthoringContextService(root).getContext({ runId: "context-blog-depth", maxAnchors: 8 });
+
+    expect(patentContext.qualityContract.sourceKindDepthContract).toMatchObject({
+      sourceKind: "patent",
+      requiredMoves: expect.arrayContaining(["权利要求边界", "现有技术问题", "技术方案/机制", "实施例", "法律/适用边界", "规避或迁移判断"])
+    });
+    expect(patentContext.codexInstruction).toContain("专利解读课");
+    expect(patentContext.codexInstruction).toContain("权利要求边界、现有技术问题、技术方案/机制、实施例、法律/适用边界、规避或迁移判断");
+
+    expect(blogContext.qualityContract.sourceKindDepthContract).toMatchObject({
+      sourceKind: "blog",
+      requiredMoves: expect.arrayContaining(["实际问题", "作者方案", "实现路径", "caveat/失败模式", "可操作检查", "迁移边界"])
+    });
+    expect(blogContext.codexInstruction).toContain("实践案例课");
+    expect(blogContext.codexInstruction).toContain("实际问题、作者方案、实现路径、caveat/失败模式、可操作检查、迁移边界");
+  });
+
   test("samples long book anchors from content pages instead of front matter", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "learning-authoring-context-"));
     const sourcePath = path.join(root, "agentic-book.md");

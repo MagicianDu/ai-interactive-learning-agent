@@ -70,6 +70,12 @@ function globalRules(input: BuildContentBlueprintInput): string[] {
     ...(requiresPaperResearchMoves(input.sourceKind, input.difficultyLevel)
       ? ["论文精读必须显式覆盖：研究问题、论文贡献、方法机制、实验/证据、局限/威胁、迁移判断。"]
       : []),
+    ...(input.sourceKind === "patent"
+      ? ["专利解读必须显式覆盖：权利要求边界、现有技术问题、技术方案/机制、实施例、法律/适用边界、规避或迁移判断。"]
+      : []),
+    ...(input.sourceKind === "blog"
+      ? ["实践案例必须显式覆盖：实际问题、作者方案、实现路径、caveat/失败模式、可操作检查、迁移边界。"]
+      : []),
     ...(input.units.some((unit) => unit.targetPageCount < 8)
       ? ["存在少于 8 页的 compact unit；必须合并页面职能但保留 learner action、误区检查、迁移和总结。"]
       : [])
@@ -105,6 +111,7 @@ function buildUnitBlueprint(
       mustInclude: [
         ...template.mustInclude(unit, sourceKind),
         ...paperResearchMustInclude(template.pageType, sourceKind, difficultyLevel),
+        ...sourceKindDepthMustInclude(template.pageType, sourceKind),
         ...mustIncludeSemanticHints(semanticHints)
       ]
     }))
@@ -136,6 +143,60 @@ function paperResearchMustInclude(pageType: string, sourceKind: string, difficul
   }
   if (pageType === "summary_card") {
     return ["研究问题/贡献/机制/证据/局限/迁移"];
+  }
+  return [];
+}
+
+function sourceKindDepthMustInclude(pageType: string, sourceKind: string): string[] {
+  if (sourceKind === "patent") {
+    return patentMustInclude(pageType);
+  }
+  if (sourceKind === "blog") {
+    return blogMustInclude(pageType);
+  }
+  return [];
+}
+
+function patentMustInclude(pageType: string): string[] {
+  if (pageType === "problem_scene") {
+    return ["权利要求边界", "现有技术问题"];
+  }
+  if (pageType === "structure_diagram") {
+    return ["技术方案/机制", "实施例"];
+  }
+  if (pageType === "quiz") {
+    return ["权利要求 vs 实施例"];
+  }
+  if (pageType === "misconception_check") {
+    return ["法律/适用边界", "保护范围误读"];
+  }
+  if (pageType === "transfer_challenge") {
+    return ["规避或迁移判断", "法律/适用边界"];
+  }
+  if (pageType === "summary_card") {
+    return ["权利要求/问题/方案/实施例/边界/迁移"];
+  }
+  return [];
+}
+
+function blogMustInclude(pageType: string): string[] {
+  if (pageType === "problem_scene") {
+    return ["实际问题", "实践上下文"];
+  }
+  if (pageType === "structure_diagram") {
+    return ["作者方案", "实现路径"];
+  }
+  if (pageType === "quiz") {
+    return ["可操作检查"];
+  }
+  if (pageType === "misconception_check") {
+    return ["caveat/失败模式", "过度泛化风险"];
+  }
+  if (pageType === "transfer_challenge") {
+    return ["迁移边界", "可操作检查"];
+  }
+  if (pageType === "summary_card") {
+    return ["实际问题/作者方案/实现路径/caveat/检查/迁移"];
   }
   return [];
 }

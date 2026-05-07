@@ -213,6 +213,51 @@ describe("course-quality-report", () => {
     );
   });
 
+  test("flags shallow patent and blog lessons that miss source-kind depth moves", () => {
+    const patentLesson = publishableLessonFixture({ id: "quality-shallow-patent", targetPageCount: 8, title: "缓存系统专利解读" });
+    const blogLesson = publishableLessonFixture({ id: "quality-shallow-blog", targetPageCount: 8, title: "Agent 工作流实践" });
+
+    const patentReport = buildCourseQualityReport({
+      runId: "quality-patent-depth",
+      coursePackId: "quality-patent-depth",
+      lessons: [patentLesson],
+      authoringContext: {
+        sourceKind: "patent",
+        difficultyLevel: "upper_undergraduate_or_graduate"
+      }
+    });
+    const blogReport = buildCourseQualityReport({
+      runId: "quality-blog-depth",
+      coursePackId: "quality-blog-depth",
+      lessons: [blogLesson],
+      authoringContext: {
+        sourceKind: "blog",
+        difficultyLevel: "upper_undergraduate_or_graduate"
+      }
+    });
+
+    expect(patentReport.status).toBe("warning");
+    expect(patentReport.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          issueId: "quality.lesson.patent-depth-shallow",
+          category: "learner_level_mismatch",
+          lessonId: "quality-shallow-patent"
+        })
+      ])
+    );
+    expect(blogReport.status).toBe("warning");
+    expect(blogReport.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          issueId: "quality.lesson.blog-practice-depth-shallow",
+          category: "learner_level_mismatch",
+          lessonId: "quality-shallow-blog"
+        })
+      ])
+    );
+  });
+
   test("flags overloaded page labels and repetitive long narratives", () => {
     const lesson = publishableLessonFixture({ id: "quality-overloaded-pages", targetPageCount: 8 });
     const longTitle = "Talker-Reasoner 架构、研究问题、系统机制、实验证据、局限边界、迁移应用、方法结构、证据边界：研究问题";
