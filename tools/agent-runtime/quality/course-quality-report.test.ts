@@ -212,4 +212,49 @@ describe("course-quality-report", () => {
       ])
     );
   });
+
+  test("flags overloaded page labels and repetitive long narratives", () => {
+    const lesson = publishableLessonFixture({ id: "quality-overloaded-pages", targetPageCount: 8 });
+    const longTitle = "Talker-Reasoner 架构、研究问题、系统机制、实验证据、局限边界、迁移应用、方法结构、证据边界：研究问题";
+    const repeatedNarrative =
+      "研究问题要求区分交互职责和内部推理职责。机制模型连接 Talker、Reasoner、证据链、局限边界和迁移条件。课后作业要求写出反例和失败模式。";
+    lesson.pages = lesson.pages.map((page, index) => ({
+      ...page,
+      ...(index < 4
+        ? {
+            title: longTitle,
+            learningGoal:
+              "用研究论文精读方式完成一个过载的 mental-model move：同时解释研究问题、方法假设、机制模型、证据链、局限边界、反例、适用条件、迁移应用和课堂讨论路径。",
+            narrative: repeatedNarrative
+          }
+        : {})
+    }));
+
+    const report = buildCourseQualityReport({
+      runId: "quality-overloaded",
+      coursePackId: "quality-overloaded",
+      lessons: [lesson]
+    });
+
+    expect(report.status).toBe("warning");
+    expect(report.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          issueId: "quality.page.title-too-long",
+          category: "dense_page",
+          pageId: "p1"
+        }),
+        expect.objectContaining({
+          issueId: "quality.page.learning-goal-too-long",
+          category: "dense_page",
+          pageId: "p1"
+        }),
+        expect.objectContaining({
+          issueId: "quality.lesson.repetitive-pages",
+          category: "dense_page",
+          lessonId: "quality-overloaded-pages"
+        })
+      ])
+    );
+  });
 });

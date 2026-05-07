@@ -128,13 +128,16 @@ const englishStopWords = new Set([
   "be",
   "before",
   "by",
+  "benefit",
   "for",
   "from",
+  "handles",
   "in",
   "into",
   "is",
   "it",
   "lets",
+  "manages",
   "of",
   "on",
   "or",
@@ -143,9 +146,32 @@ const englishStopWords = new Set([
   "then",
   "this",
   "to",
+  "tracks",
   "when",
   "whether",
+  "while",
   "with"
+]);
+
+const structuralNoiseTerms = new Set([
+  "abstract",
+  "appendix",
+  "arxiv",
+  "bibliography",
+  "copyright",
+  "figure",
+  "introduction",
+  "language",
+  "license",
+  "page",
+  "pages",
+  "paper",
+  "paragraph",
+  "preprint",
+  "reference",
+  "references",
+  "section",
+  "table"
 ]);
 
 const technicalSignalWords = new Set([
@@ -155,11 +181,15 @@ const technicalSignalWords = new Set([
   "assumptions",
   "evaluation",
   "feedback",
+  "reasoner",
+  "reasoning",
   "planning",
   "reflection",
   "reliability",
   "retrieval",
   "routing",
+  "talker",
+  "talker-reasoner",
   "tool",
   "tools",
   "workflow"
@@ -180,9 +210,34 @@ function extractKeyTerms(anchors: SourceAnchor[]): SourceSemanticTerm[] {
   }
 
   return [...termToAnchorIds.entries()]
+    .filter(([term]) => isUsefulKeyTerm(term))
     .map(([term, anchorIds]) => ({ term, sourceAnchorIds: [...anchorIds] }))
-    .sort((first, second) => second.sourceAnchorIds.length - first.sourceAnchorIds.length || first.term.localeCompare(second.term, "en"))
+    .sort(
+      (first, second) =>
+        keyTermSortScore(second) - keyTermSortScore(first) ||
+        second.sourceAnchorIds.length - first.sourceAnchorIds.length ||
+        first.term.localeCompare(second.term, "en")
+    )
     .slice(0, 20);
+}
+
+function keyTermSortScore(term: SourceSemanticTerm): number {
+  const tokens = term.term.split(/\s+/u);
+  const phraseBonus = tokens.length > 1 ? 20 : 0;
+  const signalBonus = tokens.some((token) => technicalSignalWords.has(token)) ? 10 : 0;
+  const hyphenBonus = term.term.includes("-") ? 8 : 0;
+  return term.sourceAnchorIds.length * 100 + phraseBonus + signalBonus + hyphenBonus;
+}
+
+function isUsefulKeyTerm(term: string): boolean {
+  const normalized = term.trim().toLowerCase();
+  if (structuralNoiseTerms.has(normalized)) {
+    return false;
+  }
+  if (normalized.split(/\s+/u).every((token) => structuralNoiseTerms.has(token))) {
+    return false;
+  }
+  return true;
 }
 
 function termsFromLabel(label: string): string[] {

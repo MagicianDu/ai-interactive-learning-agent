@@ -90,7 +90,7 @@ function buildTrialLesson(input: CodexAuthoredTrialInput, unit: TrialUnitBluepri
       `正式术语：问题定义、机制模型、证据链、局限边界、迁移应用`,
       "愿意用预测、比较和迁移任务检验理解"
     ],
-    learningObjectives: [`建立${focus}的研究生课程心智模型`, `用${focus}完成预测、误区检查和迁移应用`],
+    learningObjectives: [`建立${focus}的课程级心智模型`, `用${focus}完成预测、误区检查和迁移应用`],
     pages: unit.pageBlueprints.map((pageBlueprint, index) => buildPage(unit, pageBlueprint, index)),
     misconceptions: [
       {
@@ -116,27 +116,23 @@ function buildTrialLesson(input: CodexAuthoredTrialInput, unit: TrialUnitBluepri
 
 function buildPage(unit: TrialUnitBlueprint, pageBlueprint: TrialPageBlueprint, index: number): Record<string, unknown> {
   const focus = focusLabel(unit);
+  const pageType = pageBlueprint.pageType;
   return {
     id: `p${pageBlueprint.pageNumber}`,
-    type: pageBlueprint.pageType,
-    title: `${focus}：${pageTypeLabel(pageBlueprint.pageType)}`,
-    learningGoal: `建立${focus}的研究生课程心智模型：${pageBlueprint.teachingMove}`,
-    narrative: [
-      `本页围绕${focus}，用${pageBlueprint.teachingMove}推进。`,
-      "请把它当作大学高年级/研究生课程中的一张课堂 slide：先看先修概念和正式术语，再看机制模型、证据链、局限边界、反例和适用条件。",
-      "课堂讨论要比较两个解释路径，课后作业要把同一模型迁移到新资料或新系统。",
-      `必须包含：${pageBlueprint.mustInclude.join("；")}。`
-    ].join(""),
+    type: pageType,
+    title: `${focus}：${pageTypeLabel(pageType)}`,
+    learningGoal: learningGoalForPage(focus, pageType),
+    narrative: narrativeForPage(unit, pageBlueprint, focus),
     sourceAnchorIds: pageAnchorIds(unit, index),
     visualSpec: {
-      kind: visualKind(pageBlueprint.pageType),
-      description: `${pageBlueprint.visualRequirement}；图中显式标注${focus}的问题、机制、证据边界和迁移路径。`,
+      kind: visualKind(pageType),
+      description: visualDescriptionForPage(focus, pageBlueprint),
       keyElements: ["问题定义", "机制模型", "来源证据", "反例", "迁移应用"]
     },
-    ...(needsInteraction(pageBlueprint.pageType)
+    ...(needsInteraction(pageType)
       ? {
           interactionSpec: {
-            kind: pageBlueprint.pageType === "transfer_challenge" ? "prediction" : "choice",
+            kind: pageType === "transfer_challenge" ? "prediction" : "choice",
             learnerAction: pageBlueprint.learnerAction,
             expectedObservation: "学习者会看到不同判断路径如何改变结论可靠性。",
             cognitivePurpose: "让学习者通过预测、比较和解释来检验心智模型，而不是被动阅读。",
@@ -161,10 +157,10 @@ function buildPage(unit: TrialUnitBlueprint, pageBlueprint: TrialPageBlueprint, 
           }
         }
       : {}),
-    ...(needsAssessment(pageBlueprint.pageType)
+    ...(needsAssessment(pageType)
       ? {
           assessmentSpec: {
-            kind: assessmentKind(pageBlueprint.pageType),
+            kind: assessmentKind(pageType),
             prompt: `关于${focus}，哪种回答最能说明你已经形成可迁移的心智模型？`,
             options: ["能说明机制、证据边界、反例和迁移条件", "能流畅复述来源材料中的几个术语"],
             correctAnswer: "能说明机制、证据边界、反例和迁移条件"
@@ -177,6 +173,57 @@ function buildPage(unit: TrialUnitBlueprint, pageBlueprint: TrialPageBlueprint, 
         }
       : {})
   };
+}
+
+function learningGoalForPage(focus: string, pageType: string): string {
+  const goals: Record<string, string> = {
+    problem_scene: `识别${focus}要解决的真实问题`,
+    intuition_visual: `用直觉模型解释${focus}`,
+    structure_diagram: `画出${focus}的机制结构`,
+    process_animation: `追踪${focus}的状态变化`,
+    interactive_model: `通过操作检验${focus}的因果关系`,
+    code_walkthrough: `把${focus}连接到正式表达`,
+    quiz: `用${focus}做非 trivia 判断`,
+    misconception_check: `修正关于${focus}的常见误区`,
+    transfer_challenge: `把${focus}迁移到新场景`,
+    summary_card: `压缩${focus}的可回忆模型`
+  };
+  return goals[pageType] ?? `建立${focus}的课程级心智模型`;
+}
+
+function narrativeForPage(unit: TrialUnitBlueprint, pageBlueprint: TrialPageBlueprint, focus: string): string {
+  const context = sourceContextSentence(unit);
+  const mustInclude = compactMustInclude(pageBlueprint.mustInclude);
+  const academicFrame = "先修概念和正式术语用来定位问题；证据链与局限边界用来判断结论强度。";
+  const templates: Record<string, string> = {
+    problem_scene: `先看一个失败场景：如果只会复述${focus}，遇到边界条件时就无法判断方案是否适用。${context}${academicFrame}课堂讨论从“问题为什么存在”开始。`,
+    intuition_visual: `${focus}先用一个可观察模型进入：让学习者预测下一步，再比较预测和来源证据。${context}类比只负责建立直觉，局限边界必须单独标出。`,
+    structure_diagram: `把${focus}拆成问题、机制、证据和反例四个节点。${context}学习者需要指出哪条边决定结论可靠性，而不是只记住术语。`,
+    process_animation: `沿时间顺序追踪${focus}的变化：输入、内部状态、证据反馈和输出判断依次出现。${context}每一步都要说明触发条件。`,
+    interactive_model: `让学习者在两条解释路径之间选择：先看证据边界，或先背定义。${context}反馈要指出选择如何改变机制模型和迁移可靠性。`,
+    code_walkthrough: `正式表达只放短片段：用变量、公式或伪代码标出${focus}中的结构位置。${context}重点是把直觉模型映射到可检查表示。`,
+    quiz: `这个检查题要求学习者用${focus}判断一个新例子。${context}正确答案必须同时说明机制、证据链、局限边界和反例。`,
+    misconception_check: `常见误区是把${focus}当成可复述结论。${context}反例会显示：缺少边界条件时，同一句话在新场景可能失效。`,
+    transfer_challenge: `迁移任务换一个表层场景，但保留相同结构。${context}课后作业要求写出哪些结构可迁移，哪些假设不能迁移。`,
+    summary_card: `最后把${focus}压缩成一张记忆卡：问题、机制、证据、边界、迁移各一句。${context}复习时先复述模型，再检查反例。`
+  };
+  return `${templates[pageBlueprint.pageType] ?? templates.problem_scene}${mustInclude ? ` 你要抓住：${mustInclude}。` : ""}`;
+}
+
+function visualDescriptionForPage(focus: string, pageBlueprint: TrialPageBlueprint): string {
+  const visualPurpose: Record<string, string> = {
+    problem_scene: "用问题场景图标出失败状态和决策分叉",
+    intuition_visual: "用对照图展示直觉模型成立和失效的位置",
+    structure_diagram: "用节点和边标出机制、证据、反例和迁移关系",
+    process_animation: "用 timeline 或 stepper 展示状态变化",
+    interactive_model: "用前后状态对照展示学习者选择造成的差异",
+    code_walkthrough: "用短代码或公式高亮结构映射",
+    quiz: "把题目放回前面的机制图中定位判断依据",
+    misconception_check: "用 before/after 或反例图显示误区失败点",
+    transfer_challenge: "用两个场景的结构映射图展示可迁移部分",
+    summary_card: "用一张 summary card 压缩问题、机制、边界和迁移"
+  };
+  return `${visualPurpose[pageBlueprint.pageType] ?? pageBlueprint.visualRequirement}；图中显式标注${focus}的问题、机制、证据边界和迁移路径。`;
 }
 
 function needsInteraction(pageType: string): boolean {
@@ -206,8 +253,59 @@ function pageAnchorIds(unit: TrialUnitBlueprint, index: number): string[] {
   return [unit.sourceAnchorIds[index % unit.sourceAnchorIds.length] as string];
 }
 
+function sourceContextSentence(unit: TrialUnitBlueprint): string {
+  const terms = uniqueStrings([...(unit.semanticHints?.keyTerms ?? []), ...termsFromTeachingMoves(unit.semanticHints?.teachingMoves ?? [])]).slice(0, 3);
+  const termSentence = terms.length > 0 ? `来源术语：${terms.join("、")}。` : "";
+  const evidenceSentence = unit.semanticHints?.evidenceHints?.length ? "来源证据链需要单独核对。" : "";
+  const limitationSentence = unit.semanticHints?.limitationHints?.length ? "来源局限边界需要显式标出。" : "";
+  return `${termSentence}${evidenceSentence}${limitationSentence}`;
+}
+
+function termsFromTeachingMoves(moves: string[]): string[] {
+  return moves
+    .map((move) => /来源术语\s+(.+?)\s+设计/u.exec(move)?.[1]?.trim() ?? "")
+    .filter(Boolean);
+}
+
+function compactMustInclude(items: string[]): string {
+  return uniqueStrings(items.map(compactChecklistItem).filter(Boolean)).slice(0, 4).join("；");
+}
+
+function compactChecklistItem(item: string): string {
+  if (item.startsWith("聚焦概念")) return "聚焦概念";
+  if (item.startsWith("受众可理解的例子")) return "直觉例子";
+  if (item.startsWith("核心结构")) return "核心结构";
+  if (item.startsWith("交互目标")) return "可见交互结果";
+  if (item.startsWith("检查类型")) return "非记忆判断题";
+  if (item.includes("trivia")) return "非记忆判断题";
+  if (item.includes("feedbackSpec")) return "解释性反馈";
+  if (item.startsWith("误区必须围绕")) return "误区反例";
+  if (item.startsWith("迁移概念")) return "迁移映射";
+  if (item.startsWith("把总览地图迁移")) return "后续单元迁移";
+  if (item.startsWith("把该概念迁移")) return "新场景迁移";
+  if (item.startsWith("一句话模型")) return "一句话模型";
+  if (item.startsWith("来源术语")) return "来源术语";
+  if (item.includes("证据链")) return "来源证据链";
+  if (item.includes("局限边界")) return "来源局限边界";
+  if (item.includes("课程定位")) return "课程定位：大学课程";
+  return trimLabel(item, 18);
+}
+
 function focusLabel(unit: TrialUnitBlueprint): string {
-  return unit.focusConcepts.filter(Boolean).join("、") || unit.title;
+  if (unit.unitKind === "overview") {
+    return "总览地图";
+  }
+  const concept = unit.focusConcepts.find(Boolean) ?? unit.title.split("：").at(-1) ?? unit.title;
+  return trimLabel(concept, 18);
+}
+
+function trimLabel(value: string, maxLength: number): string {
+  const trimmed = value.trim();
+  return trimmed.length <= maxLength ? trimmed : trimmed.slice(0, maxLength);
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values)];
 }
 
 function pageTypeLabel(pageType: string): string {

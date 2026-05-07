@@ -100,5 +100,15 @@ describe("CodexAuthoredTrialService", () => {
     for (const marker of ["先修概念", "正式术语", "课堂讨论", "课后作业", "证据链", "局限边界"]) {
       expect(joinedLessons).toContain(marker);
     }
+    expect(joinedLessons).not.toContain("本页围绕");
+    expect(joinedLessons).not.toContain("课堂 slide");
+    expect(joinedLessons).not.toContain("课堂材料需覆盖");
+    expect(joinedLessons).not.toContain("focused unit");
+
+    const lessons = lessonTexts.map((text) => JSON.parse(text) as { pages: Array<{ title: string; learningGoal: string; narrative: string }> });
+    for (const page of lessons.flatMap((lesson) => lesson.pages)) {
+      expect(page.title.length).toBeLessThanOrEqual(42);
+      expect(page.learningGoal.length).toBeLessThanOrEqual(72);
+    }
   });
 });

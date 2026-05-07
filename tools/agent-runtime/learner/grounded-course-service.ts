@@ -136,6 +136,7 @@ export class GroundedCourseService {
       config,
       sourceAnchorIds: sourceAnchorIds.slice(0, maxAnchorsPerLesson),
       concepts: lessonConceptLabels(config, sourceIngest.concepts.map((concept) => concept.label)),
+      sourceTerms: semantics.keyTerms.map((term) => term.term),
       revision
     });
     const sourceEvidence = analyzeSourceEvidence(bundle.lessons, config);
@@ -290,11 +291,13 @@ function buildGroundedBundle({
   config,
   sourceAnchorIds,
   concepts,
+  sourceTerms,
   revision
 }: {
   config: RunConfig;
   sourceAnchorIds: string[];
   concepts: string[];
+  sourceTerms: string[];
   revision?: RevisionBrief;
 }): { coursePack: Record<string, unknown>; lessons: Array<Record<string, unknown>> } {
   const targetPageCount = config.coursePack?.unitPageCount ?? config.pageCount.target;
@@ -318,6 +321,7 @@ function buildGroundedBundle({
       config,
       sourceAnchorIds: unit.sourceAnchorIds,
       concepts: unit.focusConcepts.length > 0 ? unit.focusConcepts : concepts,
+      sourceTerms,
       targetPageCount,
       revision
     })
@@ -365,6 +369,7 @@ function buildLesson({
   config,
   sourceAnchorIds,
   concepts,
+  sourceTerms,
   targetPageCount,
   revision
 }: {
@@ -374,6 +379,7 @@ function buildLesson({
   config: RunConfig;
   sourceAnchorIds: string[];
   concepts: string[];
+  sourceTerms: string[];
   targetPageCount: number;
   revision?: RevisionBrief;
 }): Record<string, unknown> {
@@ -404,7 +410,7 @@ function buildLesson({
       difficulty.objective,
       "通过行动、反馈和迁移任务检查理解是否可靠"
     ],
-    pages: buildPages({ unitTitle, concepts, sourceAnchorIds: safeAnchors, targetPageCount, revision, difficulty }),
+    pages: buildPages({ unitTitle, concepts, sourceTerms, sourceAnchorIds: safeAnchors, targetPageCount, revision, difficulty }),
     misconceptions: [
       {
         id: "misconception-summary",
@@ -431,6 +437,7 @@ function buildLesson({
 function buildPages({
   unitTitle,
   concepts,
+  sourceTerms,
   sourceAnchorIds,
   targetPageCount,
   revision,
@@ -438,6 +445,7 @@ function buildPages({
 }: {
   unitTitle: string;
   concepts: string[];
+  sourceTerms: string[];
   sourceAnchorIds: string[];
   targetPageCount: number;
   revision?: RevisionBrief;
@@ -447,34 +455,34 @@ function buildPages({
   const basePages: Array<Record<string, unknown>> = [
     page("page-01", "problem_scene", `${unitTitle}：先看学习问题`, "识别这份资料最需要解决的理解问题", `${unitTitle} 不能只被压缩成摘要；学习者需要看见问题、机制和边界。${difficulty.openingFrame}${revisionLine}`, sourceAnchorIds, {
       visual: true
-    }, difficulty),
+    }, difficulty, sourceTerms),
     page("page-02", "intuition_visual", "先画来源地图，再进入细节", "用地图直觉理解总览课", `把资料看成一张地图：先知道核心区域，再决定深入 ${concepts[0] ?? "核心概念"}。${difficulty.intuitionFrame}`, sourceAnchorIds, {
       visual: true
-    }, difficulty),
+    }, difficulty, sourceTerms),
     page("page-03", "structure_diagram", "问题、机制、证据、边界", "看见可靠解释的结构", `可靠学习路径要把 ${concepts.slice(0, 3).join("、") || "核心概念"} 放进同一张结构图。${difficulty.structureFrame}`, sourceAnchorIds, {
       visual: true
-    }, difficulty),
+    }, difficulty, sourceTerms),
     page("page-04", "interactive_model", "选择下一步学习路径", "通过选择理解学习顺序", difficulty.actionPrompt, sourceAnchorIds, {
       interaction: "path"
-    }, difficulty),
+    }, difficulty, sourceTerms),
     page("page-05", "interactive_model", "判断解释是否可靠", "用来源和反馈校验解释", `学习者判断一个说法是否既有来源依据，也说明了因果机制和适用边界。${difficulty.claimFrame}`, sourceAnchorIds, {
       interaction: "claim"
-    }, difficulty),
+    }, difficulty, sourceTerms),
     page("page-06", "quiz", "哪种理解更可靠", "检查是否区分摘要和心智模型", `先做预测，再用反馈修正学习策略。${difficulty.assessmentFrame}`, sourceAnchorIds, {
       assessment: "quiz"
-    }, difficulty),
+    }, difficulty, sourceTerms),
     page("page-07", "misconception_check", "误区：资料越长越难学", "识别资料长度误区", `难点通常不是页数，而是没有把概念、例子、边界和行动连接起来。${difficulty.misconceptionFrame}`, sourceAnchorIds, {
       assessment: "misconception"
-    }, difficulty),
+    }, difficulty, sourceTerms),
     page("page-08", "summary_card", "总览记忆卡", "压缩可迁移学习模型", `用五步记住这课：问题、来源、结构、行动、迁移。${difficulty.summaryLine}`, sourceAnchorIds, {
       visual: true
-    }, difficulty),
+    }, difficulty, sourceTerms),
     page("page-09", "code_walkthrough", "把资料变成执行协议", "把学习路径连接到可执行步骤", `用短协议描述：读取来源、抽概念、设计互动、检查反馈、发布网页。${difficulty.protocolFrame}`, sourceAnchorIds, {
       code: true
-    }, difficulty),
+    }, difficulty, sourceTerms),
     page("page-10", "transfer_challenge", "迁移到下一份资料", "把同一心智模型迁移到新材料", difficulty.transferPrompt, sourceAnchorIds, {
       assessment: "transfer"
-    }, difficulty)
+    }, difficulty, sourceTerms)
   ];
 
   if (targetPageCount >= basePages.length) {
@@ -490,7 +498,8 @@ function buildPages({
           `选择一个来源锚点，说明它支持哪个概念，以及这个概念可以迁移到什么新场景。${difficulty.practiceFrame}`,
           sourceAnchorIds,
           { interaction: index % 2 === 0 ? "path" : "claim" },
-          difficulty
+          difficulty,
+          sourceTerms
         )
       });
     }
@@ -512,14 +521,16 @@ function page(
   narrative: string,
   sourceAnchorIds: string[],
   options: { visual?: boolean; interaction?: "path" | "claim"; assessment?: "quiz" | "misconception" | "transfer"; code?: boolean },
-  difficulty: DifficultyProfile
+  difficulty: DifficultyProfile,
+  sourceTerms: string[] = []
 ): Record<string, unknown> {
+  const groundedNarrative = narrativeWithSourceTerms(narrative, sourceAnchorIds, sourceTerms);
   return {
     id,
     type,
     title,
     learningGoal,
-    narrative,
+    narrative: groundedNarrative,
     sourceAnchorIds,
     ...(options.visual
       ? {
@@ -541,6 +552,18 @@ function page(
         }
       : {})
   };
+}
+
+function narrativeWithSourceTerms(narrative: string, sourceAnchorIds: string[], sourceTerms: string[]): string {
+  const usefulTerms = sourceTerms.filter((term) => term.trim().length > 0).slice(0, 3);
+  if (sourceAnchorIds.length === 0 || usefulTerms.length === 0 || usefulTerms.some((term) => includesIgnoreCase(narrative, term))) {
+    return narrative;
+  }
+  return `${narrative}来源术语：${usefulTerms.join("、")}。`;
+}
+
+function includesIgnoreCase(text: string, term: string): boolean {
+  return text.toLocaleLowerCase().includes(term.toLocaleLowerCase());
 }
 
 function interactionSpec(kind: "path" | "claim", difficulty: DifficultyProfile): Record<string, unknown> {

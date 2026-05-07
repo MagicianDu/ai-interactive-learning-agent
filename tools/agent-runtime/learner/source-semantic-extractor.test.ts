@@ -132,4 +132,31 @@ describe("extractSourceSemantics", () => {
     );
     expect(semantics.sourceSpecificTeachingMoves.join("\n")).toContain("tool feedback");
   });
+
+  it("filters PDF structural noise from key terms", () => {
+    const semantics = extractSourceSemantics({
+      sourceKind: "paper",
+      anchors: [
+        {
+          anchorId: "pdf-1",
+          sourceId: "paper",
+          label: "paragraph page 1",
+          locator: { kind: "page", page: 1 },
+          quote:
+            "Preprint abstract: Language agents benefit from a Talker-Reasoner architecture where a talker handles interaction and a reasoner handles internal reasoning."
+        },
+        {
+          anchorId: "pdf-2",
+          sourceId: "paper",
+          label: "paragraph page 2",
+          locator: { kind: "page", page: 2 },
+          quote: "The reasoner tracks evidence and tool feedback while the talker manages user-facing clarification."
+        }
+      ]
+    });
+
+    const terms = semantics.keyTerms.map((term) => term.term);
+    expect(terms).toEqual(expect.arrayContaining(["talker-reasoner", "internal reasoning", "tool feedback"]));
+    expect(terms).not.toEqual(expect.arrayContaining(["paragraph", "preprint", "abstract", "language"]));
+  });
 });

@@ -296,6 +296,10 @@ function collectPageHeuristicIssues(lesson: unknown, authoringContext: CourseQua
   const pages = Array.isArray(lesson.pages) ? lesson.pages.filter(isRecord) : [];
   const sourceTerms = sourceTermsFromAuthoringContext(authoringContext);
   const issues: CourseQualityIssue[] = [];
+  const repetitiveIssue = repetitiveLongNarrativeIssue(lessonId, pages);
+  if (repetitiveIssue) {
+    issues.push(repetitiveIssue);
+  }
   if (requiresAcademicDepth(authoringContext, lesson) && academicMarkerCount(JSON.stringify(lesson)) < 3) {
     issues.push({
       issueId: "quality.lesson.academic-depth-shallow",
@@ -319,6 +323,36 @@ function collectPageHeuristicIssues(lesson: unknown, authoringContext: CourseQua
     const pageText = textOf(page);
     const hasSourceTerm = sourceTerms.some((term) => includesIgnoreCase(pageText, term));
     const pageSourceAnchorCount = stringArray(page.sourceAnchorIds).length;
+    const title = typeof page.title === "string" ? page.title.trim() : "";
+    const learningGoal = typeof page.learningGoal === "string" ? page.learningGoal.trim() : "";
+    if (title.length > 42) {
+      issues.push({
+        issueId: "quality.page.title-too-long",
+        scope: "page",
+        severity: "warning",
+        category: "dense_page",
+        reason: "page title is too long for a no-scroll learning screen and likely overloads the sidebar/header",
+        requiredFix: "Shorten the title to one precise page idea and move secondary concepts into narrative, visual labels, or separate pages.",
+        rule: "page-title-length",
+        path: `pages.${pageId}.title`,
+        lessonId,
+        pageId
+      });
+    }
+    if (learningGoal.length > 72) {
+      issues.push({
+        issueId: "quality.page.learning-goal-too-long",
+        scope: "page",
+        severity: "warning",
+        category: "dense_page",
+        reason: "page learningGoal is overloaded with too many moves for a single screen",
+        requiredFix: "Rewrite the learningGoal as one mental-model move; split extra moves into later pages.",
+        rule: "page-learning-goal-length",
+        path: `pages.${pageId}.learningGoal`,
+        lessonId,
+        pageId
+      });
+    }
     if (typeof page.narrative === "string" && page.narrative.trim().length > 900) {
       issues.push({
         issueId: "quality.page.dense",
@@ -380,6 +414,39 @@ function collectPageHeuristicIssues(lesson: unknown, authoringContext: CourseQua
     return issues;
     })
   ];
+}
+
+function repetitiveLongNarrativeIssue(lessonId: string, pages: Record<string, unknown>[]): CourseQualityIssue | undefined {
+  const counts = new Map<string, number>();
+  for (const page of pages) {
+    if (typeof page.narrative !== "string") {
+      continue;
+    }
+    const normalized = normalizeNarrative(page.narrative);
+    if (normalized.length < 60) {
+      continue;
+    }
+    counts.set(normalized, (counts.get(normalized) ?? 0) + 1);
+  }
+  const repeatedCount = Math.max(0, ...counts.values());
+  if (repeatedCount < 3) {
+    return undefined;
+  }
+  return {
+    issueId: "quality.lesson.repetitive-pages",
+    scope: "lesson",
+    severity: "warning",
+    category: "dense_page",
+    reason: `lesson repeats substantially identical long narrative across ${repeatedCount} pages`,
+    requiredFix: "Rewrite repeated pages so each page performs a distinct mental-model move with different source evidence, visual role, and learner action.",
+    rule: "repetitive-page-narrative",
+    path: "pages[*].narrative",
+    lessonId
+  };
+}
+
+function normalizeNarrative(value: string): string {
+  return value.replace(/\s+/gu, "").slice(0, 600);
 }
 
 function sourceTermsFromAuthoringContext(authoringContext: CourseQualityAuthoringContext | undefined): string[] {
