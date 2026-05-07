@@ -131,6 +131,60 @@ describe("AuthoringQualityComparisonService", () => {
       ])
     );
   });
+
+  test("reports source-kind depth improvements and remaining gaps from quality issues", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "authoring-quality-source-kind-depth-"));
+    await writePreviewRun(root, "draft-run", {
+      lessonId: "draft-blog",
+      academic: true,
+      pageSourceAnchors: true,
+      qualityScore: 75,
+      qualityIssueIds: ["quality.lesson.blog-practice-depth-shallow"]
+    });
+    await writePreviewRun(root, "authored-run", {
+      lessonId: "authored-blog",
+      academic: true,
+      pageSourceAnchors: true,
+      qualityScore: 100,
+      sourceKindDepth: "blog"
+    });
+    await writePreviewRun(root, "weak-authored-run", {
+      lessonId: "weak-patent",
+      academic: true,
+      pageSourceAnchors: true,
+      qualityScore: 75,
+      qualityIssueIds: ["quality.lesson.patent-depth-shallow"]
+    });
+
+    const improved = await new AuthoringQualityComparisonService(root).compare({
+      authoredRunId: "authored-run",
+      draftRunId: "draft-run"
+    });
+    const weak = await new AuthoringQualityComparisonService(root).compare({
+      authoredRunId: "weak-authored-run",
+      draftRunId: "draft-run"
+    });
+
+    expect(improved.draft.quality?.issueIds).toEqual(expect.arrayContaining(["quality.lesson.blog-practice-depth-shallow"]));
+    expect(improved.authored.metrics.sourceKindDepthMarkerCount).toBeGreaterThan(improved.draft.metrics.sourceKindDepthMarkerCount);
+    expect(improved.improvements).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "source-kind-depth",
+          title: "来源类型深度更完整"
+        })
+      ])
+    );
+    expect(improved.remainingGaps.map((gap) => gap.id)).not.toContain("source-kind-depth");
+    expect(weak.remainingGaps).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "source-kind-depth",
+          title: "来源类型深度仍不足"
+        })
+      ])
+    );
+  });
 });
 
 async function writePreviewRun(
@@ -144,6 +198,8 @@ async function writePreviewRun(
     extraLessonCount?: number;
     genericPages?: boolean;
     sourceSpecific?: boolean;
+    sourceKindDepth?: "patent" | "blog";
+    qualityIssueIds?: string[];
   }
 ): Promise<void> {
   const lessonDir = path.join(root, "runs", runId, "preview", "lessons");
@@ -157,13 +213,37 @@ async function writePreviewRun(
   }
   await writeFile(
     path.join(qualityDir, "course-quality-report.json"),
-    `${JSON.stringify({ status: "passed", score: options.qualityScore, checks: { sourceEvidence: "passed", chineseFirst: "passed" } }, null, 2)}\n`,
+    `${JSON.stringify(
+      {
+        status: options.qualityIssueIds && options.qualityIssueIds.length > 0 ? "warning" : "passed",
+        score: options.qualityScore,
+        checks: { sourceEvidence: "passed", chineseFirst: "passed" },
+        issues: (options.qualityIssueIds ?? []).map((issueId) => ({
+          issueId,
+          scope: "lesson",
+          severity: "warning",
+          category: "learner_level_mismatch",
+          reason: "source kind depth warning",
+          requiredFix: "rewrite with source kind depth",
+          rule: "source-kind-depth",
+          path: "lesson.sourceKindDepth"
+        }))
+      },
+      null,
+      2
+    )}\n`,
     "utf8"
   );
 }
 
-function buildLesson(options: { lessonId: string; academic: boolean; pageSourceAnchors: boolean }): Record<string, unknown> {
+function buildLesson(options: { lessonId: string; academic: boolean; pageSourceAnchors: boolean; sourceKindDepth?: "patent" | "blog" }): Record<string, unknown> {
   const anchorIds = ["source-001:section-1"];
+  const sourceKindSummary =
+    options.sourceKindDepth === "patent"
+      ? "权利要求边界、现有技术问题、技术方案/机制、实施例、法律/适用边界、规避或迁移判断。"
+      : options.sourceKindDepth === "blog"
+        ? "实际问题、作者方案、实现路径、caveat/失败模式、可操作检查、迁移边界。"
+        : "";
   return {
     id: options.lessonId,
     title: options.academic ? "控制型智能体：研究生课程总览" : "控制型智能体：快速草稿",
@@ -173,7 +253,7 @@ function buildLesson(options: { lessonId: string; academic: boolean; pageSourceA
     },
     prerequisites: options.academic ? ["先修概念：控制回路、状态建模、策略评估"] : ["能阅读基础技术材料"],
     learningObjectives: options.academic
-      ? ["使用正式术语解释机制链", "围绕证据链和局限边界展开课堂讨论", "完成课后作业式迁移"]
+      ? ["使用正式术语解释机制链", "围绕证据链和局限边界展开课堂讨论", `完成课后作业式迁移。${sourceKindSummary}`]
       : ["理解资料大意"],
     pages: [
       page("p1", "problem_scene", "问题场景", options.pageSourceAnchors ? anchorIds : [], options),

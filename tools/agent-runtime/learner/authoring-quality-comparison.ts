@@ -29,6 +29,7 @@ export type RunQualitySnapshot = {
   quality?: {
     status?: string;
     score?: number;
+    issueIds?: string[];
   };
   metrics: ContentQualityMetrics;
 };
@@ -45,6 +46,7 @@ export type ContentQualityMetrics = {
   genericPageCount: number;
   weakSourceSynthesisPageCount: number;
   cognitiveInteractionPageCount: number;
+  sourceKindDepthMarkerCount: number;
 };
 
 export type ComparisonFinding = {
@@ -146,7 +148,8 @@ async function readQualityReport(workspaceRoot: string, runId: string): Promise<
     }
     return {
       ...(typeof parsed.status === "string" ? { status: parsed.status } : {}),
-      ...(typeof parsed.score === "number" ? { score: parsed.score } : {})
+      ...(typeof parsed.score === "number" ? { score: parsed.score } : {}),
+      ...("issues" in parsed ? { issueIds: issueIdsFromQualityReport(parsed.issues) } : {})
     };
   } catch (error) {
     if (isFileNotFound(error)) {
@@ -154,6 +157,12 @@ async function readQualityReport(workspaceRoot: string, runId: string): Promise<
     }
     throw error;
   }
+}
+
+function issueIdsFromQualityReport(issues: unknown): string[] {
+  return arrayOfRecords(issues)
+    .map((issue) => (typeof issue.issueId === "string" ? issue.issueId : ""))
+    .filter((issueId) => issueId.length > 0);
 }
 
 async function parseJsonFile(filePath: string): Promise<unknown> {
@@ -175,7 +184,8 @@ function collectMetrics(lessons: Record<string, unknown>[]): ContentQualityMetri
     academicMarkerCount: academicMarkers.reduce((count, marker) => count + occurrences(text, marker), 0),
     genericPageCount: pages.filter((page) => isGenericPage(JSON.stringify(page))).length,
     weakSourceSynthesisPageCount: pages.filter((page) => stringArray(page.sourceAnchorIds).length > 0 && !hasSourceSynthesisSignal(JSON.stringify(page))).length,
-    cognitiveInteractionPageCount: pages.filter(hasCognitiveInteraction).length
+    cognitiveInteractionPageCount: pages.filter(hasCognitiveInteraction).length,
+    sourceKindDepthMarkerCount: sourceKindDepthMarkerCount(text)
   };
 }
 
@@ -243,6 +253,13 @@ function buildImprovements(authored: RunQualitySnapshot, draft: RunQualitySnapsh
       evidence: `认知互动页 authored=${authored.metrics.cognitiveInteractionPageCount}，draft=${draft.metrics.cognitiveInteractionPageCount}。`
     });
   }
+  if (sourceKindDepthImproved(authored, draft)) {
+    improvements.push({
+      id: "source-kind-depth",
+      title: "来源类型深度更完整",
+      evidence: `来源类型深度标记 authored=${authored.metrics.sourceKindDepthMarkerCount}，draft=${draft.metrics.sourceKindDepthMarkerCount}；draft issues=${sourceKindDepthIssueIds(draft).join(",") || "none"}。`
+    });
+  }
   return improvements;
 }
 
@@ -304,6 +321,14 @@ function buildRemainingGaps(authored: RunQualitySnapshot, draft: RunQualitySnaps
       evidence: `弱来源综合页=${authored.metrics.weakSourceSynthesisPageCount}。这些页面有 sourceAnchorIds，但没有把来源术语、证据、限制或机制转化为教学内容。`
     });
   }
+  const depthIssueIds = sourceKindDepthIssueIds(authored);
+  if (depthIssueIds.length > 0) {
+    gaps.push({
+      id: "source-kind-depth",
+      title: "来源类型深度仍不足",
+      evidence: `质量报告仍包含 ${depthIssueIds.join(", ")}；Codex-authored 版本还没有补齐对应 source-kind 的必需教学动作。`
+    });
+  }
   return gaps;
 }
 
@@ -353,6 +378,24 @@ const sourceSynthesisMarkers = [
   "limitation",
   "boundary"
 ];
+const sourceKindDepthMarkers = [
+  "权利要求边界",
+  "现有技术问题",
+  "技术方案/机制",
+  "技术方案",
+  "实施例",
+  "法律/适用边界",
+  "规避或迁移判断",
+  "实际问题",
+  "作者方案",
+  "实现路径",
+  "caveat/失败模式",
+  "caveat",
+  "失败模式",
+  "可操作检查",
+  "迁移边界"
+];
+const sourceKindDepthIssueIdSet = new Set(["quality.lesson.patent-depth-shallow", "quality.lesson.blog-practice-depth-shallow"]);
 const cognitivePurposeMarkers = [
   "因果",
   "结构",
@@ -398,6 +441,24 @@ function hasCognitiveInteraction(page: Record<string, unknown>): boolean {
     return false;
   }
   return cognitivePurposeMarkers.some((marker) => cognitivePurpose.includes(marker));
+}
+
+function sourceKindDepthMarkerCount(text: string): number {
+  const normalized = text.toLocaleLowerCase();
+  return sourceKindDepthMarkers.reduce((count, marker) => count + occurrences(normalized, marker.toLocaleLowerCase()), 0);
+}
+
+function sourceKindDepthIssueIds(snapshot: RunQualitySnapshot): string[] {
+  return (snapshot.quality?.issueIds ?? []).filter((issueId) => sourceKindDepthIssueIdSet.has(issueId));
+}
+
+function sourceKindDepthImproved(authored: RunQualitySnapshot, draft: RunQualitySnapshot): boolean {
+  const authoredIssues = sourceKindDepthIssueIds(authored);
+  const draftIssues = sourceKindDepthIssueIds(draft);
+  if (draftIssues.length > 0 && authoredIssues.length === 0) {
+    return true;
+  }
+  return authored.metrics.sourceKindDepthMarkerCount > draft.metrics.sourceKindDepthMarkerCount;
 }
 
 function occurrences(text: string, marker: string): number {
