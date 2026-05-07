@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { deflateSync } from "node:zlib";
@@ -300,6 +300,44 @@ describe("source normalizer", () => {
       ])
     );
     expect(normalized.extractionWarnings).toEqual([]);
+  });
+
+  test("extracts compressed PDF text when the Python extractor is unavailable", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-compressed-pdf-no-python-"));
+    const fakeBin = path.join(root, "bin");
+    await mkdir(fakeBin);
+    const fakePython = path.join(fakeBin, "python3");
+    await writeFile(fakePython, "#!/bin/sh\nexit 127\n", "utf8");
+    await chmod(fakePython, 0o755);
+
+    const filePath = path.join(root, "compressed-book.pdf");
+    await writeFile(filePath, compressedPdfWithText("Compressed PDF text still needs source anchors."), "binary");
+
+    const previousPath = process.env.PATH;
+    process.env.PATH = `${fakeBin}${path.delimiter}${previousPath ?? ""}`;
+    try {
+      const normalized = await normalizeSourceRecord({
+        id: "source-001",
+        type: "file",
+        kind: "book",
+        title: "Compressed Book",
+        uri: filePath,
+        value: filePath,
+        language: "zh-CN"
+      });
+
+      expect(normalized.anchors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            anchorId: "source-001:paragraph-page-1-1",
+            quote: "Compressed PDF text still needs source anchors."
+          })
+        ])
+      );
+      expect(normalized.extractionWarnings).toEqual([]);
+    } finally {
+      process.env.PATH = previousPath;
+    }
   });
 
   test("merges PDF line-fragment paragraphs into readable evidence anchors", async () => {
