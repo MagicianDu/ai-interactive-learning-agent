@@ -185,6 +185,58 @@ describe("AuthoringQualityComparisonService", () => {
       ])
     );
   });
+
+  test("reports feedback mechanism improvements and remaining gaps from quality issues", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "authoring-quality-feedback-mechanism-"));
+    await writePreviewRun(root, "draft-run", {
+      lessonId: "draft-feedback",
+      academic: true,
+      pageSourceAnchors: true,
+      qualityScore: 80,
+      qualityIssueIds: ["quality.page.feedback-missing"]
+    });
+    await writePreviewRun(root, "authored-run", {
+      lessonId: "authored-feedback",
+      academic: true,
+      pageSourceAnchors: true,
+      qualityScore: 100
+    });
+    await writePreviewRun(root, "weak-authored-run", {
+      lessonId: "weak-feedback",
+      academic: true,
+      pageSourceAnchors: true,
+      qualityScore: 80,
+      qualityIssueIds: ["quality.interaction.feedback-missing"]
+    });
+
+    const improved = await new AuthoringQualityComparisonService(root).compare({
+      authoredRunId: "authored-run",
+      draftRunId: "draft-run"
+    });
+    const weak = await new AuthoringQualityComparisonService(root).compare({
+      authoredRunId: "weak-authored-run",
+      draftRunId: "draft-run"
+    });
+
+    expect(improved.draft.quality?.issueIds).toEqual(expect.arrayContaining(["quality.page.feedback-missing"]));
+    expect(improved.improvements).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "feedback-mechanism",
+          title: "解释性反馈更完整"
+        })
+      ])
+    );
+    expect(improved.remainingGaps.map((gap) => gap.id)).not.toContain("missing-feedback");
+    expect(weak.remainingGaps).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "missing-feedback",
+          title: "解释性反馈机制仍不足"
+        })
+      ])
+    );
+  });
 });
 
 async function writePreviewRun(
@@ -292,7 +344,14 @@ function page(
             kind: "choice",
             learnerAction: "选择一个解释路径",
             expectedObservation: "看到不同路径的证据差异",
-            cognitivePurpose: "训练来源到机制的连接"
+            cognitivePurpose: "训练来源到机制的连接",
+            options: [
+              {
+                id: "evidence-path",
+                label: "证据路径",
+                explanation: "反馈会解释为什么这个选择能把来源证据连接到机制。"
+              }
+            ]
           }
         }
       : {}),

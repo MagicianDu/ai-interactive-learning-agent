@@ -666,7 +666,7 @@ function categoryForIssue(issue: QualityIssue): CourseQualityIssueCategory {
     return "source_anchor";
   }
   if (issue.rule === "interaction-feedback") {
-    return "decorative_interaction";
+    return "missing_feedback";
   }
   if (issue.rule === "assessment-feedback") {
     return "missing_feedback";

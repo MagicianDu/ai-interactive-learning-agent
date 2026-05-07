@@ -47,6 +47,8 @@ export type ContentQualityMetrics = {
   weakSourceSynthesisPageCount: number;
   cognitiveInteractionPageCount: number;
   sourceKindDepthMarkerCount: number;
+  feedbackMechanismPageCount: number;
+  missingFeedbackPageCount: number;
 };
 
 export type ComparisonFinding = {
@@ -185,7 +187,9 @@ function collectMetrics(lessons: Record<string, unknown>[]): ContentQualityMetri
     genericPageCount: pages.filter((page) => isGenericPage(JSON.stringify(page))).length,
     weakSourceSynthesisPageCount: pages.filter((page) => stringArray(page.sourceAnchorIds).length > 0 && !hasSourceSynthesisSignal(JSON.stringify(page))).length,
     cognitiveInteractionPageCount: pages.filter(hasCognitiveInteraction).length,
-    sourceKindDepthMarkerCount: sourceKindDepthMarkerCount(text)
+    sourceKindDepthMarkerCount: sourceKindDepthMarkerCount(text),
+    feedbackMechanismPageCount: pages.filter(hasFeedbackMechanism).length,
+    missingFeedbackPageCount: pages.filter((page) => needsFeedbackMechanism(page) && !hasFeedbackMechanism(page)).length
   };
 }
 
@@ -260,6 +264,13 @@ function buildImprovements(authored: RunQualitySnapshot, draft: RunQualitySnapsh
       evidence: `来源类型深度标记 authored=${authored.metrics.sourceKindDepthMarkerCount}，draft=${draft.metrics.sourceKindDepthMarkerCount}；draft issues=${sourceKindDepthIssueIds(draft).join(",") || "none"}。`
     });
   }
+  if (feedbackMechanismImproved(authored, draft)) {
+    improvements.push({
+      id: "feedback-mechanism",
+      title: "解释性反馈更完整",
+      evidence: `缺失反馈页 authored=${authored.metrics.missingFeedbackPageCount}，draft=${draft.metrics.missingFeedbackPageCount}；draft issues=${missingFeedbackIssueIds(draft).join(",") || "none"}。`
+    });
+  }
   return improvements;
 }
 
@@ -329,6 +340,14 @@ function buildRemainingGaps(authored: RunQualitySnapshot, draft: RunQualitySnaps
       evidence: `质量报告仍包含 ${depthIssueIds.join(", ")}；Codex-authored 版本还没有补齐对应 source-kind 的必需教学动作。`
     });
   }
+  const feedbackIssueIds = missingFeedbackIssueIds(authored);
+  if (feedbackIssueIds.length > 0 || authored.metrics.missingFeedbackPageCount > 0) {
+    gaps.push({
+      id: "missing-feedback",
+      title: "解释性反馈机制仍不足",
+      evidence: `质量报告反馈问题=${feedbackIssueIds.join(", ") || "none"}；缺失反馈页=${authored.metrics.missingFeedbackPageCount}。`
+    });
+  }
   return gaps;
 }
 
@@ -396,6 +415,7 @@ const sourceKindDepthMarkers = [
   "迁移边界"
 ];
 const sourceKindDepthIssueIdSet = new Set(["quality.lesson.patent-depth-shallow", "quality.lesson.blog-practice-depth-shallow"]);
+const missingFeedbackIssueIdSet = new Set(["quality.page.feedback-missing", "quality.interaction.feedback-missing"]);
 const cognitivePurposeMarkers = [
   "因果",
   "结构",
@@ -443,6 +463,20 @@ function hasCognitiveInteraction(page: Record<string, unknown>): boolean {
   return cognitivePurposeMarkers.some((marker) => cognitivePurpose.includes(marker));
 }
 
+function needsFeedbackMechanism(page: Record<string, unknown>): boolean {
+  return isRecord(page.interactionSpec) || isRecord(page.assessmentSpec) || isAssessmentPageType(page.type);
+}
+
+function hasFeedbackMechanism(page: Record<string, unknown>): boolean {
+  const feedbackSpec = isRecord(page.feedbackSpec) ? page.feedbackSpec : undefined;
+  if (typeof feedbackSpec?.correctFeedback === "string" && typeof feedbackSpec.incorrectFeedback === "string") {
+    return feedbackSpec.correctFeedback.trim().length > 0 && feedbackSpec.incorrectFeedback.trim().length > 0;
+  }
+  const interactionSpec = isRecord(page.interactionSpec) ? page.interactionSpec : undefined;
+  const options = arrayOfRecords(interactionSpec?.options);
+  return options.some((option) => typeof option.explanation === "string" && option.explanation.trim().length > 0);
+}
+
 function sourceKindDepthMarkerCount(text: string): number {
   const normalized = text.toLocaleLowerCase();
   return sourceKindDepthMarkers.reduce((count, marker) => count + occurrences(normalized, marker.toLocaleLowerCase()), 0);
@@ -452,6 +486,10 @@ function sourceKindDepthIssueIds(snapshot: RunQualitySnapshot): string[] {
   return (snapshot.quality?.issueIds ?? []).filter((issueId) => sourceKindDepthIssueIdSet.has(issueId));
 }
 
+function missingFeedbackIssueIds(snapshot: RunQualitySnapshot): string[] {
+  return (snapshot.quality?.issueIds ?? []).filter((issueId) => missingFeedbackIssueIdSet.has(issueId));
+}
+
 function sourceKindDepthImproved(authored: RunQualitySnapshot, draft: RunQualitySnapshot): boolean {
   const authoredIssues = sourceKindDepthIssueIds(authored);
   const draftIssues = sourceKindDepthIssueIds(draft);
@@ -459,6 +497,18 @@ function sourceKindDepthImproved(authored: RunQualitySnapshot, draft: RunQuality
     return true;
   }
   return authored.metrics.sourceKindDepthMarkerCount > draft.metrics.sourceKindDepthMarkerCount;
+}
+
+function feedbackMechanismImproved(authored: RunQualitySnapshot, draft: RunQualitySnapshot): boolean {
+  const authoredIssues = missingFeedbackIssueIds(authored);
+  const draftIssues = missingFeedbackIssueIds(draft);
+  if (draftIssues.length > 0 && authoredIssues.length === 0) {
+    return true;
+  }
+  if (authored.metrics.missingFeedbackPageCount < draft.metrics.missingFeedbackPageCount) {
+    return true;
+  }
+  return authored.metrics.feedbackMechanismPageCount > draft.metrics.feedbackMechanismPageCount;
 }
 
 function occurrences(text: string, marker: string): number {

@@ -213,6 +213,48 @@ describe("course-quality-report", () => {
     );
   });
 
+  test("categorizes missing interaction explanations as missing feedback", () => {
+    const lesson = publishableLessonFixture({ id: "quality-interaction-feedback", targetPageCount: 8 });
+    lesson.pages[3] = {
+      ...lesson.pages[3],
+      interactionSpec: {
+        kind: "choice",
+        learnerAction: "选择一个路径",
+        expectedObservation: "看到访问范围变化",
+        cognitivePurpose: "理解因果关系",
+        options: [
+          {
+            id: "a",
+            label: "选择 A",
+            resultTitle: "索引路径",
+            outcomeId: "indexed",
+            resultTone: "success",
+            explanation: ""
+          }
+        ]
+      }
+    };
+
+    const report = buildCourseQualityReport({
+      runId: "quality-interaction-feedback",
+      coursePackId: "quality-interaction-feedback",
+      lessons: [lesson]
+    });
+
+    expect(report.status).toBe("failed");
+    expect(report.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          issueId: "quality.interaction.feedback-missing",
+          category: "missing_feedback",
+          lessonId: "quality-interaction-feedback",
+          pageId: "p4"
+        })
+      ])
+    );
+    expect(report.issueSummary.byCategory).toMatchObject({ missing_feedback: 1 });
+  });
+
   test("flags shallow patent and blog lessons that miss source-kind depth moves", () => {
     const patentLesson = publishableLessonFixture({ id: "quality-shallow-patent", targetPageCount: 8, title: "缓存系统专利解读" });
     const blogLesson = publishableLessonFixture({ id: "quality-shallow-blog", targetPageCount: 8, title: "Agent 工作流实践" });
