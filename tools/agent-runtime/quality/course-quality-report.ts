@@ -26,6 +26,7 @@ export type CourseQualityIssueCategory =
 
 export type CourseQualityAuthoringContext = {
   difficultyLevel?: string;
+  sourceKind?: string;
   sourceSemantics?: {
     keyTerms?: Array<string | { term?: unknown; label?: unknown }>;
     evidenceHints?: unknown[];
@@ -314,6 +315,20 @@ function collectPageHeuristicIssues(lesson: unknown, authoringContext: CourseQua
       lessonId
     });
   }
+  if (requiresPaperResearchDepth(authoringContext, lesson) && paperResearchMarkerCount(JSON.stringify(lesson)) < 5) {
+    issues.push({
+      issueId: "quality.lesson.paper-research-depth-shallow",
+      scope: "lesson",
+      severity: "warning",
+      category: "learner_level_mismatch",
+      reason: "paper or research-level course lacks explicit research question, contribution, method mechanism, evidence, limitation, or transfer-boundary moves",
+      requiredFix:
+        "Rewrite the lesson as a paper-reading seminar: cover research question, contribution claim, method mechanism, experiment/evidence path, limitations/threats, and transfer boundaries.",
+      rule: "paper-research-depth",
+      path: "lesson.paperResearchDepth",
+      lessonId
+    });
+  }
 
   return [
     ...issues,
@@ -483,6 +498,32 @@ const academicDepthMarkers = ["先修", "正式术语", "证据", "局限", "假
 
 function academicMarkerCount(text: string): number {
   return academicDepthMarkers.reduce((count, marker) => count + (text.includes(marker) ? 1 : 0), 0);
+}
+
+function requiresPaperResearchDepth(authoringContext: CourseQualityAuthoringContext | undefined, lesson: Record<string, unknown>): boolean {
+  if (authoringContext?.sourceKind === "paper") {
+    return true;
+  }
+  const difficulty = authoringContext?.difficultyLevel ?? "";
+  const lessonText = [lesson.title, lesson.audience].filter((value): value is string => typeof value === "string").join(" ");
+  return difficulty === "research" && /论文|paper|精读|前沿/u.test(lessonText);
+}
+
+const paperResearchMarkerGroups = [
+  ["研究问题", "research question"],
+  ["论文贡献", "贡献 claim", "contribution"],
+  ["方法机制", "方法结构", "方法假设", "method"],
+  ["实验", "评估", "证据链", "evidence", "evaluation"],
+  ["局限", "威胁", "threat", "limitation"],
+  ["迁移边界", "迁移判断", "transfer boundary", "适用条件"]
+];
+
+function paperResearchMarkerCount(text: string): number {
+  const normalized = text.toLocaleLowerCase();
+  return paperResearchMarkerGroups.reduce(
+    (count, group) => count + (group.some((marker) => normalized.includes(marker.toLocaleLowerCase())) ? 1 : 0),
+    0
+  );
 }
 
 const genericPageMarkers = ["核心概念", "整体内容", "资料大意", "基本概念", "学习重点", "帮助学习者理解", "快速摘要", "本页介绍"];

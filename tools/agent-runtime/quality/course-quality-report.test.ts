@@ -257,4 +257,29 @@ describe("course-quality-report", () => {
       ])
     );
   });
+
+  test("flags shallow paper lessons that lack research-reading moves", () => {
+    const lesson = publishableLessonFixture({ id: "quality-paper-shallow", title: "论文精读：总览课", targetPageCount: 8 });
+
+    const report = buildCourseQualityReport({
+      runId: "quality-paper",
+      coursePackId: "quality-paper",
+      lessons: [lesson],
+      authoringContext: {
+        difficultyLevel: "research",
+        sourceKind: "paper"
+      }
+    });
+
+    expect(report.status).toBe("warning");
+    expect(report.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          issueId: "quality.lesson.paper-research-depth-shallow",
+          category: "learner_level_mismatch",
+          lessonId: "quality-paper-shallow"
+        })
+      ])
+    );
+  });
 });

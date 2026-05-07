@@ -183,6 +183,51 @@ describe("AuthoringContextService", () => {
     expect(context.contentBlueprint.units[0]?.pageBlueprints[0]?.sourceRequirement).toContain("不要伪造 sourceAnchorIds");
   });
 
+  test("adds a paper research-reading contract for research-level authoring", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-paper-research-context-"));
+    const sourcePath = path.join(root, "talker-reasoner-paper.md");
+    await writeFile(
+      sourcePath,
+      [
+        "# Agents Thinking Fast and Slow",
+        "The paper proposes a Talker-Reasoner architecture for language agents.",
+        "The research question asks how to separate user-facing interaction from internal reasoning.",
+        "Experiments evaluate reliability under tool feedback and multi-step reasoning.",
+        "Limitations include assumptions about feedback quality and transfer to new tasks."
+      ].join("\n\n"),
+      "utf8"
+    );
+    await new LearnerProjectService(root).createProject({
+      request: `请用 "${sourcePath}" 生成中文论文精读课，面向研究生，教学难度为研究论文精读，每个单元 8 页。`,
+      runId: "context-paper-research",
+      sourcePath,
+      sourceKind: "paper",
+      audience: "研究生",
+      difficultyLevel: "research",
+      unitPages: 8
+    });
+
+    const context = await new AuthoringContextService(root).getContext({ runId: "context-paper-research", maxAnchors: 8 });
+
+    expect(context.qualityContract.researchReadingContract).toMatchObject({
+      requiredMoves: expect.arrayContaining([
+        "研究问题",
+        "论文贡献",
+        "方法机制",
+        "实验/证据",
+        "局限/威胁",
+        "迁移判断"
+      ]),
+      avoid: expect.arrayContaining([expect.stringContaining("普通博客")])
+    });
+    expect(context.codexInstruction).toContain("论文精读课");
+    expect(context.codexInstruction).toContain("研究问题、论文贡献、方法机制、实验/证据、局限/威胁、迁移判断");
+    expect(context.contentBlueprint.globalRules.join("\n")).toContain("论文精读");
+    expect(context.contentBlueprint.units[0]?.pageBlueprints[0]?.mustInclude).toEqual(expect.arrayContaining([expect.stringContaining("论文贡献")]));
+    expect(context.contentBlueprint.units[0]?.pageBlueprints[4]?.mustInclude).toEqual(expect.arrayContaining([expect.stringContaining("实验/证据")]));
+    expect(context.contentBlueprint.units[0]?.pageBlueprints[5]?.mustInclude).toEqual(expect.arrayContaining([expect.stringContaining("局限")]));
+  });
+
   test("samples long book anchors from content pages instead of front matter", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "learning-authoring-context-"));
     const sourcePath = path.join(root, "agentic-book.md");

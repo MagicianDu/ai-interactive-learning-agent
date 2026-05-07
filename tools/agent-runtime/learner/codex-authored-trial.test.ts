@@ -111,4 +111,48 @@ describe("CodexAuthoredTrialService", () => {
       expect(page.learningGoal.length).toBeLessThanOrEqual(72);
     }
   });
+
+  test("publishes paper trials as research-reading seminar lessons", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "codex-authored-paper-trial-"));
+    const sourcePath = path.join(root, "talker-reasoner.md");
+    await writeFile(
+      sourcePath,
+      [
+        "# Agents Thinking Fast and Slow",
+        "The paper proposes a Talker-Reasoner architecture for language agents.",
+        "The research question asks how to separate user-facing interaction from internal reasoning.",
+        "The method mechanism splits a talker role from a reasoner role.",
+        "Experiments and evaluation evidence compare reliability under tool feedback.",
+        "Limitations and threats involve feedback quality and transfer to new tasks."
+      ].join("\n"),
+      "utf8"
+    );
+
+    const result = await new CodexAuthoredTrialService(root).runTrial({
+      runId: "trial-paper-seminar",
+      sourcePath,
+      sourceKind: "paper",
+      audience: "研究生",
+      unitPages: 8
+    });
+
+    expect(result.status).toBe("preview_ready");
+    if (result.status !== "preview_ready") {
+      return;
+    }
+    expect(result.qualityReport).toMatchObject({
+      status: "passed",
+      requiredFixCount: 0,
+      optionalImprovementCount: 0
+    });
+
+    const lessonTexts = await Promise.all(result.lessonPaths.map((lessonPath) => readFile(lessonPath, "utf8")));
+    const joinedLessons = lessonTexts.join("\n");
+    for (const marker of ["研究问题", "论文贡献", "方法机制", "实验/证据", "局限边界", "迁移边界"]) {
+      expect(joinedLessons).toContain(marker);
+    }
+    expect(joinedLessons).not.toContain("本页围绕");
+    expect(joinedLessons).not.toContain("课堂 slide");
+    expect(joinedLessons).not.toContain("课堂材料需覆盖");
+  });
 });

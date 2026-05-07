@@ -391,6 +391,7 @@ export class LearningCoursePublisher {
         const brief = isRecord(authoringContext.brief) ? authoringContext.brief : {};
         return {
           ...(typeof brief.difficultyLevel === "string" ? { difficultyLevel: brief.difficultyLevel } : {}),
+          ...(typeof brief.sourceKind === "string" ? { sourceKind: brief.sourceKind } : {}),
           ...(isRecord(authoringContext.sourceSemantics) ? { sourceSemantics: authoringContext.sourceSemantics } : {})
         };
       }
@@ -401,7 +402,13 @@ export class LearningCoursePublisher {
     }
 
     const learnerProject = await readLearnerProject(this.workspaceRoot, runId);
-    return learnerProject?.brief?.difficultyLevel ? { difficultyLevel: learnerProject.brief.difficultyLevel } : undefined;
+    if (!learnerProject?.brief) {
+      return undefined;
+    }
+    return {
+      ...(learnerProject.brief.difficultyLevel ? { difficultyLevel: learnerProject.brief.difficultyLevel } : {}),
+      ...(learnerProject.brief.sourceKind ? { sourceKind: learnerProject.brief.sourceKind } : {})
+    };
   }
 
   private async writeLessonSource(lesson: LessonLike): Promise<string> {

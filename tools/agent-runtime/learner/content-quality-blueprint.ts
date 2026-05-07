@@ -55,7 +55,7 @@ export function buildContentBlueprint(input: BuildContentBlueprintInput): Conten
   return {
     version: "content-blueprint/v1",
     globalRules: globalRules(input),
-    units: input.units.map((unit) => buildUnitBlueprint(unit, input.sourceKind, input.sourceSemantics))
+    units: input.units.map((unit) => buildUnitBlueprint(unit, input.sourceKind, input.difficultyLevel, input.sourceSemantics))
   };
 }
 
@@ -67,13 +67,21 @@ function globalRules(input: BuildContentBlueprintInput): string[] {
     "不要把资料改写成摘要；每页必须有一个学习动作、一个可见结构或一个可检查判断。",
     "术语、公式、代码和定义必须放在直觉、视觉模型和 learner action 之后。",
     "反馈必须解释为什么，指出错误假设、因果机制和可迁移规则。",
+    ...(requiresPaperResearchMoves(input.sourceKind, input.difficultyLevel)
+      ? ["论文精读必须显式覆盖：研究问题、论文贡献、方法机制、实验/证据、局限/威胁、迁移判断。"]
+      : []),
     ...(input.units.some((unit) => unit.targetPageCount < 8)
       ? ["存在少于 8 页的 compact unit；必须合并页面职能但保留 learner action、误区检查、迁移和总结。"]
       : [])
   ];
 }
 
-function buildUnitBlueprint(unit: PlannedCourseUnit, sourceKind: string, sourceSemantics: SourceSemantics | undefined): UnitContentBlueprint {
+function buildUnitBlueprint(
+  unit: PlannedCourseUnit,
+  sourceKind: string,
+  difficultyLevel: TeachingDifficultyLevel | undefined,
+  sourceSemantics: SourceSemantics | undefined
+): UnitContentBlueprint {
   const sourceRequirement = sourceRequirementForUnit(unit, sourceKind);
   const semanticHints = semanticHintsForUnit(unit, sourceSemantics);
   return {
@@ -94,9 +102,42 @@ function buildUnitBlueprint(unit: PlannedCourseUnit, sourceKind: string, sourceS
       visualRequirement: template.visualRequirement,
       feedbackRequirement: template.feedbackRequirement,
       sourceRequirement,
-      mustInclude: [...template.mustInclude(unit, sourceKind), ...mustIncludeSemanticHints(semanticHints)]
+      mustInclude: [
+        ...template.mustInclude(unit, sourceKind),
+        ...paperResearchMustInclude(template.pageType, sourceKind, difficultyLevel),
+        ...mustIncludeSemanticHints(semanticHints)
+      ]
     }))
   };
+}
+
+function requiresPaperResearchMoves(sourceKind: string, difficultyLevel: TeachingDifficultyLevel | undefined): boolean {
+  return sourceKind === "paper" || difficultyLevel === "research";
+}
+
+function paperResearchMustInclude(pageType: string, sourceKind: string, difficultyLevel: TeachingDifficultyLevel | undefined): string[] {
+  if (!requiresPaperResearchMoves(sourceKind, difficultyLevel)) {
+    return [];
+  }
+  if (pageType === "problem_scene") {
+    return ["研究问题", "论文贡献 claim"];
+  }
+  if (pageType === "structure_diagram") {
+    return ["方法机制", "方法假设"];
+  }
+  if (pageType === "quiz") {
+    return ["实验/证据路径"];
+  }
+  if (pageType === "misconception_check") {
+    return ["局限/威胁", "过度外推风险"];
+  }
+  if (pageType === "transfer_challenge") {
+    return ["迁移判断", "迁移边界"];
+  }
+  if (pageType === "summary_card") {
+    return ["研究问题/贡献/机制/证据/局限/迁移"];
+  }
+  return [];
 }
 
 function semanticHintsForUnit(unit: PlannedCourseUnit, sourceSemantics: SourceSemantics | undefined): UnitSemanticHints | undefined {

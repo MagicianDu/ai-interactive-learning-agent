@@ -90,39 +90,70 @@ function buildTrialLesson(input: CodexAuthoredTrialInput, unit: TrialUnitBluepri
       `正式术语：问题定义、机制模型、证据链、局限边界、迁移应用`,
       "愿意用预测、比较和迁移任务检验理解"
     ],
-    learningObjectives: [`建立${focus}的课程级心智模型`, `用${focus}完成预测、误区检查和迁移应用`],
-    pages: unit.pageBlueprints.map((pageBlueprint, index) => buildPage(unit, pageBlueprint, index)),
+    learningObjectives: learningObjectivesForLesson(input.sourceKind, focus),
+    pages: unit.pageBlueprints.map((pageBlueprint, index) => buildPage(input, unit, pageBlueprint, index)),
     misconceptions: [
       {
         id: "m1",
         statement: `只要能复述${focus}的文字说明，就等于真正理解。`,
-        correction: "研究生课程级理解必须能说明先修概念、正式术语、证据链、局限边界、反例和迁移条件。"
+        correction:
+          input.sourceKind === "paper"
+            ? "论文精读必须同时说明研究问题、论文贡献、方法机制、实验/证据、局限边界和迁移边界。"
+            : "研究生课程级理解必须能说明先修概念、正式术语、证据链、局限边界、反例和迁移条件。"
       }
     ],
     transferTasks: [
       {
         id: "t1",
-        prompt: `把${focus}迁移到另一份技术资料或一个新系统设计问题中。`,
-        targetMentalModel: "先确认结构同构，再判断来源证据、边界条件和失败模式。"
+        prompt:
+          input.sourceKind === "paper"
+            ? `把${focus}迁移到另一篇论文或一个新 agent 系统设计中，并说明哪些方法假设仍然成立。`
+            : `把${focus}迁移到另一份技术资料或一个新系统设计问题中。`,
+        targetMentalModel:
+          input.sourceKind === "paper"
+            ? "先确认研究问题是否同构，再判断论文贡献、方法机制、实验/证据和局限边界能否迁移。"
+            : "先确认结构同构，再判断来源证据、边界条件和失败模式。"
       }
     ],
-    summary: [
-      `${focus}要从问题定义进入，并回扣先修概念和正式术语。`,
-      "机制模型必须连接证据链、局限边界、反例和适用条件。",
-      "课堂讨论负责检验边界，课后作业负责完成迁移应用。"
-    ]
+    summary: summaryForLesson(input.sourceKind, focus)
   };
 }
 
-function buildPage(unit: TrialUnitBlueprint, pageBlueprint: TrialPageBlueprint, index: number): Record<string, unknown> {
+function learningObjectivesForLesson(sourceKind: string, focus: string): string[] {
+  if (sourceKind === "paper") {
+    return [
+      `拆解${focus}的研究问题和论文贡献`,
+      `解释${focus}的方法机制与实验/证据路径`,
+      `用局限边界判断${focus}的迁移边界`
+    ];
+  }
+  return [`建立${focus}的课程级心智模型`, `用${focus}完成预测、误区检查和迁移应用`];
+}
+
+function summaryForLesson(sourceKind: string, focus: string): string[] {
+  if (sourceKind === "paper") {
+    return [
+      `${focus}先定位研究问题，再判断论文贡献是否被实验/证据支持。`,
+      "方法机制必须和方法假设、局限边界、威胁与反例一起阅读。",
+      "迁移边界决定这篇论文能否用于另一篇论文、专利、博客或真实系统设计。"
+    ];
+  }
+  return [
+    `${focus}要从问题定义进入，并回扣先修概念和正式术语。`,
+    "机制模型必须连接证据链、局限边界、反例和适用条件。",
+    "课堂讨论负责检验边界，课后作业负责完成迁移应用。"
+  ];
+}
+
+function buildPage(input: CodexAuthoredTrialInput, unit: TrialUnitBlueprint, pageBlueprint: TrialPageBlueprint, index: number): Record<string, unknown> {
   const focus = focusLabel(unit);
   const pageType = pageBlueprint.pageType;
   return {
     id: `p${pageBlueprint.pageNumber}`,
     type: pageType,
     title: `${focus}：${pageTypeLabel(pageType)}`,
-    learningGoal: learningGoalForPage(focus, pageType),
-    narrative: narrativeForPage(unit, pageBlueprint, focus),
+    learningGoal: learningGoalForPage(input.sourceKind, focus, pageType),
+    narrative: narrativeForPage(unit, pageBlueprint, focus, input.sourceKind),
     sourceAnchorIds: pageAnchorIds(unit, index),
     visualSpec: {
       kind: visualKind(pageType),
@@ -161,21 +192,46 @@ function buildPage(unit: TrialUnitBlueprint, pageBlueprint: TrialPageBlueprint, 
       ? {
           assessmentSpec: {
             kind: assessmentKind(pageType),
-            prompt: `关于${focus}，哪种回答最能说明你已经形成可迁移的心智模型？`,
+            prompt:
+              input.sourceKind === "paper"
+                ? `关于${focus}，哪种回答最能说明你已经读懂这篇论文？`
+                : `关于${focus}，哪种回答最能说明你已经形成可迁移的心智模型？`,
             options: ["能说明机制、证据边界、反例和迁移条件", "能流畅复述来源材料中的几个术语"],
             correctAnswer: "能说明机制、证据边界、反例和迁移条件"
           },
           feedbackSpec: {
-            correctFeedback: "正确。课程级理解要求你能把问题定义、机制模型、证据边界和迁移条件连成一条可检验的推理链。",
-            incorrectFeedback: "不对。术语复述只能证明记忆，不足以证明你能判断反例、边界条件或新场景中的适用性。",
-            misconceptionAddressed: `把${focus}当成可复述知识，而不是可迁移模型。`
+            correctFeedback:
+              input.sourceKind === "paper"
+                ? "正确。论文精读要求把研究问题、论文贡献、方法机制、实验/证据、局限边界和迁移边界连成可审查的论证链。"
+                : "正确。课程级理解要求你能把问题定义、机制模型、证据边界和迁移条件连成一条可检验的推理链。",
+            incorrectFeedback:
+              input.sourceKind === "paper"
+                ? "不对。只复述术语无法判断论文贡献是否被证据支持，也无法判断方法假设在新场景是否成立。"
+                : "不对。术语复述只能证明记忆，不足以证明你能判断反例、边界条件或新场景中的适用性。",
+            misconceptionAddressed:
+              input.sourceKind === "paper" ? `把${focus}当成论文摘要，而不是可审查、可迁移的研究论证。` : `把${focus}当成可复述知识，而不是可迁移模型。`
           }
         }
       : {})
   };
 }
 
-function learningGoalForPage(focus: string, pageType: string): string {
+function learningGoalForPage(sourceKind: string, focus: string, pageType: string): string {
+  if (sourceKind === "paper") {
+    const goals: Record<string, string> = {
+      problem_scene: `定位${focus}的研究问题`,
+      intuition_visual: `建立${focus}的论文阅读直觉`,
+      structure_diagram: `画出${focus}的方法机制`,
+      process_animation: `追踪${focus}的证据路径`,
+      interactive_model: `检验${focus}的论证强度`,
+      code_walkthrough: `连接${focus}的正式表达`,
+      quiz: `判断${focus}的实验/证据是否支撑贡献`,
+      misconception_check: `修正关于${focus}贡献的过度外推`,
+      transfer_challenge: `判断${focus}的迁移边界`,
+      summary_card: `压缩${focus}的论文精读模型`
+    };
+    return goals[pageType] ?? `建立${focus}的论文精读模型`;
+  }
   const goals: Record<string, string> = {
     problem_scene: `识别${focus}要解决的真实问题`,
     intuition_visual: `用直觉模型解释${focus}`,
@@ -191,9 +247,12 @@ function learningGoalForPage(focus: string, pageType: string): string {
   return goals[pageType] ?? `建立${focus}的课程级心智模型`;
 }
 
-function narrativeForPage(unit: TrialUnitBlueprint, pageBlueprint: TrialPageBlueprint, focus: string): string {
+function narrativeForPage(unit: TrialUnitBlueprint, pageBlueprint: TrialPageBlueprint, focus: string, sourceKind: string): string {
   const context = sourceContextSentence(unit);
   const mustInclude = compactMustInclude(pageBlueprint.mustInclude);
+  if (sourceKind === "paper") {
+    return paperNarrativeForPage(pageBlueprint, focus, context, mustInclude);
+  }
   const academicFrame = "先修概念和正式术语用来定位问题；证据链与局限边界用来判断结论强度。";
   const templates: Record<string, string> = {
     problem_scene: `先看一个失败场景：如果只会复述${focus}，遇到边界条件时就无法判断方案是否适用。${context}${academicFrame}课堂讨论从“问题为什么存在”开始。`,
@@ -206,6 +265,22 @@ function narrativeForPage(unit: TrialUnitBlueprint, pageBlueprint: TrialPageBlue
     misconception_check: `常见误区是把${focus}当成可复述结论。${context}反例会显示：缺少边界条件时，同一句话在新场景可能失效。`,
     transfer_challenge: `迁移任务换一个表层场景，但保留相同结构。${context}课后作业要求写出哪些结构可迁移，哪些假设不能迁移。`,
     summary_card: `最后把${focus}压缩成一张记忆卡：问题、机制、证据、边界、迁移各一句。${context}复习时先复述模型，再检查反例。`
+  };
+  return `${templates[pageBlueprint.pageType] ?? templates.problem_scene}${mustInclude ? ` 你要抓住：${mustInclude}。` : ""}`;
+}
+
+function paperNarrativeForPage(pageBlueprint: TrialPageBlueprint, focus: string, context: string, mustInclude: string): string {
+  const templates: Record<string, string> = {
+    problem_scene: `先把${focus}当作论文精读对象：研究问题是什么，论文贡献 claim 解决了哪个旧解释无法处理的缺口？${context}学习者要先区分作者提出了什么和证据实际支持了什么。`,
+    intuition_visual: `${focus}的直觉模型不是类比故事，而是论文阅读地图：研究问题、论文贡献、方法机制、实验/证据、局限边界、迁移边界。${context}学习者先预测贡献最依赖哪条证据。`,
+    structure_diagram: `把${focus}画成方法机制图：输入、角色/模块、关键假设、证据反馈和输出结论。${context}方法假设必须和论文贡献分开标注。`,
+    process_animation: `沿论文论证路径追踪${focus}：研究问题提出、方法机制展开、实验/证据进入、局限边界收束。${context}每一步都要问证据是否足够。`,
+    interactive_model: `让学习者在两种读法中选择：先审查实验/证据，或先接受论文贡献。${context}反馈要说明为什么证据优先能降低过度外推风险。`,
+    code_walkthrough: `正式表达只服务于方法机制：用短伪代码、公式或接口描述${focus}如何产生可观察结果。${context}不要把实现细节误读成论文贡献本身。`,
+    quiz: `这个检查题要求学习者判断实验/证据是否足以支撑${focus}的论文贡献。${context}正确回答必须指出方法机制、证据链和局限边界。`,
+    misconception_check: `常见误区是把论文贡献当成已被完全证明的工程规律。${context}局限边界和威胁说明了哪些结论还不能迁移。`,
+    transfer_challenge: `迁移任务要求把${focus}放到另一篇论文或新 agent 系统中。${context}只有研究问题同构、方法假设保留、证据路径可复现时，迁移边界才成立。`,
+    summary_card: `最后用六格卡片压缩${focus}：研究问题、论文贡献、方法机制、实验/证据、局限边界、迁移边界。${context}复习时先检查论证链，再复述术语。`
   };
   return `${templates[pageBlueprint.pageType] ?? templates.problem_scene}${mustInclude ? ` 你要抓住：${mustInclude}。` : ""}`;
 }

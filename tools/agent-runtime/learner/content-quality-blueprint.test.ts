@@ -127,6 +127,27 @@ describe("content-quality-blueprint", () => {
     });
     expect(blueprint.units[0]?.pageBlueprints[0]?.mustInclude).toEqual(expect.arrayContaining([expect.stringContaining("tool feedback")]));
   });
+
+  test("adds paper research-reading moves for research-level paper units", () => {
+    const blueprint = buildContentBlueprint({
+      audience: "研究生",
+      difficultyLevel: "research",
+      sourceKind: "paper",
+      units: [plannedUnit({ targetPageCount: 8, kind: "topic", focusConcepts: ["Talker-Reasoner 架构"] })]
+    });
+
+    expect(blueprint.globalRules.join("\n")).toContain("论文精读");
+    expect(blueprint.globalRules.join("\n")).toContain("研究问题、论文贡献、方法机制、实验/证据、局限/威胁、迁移判断");
+    expect(blueprint.units[0]?.pageBlueprints[0]?.mustInclude).toEqual(
+      expect.arrayContaining([expect.stringContaining("研究问题"), expect.stringContaining("论文贡献")])
+    );
+    expect(blueprint.units[0]?.pageBlueprints[2]?.mustInclude).toEqual(
+      expect.arrayContaining([expect.stringContaining("方法机制"), expect.stringContaining("方法假设")])
+    );
+    expect(blueprint.units[0]?.pageBlueprints[4]?.mustInclude).toEqual(expect.arrayContaining([expect.stringContaining("实验/证据")]));
+    expect(blueprint.units[0]?.pageBlueprints[5]?.mustInclude).toEqual(expect.arrayContaining([expect.stringContaining("局限/威胁")]));
+    expect(blueprint.units[0]?.pageBlueprints[6]?.mustInclude).toEqual(expect.arrayContaining([expect.stringContaining("迁移判断")]));
+  });
 });
 
 function plannedUnit(overrides: Partial<PlannedCourseUnit> = {}): PlannedCourseUnit {

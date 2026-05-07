@@ -124,6 +124,11 @@ export type AuthoringContextResult = {
       authoringFocus: string[];
       avoid: string[];
     };
+    researchReadingContract?: {
+      requiredMoves: string[];
+      pageExpectations: string[];
+      avoid: string[];
+    };
     publishChecklist: string[];
   };
   learnerClarificationHints: string[];
@@ -349,6 +354,7 @@ function buildQualityContract(brief: AuthoringContextResult["brief"]): Authoring
       "不要伪造来源锚点；如果来源不足，缩小课程范围或把结论标为推理。"
     ],
     sourceKindGuidance: sourceKindGuidance(brief.sourceKind),
+    ...(requiresResearchReadingContract(brief) ? { researchReadingContract: researchReadingContract() } : {}),
     publishChecklist: [
       "coursePack.units 引用的 lessonId 必须存在。",
       `每个 lesson 的 prerequisites、learningObjectives、pages、summary 要体现${levelLabel}定位。`,
@@ -410,6 +416,24 @@ function sourceKindGuidance(sourceKind: string): AuthoringContextResult["quality
   };
 }
 
+function requiresResearchReadingContract(brief: AuthoringContextResult["brief"]): boolean {
+  return brief.sourceKind === "paper" || brief.difficultyLevel === "research";
+}
+
+function researchReadingContract(): NonNullable<AuthoringContextResult["qualityContract"]["researchReadingContract"]> {
+  return {
+    requiredMoves: ["研究问题", "论文贡献", "方法机制", "实验/证据", "局限/威胁", "迁移判断"],
+    pageExpectations: [
+      "problem_scene 必须明确论文要解决的研究问题和贡献 claim。",
+      "structure_diagram 必须区分方法机制、方法假设和系统边界。",
+      "quiz / interactive_model 必须让学习者检查实验/证据路径，而不是背术语。",
+      "misconception_check 必须处理论文贡献不等于已被充分证明的误区。",
+      "transfer_challenge 必须说明哪些假设保留时才能迁移，哪些上下文不能迁移。"
+    ],
+    avoid: ["不要把论文讲成普通博客摘要。", "不要跳过实验/证据或局限/威胁。", "不要把作者结论过度外推成通用工程规则。"]
+  };
+}
+
 function buildLearnerClarificationHints(brief: AuthoringContextResult["brief"]): string[] {
   return [
     `确认学习目标：这套课程要让学习者最终能做什么，而不只是知道什么？`,
@@ -424,6 +448,9 @@ function buildCodexInstruction(brief: AuthoringContextResult["brief"], unitCount
   return [
     "请由 Codex 创作 coursePack 和 lessons，然后调用 learning_agent.publish_learning_course。",
     `教学难度层级：${difficultyLabel(brief.difficultyLevel)}（${brief.difficultyLevel}）；不要写成泛泛科普、博客摘要或产品介绍。`,
+    ...(requiresResearchReadingContract(brief)
+      ? ["这是一套论文精读课；每个相关 lesson 必须显式覆盖：研究问题、论文贡献、方法机制、实验/证据、局限/威胁、迁移判断。"]
+      : []),
     "写 lesson 前先逐项遵循 contentBlueprint.units[*].pageBlueprints：pageType、teachingMove、learnerAction、visualRequirement、feedbackRequirement、sourceRequirement。",
     `输出语言：${brief.language}。`,
     `课程策略：${brief.strategy}。`,

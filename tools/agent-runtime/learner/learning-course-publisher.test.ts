@@ -112,6 +112,54 @@ describe("LearningCoursePublisher", () => {
     );
   });
 
+  test("threads learner project sourceKind into paper research quality checks", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-course-publisher-paper-quality-"));
+    await new LearnerProjectService(root).createProject({
+      request: "请生成一篇论文的中文研究生精读课，面向研究生，教学难度为研究论文精读，每个单元 8 页。",
+      runId: "paper-quality",
+      sourceKind: "paper",
+      audience: "研究生",
+      difficultyLevel: "research",
+      unitPages: 8
+    });
+    const lesson = publishableLessonFixture({ id: "paper-quality-overview", title: "论文精读：总览课", targetPageCount: 8 });
+    const result = await new LearningCoursePublisher(root).publish({
+      runId: "paper-quality",
+      lessons: [lesson],
+      coursePack: {
+        id: "paper-quality",
+        title: "论文精读：课程包",
+        parentRunId: "paper-quality",
+        sourceKind: "paper",
+        strategy: "overview_plus_topic",
+        units: [
+          {
+            unitId: "unit-overview",
+            title: "论文精读：总览课",
+            kind: "overview",
+            lessonId: "paper-quality-overview",
+            targetPageCount: 8,
+            conceptIds: ["paper-reading"]
+          }
+        ]
+      }
+    });
+
+    expect(result.status).toBe("preview_ready");
+    if (result.status !== "preview_ready") {
+      return;
+    }
+    expect(result.qualityReport).toMatchObject({
+      status: "warning",
+      topIssues: expect.arrayContaining([
+        expect.objectContaining({
+          issueId: "quality.lesson.paper-research-depth-shallow",
+          lessonId: "paper-quality-overview"
+        })
+      ])
+    });
+  });
+
   test("returns revision_required when the Codex-authored lesson is not Chinese-first", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "learning-course-publisher-"));
     const lesson = {
