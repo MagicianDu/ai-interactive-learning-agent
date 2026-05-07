@@ -2,6 +2,7 @@ import { execFile as execFileCallback } from "node:child_process";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
+import { inflateSync } from "node:zlib";
 
 import type {
   ExtractionWarning,
@@ -225,9 +226,33 @@ async function extractPdfTextWithLiteralFallback(filePath: string): Promise<PdfT
     return [];
   }
 
-  const literals = [...rawPdf.matchAll(/\(((?:\\.|[^\\()])*)\)\s*Tj/gu)].map((match) => decodePdfLiteral(match[1] ?? ""));
+  const literals = extractPdfLiteralText(rawPdf);
   const text = normalizeExtractedText(literals.join("\n"));
   return isReadableExtractedText(text) ? [{ page: 1, text }] : [];
+}
+
+function extractPdfLiteralText(rawPdf: string): string[] {
+  const streams = [...rawPdf.matchAll(/<<(.*?)>>\s*stream\r?\n([\s\S]*?)\r?\nendstream/gu)];
+  if (streams.length === 0) {
+    return extractPdfTextOperators(rawPdf);
+  }
+
+  return streams.flatMap((match) => {
+    const dictionary = match[1] ?? "";
+    const streamBody = match[2] ?? "";
+    if (/\/Filter\s*\/FlateDecode/u.test(dictionary)) {
+      try {
+        return extractPdfTextOperators(inflateSync(Buffer.from(streamBody, "binary")).toString("binary"));
+      } catch {
+        return [];
+      }
+    }
+    return extractPdfTextOperators(streamBody);
+  });
+}
+
+function extractPdfTextOperators(pdfContent: string): string[] {
+  return [...pdfContent.matchAll(/\(((?:\\.|[^\\()])*)\)\s*Tj/gu)].map((match) => decodePdfLiteral(match[1] ?? ""));
 }
 
 function decodePdfLiteral(value: string): string {
