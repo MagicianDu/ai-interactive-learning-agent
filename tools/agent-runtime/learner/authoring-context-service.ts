@@ -7,8 +7,11 @@ import { AgentRuntimeError } from "../errors.js";
 import { createRunConfigFromArgs } from "../run-config.js";
 import { normalizeSources } from "../source/source-normalizer.js";
 import type { RunConfig } from "../types.js";
+import { buildContentBlueprint, type ContentBlueprint } from "./content-quality-blueprint.js";
 import { planCourseUnits } from "./course-unit-planner.js";
-import { extractSourceSemantics } from "./source-semantic-extractor.js";
+import { difficultyLabel, type TeachingDifficultyLevel } from "./learner-project-service.js";
+import { sampleAuthoringAnchors } from "./source-anchor-sampler.js";
+import { extractSourceSemantics, type SourceSemantics } from "./source-semantic-extractor.js";
 
 type LearnerProjectFile = {
   request?: string;
@@ -17,6 +20,7 @@ type LearnerProjectFile = {
     sourcePath?: string;
     sourceKind?: string;
     audience?: string;
+    difficultyLevel?: TeachingDifficultyLevel;
     unitPages?: number;
     strategy?: string;
     selectedChapters?: string[];
@@ -38,6 +42,7 @@ export type AuthoringContextResult = {
     sourcePath?: string;
     sourceKind: string;
     audience: string;
+    difficultyLevel: TeachingDifficultyLevel;
     unitPages: number;
     strategy: string;
     selectedChapters: string[];
@@ -57,6 +62,7 @@ export type AuthoringContextResult = {
       notes?: string;
     }>;
   };
+  sourceSemantics: SourceSemantics;
   coursePlan: {
     strategy: string;
     strategyReason: string;
@@ -87,6 +93,7 @@ export type AuthoringContextResult = {
       };
     }>;
   };
+  contentBlueprint: ContentBlueprint;
   artifacts: {
     coursePlanPath: string;
     unitPlanPath: string;
@@ -99,6 +106,13 @@ export type AuthoringContextResult = {
   };
   qualityContract: {
     language: "zh-CN";
+    academicRigor: {
+      positioning: TeachingDifficultyLevel;
+      label: string;
+      requirements: string[];
+      assessmentExpectations: string[];
+      avoid: string[];
+    };
     supportedStrategies: string[];
     requiredPageTypes: string[];
     requiredLearningActions: string[];
@@ -108,6 +122,17 @@ export type AuthoringContextResult = {
     sourceKindGuidance: {
       sourceKind: string;
       authoringFocus: string[];
+      avoid: string[];
+    };
+    researchReadingContract?: {
+      requiredMoves: string[];
+      pageExpectations: string[];
+      avoid: string[];
+    };
+    sourceKindDepthContract?: {
+      sourceKind: "patent" | "blog";
+      requiredMoves: string[];
+      pageExpectations: string[];
       avoid: string[];
     };
     publishChecklist: string[];
@@ -131,20 +156,27 @@ export class AuthoringContextService {
     const project = await readLearnerProject(this.workspaceRoot, input.runId);
     const config = buildRunConfig(input.runId, project);
     const normalizedSources = await normalizeSources(config.sources);
-    const sourceAnchorIds = ensureAnchorIds(
-      normalizedSources.anchors.map((anchor) => anchor.anchorId),
-      config
-    );
+    const sampledAnchors = sampleAuthoringAnchors({
+      anchors: normalizedSources.anchors,
+      sourceKind: config.sourceKind ?? "topic",
+      maxAnchors,
+      selectedTopics: config.coursePack?.selectedTopics ?? [],
+      selectedChapters: config.coursePack?.selectedChapters ?? [],
+      topic: config.topic
+    });
     const semantics = extractSourceSemantics({
       sourceKind: config.sourceKind ?? "topic",
-      anchors: normalizedSources.anchors
+      anchors: sampledAnchors.length > 0 ? sampledAnchors : normalizedSources.anchors
     });
     const concepts = uniqueStrings([
       semantics.concepts[0]?.label ?? "全局地图",
       ...(config.coursePack?.selectedTopics ?? []),
       ...semantics.concepts.map((concept) => concept.label)
     ]);
-    const sampledAnchorIds = sourceAnchorIds.slice(0, maxAnchors);
+    const sampledAnchorIds = ensureAnchorIds(
+      sampledAnchors.map((anchor) => anchor.anchorId),
+      config
+    );
     const unitPlan = planCourseUnits({
       runId: config.runId,
       topic: config.topic,
@@ -157,19 +189,26 @@ export class AuthoringContextService {
       sourceAnchorIds: sampledAnchorIds,
       sourceNodeIds: config.sources.map((source) => `${source.id}:root`)
     });
-
     const displaySourceKind = project.brief?.sourceKind === "topic" && !project.brief.sourcePath ? "topic" : (config.sourceKind ?? "topic");
     const brief = {
       topic: config.topic,
       ...(project.brief?.sourcePath ? { sourcePath: project.brief.sourcePath } : {}),
       sourceKind: displaySourceKind,
       audience: config.audience,
+      difficultyLevel: project.brief?.difficultyLevel ?? "upper_undergraduate_or_graduate",
       unitPages: config.coursePack?.unitPageCount ?? config.pageCount.target,
       strategy: config.coursePack?.strategy ?? "overview_plus_topic",
       selectedChapters: config.coursePack?.selectedChapters ?? [],
       selectedTopics: config.coursePack?.selectedTopics ?? [],
       language: "zh-CN" as const
     };
+    const contentBlueprint = buildContentBlueprint({
+      audience: brief.audience,
+      difficultyLevel: brief.difficultyLevel,
+      sourceKind: brief.sourceKind,
+      units: unitPlan.units,
+      sourceSemantics: semantics
+    });
 
     const contextWithoutArtifacts = {
       status: "authoring_context_ready",
@@ -180,7 +219,7 @@ export class AuthoringContextService {
         ...(brief.sourcePath ? { sourcePath: brief.sourcePath } : {}),
         anchorCount: normalizedSources.anchors.length,
         warningCount: normalizedSources.extractionWarnings.length,
-        anchors: normalizedSources.anchors.slice(0, maxAnchors).map((anchor) => ({
+        anchors: sampledAnchors.slice(0, maxAnchors).map((anchor) => ({
           anchorId: anchor.anchorId,
           label: anchor.label,
           locator: anchor.locator,
@@ -188,6 +227,7 @@ export class AuthoringContextService {
           ...(anchor.notes ? { notes: anchor.notes } : {})
         }))
       },
+      sourceSemantics: semantics,
       coursePlan: {
         strategy: unitPlan.strategy,
         strategyReason: unitPlan.strategyReason,
@@ -210,6 +250,7 @@ export class AuthoringContextService {
           expectedSourceCoverage: unit.expectedSourceCoverage
         }))
       },
+      contentBlueprint,
       authoringContract: {
         defaultTool: "learning_agent.publish_learning_course",
         language: "zh-CN",
@@ -266,8 +307,29 @@ export class AuthoringContextService {
 }
 
 function buildQualityContract(brief: AuthoringContextResult["brief"]): AuthoringContextResult["qualityContract"] {
+  const levelLabel = difficultyLabel(brief.difficultyLevel);
   return {
     language: "zh-CN",
+    academicRigor: {
+      positioning: brief.difficultyLevel,
+      label: levelLabel,
+      requirements: [
+        `按${levelLabel}设计，不做泛泛科普或轻量博客摘要。`,
+        "每个 unit 必须显式给出先修概念、核心术语、来源阅读映射和可迁移的分析框架。",
+        "解释必须有学术密度：问题定义、机制模型、证据/来源边界、反例和适用条件。",
+        "长资料要保留章节或主题的课程结构，让学习者知道课前读什么、课上讨论什么、课后练什么。"
+      ],
+      assessmentExpectations: [
+        "课堂讨论题：要求学习者比较两个设计选择、解释假设或指出边界。",
+        "课后作业题：要求学习者把同一模型迁移到新资料、新系统或新案例。",
+        "研究生级检查：避免术语记忆题，优先使用论证、诊断、设计和批判性分析。"
+      ],
+      avoid: [
+        "不要只写概念宣传、产品介绍或泛泛学习建议。",
+        "不要把复杂来源材料压成浅层摘要。",
+        "不要用没有来源依据的结论替代读书/读论文训练。"
+      ]
+    },
     supportedStrategies: ["overview_plus_topic", "chapter_guided", "topic_guided", "task_guided", "hybrid"],
     requiredPageTypes: [
       "problem_scene",
@@ -281,6 +343,7 @@ function buildQualityContract(brief: AuthoringContextResult["brief"]): Authoring
     ],
     requiredLearningActions: ["predict", "manipulate", "compare", "explain", "debug", "transfer"],
     pageRules: [
+      `页面应符合${levelLabel}的课堂 slide 密度：有问题、模型、来源依据、讨论或练习，而不是只有解释性段落。`,
       "每页只承载一个学习目标，正文应短，优先使用图、流程、状态变化或可操作模型。",
       "不要把一整章压缩进一页；内容过多时拆成多个 unit 或多页。",
       "先从问题、情境、视觉模型和学习动作进入，再引入术语、公式、代码或定义。",
@@ -297,8 +360,11 @@ function buildQualityContract(brief: AuthoringContextResult["brief"]): Authoring
       "不要伪造来源锚点；如果来源不足，缩小课程范围或把结论标为推理。"
     ],
     sourceKindGuidance: sourceKindGuidance(brief.sourceKind),
+    ...(requiresResearchReadingContract(brief) ? { researchReadingContract: researchReadingContract() } : {}),
+    ...(sourceKindDepthContract(brief.sourceKind) ? { sourceKindDepthContract: sourceKindDepthContract(brief.sourceKind) } : {}),
     publishChecklist: [
       "coursePack.units 引用的 lessonId 必须存在。",
+      `每个 lesson 的 prerequisites、learningObjectives、pages、summary 要体现${levelLabel}定位。`,
       "每个 lesson 必须中文优先，并包含 objectives、prerequisites、pages、misconceptions、transferTasks、summary。",
       "每个 lesson 至少包含 3 个 visualSpec、2 个 interactionSpec、2 个 assessmentSpec、1 个 misconception_check 和 1 个 transfer_challenge。",
       "每个 interactionSpec 必须说明 learnerAction、expectedObservation、cognitivePurpose，并提供解释性结果。",
@@ -357,9 +423,60 @@ function sourceKindGuidance(sourceKind: string): AuthoringContextResult["quality
   };
 }
 
+function requiresResearchReadingContract(brief: AuthoringContextResult["brief"]): boolean {
+  return brief.sourceKind === "paper" || brief.difficultyLevel === "research";
+}
+
+function researchReadingContract(): NonNullable<AuthoringContextResult["qualityContract"]["researchReadingContract"]> {
+  return {
+    requiredMoves: ["研究问题", "论文贡献", "方法机制", "实验/证据", "局限/威胁", "迁移判断"],
+    pageExpectations: [
+      "problem_scene 必须明确论文要解决的研究问题和贡献 claim。",
+      "structure_diagram 必须区分方法机制、方法假设和系统边界。",
+      "quiz / interactive_model 必须让学习者检查实验/证据路径，而不是背术语。",
+      "misconception_check 必须处理论文贡献不等于已被充分证明的误区。",
+      "transfer_challenge 必须说明哪些假设保留时才能迁移，哪些上下文不能迁移。"
+    ],
+    avoid: ["不要把论文讲成普通博客摘要。", "不要跳过实验/证据或局限/威胁。", "不要把作者结论过度外推成通用工程规则。"]
+  };
+}
+
+function sourceKindDepthContract(sourceKind: string): AuthoringContextResult["qualityContract"]["sourceKindDepthContract"] | undefined {
+  if (sourceKind === "patent") {
+    return {
+      sourceKind,
+      requiredMoves: ["权利要求边界", "现有技术问题", "技术方案/机制", "实施例", "法律/适用边界", "规避或迁移判断"],
+      pageExpectations: [
+        "problem_scene 必须明确现有技术问题和权利要求要划定的保护边界。",
+        "structure_diagram 必须区分权利要求、技术方案/机制、实施例和推理补充。",
+        "quiz / interactive_model 必须让学习者判断某个方案落在权利要求边界内还是实施例描述内。",
+        "misconception_check 必须处理把专利文本当成学术结论或产品承诺的误区。",
+        "transfer_challenge 必须要求学习者做规避或迁移判断，并显式说明法律/适用边界。"
+      ],
+      avoid: ["不要把权利要求讲成普通概念定义。", "不要混淆保护边界、实施例和 Codex 推理。", "不要把法律边界弱化成泛泛工程建议。"]
+    };
+  }
+  if (sourceKind === "blog") {
+    return {
+      sourceKind,
+      requiredMoves: ["实际问题", "作者方案", "实现路径", "caveat/失败模式", "可操作检查", "迁移边界"],
+      pageExpectations: [
+        "problem_scene 必须明确作者面对的实际问题和实践上下文。",
+        "structure_diagram 必须画出作者方案、实现路径、关键选择和约束。",
+        "quiz / interactive_model 必须让学习者用 caveat 或失败模式判断步骤是否可复用。",
+        "misconception_check 必须处理把单个实践案例泛化成绝对规则的误区。",
+        "transfer_challenge 必须给出可操作检查，并说明迁移边界。"
+      ],
+      avoid: ["不要把博客改写成观点摘录。", "不要跳过 caveat、失败模式或实践上下文。", "不要把作者示例泛化成所有系统都适用的规则。"]
+    };
+  }
+  return undefined;
+}
+
 function buildLearnerClarificationHints(brief: AuthoringContextResult["brief"]): string[] {
   return [
     `确认学习目标：这套课程要让学习者最终能做什么，而不只是知道什么？`,
+    `确认难度层级：当前为 ${difficultyLabel(brief.difficultyLevel)}；用户也可以选择入门衔接、本科核心、大学高年级/研究生课程或研究论文精读。`,
     `确认课程组织：当前为 ${brief.strategy}；用户也可以选择按章节、按 topic、按任务或混合路径。`,
     `确认阅读习惯：每个单元当前 ${brief.unitPages} 页，可按用户耐心和基础调整。`,
     `确认受众水平：当前为 ${brief.audience}；内容深度、例子和练习都应围绕该画像。`
@@ -369,6 +486,17 @@ function buildLearnerClarificationHints(brief: AuthoringContextResult["brief"]):
 function buildCodexInstruction(brief: AuthoringContextResult["brief"], unitCount: number): string {
   return [
     "请由 Codex 创作 coursePack 和 lessons，然后调用 learning_agent.publish_learning_course。",
+    `教学难度层级：${difficultyLabel(brief.difficultyLevel)}（${brief.difficultyLevel}）；不要写成泛泛科普、博客摘要或产品介绍。`,
+    ...(requiresResearchReadingContract(brief)
+      ? ["这是一套论文精读课；每个相关 lesson 必须显式覆盖：研究问题、论文贡献、方法机制、实验/证据、局限/威胁、迁移判断。"]
+      : []),
+    ...(brief.sourceKind === "patent"
+      ? ["这是一套专利解读课；每个相关 lesson 必须显式覆盖：权利要求边界、现有技术问题、技术方案/机制、实施例、法律/适用边界、规避或迁移判断。"]
+      : []),
+    ...(brief.sourceKind === "blog"
+      ? ["这是一套实践案例课；每个相关 lesson 必须显式覆盖：实际问题、作者方案、实现路径、caveat/失败模式、可操作检查、迁移边界。"]
+      : []),
+    "写 lesson 前先逐项遵循 contentBlueprint.units[*].pageBlueprints：pageType、teachingMove、learnerAction、visualRequirement、feedbackRequirement、sourceRequirement。",
     `输出语言：${brief.language}。`,
     `课程策略：${brief.strategy}。`,
     `每个单元页数：${brief.unitPages}。`,

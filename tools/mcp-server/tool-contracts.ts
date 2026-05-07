@@ -1,10 +1,13 @@
 export type LearningAgentToolName =
   | "learning_agent.create_learning_project"
+  | "learning_agent.prepare_learning_course"
   | "learning_agent.list_learning_projects"
   | "learning_agent.archive_learning_project"
   | "learning_agent.get_authoring_context"
   | "learning_agent.generate_grounded_course"
   | "learning_agent.publish_learning_course"
+  | "learning_agent.compare_authoring_quality"
+  | "learning_agent.create_quality_revision"
   | "learning_agent.get_learning_preview"
   | "learning_agent.generate_quick_preview"
   | "learning_agent.revise_learning_course"
@@ -26,6 +29,8 @@ export type LearningAgentToolName =
   | "learning_agent.run_course"
   | "learning_agent.promote_units"
   | "learning_agent.promote_lesson";
+
+export type LearningAgentToolProfile = "learner" | "authoring" | "operator";
 
 export type LearningAgentToolContract = {
   name: LearningAgentToolName;
@@ -59,10 +64,32 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
         sourcePath: stringSchema,
         sourceKind: stringSchema,
         audience: stringSchema,
+        difficultyLevel: stringSchema,
         unitPages: numberSchema,
         strategy: stringSchema,
         selectedChapters: stringArraySchema,
         selectedTopics: stringArraySchema
+      },
+      ["request"]
+    )
+  },
+  {
+    name: "learning_agent.prepare_learning_course",
+    description:
+      "Learner-facing tool. Create or update a learner project and return source semantics, recommended units, content blueprint, and Codex publishing instructions in one call when no clarification is needed.",
+    inputSchema: objectSchema(
+      {
+        request: stringSchema,
+        runId: stringSchema,
+        sourcePath: stringSchema,
+        sourceKind: stringSchema,
+        audience: stringSchema,
+        difficultyLevel: stringSchema,
+        unitPages: numberSchema,
+        strategy: stringSchema,
+        selectedChapters: stringArraySchema,
+        selectedTopics: stringArraySchema,
+        maxAnchors: numberSchema
       },
       ["request"]
     )
@@ -97,6 +124,18 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
       { runId: stringSchema, coursePack: looseObjectSchema, lessons: arraySchema, publishNotes: stringSchema, outputMode: stringSchema },
       ["runId", "coursePack", "lessons"]
     )
+  },
+  {
+    name: "learning_agent.compare_authoring_quality",
+    description:
+      "Learner-facing quality tool. Compare a Codex-authored preview against a deterministic draft preview and return concrete content-quality improvements and remaining gaps.",
+    inputSchema: objectSchema({ authoredRunId: stringSchema, draftRunId: stringSchema }, ["authoredRunId", "draftRunId"])
+  },
+  {
+    name: "learning_agent.create_quality_revision",
+    description:
+      "Learner-facing quality tool. Convert compare_authoring_quality revisionInstructions into a Codex-ready revision brief.",
+    inputSchema: objectSchema({ runId: stringSchema, comparisonReportPath: stringSchema }, ["runId"])
   },
   {
     name: "learning_agent.get_learning_preview",
@@ -247,3 +286,41 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
     inputSchema: objectSchema({ runId: stringSchema }, ["runId"])
   }
 ];
+
+const learnerToolNames = [
+  "learning_agent.prepare_learning_course",
+  "learning_agent.list_learning_projects",
+  "learning_agent.archive_learning_project",
+  "learning_agent.publish_learning_course",
+  "learning_agent.get_learning_preview",
+  "learning_agent.revise_learning_course",
+  "learning_agent.apply_learning_revision",
+  "learning_agent.export_learning_course"
+] satisfies LearningAgentToolName[];
+
+const authoringToolNames = [
+  ...learnerToolNames,
+  "learning_agent.create_learning_project",
+  "learning_agent.get_authoring_context",
+  "learning_agent.compare_authoring_quality",
+  "learning_agent.create_quality_revision",
+  "learning_agent.generate_grounded_course"
+] satisfies LearningAgentToolName[];
+
+export function learningAgentToolContractsForProfile(
+  profile: LearningAgentToolProfile = "learner"
+): LearningAgentToolContract[] {
+  if (profile === "operator") {
+    return learningAgentToolContracts;
+  }
+
+  const contractsByName = new Map(learningAgentToolContracts.map((tool) => [tool.name, tool]));
+  const profileToolNames = profile === "authoring" ? authoringToolNames : learnerToolNames;
+  return profileToolNames.map((name) => {
+    const contract = contractsByName.get(name);
+    if (!contract) {
+      throw new Error(`missing learning agent tool contract: ${name}`);
+    }
+    return contract;
+  });
+}

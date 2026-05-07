@@ -3,7 +3,8 @@ import path from "node:path";
 
 import { AgentRuntimeError } from "../errors.js";
 import { LearningPreviewService, type LearningPreviewResult } from "./learning-preview-service.js";
-import { parseRevisionTarget, type RevisionTarget } from "./revision-targeting.js";
+import { buildRevisionBriefV2 } from "./revision-brief.js";
+import { parseRevisionTargetV2, type RevisionTargetV2 } from "./revision-targeting.js";
 
 type ReadyLearningPreview = Extract<LearningPreviewResult, { status: "preview_ready" }>["preview"];
 
@@ -20,12 +21,23 @@ export type RequestLearningRevisionResult = {
   revisionBriefPath: string;
   feedback: string;
   focus?: string;
-  target: RevisionTarget;
+  target: RevisionTargetV2;
   currentPreview?: ReadyLearningPreview;
   next: {
     recommendedTool: "learning_agent.publish_learning_course";
     codexInstruction: string;
   };
+};
+
+export type RequestQualityRevisionInput = {
+  runId: string;
+  comparisonReportPath?: string;
+};
+
+export type RequestQualityRevisionResult = Omit<RequestLearningRevisionResult, "status" | "feedback" | "focus"> & {
+  status: "quality_revision_brief_ready";
+  comparisonReportPath: string;
+  feedback: string;
 };
 
 const RUN_ID_PATTERN = /^[a-z][a-z0-9-]{0,63}$/;
@@ -47,9 +59,12 @@ export class LearningRevisionService {
     const previewResult = await new LearningPreviewService(this.workspaceRoot).getPreview(input.runId);
     const currentPreview = previewResult.status === "preview_ready" ? previewResult.preview : undefined;
     const publishManifest = await readPublishManifest(this.workspaceRoot, input.runId);
-    const target = parseRevisionTarget(feedback, input.focus);
-    const revisionBrief = {
-      schemaVersion: 1,
+    const target = parseRevisionTargetV2(feedback, input.focus);
+    const courseIRPath = await existingFilePath(path.join(this.workspaceRoot, "runs", input.runId, "artifacts", "course-ir.draft.json"));
+    const qualityReportPath = await existingFilePath(
+      path.join(this.workspaceRoot, "runs", input.runId, "quality", "course-quality-report.json")
+    );
+    const revisionBrief = buildRevisionBriefV2({
       runId: input.runId,
       revisionId,
       feedback,
@@ -58,11 +73,11 @@ export class LearningRevisionService {
       currentPreview,
       currentCoursePackPath: publishManifest?.coursePackPath,
       currentLessonPaths: publishManifest?.lessonPaths ?? [],
+      courseIRPath,
+      qualityReportPath,
+      sourceBacked: courseIRPath !== undefined || qualityReportPath !== undefined,
       previousFeedbackCount,
-      createdAt: new Date().toISOString(),
-      instruction:
-        "Codex should read the current published lesson files, revise only the parts affected by learner feedback, preserve source grounding, and call learning_agent.publish_learning_course again."
-    };
+    });
     const revisionBriefPath = path.join(revisionsDir, `${revisionId}.json`);
     await writeFile(revisionBriefPath, `${JSON.stringify(revisionBrief, null, 2)}\n`, "utf8");
 
@@ -82,6 +97,99 @@ export class LearningRevisionService {
       }
     };
   }
+
+  async requestQualityRevision(input: RequestQualityRevisionInput): Promise<RequestQualityRevisionResult> {
+    assertSafeRunId(input.runId);
+    const comparisonReportPath =
+      input.comparisonReportPath ?? path.join(this.workspaceRoot, "runs", input.runId, "quality", "authoring-quality-comparison.json");
+    const comparison = await readQualityComparisonReport(comparisonReportPath);
+    const revisionItems = comparison.revisionInstructions;
+    if (revisionItems.length === 0) {
+      throw new AgentRuntimeError("authoring quality comparison has no revisionInstructions", "MISSING_ARTIFACT");
+    }
+
+    const feedback = [
+      "请按质量对比报告修订课程。",
+      ...revisionItems.map((item) => `${item.gapId}: ${item.instruction} 验收证据：${item.expectedEvidence}`)
+    ].join("\n");
+    const target: RevisionTargetV2 = {
+      scope: "course",
+      requestedChange: feedback,
+      categories: ["quality_gap"],
+      confidence: "high"
+    };
+    const revisionsDir = path.join(this.workspaceRoot, "runs", input.runId, "learning-revisions");
+    await mkdir(revisionsDir, { recursive: true });
+    const previousFeedbackCount = await countExistingRevisionBriefs(revisionsDir);
+    const revisionId = await nextRevisionId(revisionsDir);
+    const previewResult = await new LearningPreviewService(this.workspaceRoot).getPreview(input.runId);
+    const currentPreview = previewResult.status === "preview_ready" ? previewResult.preview : undefined;
+    const publishManifest = await readPublishManifest(this.workspaceRoot, input.runId);
+    const courseIRPath = await existingFilePath(path.join(this.workspaceRoot, "runs", input.runId, "artifacts", "course-ir.draft.json"));
+    const qualityReportPath = await existingFilePath(
+      path.join(this.workspaceRoot, "runs", input.runId, "quality", "course-quality-report.json")
+    );
+    const revisionBrief = buildRevisionBriefV2({
+      runId: input.runId,
+      revisionId,
+      feedback,
+      focus: "quality-comparison",
+      target,
+      currentPreview,
+      currentCoursePackPath: publishManifest?.coursePackPath,
+      currentLessonPaths: publishManifest?.lessonPaths ?? [],
+      courseIRPath,
+      qualityReportPath,
+      sourceBacked: courseIRPath !== undefined || qualityReportPath !== undefined,
+      revisionInstructions: revisionItems.flatMap((item) => [item.instruction, item.expectedEvidence]),
+      expectedQualityChecks: ["quality comparison", "quality report"],
+      previousFeedbackCount
+    });
+    const revisionBriefPath = path.join(revisionsDir, `${revisionId}.json`);
+    await writeFile(revisionBriefPath, `${JSON.stringify(revisionBrief, null, 2)}\n`, "utf8");
+
+    return {
+      status: "quality_revision_brief_ready",
+      runId: input.runId,
+      revisionId,
+      revisionBriefPath,
+      comparisonReportPath,
+      feedback,
+      target,
+      currentPreview,
+      next: {
+        recommendedTool: "learning_agent.publish_learning_course",
+        codexInstruction:
+          "请读取 quality revision brief，按 revisionInstructions 修订 coursePack 与 lessons；重新发布后再次调用 learning_agent.compare_authoring_quality 验证 remainingGaps。"
+      }
+    };
+  }
+}
+
+type QualityComparisonRevisionInstruction = {
+  gapId: string;
+  instruction: string;
+  expectedEvidence: string;
+};
+
+async function readQualityComparisonReport(filePath: string): Promise<{ revisionInstructions: QualityComparisonRevisionInstruction[] }> {
+  const value = JSON.parse(await readFile(filePath, "utf8")) as unknown;
+  if (!isRecord(value)) {
+    throw new AgentRuntimeError("authoring-quality-comparison.json is invalid", "MISSING_ARTIFACT");
+  }
+  const revisionInstructions = Array.isArray(value.revisionInstructions)
+    ? value.revisionInstructions.filter(isQualityComparisonRevisionInstruction)
+    : [];
+  return { revisionInstructions };
+}
+
+function isQualityComparisonRevisionInstruction(value: unknown): value is QualityComparisonRevisionInstruction {
+  return (
+    isRecord(value) &&
+    typeof value.gapId === "string" &&
+    typeof value.instruction === "string" &&
+    typeof value.expectedEvidence === "string"
+  );
 }
 
 async function nextRevisionId(revisionsDir: string): Promise<string> {
@@ -127,6 +235,18 @@ async function readPublishManifest(
         ? manifest.lessonPaths
         : undefined
     };
+  } catch (error) {
+    if (isFileNotFound(error)) {
+      return undefined;
+    }
+    throw error;
+  }
+}
+
+async function existingFilePath(filePath: string): Promise<string | undefined> {
+  try {
+    await readFile(filePath, "utf8");
+    return filePath;
   } catch (error) {
     if (isFileNotFound(error)) {
       return undefined;

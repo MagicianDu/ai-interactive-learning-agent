@@ -7,10 +7,16 @@ import { learningAgentToolContracts } from "./tool-contracts.js";
 
 const skillsRoot = path.join(process.cwd(), "skills");
 const learnerDefaultTools = [
-  "learning_agent.create_learning_project",
-  "learning_agent.get_authoring_context",
+  "learning_agent.prepare_learning_course",
   "learning_agent.publish_learning_course",
   "learning_agent.get_learning_preview"
+];
+const advancedAuthoringTools = [
+  "learning_agent.create_learning_project",
+  "learning_agent.get_authoring_context",
+  "learning_agent.generate_grounded_course",
+  "learning_agent.compare_authoring_quality",
+  "learning_agent.create_quality_revision"
 ];
 const feedbackTools = [
   "learning_agent.revise_learning_course",
@@ -43,6 +49,9 @@ describe("skill and MCP contracts", () => {
     const defaultWorkflow = section(markdown, "## Default Learner Workflow");
 
     expectContainsInOrder(defaultWorkflow, learnerDefaultTools);
+    expect(defaultWorkflow).not.toContain("learning_agent.create_learning_project");
+    expect(defaultWorkflow).not.toContain("learning_agent.get_authoring_context");
+    expect(defaultWorkflow).not.toContain("learning_agent.compare_authoring_quality");
     expect(defaultWorkflow).not.toContain("learning_agent.plan_run");
     expect(defaultWorkflow).not.toContain("learning_agent.approve_gate");
     expect(defaultWorkflow).not.toContain("source-map");
@@ -50,10 +59,24 @@ describe("skill and MCP contracts", () => {
     expect(defaultWorkflow).not.toContain("curriculum-plan");
     expect(section(markdown, "## Learner-Facing Response Shape")).toContain("qualityReport.status");
     expect(section(markdown, "## Learner-Facing Response Shape")).toContain("#/preview/<run-id>");
+    expectContainsInOrder(section(markdown, "## Advanced Authoring"), advancedAuthoringTools);
     expect(markdown.indexOf("## Default Learner Workflow")).toBeLessThan(markdown.indexOf("## Expert/Operator Mode"));
   });
 
+  test("feedback revision skills make preview revision history the acceptance checkpoint", async () => {
+    const operator = await readSkill("learning-agent-operator");
+    const feedbackRevision = await readSkill("learner-feedback-revision");
+    const responseShape = section(operator, "## Learner-Facing Response Shape");
+
+    expect(responseShape).toContain("revisionHistory");
+    expect(feedbackRevision).toContain("revisionHistory");
+    expect(feedbackRevision).toContain("changedPages");
+    expect(feedbackRevision).toContain("qualityAfter");
+    expect(feedbackRevision).toContain("preview-based acceptance");
+  });
+
   test("source routing and feedback revision skills exist and use current learner-facing tools", async () => {
+    const operator = await readSkill("learning-agent-operator");
     const sourceToCourse = await readSkill("source-to-course");
     const feedbackRevision = await readSkill("learner-feedback-revision");
 
@@ -62,6 +85,8 @@ describe("skill and MCP contracts", () => {
     expect(sourceToCourse).toContain("paper");
     expect(sourceToCourse).toContain("patent");
     expect(sourceToCourse).toContain("blog");
+    expect(sourceToCourse).toContain("contentBlueprint.units[*].pageBlueprints");
+    expect(operator).toContain("contentBlueprint.units[*].pageBlueprints");
     expectContainsInOrder(sourceToCourse, learnerDefaultTools);
 
     expect(feedbackRevision).toContain("name: learner-feedback-revision");
@@ -108,6 +133,19 @@ describe("skill and MCP contracts", () => {
     }
 
     expect(missing).toEqual([]);
+  });
+
+  test("learner-facing authoring skills require Codex Authoring Protocol V2", async () => {
+    const operator = await readSkill("learning-agent-operator");
+    const sourceToCourse = await readSkill("source-to-course");
+
+    for (const markdown of [operator, sourceToCourse]) {
+      expect(markdown).toContain("Codex Authoring Protocol V2");
+      expect(markdown).toContain("sourceSemantics");
+      expect(markdown).toContain("mental-model move");
+      expect(markdown).toContain("source synthesis");
+      expect(markdown).toContain("cognitivePurpose");
+    }
   });
 });
 

@@ -17,6 +17,7 @@ export type LearningProjectRecord = {
   sourceKind: string;
   sourceRefs: string[];
   audience?: string;
+  difficultyLevel?: string;
   language: "zh-CN";
   strategy: string;
   unitPageCount: number;
@@ -92,6 +93,7 @@ export class ProjectRegistry {
       sourceKind: optionalString(brief.sourceKind) ?? "topic",
       sourceRefs: sourcePath ? [sourcePath] : [],
       audience: optionalString(brief.audience),
+      difficultyLevel: optionalString(brief.difficultyLevel),
       language: "zh-CN",
       strategy: optionalString(brief.strategy) ?? "overview_plus_topic",
       unitPageCount: optionalNumber(brief.unitPages) ?? 8,
@@ -182,6 +184,7 @@ function normalizeProject(value: Record<string, unknown>, projectId: string): Le
     sourceKind: optionalString(value.sourceKind) ?? "topic",
     sourceRefs: optionalStringArray(value.sourceRefs) ?? [],
     audience: optionalString(value.audience),
+    difficultyLevel: optionalString(value.difficultyLevel),
     language: "zh-CN",
     strategy: optionalString(value.strategy) ?? "overview_plus_topic",
     unitPageCount: optionalNumber(value.unitPageCount) ?? 8,

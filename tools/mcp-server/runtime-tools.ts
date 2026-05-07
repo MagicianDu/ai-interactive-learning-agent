@@ -5,6 +5,7 @@ import {
   AgentWorkflow,
   ApprovalService,
   ArtifactStore,
+  AuthoringQualityComparisonService,
   AuthoringContextService,
   BetaStatusService,
   CodexManualAdapter,
@@ -18,6 +19,7 @@ import {
   LearnerProjectService,
   ManualSubmissionService,
   MockRuntimeAdapter,
+  PrepareLearningCourseService,
   QuickPreviewService,
   RunPlanService,
   RunStore
@@ -54,6 +56,8 @@ export class LearningAgentRuntimeTools {
     switch (name) {
       case "learning_agent.create_learning_project":
         return this.createLearningProject(input);
+      case "learning_agent.prepare_learning_course":
+        return this.prepareLearningCourse(input);
       case "learning_agent.list_learning_projects":
         return this.listLearningProjects(input);
       case "learning_agent.archive_learning_project":
@@ -64,6 +68,10 @@ export class LearningAgentRuntimeTools {
         return this.generateGroundedCourse(input);
       case "learning_agent.publish_learning_course":
         return this.publishLearningCourse(input);
+      case "learning_agent.compare_authoring_quality":
+        return this.compareAuthoringQuality(input);
+      case "learning_agent.create_quality_revision":
+        return this.createQualityRevision(input);
       case "learning_agent.get_learning_preview":
         return this.getLearningPreview(input);
       case "learning_agent.generate_quick_preview":
@@ -117,10 +125,28 @@ export class LearningAgentRuntimeTools {
       sourcePath: optionalString(options.sourcePath),
       sourceKind: optionalString(options.sourceKind),
       audience: optionalString(options.audience),
+      difficultyLevel: optionalDifficultyLevel(options.difficultyLevel),
       unitPages: optionalNumber(options.unitPages),
       strategy: optionalString(options.strategy),
       selectedChapters: optionalStringArray(options.selectedChapters),
       selectedTopics: optionalStringArray(options.selectedTopics)
+    });
+  }
+
+  private async prepareLearningCourse(input: unknown): Promise<unknown> {
+    const options = expectRecord(input);
+    return new PrepareLearningCourseService(this.workspaceRoot).prepare({
+      request: requiredString(options, "request"),
+      runId: optionalString(options.runId),
+      sourcePath: optionalString(options.sourcePath),
+      sourceKind: optionalString(options.sourceKind),
+      audience: optionalString(options.audience),
+      difficultyLevel: optionalDifficultyLevel(options.difficultyLevel),
+      unitPages: optionalNumber(options.unitPages),
+      strategy: optionalString(options.strategy),
+      selectedChapters: optionalStringArray(options.selectedChapters),
+      selectedTopics: optionalStringArray(options.selectedTopics),
+      maxAnchors: optionalNumber(options.maxAnchors)
     });
   }
 
@@ -166,6 +192,22 @@ export class LearningAgentRuntimeTools {
       coursePack: options.coursePack,
       publishNotes: optionalString(options.publishNotes),
       outputMode: optionalOutputMode(options.outputMode)
+    });
+  }
+
+  private async compareAuthoringQuality(input: unknown): Promise<unknown> {
+    const options = expectRecord(input);
+    return new AuthoringQualityComparisonService(this.workspaceRoot).compare({
+      authoredRunId: requiredString(options, "authoredRunId"),
+      draftRunId: requiredString(options, "draftRunId")
+    });
+  }
+
+  private async createQualityRevision(input: unknown): Promise<unknown> {
+    const options = expectRecord(input);
+    return new LearningRevisionService(this.workspaceRoot).requestQualityRevision({
+      runId: requiredString(options, "runId"),
+      comparisonReportPath: optionalString(options.comparisonReportPath)
     });
   }
 
@@ -453,11 +495,14 @@ export class LearningAgentRuntimeTools {
 function isLearningAgentToolName(name: string): name is LearningAgentToolName {
   return [
     "learning_agent.create_learning_project",
+    "learning_agent.prepare_learning_course",
     "learning_agent.list_learning_projects",
     "learning_agent.archive_learning_project",
     "learning_agent.get_authoring_context",
     "learning_agent.generate_grounded_course",
     "learning_agent.publish_learning_course",
+    "learning_agent.compare_authoring_quality",
+    "learning_agent.create_quality_revision",
     "learning_agent.get_learning_preview",
     "learning_agent.generate_quick_preview",
     "learning_agent.revise_learning_course",
@@ -511,6 +556,19 @@ function requiredArray(input: Record<string, unknown>, key: string): unknown[] {
 
 function optionalString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+function optionalDifficultyLevel(value: unknown): "introductory" | "undergraduate_core" | "upper_undergraduate_or_graduate" | "research" | undefined {
+  const normalized = optionalString(value);
+  if (
+    normalized === "introductory" ||
+    normalized === "undergraduate_core" ||
+    normalized === "upper_undergraduate_or_graduate" ||
+    normalized === "research"
+  ) {
+    return normalized;
+  }
+  return undefined;
 }
 
 function optionalOutputMode(value: unknown): "preview" | "source" | undefined {

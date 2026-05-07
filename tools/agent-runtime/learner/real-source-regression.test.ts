@@ -27,6 +27,20 @@ describe("real source regression suite", () => {
     for (const sample of realSourceRegressionSamples) {
       expect(sample.unitPages).toBeGreaterThanOrEqual(6);
       expect(sample.acceptanceChecks.length).toBeGreaterThanOrEqual(3);
+      expect(sample.qualityFocus).toEqual(
+        expect.arrayContaining(["source_semantics", "source_synthesis", "learner_action", "feedback_mechanism", "transfer"])
+      );
+    }
+  });
+
+  test("documents benchmark expectations for every target source kind", async () => {
+    const benchmark = await readFile(path.join(process.cwd(), "docs/runtime/real-source-quality-benchmark.md"), "utf8");
+
+    for (const sourceKind of ["book", "paper", "patent", "blog", "documentation", "notes", "topic-only"]) {
+      expect(benchmark).toContain(`### ${sourceKind}`);
+    }
+    for (const qualityDimension of ["source semantics", "source synthesis", "academic depth", "learner action", "feedback mechanism", "visual purpose", "transfer"]) {
+      expect(benchmark).toContain(qualityDimension);
     }
   });
 
@@ -50,7 +64,9 @@ describe("real source regression suite", () => {
           selectedChapters: ["第 1 章"],
           unitPages: 8,
           audience: "中文学习者",
-          acceptanceChecks: ["project ready", "chapter strategy", "source path retained"]
+          difficultyLevel: "upper_undergraduate_or_graduate",
+          acceptanceChecks: ["project ready", "chapter strategy", "source path retained"],
+          qualityFocus: ["source_semantics", "source_synthesis", "learner_action", "feedback_mechanism", "transfer"]
         },
         {
           id: "paper-smoke",
@@ -62,7 +78,9 @@ describe("real source regression suite", () => {
           selectedTopics: ["method"],
           unitPages: 8,
           audience: "中文学习者",
-          acceptanceChecks: ["project ready", "topic strategy", "source path retained"]
+          difficultyLevel: "research",
+          acceptanceChecks: ["project ready", "topic strategy", "source path retained"],
+          qualityFocus: ["source_semantics", "source_synthesis", "learner_action", "feedback_mechanism", "transfer"]
         },
         {
           id: "blog-smoke",
@@ -70,10 +88,12 @@ describe("real source regression suite", () => {
           sourceKind: "blog",
           sourcePath: "https://example.com/blog",
           sourceType: "url",
-            strategy: "task_guided",
-            unitPages: 8,
-            audience: "中文学习者",
-            acceptanceChecks: ["project ready", "url retained", "task strategy"]
+          strategy: "task_guided",
+          unitPages: 8,
+          audience: "中文学习者",
+          difficultyLevel: "undergraduate_core",
+          acceptanceChecks: ["project ready", "url retained", "task strategy"],
+          qualityFocus: ["source_semantics", "source_synthesis", "learner_action", "feedback_mechanism", "transfer"]
         }
       ]
     });

@@ -4,6 +4,7 @@ import path from "node:path";
 import { createRunConfigFromArgs } from "../run-config.js";
 import { RunStore } from "../run-store.js";
 import type { CliInitArgs, RunConfig } from "../types.js";
+import { difficultyLabel } from "../learner/learner-project-service.js";
 import { parseRunIntent, type RunIntent } from "./run-intent.js";
 
 export type RunPlanStatus = "draft" | "approved" | "rejected";
@@ -132,6 +133,7 @@ function toInitArgs(intent: RunIntent): CliInitArgs {
     planningMode: intent.planningMode,
     strategy: intent.strategy,
     audience: intent.audience,
+    difficultyLevel: intent.difficultyLevel,
     language: intent.language,
     adapter: intent.adapter
   };
@@ -162,6 +164,7 @@ function buildSummary(intent: RunIntent, runId: string): string[] {
     `strategy=${intent.strategy}`,
     `planningMode=${intent.planningMode}`,
     `unitPages=${intent.unitPages}`,
+    intent.difficultyLevel ? `difficultyLevel=${intent.difficultyLevel}` : "difficultyLevel=unspecified",
     `language=${intent.language}`,
     `adapter=${intent.adapter}`
   ];
@@ -171,6 +174,9 @@ function buildReviewItems(intent: RunIntent): string[] {
   return [
     `确认 sourceKind=${intent.source.kind} 是否符合输入资料。`,
     `确认每个学习单元 ${intent.unitPages} 页是否符合学习节奏。`,
+    intent.difficultyLevel
+      ? `确认 teaching difficulty=${difficultyLabel(intent.difficultyLevel)} 是否符合学习目标。`
+      : "确认教学难度层级：入门衔接、本科核心课程、大学高年级/研究生课程，或研究论文精读/前沿讨论。",
     `确认 strategy=${intent.strategy} 与 planningMode=${intent.planningMode} 是否符合课程组织方式。`,
     "确认 audience 是否足够具体，后续课程会按该学习者画像生成中文内容。"
   ];

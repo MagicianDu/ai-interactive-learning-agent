@@ -5,11 +5,13 @@ import { productCopy } from "./product-copy";
 
 type SourceKind = "book" | "paper" | "patent" | "blog" | "documentation" | "notes";
 type Strategy = "overview_plus_topic" | "chapter_guided" | "topic_guided" | "task_guided" | "hybrid";
+type DifficultyLevel = "introductory" | "undergraduate_core" | "upper_undergraduate_or_graduate" | "research";
 
 type GuidedStartState = {
   sourcePath: string;
   sourceKind: SourceKind;
   audience: string;
+  difficultyLevel: DifficultyLevel;
   unitPages: number;
   strategy: Strategy;
 };
@@ -36,6 +38,13 @@ const strategyLabels: Record<Strategy, string> = {
   hybrid: "章节映射 + topic 学习路径"
 };
 
+const difficultyLabels: Record<DifficultyLevel, string> = {
+  introductory: "入门衔接",
+  undergraduate_core: "本科核心课程",
+  upper_undergraduate_or_graduate: "大学高年级/研究生课程",
+  research: "研究论文精读/前沿讨论"
+};
+
 const strategyPromptLines: Record<Strategy, string> = {
   overview_plus_topic: "课程组织方式：strategy=overview_plus_topic，先给一个总览课，再按核心 topic 拆课，保留章节映射。",
   chapter_guided: "课程组织方式：strategy=chapter_guided，按章节推进，每章或每个关键小节生成学习单元，保留章节映射。",
@@ -49,6 +58,7 @@ export function GuidedStartPanel({ preset }: { preset?: GuidedStartPreset }) {
     sourcePath: "/path/to/source.pdf",
     sourceKind: "book",
     audience: "有基础编程经验但还没有建立系统心智模型的中文学习者",
+    difficultyLevel: "upper_undergraduate_or_graduate",
     unitPages: 8,
     strategy: "overview_plus_topic"
   });
@@ -123,6 +133,21 @@ export function GuidedStartPanel({ preset }: { preset?: GuidedStartPreset }) {
         </label>
 
         <label className="grid gap-1 text-sm font-semibold text-slate-700">
+          教学难度
+          <select
+            className="h-10 rounded-md border border-slate-200 px-3 font-normal outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+            onChange={(event) => setState((current) => ({ ...current, difficultyLevel: event.target.value as DifficultyLevel }))}
+            value={state.difficultyLevel}
+          >
+            {Object.entries(difficultyLabels).map(([id, label]) => (
+              <option key={id} value={id}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="grid gap-1 text-sm font-semibold text-slate-700">
           课程策略
           <select
             className="h-10 rounded-md border border-slate-200 px-3 font-normal outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
@@ -188,6 +213,7 @@ function buildPrompt(state: GuidedStartState): string {
   return [
     `请用这份资料生成一套中文学习材料：${state.sourcePath}`,
     `资料类型是 ${sourceKindLabels[state.sourceKind]}。${strategyPromptLines[state.strategy]}`,
+    `教学难度层级：${difficultyLabels[state.difficultyLevel]}，教学难度=${state.difficultyLevel}。`,
     `每个单元 ${state.unitPages} 页，面向 ${state.audience}。`,
     "不要让我审批 source-map、concept-map、curriculum-plan 这些内部 artifacts。",
     "明确需求后，请直接生成 course bundle，并调用 learning_agent.publish_learning_course 发布网页。"

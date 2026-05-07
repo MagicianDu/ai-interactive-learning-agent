@@ -117,7 +117,7 @@ Only when the user explicitly asks for "专家审查模式 / 查看内部 artifa
 printf '%s\n' \
   '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"manual-smoke","version":"0.0.0"}}}' \
   '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
-  '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"learning_agent.create_learning_project","arguments":{"request":"请用 /absolute/path/to/source.md 生成中文学习网页，面向中文学习者，每个单元 8 页。","runId":"mcp-jsonrpc-smoke","sourcePath":"/absolute/path/to/source.md","sourceKind":"notes"}}}' \
+  '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"learning_agent.create_learning_project","arguments":{"request":"请用 /absolute/path/to/source.md 生成中文学习网页，面向中文学习者，教学难度为本科核心课程，每个单元 8 页。","runId":"mcp-jsonrpc-smoke","sourcePath":"/absolute/path/to/source.md","sourceKind":"notes","difficultyLevel":"undergraduate_core"}}}' \
   '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"learning_agent.get_authoring_context","arguments":{"runId":"mcp-jsonrpc-smoke"}}}' \
   | npm run mcp
 ```

@@ -24,10 +24,11 @@ describe("corpus run config", () => {
       }
     ]);
     expect(config.userLearningProfile).toMatchObject({
-      level: "basic",
+      level: "advanced",
       readingHabit: "visual_first",
       goal: "understand",
-      preferredPageCountPerUnit: 8
+      preferredPageCountPerUnit: 8,
+      notes: "teachingDifficulty=upper_undergraduate_or_graduate"
     });
     expect(config.curriculumPlanningMode).toBe("hybrid");
     expect(config.coursePack).toMatchObject({

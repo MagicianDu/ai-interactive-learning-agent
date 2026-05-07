@@ -7,8 +7,68 @@ import { describe, expect, test } from "vitest";
 import { LearnerProjectService } from "./learner-project-service.js";
 import { LearningRevisionService } from "./learning-revision-service.js";
 import { GroundedCourseService } from "./grounded-course-service.js";
+import { PrepareLearningCourseService } from "./prepare-learning-course-service.js";
 
 describe("GroundedCourseService", () => {
+  test("adapts generated lesson content to the requested teaching difficulty", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "grounded-course-difficulty-"));
+    const sourcePath = path.join(root, "systems-notes.md");
+    await writeFile(
+      sourcePath,
+      [
+        "# 控制型智能体",
+        "控制型智能体会把目标、状态、策略和反馈环连接起来。",
+        "## 状态建模",
+        "状态建模需要区分可观察信号、隐藏变量和决策约束。",
+        "## 策略评估",
+        "策略评估要比较收益、风险、可解释性和失效边界。"
+      ].join("\n"),
+      "utf8"
+    );
+
+    const levels = [
+      {
+        runId: "difficulty-intro",
+        text: "教学难度为入门衔接",
+        expected: ["入门衔接", "先用具体例子", "少术语"]
+      },
+      {
+        runId: "difficulty-undergrad",
+        text: "教学难度为本科核心课程",
+        expected: ["本科核心课程", "核心概念", "标准判断"]
+      },
+      {
+        runId: "difficulty-graduate",
+        text: "教学难度为大学高年级/研究生课程",
+        expected: ["大学高年级/研究生课程", "先修概念", "课后作业"]
+      },
+      {
+        runId: "difficulty-research",
+        text: "教学难度为研究论文精读/前沿讨论",
+        expected: ["研究论文精读/前沿讨论", "研究问题", "证据链", "局限边界"]
+      }
+    ] as const;
+
+    for (const level of levels) {
+      await new LearnerProjectService(root).createProject({
+        request: `请用 "${sourcePath}" 生成中文学习网页，面向有工程背景的中文学习者，${level.text}，每个单元 8 页。`,
+        runId: level.runId,
+        sourcePath,
+        sourceKind: "notes",
+        audience: "有工程背景的中文学习者",
+        unitPages: 8,
+        strategy: "overview_plus_topic"
+      });
+
+      const result = await new GroundedCourseService(root).generate({ runId: level.runId });
+      expect(result.status).toBe("preview_ready");
+      const lessonText = await readFile(path.join(root, "runs", level.runId, "preview", "lessons", `${level.runId}-overview.json`), "utf8");
+      for (const phrase of level.expected) {
+        expect(lessonText).toContain(phrase);
+      }
+    }
+  });
+
   test("generates a source-grounded Chinese course bundle from a learner project", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "grounded-course-"));
     const sourcePath = path.join(root, "agent-notes.md");
@@ -25,7 +85,7 @@ describe("GroundedCourseService", () => {
       "utf8"
     );
     await new LearnerProjectService(root).createProject({
-      request: `请用 "${sourcePath}" 这本书生成中文课程：先给总览课，再按核心 topic 拆课。每个单元 8 页，面向有编程基础但缺少智能体系统心智模型的中文学习者。`,
+      request: `请用 "${sourcePath}" 这本书生成中文课程：先给总览课，再按核心 topic 拆课。教学难度为大学高年级/研究生课程，每个单元 8 页，面向有编程基础但缺少智能体系统心智模型的中文学习者。`,
       runId: "grounded-agent",
       sourcePath,
       sourceKind: "book",
@@ -103,12 +163,54 @@ describe("GroundedCourseService", () => {
     expect(generatedLessonTexts.join("\n")).toContain("多智能体审核");
   });
 
+  test("generates a deterministic draft after prepare_learning_course without being blocked by authored blueprint", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "grounded-course-after-prepare-"));
+    const sourcePath = path.join(root, "agent-notes.md");
+    await writeFile(
+      sourcePath,
+      [
+        "# Tool Feedback",
+        "Tool feedback lets an agent observe whether a tool call worked before reflection and evaluation.",
+        "Experiments show reliability improves when feedback is preserved.",
+        "Limitations appear when feedback is missing."
+      ].join("\n"),
+      "utf8"
+    );
+
+    await new PrepareLearningCourseService(root).prepare({
+      request: `请用 "${sourcePath}" 生成中文学习课程，面向中文工程师，教学难度为大学高年级/研究生课程，每个单元 8 页。`,
+      runId: "grounded-after-prepare",
+      sourcePath,
+      sourceKind: "notes",
+      audience: "中文工程师",
+      difficultyLevel: "upper_undergraduate_or_graduate",
+      unitPages: 8
+    });
+
+    const result = await new GroundedCourseService(root).generate({ runId: "grounded-after-prepare" });
+
+    expect(result).toMatchObject({
+      status: "preview_ready",
+      runId: "grounded-after-prepare",
+      publishValidation: {
+        status: "passed",
+        errorCount: 0
+      },
+      qualityReport: {
+        status: "passed"
+      }
+    });
+    await expect(readFile(path.join(root, "runs", "grounded-after-prepare", "preview", "manifest.json"), "utf8")).resolves.toContain(
+      "preview_ready"
+    );
+  });
+
   test("applies the latest learner feedback when regenerating a grounded course", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "grounded-course-feedback-"));
     const sourcePath = path.join(root, "rag-notes.md");
     await writeFile(sourcePath, "# Agentic RAG\nAgentic RAG 会先判断任务，再选择检索、工具或生成路径。", "utf8");
     await new LearnerProjectService(root).createProject({
-      request: `请用 "${sourcePath}" 这篇博客生成中文学习网页，面向中文学习者，每个单元 8 页。`,
+      request: `请用 "${sourcePath}" 这篇博客生成中文学习网页，面向中文学习者，教学难度为入门衔接，每个单元 8 页。`,
       runId: "grounded-rag",
       sourcePath,
       sourceKind: "blog",

@@ -9,6 +9,7 @@ import { learningProgressStorageKey } from "./learning-progress";
 
 describe("CourseWorkspace", () => {
   beforeEach(() => {
+    window.history.replaceState(null, "", "#/");
     Object.defineProperty(window, "localStorage", {
       configurable: true,
       value: new MemoryStorage()
@@ -72,7 +73,25 @@ describe("CourseWorkspace", () => {
           coursePackId: "public-smoke",
           courseTitle: "公开示例：课程包",
           coursePackPath: "course-pack.json",
-          lessonPaths: ["lessons/public-smoke-overview.json"]
+          lessonPaths: ["lessons/public-smoke-overview.json"],
+          publishNotes: "revision-002: 补充来源依据和学习反馈。",
+          qualityReport: {
+            status: "passed",
+            score: 96,
+            summary: "课程质量检查通过。"
+          },
+          revisionHistory: [
+            {
+              runId: "public-smoke",
+              revisionId: "revision-002",
+              scope: "page",
+              summary: "第 2 页补充来源依据。",
+              changedLessonIds: ["public-smoke-overview"],
+              changedPages: [{ lessonId: "public-smoke-overview", pageId: "page-02", pageNumber: 2 }],
+              qualityStatus: "passed",
+              createdAt: "2026-05-06T00:00:00.000Z"
+            }
+          ]
         });
       }
       if (url === "/__learning-preview/public-smoke/course-pack.json") {
@@ -131,6 +150,11 @@ describe("CourseWorkspace", () => {
 
     expect((await screen.findAllByText("公开示例：课程包")).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/第 2 \//).length).toBeGreaterThan(0);
+    expect(screen.getByText("质量：passed · 96")).toBeInTheDocument();
+    expect(screen.getByText("发布：revision-002: 补充来源依据和学习反馈。")).toBeInTheDocument();
+    expect(screen.getByText("修订历史")).toBeInTheDocument();
+    expect(screen.getByText("revision-002")).toBeInTheDocument();
+    expect(screen.getByText("第 2 页补充来源依据。")).toBeInTheDocument();
     expect(window.location.hash).toBe("#/preview/public-smoke/unit/unit-overview/page/2");
   });
 
@@ -153,6 +177,19 @@ describe("CourseWorkspace", () => {
 
     expect(screen.getByText("选择要继续学习的课程")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /打开 /u }).length).toBeGreaterThan(0);
+  });
+
+  test("default sidebar shows the learner core views and hides future modes", () => {
+    render(<CourseWorkspace coursePacks={coursePackRegistry} lessons={lessonRegistry} />);
+
+    expect(screen.getByRole("button", { name: "学习" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "来源依据" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "项目库" })).toBeInTheDocument();
+
+    expect(screen.queryByRole("button", { name: "知识地图" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "教师" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "实验" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "导师" })).not.toBeInTheDocument();
   });
 
   test("opens source grounding as a course-aware learner page", async () => {
@@ -189,26 +226,36 @@ describe("CourseWorkspace", () => {
     expect(screen.getByText(/已记录：第 2 页，太抽象/u)).toBeInTheDocument();
   });
 
-  test("sidebar product modes show actionable learner surfaces", async () => {
-    const user = userEvent.setup();
+  test("shows learner-readable revision history in the sidebar", () => {
+    window.localStorage.setItem(
+      learningProgressStorageKey,
+      JSON.stringify({
+        completedPages: [],
+        quizAttempts: [],
+        feedbackBriefs: [],
+        revisionHistory: [
+          {
+            runId: "demo-agentic-design-grounded",
+            revisionId: "revision-001",
+            scope: "page",
+            summary: "第 3 页增加了工程例子。",
+            changedLessonIds: ["demo-agentic-design-grounded-overview"],
+            changedPages: [{ lessonId: "demo-agentic-design-grounded-overview", pageId: "p3", pageNumber: 3 }],
+            qualityStatus: "passed",
+            createdAt: "2026-05-06T00:00:00.000Z"
+          }
+        ]
+      })
+    );
+
     render(<CourseWorkspace coursePacks={coursePackRegistry} lessons={lessonRegistry} />);
 
-    await user.click(screen.getByRole("button", { name: "练习" }));
-    expect(screen.getByRole("heading", { name: "练习模式" })).toBeInTheDocument();
-    expect(screen.getByText("掌握度路径")).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "教师" }));
-    expect(screen.getByRole("heading", { name: "教师模式" })).toBeInTheDocument();
-    expect(screen.getByText("可直接使用的课堂动作")).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "实验" }));
-    expect(screen.getByRole("heading", { name: "实验模式" })).toBeInTheDocument();
-    expect(screen.getByText("实验记录")).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "导师" }));
-    expect(screen.getByRole("heading", { name: "导师模式" })).toBeInTheDocument();
-    expect(screen.getByText("当前页辅导策略")).toBeInTheDocument();
+    expect(screen.getByText("修订历史")).toBeInTheDocument();
+    expect(screen.getByText("revision-001")).toBeInTheDocument();
+    expect(screen.getByText("第 3 页增加了工程例子。")).toBeInTheDocument();
+    expect(screen.getByText("质量：passed")).toBeInTheDocument();
   });
+
 });
 
 function jsonResponse(value: unknown): Response {

@@ -127,4 +127,306 @@ describe("course-quality-report", () => {
       requiredFix: expect.stringContaining("source")
     });
   });
+
+  test("flags generic pages and weak source synthesis even when source anchors are present", () => {
+    const lesson = publishableLessonFixture({ id: "quality-generic-overview", targetPageCount: 8 });
+    lesson.learningObjectives = ["理解资料大意"];
+    lesson.pages[0] = {
+      ...lesson.pages[0],
+      sourceAnchorIds: ["source-001:section-1"],
+      title: "核心概念总览",
+      learningGoal: "了解整体内容",
+      narrative: "本页介绍核心概念，帮助学习者理解资料大意。"
+    };
+
+    const report = buildCourseQualityReport({
+      runId: "quality-generic",
+      coursePackId: "quality-generic",
+      lessons: [lesson],
+      authoringContext: {
+        sourceSemantics: {
+          keyTerms: [{ term: "tool feedback" }, { term: "reflection loop" }, { term: "evaluation boundary" }],
+          evidenceHints: [{ hint: "source compares tool feedback with evaluator feedback" }],
+          limitationHints: [{ hint: "reflection only works when observations are reliable" }]
+        }
+      }
+    });
+
+    expect(report.status).toBe("warning");
+    expect(report.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          issueId: "quality.page.generic-source-page",
+          category: "generic_page",
+          lessonId: "quality-generic-overview",
+          pageId: "p1"
+        }),
+        expect.objectContaining({
+          issueId: "quality.page.source-synthesis-weak",
+          category: "source_evidence",
+          lessonId: "quality-generic-overview",
+          pageId: "p1"
+        })
+      ])
+    );
+  });
+
+  test("flags shallow graduate/research lessons and decorative interactions", () => {
+    const lesson = publishableLessonFixture({ id: "quality-shallow-graduate", targetPageCount: 8 });
+    lesson.audience = "研究生课程学习者";
+    lesson.prerequisites = ["能阅读中文材料"];
+    lesson.learningObjectives = ["建立中文心智模型"];
+    lesson.pages[3] = {
+      ...lesson.pages[3],
+      interactionSpec: {
+        kind: "choice",
+        learnerAction: "点击一个选项",
+        expectedObservation: "看到提示",
+        cognitivePurpose: "帮助理解内容"
+      }
+    };
+
+    const report = buildCourseQualityReport({
+      runId: "quality-shallow",
+      coursePackId: "quality-shallow",
+      lessons: [lesson],
+      authoringContext: {
+        difficultyLevel: "upper_undergraduate_or_graduate"
+      }
+    });
+
+    expect(report.status).toBe("warning");
+    expect(report.checks.academicDepth).toBe("warning");
+    expect(report.depthRubric).toMatchObject({
+      status: "warning",
+      difficultyLevel: "upper_undergraduate_or_graduate",
+      missingMoves: expect.arrayContaining([
+        expect.objectContaining({ id: "formal_abstraction" }),
+        expect.objectContaining({ id: "evidence_chain" }),
+        expect.objectContaining({ id: "critique_discussion" })
+      ])
+    });
+    expect(report.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          issueId: "quality.lesson.academic-depth-shallow",
+          category: "learner_level_mismatch",
+          lessonId: "quality-shallow-graduate",
+          requiredFix: expect.stringContaining("formal abstraction")
+        }),
+        expect.objectContaining({
+          issueId: "quality.interaction.cognitive-purpose-vague",
+          category: "decorative_interaction",
+          lessonId: "quality-shallow-graduate",
+          pageId: "p4"
+        })
+      ])
+    );
+  });
+
+  test("passes structured academic depth rubric for a rich graduate lesson", () => {
+    const lesson = publishableLessonFixture({ id: "quality-rich-graduate", targetPageCount: 8 });
+    lesson.prerequisites = ["先修：能阅读伪代码", "先修：理解基本复杂度"];
+    lesson.pages = lesson.pages.map((page, index) => ({
+      ...page,
+      sourceAnchorIds: ["source-001:section-1"],
+      narrative:
+        index === 0
+          ? "先修概念连接到正式术语：哈希函数、负载因子和冲突处理。"
+          : index === 1
+            ? "证据链来自来源锚点：实验现象显示候选范围缩小。"
+            : index === 2
+              ? "假设和适用条件：均匀散列成立时平均访问更稳定；局限是冲突集中。"
+              : index === 3
+                ? "课堂讨论：批判 O(1) 说法，给出反例并比较权衡。"
+                : index === 4
+                  ? "课后作业：把同一机制迁移到缓存 key 设计并说明迁移边界。"
+                  : "研究问题、方法边界和机制解释都要回到来源证据。"
+    }));
+    lesson.transferTasks = [
+      {
+        id: "t1",
+        prompt: "课后作业：迁移到缓存 key 设计，并写出假设、局限和反例。",
+        targetMentalModel: "用来源证据和边界条件解释迁移。"
+      }
+    ];
+
+    const report = buildCourseQualityReport({
+      runId: "quality-rich-depth",
+      coursePackId: "quality-rich-depth",
+      lessons: [lesson],
+      authoringContext: {
+        difficultyLevel: "upper_undergraduate_or_graduate",
+        sourceSemantics: {
+          keyTerms: [{ term: "哈希函数" }, { term: "负载因子" }, { term: "冲突处理" }]
+        }
+      }
+    });
+
+    expect(report.checks.academicDepth).toBe("passed");
+    expect(report.depthRubric).toMatchObject({
+      status: "passed",
+      requiredMoveCount: 6,
+      satisfiedMoveCount: 6,
+      missingMoves: []
+    });
+    expect(report.issues.map((issue) => issue.issueId)).not.toContain("quality.lesson.academic-depth-shallow");
+  });
+
+  test("categorizes missing interaction explanations as missing feedback", () => {
+    const lesson = publishableLessonFixture({ id: "quality-interaction-feedback", targetPageCount: 8 });
+    lesson.pages[3] = {
+      ...lesson.pages[3],
+      interactionSpec: {
+        kind: "choice",
+        learnerAction: "选择一个路径",
+        expectedObservation: "看到访问范围变化",
+        cognitivePurpose: "理解因果关系",
+        options: [
+          {
+            id: "a",
+            label: "选择 A",
+            resultTitle: "索引路径",
+            outcomeId: "indexed",
+            resultTone: "success",
+            explanation: ""
+          }
+        ]
+      }
+    };
+
+    const report = buildCourseQualityReport({
+      runId: "quality-interaction-feedback",
+      coursePackId: "quality-interaction-feedback",
+      lessons: [lesson]
+    });
+
+    expect(report.status).toBe("failed");
+    expect(report.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          issueId: "quality.interaction.feedback-missing",
+          category: "missing_feedback",
+          lessonId: "quality-interaction-feedback",
+          pageId: "p4"
+        })
+      ])
+    );
+    expect(report.issueSummary.byCategory).toMatchObject({ missing_feedback: 1 });
+  });
+
+  test("flags shallow patent and blog lessons that miss source-kind depth moves", () => {
+    const patentLesson = publishableLessonFixture({ id: "quality-shallow-patent", targetPageCount: 8, title: "缓存系统专利解读" });
+    const blogLesson = publishableLessonFixture({ id: "quality-shallow-blog", targetPageCount: 8, title: "Agent 工作流实践" });
+
+    const patentReport = buildCourseQualityReport({
+      runId: "quality-patent-depth",
+      coursePackId: "quality-patent-depth",
+      lessons: [patentLesson],
+      authoringContext: {
+        sourceKind: "patent",
+        difficultyLevel: "upper_undergraduate_or_graduate"
+      }
+    });
+    const blogReport = buildCourseQualityReport({
+      runId: "quality-blog-depth",
+      coursePackId: "quality-blog-depth",
+      lessons: [blogLesson],
+      authoringContext: {
+        sourceKind: "blog",
+        difficultyLevel: "upper_undergraduate_or_graduate"
+      }
+    });
+
+    expect(patentReport.status).toBe("warning");
+    expect(patentReport.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          issueId: "quality.lesson.patent-depth-shallow",
+          category: "learner_level_mismatch",
+          lessonId: "quality-shallow-patent"
+        })
+      ])
+    );
+    expect(blogReport.status).toBe("warning");
+    expect(blogReport.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          issueId: "quality.lesson.blog-practice-depth-shallow",
+          category: "learner_level_mismatch",
+          lessonId: "quality-shallow-blog"
+        })
+      ])
+    );
+  });
+
+  test("flags overloaded page labels and repetitive long narratives", () => {
+    const lesson = publishableLessonFixture({ id: "quality-overloaded-pages", targetPageCount: 8 });
+    const longTitle = "Talker-Reasoner 架构、研究问题、系统机制、实验证据、局限边界、迁移应用、方法结构、证据边界：研究问题";
+    const repeatedNarrative =
+      "研究问题要求区分交互职责和内部推理职责。机制模型连接 Talker、Reasoner、证据链、局限边界和迁移条件。课后作业要求写出反例和失败模式。";
+    lesson.pages = lesson.pages.map((page, index) => ({
+      ...page,
+      ...(index < 4
+        ? {
+            title: longTitle,
+            learningGoal:
+              "用研究论文精读方式完成一个过载的 mental-model move：同时解释研究问题、方法假设、机制模型、证据链、局限边界、反例、适用条件、迁移应用和课堂讨论路径。",
+            narrative: repeatedNarrative
+          }
+        : {})
+    }));
+
+    const report = buildCourseQualityReport({
+      runId: "quality-overloaded",
+      coursePackId: "quality-overloaded",
+      lessons: [lesson]
+    });
+
+    expect(report.status).toBe("warning");
+    expect(report.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          issueId: "quality.page.title-too-long",
+          category: "dense_page",
+          pageId: "p1"
+        }),
+        expect.objectContaining({
+          issueId: "quality.page.learning-goal-too-long",
+          category: "dense_page",
+          pageId: "p1"
+        }),
+        expect.objectContaining({
+          issueId: "quality.lesson.repetitive-pages",
+          category: "dense_page",
+          lessonId: "quality-overloaded-pages"
+        })
+      ])
+    );
+  });
+
+  test("flags shallow paper lessons that lack research-reading moves", () => {
+    const lesson = publishableLessonFixture({ id: "quality-paper-shallow", title: "论文精读：总览课", targetPageCount: 8 });
+
+    const report = buildCourseQualityReport({
+      runId: "quality-paper",
+      coursePackId: "quality-paper",
+      lessons: [lesson],
+      authoringContext: {
+        difficultyLevel: "research",
+        sourceKind: "paper"
+      }
+    });
+
+    expect(report.status).toBe("warning");
+    expect(report.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          issueId: "quality.lesson.paper-research-depth-shallow",
+          category: "learner_level_mismatch",
+          lessonId: "quality-paper-shallow"
+        })
+      ])
+    );
+  });
 });

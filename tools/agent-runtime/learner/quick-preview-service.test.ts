@@ -13,7 +13,7 @@ describe("QuickPreviewService", () => {
     const sourcePath = path.join(root, "notes.md");
     await writeFile(sourcePath, "# 哈希表\n哈希表通过 key 到 bucket 的映射减少搜索空间。", "utf8");
     await new LearnerProjectService(root).createProject({
-      request: `请用 ${sourcePath} 生成中文学习材料，面向有编程基础的学习者，每个单元 8 页。`,
+      request: `请用 ${sourcePath} 生成中文学习材料，面向有编程基础的学习者，教学难度为本科核心课程，每个单元 8 页。`,
       runId: "quick-hash"
     });
 

@@ -1,6 +1,6 @@
 # Codex MCP Trial Guide
 
-这份文档是种子用户从 Codex 试用 `learningAgent` MCP 服务的默认路径。默认体验面向学习者：先澄清学习需求，然后快速发布中文网页课程；不要让学习者审批 `source-map`、`concept-map`、`curriculum-plan` 这些内部 artifacts。
+这份文档是种子用户从 Codex 试用 `learningAgent` MCP 服务的默认路径。默认体验面向学习者：先澄清学习需求，包括教学难度层级，然后快速发布中文网页课程；不要让学习者审批 `source-map`、`concept-map`、`curriculum-plan` 这些内部 artifacts。
 
 ## 1. 安装本地 MCP 和 Skills
 
@@ -42,6 +42,7 @@ npm run codex:mcp:check
 请使用 learningAgent MCP 服务帮我生成中文学习网页。
 资料是：/absolute/path/to/source.pdf
 我希望先有总览课，再按核心 topic 拆课。每个单元 8 页。
+教学难度可以先问我；可选层级包括入门衔接、本科核心课程、大学高年级/研究生课程、研究论文精读/前沿讨论。
 请先问我最多 3 个你必须知道的问题。明确后，不要让我审批 source-map、concept-map、curriculum-plan 这些内部 artifacts。
 你可以直接调用 learning_agent.create_learning_project，然后调用 learning_agent.get_authoring_context 获取来源锚点、推荐单元和发布约束。请由 Codex 创作 coursePack 与 lessons，再调用 learning_agent.publish_learning_course 发布课程网页。
 发布后告诉我运行 npm run dev，并说明我应该打开哪个页面查看。
@@ -99,4 +100,5 @@ Codex 应调用 `learning_agent.revise_learning_course` 记录反馈，再调用
 - 默认高质量路径由 Codex 创作 source-grounded course bundle；MCP 负责准备 authoring context、校验、发布和导出。
 - `generate_grounded_course` 是 deterministic draft，不代表最终内容质量。
 - `generate_quick_preview` 是 deterministic smoke，用于快速看产品形态，不代表最终内容质量。
+- 如果同时保留 deterministic draft run 和 Codex-authored run，可调用 `learning_agent.compare_authoring_quality` 生成 authored-vs-draft 对照报告，说明内容质量提升和剩余 gap。
 - Advanced/operator 工具仍保留，用于调试、审计来源映射和专家审核。

@@ -152,4 +152,74 @@ describe("planCourseUnits", () => {
       expectedInteractions: expect.arrayContaining(["debugging", "comparison"])
     });
   });
+
+  it("expands chapter-guided long books into one unit per requested chapter with explicit page budget", () => {
+    const plan = planCourseUnits({
+      runId: "long-book",
+      topic: "控制方法论",
+      sourceKind: "book",
+      strategy: "chapter_guided",
+      unitPageCount: 10,
+      selectedTopics: [],
+      selectedChapters: ["第 1 章", "第 2 章", "第 3 章", "第 4 章", "第 5 章"],
+      concepts: ["全局地图", "控制循环", "反馈机制", "系统边界"],
+      sourceAnchorIds: Array.from({ length: 25 }, (_, index) => `book:c${Math.floor(index / 5) + 1}:p${index + 1}`),
+      sourceNodeIds: ["book:root", "book:chapter-1", "book:chapter-2", "book:chapter-3", "book:chapter-4", "book:chapter-5"]
+    });
+
+    expect(plan.units).toHaveLength(6);
+    expect(plan.estimatedTotalPages).toBe(60);
+    expect(plan.units.slice(1).map((unit) => unit.title)).toEqual([
+      "控制方法论：第 1 章",
+      "控制方法论：第 2 章",
+      "控制方法论：第 3 章",
+      "控制方法论：第 4 章",
+      "控制方法论：第 5 章"
+    ]);
+    expect(plan.sourceCoveragePlan).toMatchObject({
+      coverageMode: "selected_chapters",
+      requestedChapterCount: 5,
+      focusedUnitCount: 5,
+      totalUnitCount: 6,
+      totalPageBudget: 60
+    });
+    expect(plan.planningNotes).toEqual(expect.arrayContaining([expect.stringContaining("总页数约 60")]));
+    for (const unit of plan.units.slice(1)) {
+      expect(unit.kind).toBe("chapter");
+      expect(unit.targetPageCount).toBe(10);
+      expect(unit.expectedSourceCoverage.preserveChapterRefs).toBe(true);
+    }
+  });
+
+  it("keeps at least two focused units when only one chapter or topic is selected", () => {
+    const chapterPlan = planCourseUnits({
+      runId: "single-chapter",
+      topic: "单章课程",
+      sourceKind: "book",
+      strategy: "chapter_guided",
+      unitPageCount: 8,
+      selectedTopics: [],
+      selectedChapters: ["第 1 章"],
+      concepts: ["全局地图", "核心机制", "迁移应用"],
+      sourceAnchorIds: ["book:c1:p1", "book:c1:p2"],
+      sourceNodeIds: ["book:root", "book:chapter-1"]
+    });
+    const topicPlan = planCourseUnits({
+      runId: "single-topic",
+      topic: "单 topic 课程",
+      sourceKind: "paper",
+      strategy: "topic_guided",
+      unitPageCount: 8,
+      selectedTopics: ["method"],
+      selectedChapters: [],
+      concepts: ["方法结构", "证据边界"],
+      sourceAnchorIds: ["paper:p1", "paper:p2"],
+      sourceNodeIds: ["paper:root"]
+    });
+
+    expect(chapterPlan.units).toHaveLength(3);
+    expect(chapterPlan.units.slice(1).map((unit) => unit.title)).toEqual(["单章课程：第 1 章", "单章课程：核心机制"]);
+    expect(topicPlan.units).toHaveLength(3);
+    expect(topicPlan.units.slice(1).map((unit) => unit.title)).toEqual(["单 topic 课程：method", "单 topic 课程：方法结构"]);
+  });
 });

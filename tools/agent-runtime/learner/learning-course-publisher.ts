@@ -8,7 +8,8 @@ import {
   buildCourseQualityReport,
   toCompactCourseQualityReport,
   writeCourseQualityReport,
-  type CompactCourseQualityReport
+  type CompactCourseQualityReport,
+  type CourseQualityAuthoringContext
 } from "../quality/course-quality-report.js";
 import { validateLessonQuality } from "../quality/lesson-quality-validator.js";
 import { analyzeSourceEvidence } from "../quality/source-evidence-analyzer.js";
@@ -18,6 +19,8 @@ import { isNonEmptyString, isRecord, isStringArray } from "../quality/validation
 import { createRunConfigFromArgs } from "../run-config.js";
 import { RunStore } from "../run-store.js";
 import type { RunConfig } from "../types.js";
+import { extractContentBlueprint } from "./content-blueprint-compliance.js";
+import type { ContentBlueprint } from "./content-quality-blueprint.js";
 import { buildCourseIR, type CourseIR } from "./course-ir.js";
 import { validatePublishBundle, type PublishValidationIssue, type PublishValidationResult } from "./publish-validation.js";
 
@@ -69,12 +72,33 @@ type CompactPublishValidation = {
   warningCount: number;
 };
 
+export type PublishRevisionHistoryInput = {
+  revisionId: string;
+  scope: "course" | "unit" | "page" | "interaction" | "assessment" | "source" | "style";
+  summary: string;
+  changedLessonIds: string[];
+  changedPages: Array<{
+    lessonId: string;
+    pageId: string;
+    pageNumber: number;
+  }>;
+  createdAt?: string;
+};
+
+export type PublishedRevisionHistoryItem = Omit<PublishRevisionHistoryInput, "createdAt"> & {
+  runId: string;
+  qualityStatus: CompactCourseQualityReport["status"];
+  createdAt: string;
+};
+
 export type PublishLearningCourseInput = {
   runId: string;
   lessons: unknown[];
   coursePack: unknown;
   publishNotes?: string;
   outputMode?: "preview" | "source";
+  ignoreContentBlueprint?: boolean;
+  revisionHistoryItem?: PublishRevisionHistoryInput;
 };
 
 type LearnerProjectFile = {
@@ -88,6 +112,7 @@ type LearnerProjectFile = {
     selectedChapters?: string[];
     selectedTopics?: string[];
     language?: string;
+    difficultyLevel?: string;
   };
 };
 
@@ -102,6 +127,7 @@ export type PublishLearningCourseResult =
       previewManifestPath: string;
       preview: LearningPreviewInfo;
       qualityReport: CompactCourseQualityReport;
+      revisionHistory: PublishedRevisionHistoryItem[];
       publishValidation: CompactPublishValidation;
       quality: {
         checkedLessons: number;
@@ -149,12 +175,14 @@ export class LearningCoursePublisher {
     const coursePack = normalizeCoursePack(input.coursePack, input.runId, new Set(lessons.map((lesson) => lesson.id)));
     const sourceGroundingConfig = await this.resolveSourceGroundingConfig(input.runId);
     const sourceEvidence = sourceGroundingConfig ? analyzeSourceEvidence(lessons, sourceGroundingConfig) : undefined;
+    const authoringContext = await this.resolveQualityAuthoringContext(input.runId);
     const courseQualityReport = buildCourseQualityReport({
       runId: input.runId,
       coursePackId: coursePack.id,
       lessons,
       sourceGroundingConfig,
-      sourceEvidence
+      sourceEvidence,
+      authoringContext
     });
     const courseQualityReportPath = await writeCourseQualityReport(this.workspaceRoot, input.runId, courseQualityReport);
     const compactQualityReport = toCompactCourseQualityReport(courseQualityReport, courseQualityReportPath);
@@ -169,9 +197,11 @@ export class LearningCoursePublisher {
         summary: courseQualityReport.summary
       }
     });
+    const contentBlueprint = input.ignoreContentBlueprint ? undefined : await this.resolveContentBlueprint(input.runId);
     const publishValidation = validatePublishBundle({
       courseIR,
-      sourceBacked: sourceGroundingConfig !== undefined
+      sourceBacked: sourceGroundingConfig !== undefined,
+      contentBlueprint
     });
     const compactPublishValidation = toCompactPublishValidation(publishValidation);
     await this.writeAuthoringArtifacts(input.runId, {
@@ -223,9 +253,11 @@ export class LearningCoursePublisher {
       publishNotes: input.publishNotes,
       outputMode,
       qualityReport: compactQualityReport,
+      revisionHistoryItem: input.revisionHistoryItem,
       previewRelativeCoursePackPath: publishedPaths.previewRelativeCoursePackPath,
       previewRelativeLessonPaths: publishedPaths.previewRelativeLessonPaths
     });
+    const revisionHistory = await readRevisionHistoryFromManifest(previewManifestPath);
 
     return {
       status: "preview_ready",
@@ -237,6 +269,7 @@ export class LearningCoursePublisher {
       previewManifestPath,
       preview,
       qualityReport: compactQualityReport,
+      revisionHistory,
       publishValidation: compactPublishValidation,
       quality: {
         checkedLessons: lessons.length,
@@ -338,6 +371,46 @@ export class LearningCoursePublisher {
     });
   }
 
+  private async resolveContentBlueprint(runId: string): Promise<ContentBlueprint | undefined> {
+    try {
+      const artifactStore = new ArtifactStore(path.join(this.workspaceRoot, "runs", runId));
+      return extractContentBlueprint(await artifactStore.readDraft<unknown>("authoring-context"));
+    } catch (error) {
+      if (error instanceof AgentRuntimeError && error.code === "MISSING_ARTIFACT") {
+        return undefined;
+      }
+      throw error;
+    }
+  }
+
+  private async resolveQualityAuthoringContext(runId: string): Promise<CourseQualityAuthoringContext | undefined> {
+    try {
+      const artifactStore = new ArtifactStore(path.join(this.workspaceRoot, "runs", runId));
+      const authoringContext = await artifactStore.readDraft<unknown>("authoring-context");
+      if (isRecord(authoringContext)) {
+        const brief = isRecord(authoringContext.brief) ? authoringContext.brief : {};
+        return {
+          ...(typeof brief.difficultyLevel === "string" ? { difficultyLevel: brief.difficultyLevel } : {}),
+          ...(typeof brief.sourceKind === "string" ? { sourceKind: brief.sourceKind } : {}),
+          ...(isRecord(authoringContext.sourceSemantics) ? { sourceSemantics: authoringContext.sourceSemantics } : {})
+        };
+      }
+    } catch (error) {
+      if (!(error instanceof AgentRuntimeError && error.code === "MISSING_ARTIFACT")) {
+        throw error;
+      }
+    }
+
+    const learnerProject = await readLearnerProject(this.workspaceRoot, runId);
+    if (!learnerProject?.brief) {
+      return undefined;
+    }
+    return {
+      ...(learnerProject.brief.difficultyLevel ? { difficultyLevel: learnerProject.brief.difficultyLevel } : {}),
+      ...(learnerProject.brief.sourceKind ? { sourceKind: learnerProject.brief.sourceKind } : {})
+    };
+  }
+
   private async writeLessonSource(lesson: LessonLike): Promise<string> {
     const lessonDir = assertSafeChildPath(path.join(this.workspaceRoot, "src", "lessons"), lesson.id, "lesson id");
     await mkdir(lessonDir, { recursive: true });
@@ -363,6 +436,7 @@ export class LearningCoursePublisher {
     publishNotes,
     outputMode,
     qualityReport,
+    revisionHistoryItem,
     previewRelativeCoursePackPath,
     previewRelativeLessonPaths
   }: {
@@ -374,6 +448,7 @@ export class LearningCoursePublisher {
     publishNotes: string | undefined;
     outputMode: "preview" | "source";
     qualityReport: CompactCourseQualityReport;
+    revisionHistoryItem: PublishRevisionHistoryInput | undefined;
     previewRelativeCoursePackPath: string | undefined;
     previewRelativeLessonPaths: string[] | undefined;
   }): Promise<string> {
@@ -382,6 +457,12 @@ export class LearningCoursePublisher {
     await mkdir(runDir, { recursive: true });
     await mkdir(previewDir, { recursive: true });
     const previewManifestPath = path.join(previewDir, "manifest.json");
+    const revisionHistory = await buildRevisionHistory({
+      previewManifestPath,
+      runId,
+      revisionHistoryItem,
+      qualityStatus: qualityReport.status
+    });
     const previewManifest = {
       schemaVersion: 1,
       status: "preview_ready",
@@ -394,7 +475,8 @@ export class LearningCoursePublisher {
       lessonPaths: previewRelativeLessonPaths ?? lessonPaths,
       preview,
       qualityReport,
-      publishNotes
+      publishNotes,
+      ...(revisionHistory.length > 0 ? { revisionHistory } : {})
     };
     await writeJsonFile(previewManifestPath, previewManifest);
     await writeFile(
@@ -413,7 +495,8 @@ export class LearningCoursePublisher {
           previewManifestPath,
           preview,
           qualityReport,
-          publishNotes
+          publishNotes,
+          ...(revisionHistory.length > 0 ? { revisionHistory } : {})
         },
         null,
         2
@@ -430,6 +513,95 @@ type PublishedPaths = {
   previewRelativeCoursePackPath: string | undefined;
   previewRelativeLessonPaths: string[] | undefined;
 };
+
+async function buildRevisionHistory({
+  previewManifestPath,
+  runId,
+  revisionHistoryItem,
+  qualityStatus
+}: {
+  previewManifestPath: string;
+  runId: string;
+  revisionHistoryItem: PublishRevisionHistoryInput | undefined;
+  qualityStatus: CompactCourseQualityReport["status"];
+}): Promise<PublishedRevisionHistoryItem[]> {
+  const previous = await readRevisionHistoryFromManifest(previewManifestPath);
+  if (!revisionHistoryItem) {
+    return previous;
+  }
+
+  const next: PublishedRevisionHistoryItem = {
+    runId,
+    revisionId: revisionHistoryItem.revisionId,
+    scope: revisionHistoryItem.scope,
+    summary: revisionHistoryItem.summary,
+    changedLessonIds: revisionHistoryItem.changedLessonIds,
+    changedPages: revisionHistoryItem.changedPages,
+    qualityStatus,
+    createdAt: revisionHistoryItem.createdAt ?? new Date().toISOString()
+  };
+  const nextKey = revisionHistoryKey(next);
+  return [next, ...previous.filter((item) => revisionHistoryKey(item) !== nextKey)].slice(0, 20);
+}
+
+async function readRevisionHistoryFromManifest(previewManifestPath: string): Promise<PublishedRevisionHistoryItem[]> {
+  let value: unknown;
+  try {
+    value = JSON.parse(await readFile(previewManifestPath, "utf8")) as unknown;
+  } catch (error) {
+    if (isFileNotFound(error)) {
+      return [];
+    }
+    throw error;
+  }
+  return isRecord(value) && Array.isArray(value.revisionHistory)
+    ? value.revisionHistory.filter(isPublishedRevisionHistoryItem)
+    : [];
+}
+
+function isPublishedRevisionHistoryItem(value: unknown): value is PublishedRevisionHistoryItem {
+  return (
+    isRecord(value) &&
+    typeof value.runId === "string" &&
+    typeof value.revisionId === "string" &&
+    isRevisionScope(value.scope) &&
+    typeof value.summary === "string" &&
+    isStringArray(value.changedLessonIds) &&
+    Array.isArray(value.changedPages) &&
+    value.changedPages.every(isPublishedRevisionChangedPage) &&
+    isQualityStatus(value.qualityStatus) &&
+    typeof value.createdAt === "string"
+  );
+}
+
+function isPublishedRevisionChangedPage(value: unknown): value is PublishedRevisionHistoryItem["changedPages"][number] {
+  return (
+    isRecord(value) &&
+    typeof value.lessonId === "string" &&
+    typeof value.pageId === "string" &&
+    typeof value.pageNumber === "number"
+  );
+}
+
+function isRevisionScope(value: unknown): value is PublishRevisionHistoryInput["scope"] {
+  return (
+    value === "course" ||
+    value === "unit" ||
+    value === "page" ||
+    value === "interaction" ||
+    value === "assessment" ||
+    value === "source" ||
+    value === "style"
+  );
+}
+
+function isQualityStatus(value: unknown): value is CompactCourseQualityReport["status"] {
+  return value === "passed" || value === "warning" || value === "failed";
+}
+
+function revisionHistoryKey(item: PublishedRevisionHistoryItem): string {
+  return `${item.runId}:${item.revisionId}`;
+}
 
 function collectBlockingIssues(lessons: LessonLike[], sourceGroundingConfig: RunConfig | undefined): Array<{ lessonId: string; issue: QualityIssue }> {
   return lessons.flatMap((lesson) =>

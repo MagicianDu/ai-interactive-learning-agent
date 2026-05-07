@@ -23,7 +23,7 @@ import { QuickPreviewService } from './tools/agent-runtime/learner/quick-preview
 const sourcePath = 'examples/sources/agent-workflow-notes.md';
 const root = await mkdtemp(path.join(tmpdir(), 'learning-agent-real-source-'));
 await new LearnerProjectService(root).createProject({
-  request: `请用 ${sourcePath} 这本书生成中文学习材料，面向有编程基础但缺少智能体系统心智模型的中文学习者，每个单元 8 页。`,
+  request: `请用 ${sourcePath} 这本书生成中文学习材料，面向有编程基础但缺少智能体系统心智模型的中文学习者，教学难度为大学高年级/研究生课程，每个单元 8 页。`,
   runId: 'real-agentic-design'
 });
 const result = await new QuickPreviewService(root).generate({ runId: 'real-agentic-design', maxSteps: 80 });
@@ -133,6 +133,110 @@ Result summary from the latest local run:
   }
 }
 ```
+
+## 2026-05-07 Real-source quality loop trial
+
+Purpose:
+
+```text
+Verify the learner-facing quality loop after the quality revision, benchmark, depth-rubric, and long-book planning kernel work.
+```
+
+Source:
+
+```text
+examples/sources/agent-workflow-notes.md
+```
+
+Command shape:
+
+```bash
+node --import tsx - <<'EOF'
+import { mkdtemp } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import {
+  AuthoringQualityComparisonService,
+  CodexAuthoredTrialService,
+  GroundedCourseService,
+  LearnerProjectService,
+  LearningPreviewService,
+  LearningRevisionService
+} from './tools/agent-runtime/index.ts';
+
+const root = await mkdtemp(path.join(tmpdir(), 'learning-agent-quality-loop-trial-'));
+const sourcePath = path.resolve('examples/sources/agent-workflow-notes.md');
+const draftRunId = 'quality-loop-draft';
+const authoredRunId = 'quality-loop-authored';
+const audience = '有基础编程经验但还没有智能体系统心智模型的中文学习者';
+
+await new LearnerProjectService(root).createProject({
+  request: `请用 ${sourcePath} 这本书生成中文互动学习网页。先给总览课，再按核心 topic 拆课。每个单元 8 页。面向${audience}。教学难度定位为大学高年级/研究生课程。`,
+  runId: draftRunId,
+  sourcePath,
+  sourceKind: 'book',
+  audience,
+  difficultyLevel: 'upper_undergraduate_or_graduate',
+  unitPages: 8,
+  strategy: 'overview_plus_topic'
+});
+const draft = await new GroundedCourseService(root).generate({ runId: draftRunId });
+const authored = await new CodexAuthoredTrialService(root).runTrial({
+  runId: authoredRunId,
+  sourcePath,
+  sourceKind: 'book',
+  audience,
+  unitPages: 8
+});
+const comparison = await new AuthoringQualityComparisonService(root).compare({ authoredRunId, draftRunId });
+const revision = comparison.remainingGaps.length > 0
+  ? await new LearningRevisionService(root).requestQualityRevision({ runId: authoredRunId })
+  : undefined;
+const preview = await new LearningPreviewService(root).getPreview(authoredRunId);
+console.log(JSON.stringify({ root, draft, authored, comparison, revision, preview }, null, 2));
+EOF
+```
+
+Result summary:
+
+```json
+{
+  "draft": {
+    "runId": "quality-loop-draft",
+    "status": "preview_ready",
+    "lessonCount": 5,
+    "qualityStatus": "passed"
+  },
+  "authored": {
+    "runId": "quality-loop-authored",
+    "status": "preview_ready",
+    "lessonCount": 5,
+    "qualityStatus": "passed",
+    "score": 100,
+    "academicDepth": "passed",
+    "previewUrl": "http://127.0.0.1:5173/#/preview/quality-loop-authored"
+  },
+  "comparison": {
+    "status": "authoring_quality_compared",
+    "improvements": [
+      "learner-action",
+      "transfer-design",
+      "source-kind-depth"
+    ],
+    "remainingGaps": [],
+    "revisionInstructionCount": 0
+  }
+}
+```
+
+Acceptance notes:
+
+- Port 5173 was freed before the browser smoke run.
+- `npm run smoke:playwright` passed after the port was freed.
+- The quality loop produced both deterministic baseline and Codex-authored preview output in a temporary workspace.
+- The authored course satisfied the graduate-level `academicDepth` check.
+- `compare_authoring_quality` wrote an authored-vs-draft comparison report.
+- No `create_quality_revision` call was needed in this run because `remainingGaps` was empty.
 
 Acceptance notes:
 

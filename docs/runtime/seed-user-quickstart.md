@@ -63,6 +63,8 @@ apply_learning_revision
 get_learning_preview
 ```
 
+After `get_learning_preview`, check `preview.revisionHistory`. The latest item should explain what visibly changed; `apply_learning_revision.changedPages` should identify the affected pages; `qualityAfter` should show the post-revision quality status. Tell the user to refresh or open `#/preview/<run-id>` and confirm the sidebar shows “修订历史”.
+
 If the user wants to share or archive the generated lesson:
 
 ```text
@@ -86,4 +88,5 @@ The trial is acceptable when:
 - lessons are Chinese-first
 - source-backed lessons show source anchors
 - feedback can be recorded through `revise_learning_course` and applied through `apply_learning_revision`
+- revised previews persist learner-readable `revisionHistory`
 - static export can be created through `export_learning_course`

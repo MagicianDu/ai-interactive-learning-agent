@@ -42,13 +42,32 @@ describe("TargetedRevisionService", () => {
     const revisedLesson = JSON.parse(
       await readFile(path.join(root, "runs", "target-course", "preview", "lessons", "target-lesson.json"), "utf8")
     ) as { pages: Array<{ narrative: string }> };
-    const previewText = await readFile(path.join(root, "runs", "target-course", "learning-preview.json"), "utf8");
+    const previewManifest = JSON.parse(await readFile(path.join(root, "runs", "target-course", "preview", "manifest.json"), "utf8")) as {
+      revisionHistory?: unknown;
+    };
+    const learningPreview = JSON.parse(await readFile(path.join(root, "runs", "target-course", "learning-preview.json"), "utf8")) as {
+      revisionHistory?: unknown;
+    };
 
     expect(result).toMatchObject({
       status: "revision_applied",
       runId: "target-course",
       revisionId: "revision-001",
       changedLessonIds: ["target-lesson"],
+      changedPages: [
+        {
+          lessonId: "target-lesson",
+          pageId: "p3",
+          pageIndex: 2,
+          changeSummary: "第 3 页太抽象，换成工程例子"
+        }
+      ],
+      qualityBefore: {
+        status: "passed"
+      },
+      qualityAfter: {
+        status: "passed"
+      },
       preview: {
         coursePackId: "target-course",
         lessonCount: 1
@@ -62,7 +81,19 @@ describe("TargetedRevisionService", () => {
     expect(revisedLesson.pages[1]?.narrative).toBe("第2页原文");
     expect(revisedLesson.pages[3]?.narrative).toBe("第4页原文");
     expect(JSON.stringify(revisedLesson).match(/修订说明/g)).toHaveLength(1);
-    expect(previewText).toContain("revision-001");
+    expect(previewManifest.revisionHistory).toEqual([
+      {
+        runId: "target-course",
+        revisionId: "revision-001",
+        scope: "page",
+        summary: "第 3 页太抽象，换成工程例子",
+        changedLessonIds: ["target-lesson"],
+        changedPages: [{ lessonId: "target-lesson", pageId: "p3", pageNumber: 3 }],
+        qualityStatus: "passed",
+        createdAt: expect.any(String)
+      }
+    ]);
+    expect(learningPreview.revisionHistory).toEqual(previewManifest.revisionHistory);
   });
 
   test("uses the latest revision brief when multiple briefs exist", async () => {
@@ -104,7 +135,15 @@ describe("TargetedRevisionService", () => {
 
     expect(result).toMatchObject({
       revisionId: "revision-002",
-      changedLessonIds: ["latest-lesson"]
+      changedLessonIds: ["latest-lesson"],
+      changedPages: [
+        {
+          lessonId: "latest-lesson",
+          pageId: "p5",
+          pageIndex: 4,
+          changeSummary: "第 5 页增加真实排障例子"
+        }
+      ]
     });
     expect(revisedLesson.pages[4]?.narrative).toBe("第5页原文\n\n修订说明：第 5 页增加真实排障例子");
     expect(revisedLesson.pages[1]?.narrative).toBe("第2页原文");

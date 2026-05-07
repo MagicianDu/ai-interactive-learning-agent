@@ -1,8 +1,14 @@
 export const agentRuntimeVersion = "0.1.0";
 
 export { CodexAuthoredTrialService } from "./learner/codex-authored-trial.js";
+export { AuthoringQualityComparisonService } from "./learner/authoring-quality-comparison.js";
 export { AuthoringContextService } from "./learner/authoring-context-service.js";
 export { GroundedCourseService } from "./learner/grounded-course-service.js";
+export {
+  buildRealSourceQualityBenchmarkReport,
+  realSourceBenchmarkQualityDimensions,
+  realSourceBenchmarkSourceKinds
+} from "./learner/real-source-quality-benchmark.js";
 export { realSourceRegressionSamples, runRealSourceRegressionSuite } from "./learner/real-source-regression.js";
 export { CodexManualAdapter } from "./adapters/codex-manual-adapter.js";
 export { MockRuntimeAdapter } from "./adapters/mock-adapter.js";
@@ -17,6 +23,7 @@ export { LearningCoursePublisher } from "./learner/learning-course-publisher.js"
 export { LearningPreviewService } from "./learner/learning-preview-service.js";
 export { LearningRevisionService } from "./learner/learning-revision-service.js";
 export { LearnerProjectService } from "./learner/learner-project-service.js";
+export { PrepareLearningCourseService } from "./learner/prepare-learning-course-service.js";
 export { QuickPreviewService } from "./learner/quick-preview-service.js";
 export { createRunConfigFromArgs, validateRunConfig } from "./run-config.js";
 export { RunStore } from "./run-store.js";

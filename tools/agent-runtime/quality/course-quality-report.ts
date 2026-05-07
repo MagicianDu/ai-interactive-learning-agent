@@ -2,6 +2,11 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import type { RunConfig } from "../types.js";
+import {
+  evaluateAcademicDepthRubric,
+  formatMissingAcademicDepthMoves,
+  type AcademicDepthRubricResult
+} from "./academic-depth-rubric.js";
 import { validateChineseFirstLesson } from "./chinese-first-validator.js";
 import { validateLessonQuality } from "./lesson-quality-validator.js";
 import type { LessonCriticReport } from "./lesson-critic.js";
@@ -23,6 +28,16 @@ export type CourseQualityIssueCategory =
   | "assessment"
   | "interaction"
   | "transfer";
+
+export type CourseQualityAuthoringContext = {
+  difficultyLevel?: string;
+  sourceKind?: string;
+  sourceSemantics?: {
+    keyTerms?: Array<string | { term?: unknown; label?: unknown }>;
+    evidenceHints?: unknown[];
+    limitationHints?: unknown[];
+  };
+};
 
 export type CourseQualityIssue = {
   issueId: string;
@@ -68,12 +83,14 @@ export type CourseQualityReport = {
     interactionQuality: CourseQualityStatus;
     assessmentCoverage: CourseQualityStatus;
     transferCoverage: CourseQualityStatus;
+    academicDepth: CourseQualityStatus;
   };
   issues: CourseQualityIssue[];
   issueSummary: CourseQualityIssueSummary;
   requiredFixes: string[];
   optionalImprovements: string[];
   sourceEvidence?: SourceEvidenceSummary;
+  depthRubric?: AcademicDepthRubricResult;
 };
 
 export type CompactCourseQualityReport = {
@@ -100,6 +117,7 @@ export type BuildCourseQualityReportInput = {
   sourceGroundingConfig?: RunConfig;
   sourceEvidence?: SourceEvidenceSummary;
   criticReports?: LessonCriticReport[];
+  authoringContext?: CourseQualityAuthoringContext;
 };
 
 export function buildCourseQualityReport(input: BuildCourseQualityReportInput): CourseQualityReport {
@@ -107,7 +125,8 @@ export function buildCourseQualityReport(input: BuildCourseQualityReportInput): 
   const sourceEvidence =
     input.sourceEvidence ?? (input.sourceGroundingConfig ? analyzeSourceEvidence(input.lessons, input.sourceGroundingConfig) : undefined);
   const sourceEvidenceIssue = sourceEvidenceToIssue(sourceEvidence);
-  const heuristicIssues = input.lessons.flatMap(collectPageHeuristicIssues);
+  const depthRubric = evaluateAcademicDepthRubric(input.lessons, input.authoringContext);
+  const heuristicIssues = input.lessons.flatMap((lesson) => collectPageHeuristicIssues(lesson, input.authoringContext));
   const issues = sortCourseQualityIssues([
     ...lessonIssueGroups.flatMap((group) => group.issues.map((issue) => toCourseQualityIssue(issue, group.lessonId))),
     ...(sourceEvidenceIssue ? [toCourseQualityIssue(sourceEvidenceIssue)] : []),
@@ -125,7 +144,8 @@ export function buildCourseQualityReport(input: BuildCourseQualityReportInput): 
     ]),
     interactionQuality: statusFromIssues(lessonIssueGroups.flatMap((group) => group.issues.filter(isInteractionIssue))),
     assessmentCoverage: statusFromIssues(lessonIssueGroups.flatMap((group) => group.issues.filter(isAssessmentIssue))),
-    transferCoverage: statusFromIssues(lessonIssueGroups.flatMap((group) => group.issues.filter((issue) => issue.rule === "transfer-challenge")))
+    transferCoverage: statusFromIssues(lessonIssueGroups.flatMap((group) => group.issues.filter((issue) => issue.rule === "transfer-challenge"))),
+    academicDepth: depthRubric ? depthRubricStatusMap[depthRubric.status] : "passed"
   };
   const lessonScores = lessonIssueGroups.map((group, index) => {
     const critic = input.criticReports?.[index];
@@ -158,7 +178,8 @@ export function buildCourseQualityReport(input: BuildCourseQualityReportInput): 
     issueSummary,
     requiredFixes,
     optionalImprovements,
-    ...(sourceEvidence ? { sourceEvidence } : {})
+    ...(sourceEvidence ? { sourceEvidence } : {}),
+    ...(depthRubric ? { depthRubric } : {})
   };
 }
 
@@ -250,6 +271,11 @@ const sourceEvidenceStatusMap: Record<SourceEvidenceStatus, CourseQualityStatus>
   warning: "warning"
 };
 
+const depthRubricStatusMap: Record<AcademicDepthRubricResult["status"], CourseQualityStatus> = {
+  passed: "passed",
+  warning: "warning"
+};
+
 function sourceEvidenceToIssue(sourceEvidence: SourceEvidenceSummary | undefined): QualityIssue | undefined {
   if (!sourceEvidence || sourceEvidence.status === "passed") {
     return undefined;
@@ -277,16 +303,116 @@ function isAssessmentIssue(issue: QualityIssue): boolean {
   return issue.rule === "assessment-count" || issue.rule === "assessment-feedback" || issue.path.includes("misconception");
 }
 
-function collectPageHeuristicIssues(lesson: unknown): CourseQualityIssue[] {
+function collectPageHeuristicIssues(lesson: unknown, authoringContext: CourseQualityAuthoringContext | undefined): CourseQualityIssue[] {
   if (!isRecord(lesson)) {
     return [];
   }
 
   const lessonId = lessonIdOf(lesson);
   const pages = Array.isArray(lesson.pages) ? lesson.pages.filter(isRecord) : [];
-  return pages.flatMap((page) => {
+  const sourceTerms = sourceTermsFromAuthoringContext(authoringContext);
+  const issues: CourseQualityIssue[] = [];
+  const repetitiveIssue = repetitiveLongNarrativeIssue(lessonId, pages);
+  if (repetitiveIssue) {
+    issues.push(repetitiveIssue);
+  }
+  const lessonDepthRubric = evaluateAcademicDepthRubric([lesson], authoringContext);
+  if (lessonDepthRubric && lessonDepthRubric.status === "warning") {
+    const missingMoves = formatMissingAcademicDepthMoves(lessonDepthRubric);
+    issues.push({
+      issueId: "quality.lesson.academic-depth-shallow",
+      scope: "lesson",
+      severity: "warning",
+      category: "learner_level_mismatch",
+      reason: `graduate or research-level course lacks required academic depth moves: ${missingMoves}`,
+      requiredFix:
+        `Add academic depth moves: ${missingMoves}. Include prerequisites, formal terminology, source reading mapping, assumptions, limitations, critique prompts, and homework-style transfer tasks.`,
+      rule: "academic-depth",
+      path: "lesson.academicDepth",
+      lessonId
+    });
+  }
+  if (requiresPaperResearchDepth(authoringContext, lesson) && paperResearchMarkerCount(JSON.stringify(lesson)) < 5) {
+    issues.push({
+      issueId: "quality.lesson.paper-research-depth-shallow",
+      scope: "lesson",
+      severity: "warning",
+      category: "learner_level_mismatch",
+      reason: "paper or research-level course lacks explicit research question, contribution, method mechanism, evidence, limitation, or transfer-boundary moves",
+      requiredFix:
+        "Rewrite the lesson as a paper-reading seminar: cover research question, contribution claim, method mechanism, experiment/evidence path, limitations/threats, and transfer boundaries.",
+      rule: "paper-research-depth",
+      path: "lesson.paperResearchDepth",
+      lessonId
+    });
+  }
+  if (authoringContext?.sourceKind === "patent" && sourceKindDepthMarkerCount("patent", JSON.stringify(lesson)) < 5) {
+    issues.push({
+      issueId: "quality.lesson.patent-depth-shallow",
+      scope: "lesson",
+      severity: "warning",
+      category: "learner_level_mismatch",
+      reason: "patent course lacks explicit claim boundary, prior-art problem, technical mechanism, embodiment, legal/applicability boundary, or design-around transfer moves",
+      requiredFix:
+        "Rewrite the lesson as a patent-reading course: cover claim boundary, prior-art problem, technical solution/mechanism, embodiment, legal/applicability boundary, and design-around or transfer judgment.",
+      rule: "patent-depth",
+      path: "lesson.patentDepth",
+      lessonId
+    });
+  }
+  if (authoringContext?.sourceKind === "blog" && sourceKindDepthMarkerCount("blog", JSON.stringify(lesson)) < 5) {
+    issues.push({
+      issueId: "quality.lesson.blog-practice-depth-shallow",
+      scope: "lesson",
+      severity: "warning",
+      category: "learner_level_mismatch",
+      reason: "blog course lacks explicit practical problem, author solution, implementation path, caveat/failure mode, actionable check, or transfer-boundary moves",
+      requiredFix:
+        "Rewrite the lesson as a practice-case course: cover practical problem, author solution, implementation path, caveats/failure modes, actionable checks, and transfer boundaries.",
+      rule: "blog-practice-depth",
+      path: "lesson.blogPracticeDepth",
+      lessonId
+    });
+  }
+
+  return [
+    ...issues,
+    ...pages.flatMap((page) => {
     const pageId = typeof page.id === "string" && page.id.trim().length > 0 ? page.id : "unknown";
     const issues: CourseQualityIssue[] = [];
+    const pageText = textOf(page);
+    const hasSourceTerm = sourceTerms.some((term) => includesIgnoreCase(pageText, term));
+    const pageSourceAnchorCount = stringArray(page.sourceAnchorIds).length;
+    const title = typeof page.title === "string" ? page.title.trim() : "";
+    const learningGoal = typeof page.learningGoal === "string" ? page.learningGoal.trim() : "";
+    if (title.length > 42) {
+      issues.push({
+        issueId: "quality.page.title-too-long",
+        scope: "page",
+        severity: "warning",
+        category: "dense_page",
+        reason: "page title is too long for a no-scroll learning screen and likely overloads the sidebar/header",
+        requiredFix: "Shorten the title to one precise page idea and move secondary concepts into narrative, visual labels, or separate pages.",
+        rule: "page-title-length",
+        path: `pages.${pageId}.title`,
+        lessonId,
+        pageId
+      });
+    }
+    if (learningGoal.length > 72) {
+      issues.push({
+        issueId: "quality.page.learning-goal-too-long",
+        scope: "page",
+        severity: "warning",
+        category: "dense_page",
+        reason: "page learningGoal is overloaded with too many moves for a single screen",
+        requiredFix: "Rewrite the learningGoal as one mental-model move; split extra moves into later pages.",
+        rule: "page-learning-goal-length",
+        path: `pages.${pageId}.learningGoal`,
+        lessonId,
+        pageId
+      });
+    }
     if (typeof page.narrative === "string" && page.narrative.trim().length > 900) {
       issues.push({
         issueId: "quality.page.dense",
@@ -301,8 +427,218 @@ function collectPageHeuristicIssues(lesson: unknown): CourseQualityIssue[] {
         pageId
       });
     }
+    if (sourceTerms.length > 0 && isGenericPage(pageText) && !hasSourceTerm) {
+      issues.push({
+        issueId: "quality.page.generic-source-page",
+        scope: "page",
+        severity: "warning",
+        category: "generic_page",
+        reason: "page uses generic learning language without source-specific terms or mechanism",
+        requiredFix: "Rewrite the page around concrete source terms, mechanism, evidence, limitation, and a learner action.",
+        rule: "generic-page",
+        path: `pages.${pageId}.narrative`,
+        lessonId,
+        pageId
+      });
+    }
+    if (pageSourceAnchorCount > 0 && sourceTerms.length > 0 && !hasSourceTerm) {
+      issues.push({
+        issueId: "quality.page.source-synthesis-weak",
+        scope: "page",
+        severity: "warning",
+        category: "source_evidence",
+        reason: "page has source anchors but does not synthesize source-specific terms, evidence, or limitations",
+        requiredFix: "Use the source anchor to teach a specific source term, evidence chain, example, assumption, or limitation.",
+        rule: "source-synthesis",
+        path: `pages.${pageId}.sourceAnchorIds`,
+        lessonId,
+        pageId
+      });
+    }
+    const interactionSpec = isRecord(page.interactionSpec) ? page.interactionSpec : undefined;
+    const cognitivePurpose = typeof interactionSpec?.cognitivePurpose === "string" ? interactionSpec.cognitivePurpose : "";
+    if (interactionSpec && isVagueCognitivePurpose(cognitivePurpose)) {
+      issues.push({
+        issueId: "quality.interaction.cognitive-purpose-vague",
+        scope: "page",
+        severity: "warning",
+        category: "decorative_interaction",
+        reason: "interaction cognitivePurpose is vague and does not name the mental-model work",
+        requiredFix: "Rewrite the interaction around prediction, decision, comparison, causality, misconception repair, parameter change, or transfer.",
+        rule: "interaction-cognitive-purpose",
+        path: `pages.${pageId}.interactionSpec.cognitivePurpose`,
+        lessonId,
+        pageId
+      });
+    }
     return issues;
-  });
+    })
+  ];
+}
+
+function repetitiveLongNarrativeIssue(lessonId: string, pages: Record<string, unknown>[]): CourseQualityIssue | undefined {
+  const counts = new Map<string, number>();
+  for (const page of pages) {
+    if (typeof page.narrative !== "string") {
+      continue;
+    }
+    const normalized = normalizeNarrative(page.narrative);
+    if (normalized.length < 60) {
+      continue;
+    }
+    counts.set(normalized, (counts.get(normalized) ?? 0) + 1);
+  }
+  const repeatedCount = Math.max(0, ...counts.values());
+  if (repeatedCount < 3) {
+    return undefined;
+  }
+  return {
+    issueId: "quality.lesson.repetitive-pages",
+    scope: "lesson",
+    severity: "warning",
+    category: "dense_page",
+    reason: `lesson repeats substantially identical long narrative across ${repeatedCount} pages`,
+    requiredFix: "Rewrite repeated pages so each page performs a distinct mental-model move with different source evidence, visual role, and learner action.",
+    rule: "repetitive-page-narrative",
+    path: "pages[*].narrative",
+    lessonId
+  };
+}
+
+function normalizeNarrative(value: string): string {
+  return value.replace(/\s+/gu, "").slice(0, 600);
+}
+
+function sourceTermsFromAuthoringContext(authoringContext: CourseQualityAuthoringContext | undefined): string[] {
+  return Array.from(
+    new Set(
+      (authoringContext?.sourceSemantics?.keyTerms ?? [])
+        .map((term) => {
+          if (typeof term === "string") {
+            return term.trim();
+          }
+          if (typeof term.term === "string") {
+            return term.term.trim();
+          }
+          if (typeof term.label === "string") {
+            return term.label.trim();
+          }
+          return "";
+        })
+        .filter((term) => term.length >= 3)
+    )
+  );
+}
+
+function requiresPaperResearchDepth(authoringContext: CourseQualityAuthoringContext | undefined, lesson: Record<string, unknown>): boolean {
+  if (authoringContext?.sourceKind === "paper") {
+    return true;
+  }
+  const difficulty = authoringContext?.difficultyLevel ?? "";
+  const lessonText = [lesson.title, lesson.audience].filter((value): value is string => typeof value === "string").join(" ");
+  return difficulty === "research" && /论文|paper|精读|前沿/u.test(lessonText);
+}
+
+const paperResearchMarkerGroups = [
+  ["研究问题", "research question"],
+  ["论文贡献", "贡献 claim", "contribution"],
+  ["方法机制", "方法结构", "方法假设", "method"],
+  ["实验", "评估", "证据链", "evidence", "evaluation"],
+  ["局限", "威胁", "threat", "limitation"],
+  ["迁移边界", "迁移判断", "transfer boundary", "适用条件"]
+];
+
+function paperResearchMarkerCount(text: string): number {
+  const normalized = text.toLocaleLowerCase();
+  return paperResearchMarkerGroups.reduce(
+    (count, group) => count + (group.some((marker) => normalized.includes(marker.toLocaleLowerCase())) ? 1 : 0),
+    0
+  );
+}
+
+const sourceKindDepthMarkerGroups = {
+  patent: [
+    ["权利要求边界", "claim boundary"],
+    ["现有技术问题", "prior-art problem", "prior art"],
+    ["技术方案/机制", "技术方案", "technical solution", "mechanism"],
+    ["实施例", "embodiment"],
+    ["法律/适用边界", "法律边界", "适用边界", "legal boundary"],
+    ["规避或迁移判断", "规避设计", "design-around", "迁移判断"]
+  ],
+  blog: [
+    ["实际问题", "practical problem"],
+    ["作者方案", "author solution"],
+    ["实现路径", "implementation path"],
+    ["caveat/失败模式", "caveat", "失败模式", "failure mode"],
+    ["可操作检查", "actionable check"],
+    ["迁移边界", "transfer boundary"]
+  ]
+} satisfies Record<"patent" | "blog", string[][]>;
+
+function sourceKindDepthMarkerCount(sourceKind: "patent" | "blog", text: string): number {
+  const normalized = text.toLocaleLowerCase();
+  return sourceKindDepthMarkerGroups[sourceKind].reduce(
+    (count, group) => count + (group.some((marker) => normalized.includes(marker.toLocaleLowerCase())) ? 1 : 0),
+    0
+  );
+}
+
+const genericPageMarkers = ["核心概念", "整体内容", "资料大意", "基本概念", "学习重点", "帮助学习者理解", "快速摘要", "本页介绍"];
+
+function isGenericPage(pageText: string): boolean {
+  return genericPageMarkers.filter((marker) => pageText.includes(marker)).length >= 2;
+}
+
+const cognitivePurposeMarkers = [
+  "因果",
+  "结构",
+  "预测",
+  "误区",
+  "决策",
+  "比较",
+  "迁移",
+  "边界",
+  "机制",
+  "证据",
+  "参数",
+  "诊断",
+  "路径",
+  "选择",
+  "权衡",
+  "搜索",
+  "缩小",
+  "候选范围",
+  "讨论",
+  "作业",
+  "审查",
+  "批判",
+  "阅读",
+  "标准判断",
+  "术语"
+];
+const vagueCognitivePurposeMarkers = ["帮助理解", "增加互动", "提升参与", "理解内容", "学习内容", "熟悉内容"];
+
+function isVagueCognitivePurpose(cognitivePurpose: string): boolean {
+  const trimmed = cognitivePurpose.trim();
+  if (trimmed.length === 0) {
+    return true;
+  }
+  if (vagueCognitivePurposeMarkers.some((marker) => trimmed.includes(marker))) {
+    return true;
+  }
+  return !cognitivePurposeMarkers.some((marker) => trimmed.includes(marker));
+}
+
+function textOf(value: unknown): string {
+  return JSON.stringify(value);
+}
+
+function includesIgnoreCase(text: string, term: string): boolean {
+  return text.toLocaleLowerCase().includes(term.toLocaleLowerCase());
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0) : [];
 }
 
 function toCourseQualityIssue(issue: QualityIssue, lessonId?: string): CourseQualityIssue {
@@ -332,7 +668,7 @@ function categoryForIssue(issue: QualityIssue): CourseQualityIssueCategory {
     return "source_anchor";
   }
   if (issue.rule === "interaction-feedback") {
-    return "decorative_interaction";
+    return "missing_feedback";
   }
   if (issue.rule === "assessment-feedback") {
     return "missing_feedback";

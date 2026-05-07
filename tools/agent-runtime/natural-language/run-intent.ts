@@ -1,6 +1,7 @@
 import path from "node:path";
 
 import type { CoursePackStrategy, CurriculumPlanningMode, SourceMaterialKind } from "../corpus-types.js";
+import { inferTeachingDifficultyLevel, type TeachingDifficultyLevel } from "../learner/learner-project-service.js";
 
 export type RunIntent = {
   rawRequest: string;
@@ -16,6 +17,7 @@ export type RunIntent = {
   planningMode: CurriculumPlanningMode;
   adapter: string;
   audience?: string;
+  difficultyLevel?: TeachingDifficultyLevel;
 };
 
 const defaultUnitPages = 10;
@@ -37,7 +39,8 @@ export function parseRunIntent(request: string): RunIntent {
     strategy,
     planningMode: extractPlanningMode(rawRequest, strategy),
     adapter: "codex",
-    audience: extractAudience(rawRequest)
+    audience: extractAudience(rawRequest),
+    difficultyLevel: inferTeachingDifficultyLevel(rawRequest)
   };
 }
 

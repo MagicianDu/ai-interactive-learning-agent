@@ -75,4 +75,88 @@ describe("extractSourceSemantics", () => {
     expect(labelsFor("book")).toEqual(["全局地图", "核心机制", "关键例子", "常见误区", "迁移应用"]);
     expect(labelsFor("unknown")).toEqual(["全局地图", "核心机制", "关键例子", "常见误区", "迁移应用"]);
   });
+
+  it("extracts source-specific terms, evidence, and limitations from real anchors", () => {
+    const semantics = extractSourceSemantics({
+      sourceKind: "book",
+      anchors: [
+        {
+          anchorId: "h1",
+          sourceId: "book",
+          label: "Tool Feedback and Reflection",
+          locator: { kind: "heading", headingPath: ["Tool Feedback and Reflection"] },
+          quote: "Tool feedback lets the agent observe whether an action worked before planning the next step."
+        },
+        {
+          anchorId: "p1",
+          sourceId: "book",
+          label: "Evaluation",
+          locator: { kind: "paragraph", paragraphId: "p1" },
+          quote: "Experiments show that reflection and evaluation improve reliability when assumptions hold."
+        },
+        {
+          anchorId: "p2",
+          sourceId: "book",
+          label: "Limitations",
+          locator: { kind: "paragraph", paragraphId: "p2" },
+          quote: "Limitations appear when tool feedback is missing; more agents do not automatically improve quality."
+        }
+      ]
+    });
+
+    expect(semantics.keyTerms.map((term) => term.term)).toEqual(
+      expect.arrayContaining(["tool feedback", "reflection", "evaluation", "planning"])
+    );
+    expect(semantics.evidenceHints).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          statement: expect.stringContaining("Experiments show"),
+          sourceAnchorIds: ["p1"]
+        })
+      ])
+    );
+    expect(semantics.limitationHints).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          statement: expect.stringContaining("Limitations appear"),
+          sourceAnchorIds: ["p2"]
+        })
+      ])
+    );
+    expect(semantics.misconceptions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          statement: expect.stringContaining("more agents do not automatically improve quality")
+        })
+      ])
+    );
+    expect(semantics.sourceSpecificTeachingMoves.join("\n")).toContain("tool feedback");
+  });
+
+  it("filters PDF structural noise from key terms", () => {
+    const semantics = extractSourceSemantics({
+      sourceKind: "paper",
+      anchors: [
+        {
+          anchorId: "pdf-1",
+          sourceId: "paper",
+          label: "paragraph page 1",
+          locator: { kind: "page", page: 1 },
+          quote:
+            "Preprint abstract: Language agents benefit from a Talker-Reasoner architecture where a talker handles interaction and a reasoner handles internal reasoning."
+        },
+        {
+          anchorId: "pdf-2",
+          sourceId: "paper",
+          label: "paragraph page 2",
+          locator: { kind: "page", page: 2 },
+          quote: "The reasoner tracks evidence and tool feedback while the talker manages user-facing clarification."
+        }
+      ]
+    });
+
+    const terms = semantics.keyTerms.map((term) => term.term);
+    expect(terms).toEqual(expect.arrayContaining(["talker-reasoner", "internal reasoning", "tool feedback"]));
+    expect(terms).not.toEqual(expect.arrayContaining(["paragraph", "preprint", "abstract", "language"]));
+  });
 });

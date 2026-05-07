@@ -9,10 +9,12 @@ Use this skill to turn learner-supplied material into a course request that the 
 
 ## Product Contract
 
-- Codex or Claude authors the final `coursePack` and `lessons` after `learning_agent.get_authoring_context`.
+- Codex or Claude authors the final `coursePack` and `lessons` after `learning_agent.prepare_learning_course` in the default learner profile.
 - Keep learner-facing course output中文优先 unless the learner explicitly asks otherwise.
 - Preserve `sourceAnchorIds` for books, papers, patents, blogs, notes, folders, and other source-backed materials.
-- `learning_agent.get_authoring_context` records Source Graph V2 and Course Planning V2 artifacts for expert audit, but learner mode should only receive course shape, preview, and quality summary.
+- Advanced authoring tools can record Source Graph V2 and Course Planning V2 artifacts for expert audit, but learner mode should only receive course shape, preview, and quality summary.
+- Codex should follow `contentBlueprint.units[*].pageBlueprints` before writing lessons: page type, teaching move, learner action, visual requirement, feedback requirement, and source requirement.
+- Codex should follow `docs/runtime/codex-authoring-protocol-v2.md` (Codex Authoring Protocol V2) and the returned `sourceSemantics`: every page needs a mental-model move, source synthesis, learner action or check, feedback mechanism, and `cognitivePurpose` when interactive.
 - 不要让学习者审批内部 artifacts such as source maps, concept maps, curriculum plans, or critic reports in the default learner flow.
 
 ## Source Routing
@@ -32,22 +34,35 @@ Use this skill to turn learner-supplied material into a course request that the 
 - `task_guided`: use when the learner wants practical workflow, exercises, or application tasks.
 - `hybrid`: use when the learner wants chapter traceability and topic-first learning.
 
-Track selected chapters, selected topics, audience, language, and `unitPages` as learner-visible choices. `unitPages` means pages per unit.
+Track selected chapters, selected topics, audience, teaching difficulty level, language, and `unitPages` as learner-visible choices. `unitPages` means pages per unit. For long books, preserve the difference between per-unit pages and total course pages: a five-chapter request at 10 pages per chapter should become one overview unit plus five chapter units, approximately 60 pages total.
 
-Ask at most three learner-answerable clarification questions. Never ask a learner to approve source maps, concept maps, curriculum plans, or critic reports in the default flow.
+Ask at most three learner-answerable clarification questions. If the learner did not state teaching difficulty, ask them to choose one of: 入门衔接, 本科核心课程, 大学高年级/研究生课程, 研究论文精读/前沿讨论. If the learner did not state `unitPages`, ask for pages per unit, such as 6, 8, 10, or 12. Never ask a learner to approve source maps, concept maps, curriculum plans, or critic reports in the default flow.
 
 ## Apply The Plan Through MCP
 
-Call the learner-facing tools in this order:
+Call the learner-facing tools in this order for the default flow:
 
 ```json
-{"method":"tools/call","params":{"name":"learning_agent.create_learning_project","arguments":{"request":"<Chinese learner request with source path or URL, audience, strategy, and unitPages>"}}}
-{"method":"tools/call","params":{"name":"learning_agent.get_authoring_context","arguments":{"runId":"<run-id>"}}}
+{"method":"tools/call","params":{"name":"learning_agent.prepare_learning_course","arguments":{"request":"<Chinese learner request with source path or URL, audience, difficulty level, strategy, and unitPages>"}}}
 {"method":"tools/call","params":{"name":"learning_agent.publish_learning_course","arguments":{"runId":"<run-id>","coursePack":{},"lessons":[]}}}
 {"method":"tools/call","params":{"name":"learning_agent.get_learning_preview","arguments":{"runId":"<run-id>"}}}
 ```
 
-Normal outputs should be compact: preview URL, course shape, and `qualityReport` status/score/checks/issueSummary/topIssues. Keep detailed artifacts available only when the learner explicitly asks for expert review.
+Normal outputs should be compact: preview URL, course shape, `coursePlan.estimatedTotalPages` when available, and `qualityReport` status/score/checks/issueSummary/topIssues. Keep detailed artifacts available only when the learner explicitly asks for expert review.
+
+## Advanced Authoring
+
+Use this mode only when the user specifically asks to inspect separated source context, create deterministic drafts, or compare authored content against a draft baseline.
+
+```json
+{"method":"tools/call","params":{"name":"learning_agent.create_learning_project","arguments":{"request":"<Chinese learner request>"}}}
+{"method":"tools/call","params":{"name":"learning_agent.get_authoring_context","arguments":{"runId":"<run-id>"}}}
+{"method":"tools/call","params":{"name":"learning_agent.generate_grounded_course","arguments":{"runId":"<draft-run-id>"}}}
+{"method":"tools/call","params":{"name":"learning_agent.compare_authoring_quality","arguments":{"authoredRunId":"<authored-run-id>","draftRunId":"<draft-run-id>"}}}
+{"method":"tools/call","params":{"name":"learning_agent.create_quality_revision","arguments":{"runId":"<authored-run-id>"}}}
+```
+
+If the workflow produced both a deterministic draft run and a Codex-authored run, summarize the authored-vs-draft improvements plus remaining gaps. If there are remaining gaps, use the resulting brief as Codex's revision worklist. This is a quality delta report and revision loop, not a learner approval artifact.
 
 When inspecting expert details, prefer the latest `source-graph`, `course-plan`, `unit-plan`, `authoring-context`, `course-ir`, `lesson-bundle`, and `publish-validation` artifacts. Do not turn those artifacts into learner approval steps.
 
@@ -55,8 +70,11 @@ When inspecting expert details, prefer the latest `source-graph`, `course-plan`,
 
 - Keep generated learning content Chinese-first unless requested otherwise.
 - Codex should author the course content from the authoring context; MCP validates and publishes it.
+- Preserve the learner's requested teaching difficulty level in lesson prerequisites, examples, assessments, and transfer tasks.
 - For long sources, prefer an overview unit followed by focused units instead of compressing the entire source into one short lesson.
 - Use Course Planning V2 expectations from authoring context to preserve strategy reason, source mapping, expected interactions, expected assessments, and transfer expectations.
+- For long books, check `coursePlan.sourceCoveragePlan`, `estimatedTotalPages`, and `planningNotes` before authoring; do not compress all chapters into one short unit unless the learner explicitly asks for a summary-only course.
+- Use `contentBlueprint.units[*].pageBlueprints` as the page-by-page authoring checklist; do not collapse it into long prose.
 - Do not ask the learner to approve internal artifacts such as source maps, concept maps, or curriculum plans.
 - Preserve chapter or section mappings when the learner asks for them.
 - Keep every unit's page count aligned with the requested `unitPages`.

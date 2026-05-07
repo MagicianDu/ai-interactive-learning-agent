@@ -113,4 +113,4 @@ For all source types:
 - Source Graph V2 should include at least 5 concepts, 2 examples, 2 misconceptions, and 2 candidate interactions for non-trivial source-backed fixtures.
 - User feedback should go through `revise_learning_course`, then `apply_learning_revision`, then `get_learning_preview`.
 - Shareable output should go through `export_learning_course`.
-- `create_learning_project` accepts `strategy`, `selectedChapters`, and `selectedTopics` so Codex can preserve user-specified organization in the learner brief.
+- `create_learning_project` accepts `difficultyLevel`, `strategy`, `selectedChapters`, and `selectedTopics` so Codex can preserve user-specified depth and organization in the learner brief.

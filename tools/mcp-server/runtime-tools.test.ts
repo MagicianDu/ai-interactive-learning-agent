@@ -14,11 +14,14 @@ describe("LearningAgentRuntimeTools", () => {
     expect(learningAgentToolContracts.map((tool) => tool.name)).toEqual(
       expect.arrayContaining([
         "learning_agent.create_learning_project",
+        "learning_agent.prepare_learning_course",
         "learning_agent.list_learning_projects",
         "learning_agent.archive_learning_project",
         "learning_agent.get_authoring_context",
         "learning_agent.generate_grounded_course",
         "learning_agent.publish_learning_course",
+        "learning_agent.compare_authoring_quality",
+        "learning_agent.create_quality_revision",
         "learning_agent.get_learning_preview",
         "learning_agent.generate_quick_preview",
         "learning_agent.revise_learning_course",
@@ -78,6 +81,21 @@ describe("LearningAgentRuntimeTools", () => {
     );
   });
 
+  test("direct runtime tool handler still supports operator tools", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
+    const tools = new LearningAgentRuntimeTools(root);
+
+    const result = await tools.callTool("learning_agent.plan_run", {
+      request: "请用 /tmp/book.pdf 生成中文学习课程，面向中文工程师，教学难度为本科核心课程，每个单元 8 页。",
+      runId: "operator-plan-still-supported"
+    });
+
+    expect(result).toMatchObject({
+      status: "plan_written",
+      runId: "operator-plan-still-supported"
+    });
+  });
+
   test("initializes and reads run status through tool handlers", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
     const tools = new LearningAgentRuntimeTools(root);
@@ -132,6 +150,7 @@ describe("LearningAgentRuntimeTools", () => {
     });
 
     const result = await tools.callTool("learning_agent.apply_learning_revision", { runId: "mcp-revision" });
+    const previewResult = await tools.callTool("learning_agent.get_learning_preview", { runId: "mcp-revision" });
     const lessonText = await readFile(path.join(root, "runs", "mcp-revision", "preview", "lessons", "hash-table.json"), "utf8");
 
     expect(result).toMatchObject({
@@ -147,6 +166,21 @@ describe("LearningAgentRuntimeTools", () => {
         status: "passed"
       }
     });
+    expect(previewResult).toMatchObject({
+      status: "preview_ready",
+      preview: {
+        localUrl: "http://127.0.0.1:5173/#/preview/mcp-revision",
+        revisionHistory: [
+          {
+            runId: "mcp-revision",
+            revisionId: "revision-001",
+            summary: "第 3 页补一个工程排障例子",
+            changedPages: [{ lessonId: "hash-table", pageId: "p3", pageNumber: 3 }],
+            qualityStatus: "passed"
+          }
+        ]
+      }
+    });
     expect(lessonText).toContain('"narrative": "第3页原文\\n\\n修订说明：第 3 页补一个工程排障例子"');
     expect(lessonText.match(/修订说明/g)).toHaveLength(1);
   });
@@ -156,7 +190,7 @@ describe("LearningAgentRuntimeTools", () => {
     const tools = new LearningAgentRuntimeTools(root);
 
     await tools.callTool("learning_agent.create_learning_project", {
-      request: "请用 /tmp/book.pdf 生成中文学习材料，面向有编程基础的学习者，每个单元 8 页，先总览再按核心 topic 拆课。",
+      request: "请用 /tmp/book.pdf 生成中文学习材料，面向有编程基础的学习者，教学难度为本科核心课程，每个单元 8 页，先总览再按核心 topic 拆课。",
       runId: "mcp-book-project"
     });
 
@@ -197,11 +231,12 @@ describe("LearningAgentRuntimeTools", () => {
     await writeFile(sourcePath, "# 工具选择\n先判断任务，再决定是否检索和调用工具。", "utf8");
     const tools = new LearningAgentRuntimeTools(root);
     await tools.callTool("learning_agent.create_learning_project", {
-      request: `请用 "${sourcePath}" 生成中文学习网页，面向中文学习者，每个单元 8 页。`,
+      request: `请用 "${sourcePath}" 生成中文学习网页，面向中文学习者，教学难度为本科核心课程，每个单元 8 页。`,
       runId: "mcp-authoring-context",
       sourcePath,
       sourceKind: "notes",
       audience: "中文学习者",
+      difficultyLevel: "undergraduate_core",
       unitPages: 8
     });
 
@@ -221,6 +256,129 @@ describe("LearningAgentRuntimeTools", () => {
         defaultTool: "learning_agent.publish_learning_course"
       }
     });
+  });
+
+  test("prepares a learner course through one learner-facing tool handler", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
+    const sourcePath = path.join(root, "prepare-source.md");
+    await writeFile(
+      sourcePath,
+      "# Tool Feedback\nTool feedback supports reflection and evaluation. Experiments show reliability gains. Limitations appear when feedback is missing.",
+      "utf8"
+    );
+    const tools = new LearningAgentRuntimeTools(root);
+
+    const result = await tools.callTool("learning_agent.prepare_learning_course", {
+      request: `请用 "${sourcePath}" 生成中文学习课程，面向中文工程师，教学难度为大学高年级/研究生课程，每个单元 8 页。`,
+      runId: "mcp-prepare",
+      sourcePath,
+      sourceKind: "notes",
+      audience: "中文工程师",
+      difficultyLevel: "upper_undergraduate_or_graduate",
+      unitPages: 8
+    });
+
+    expect(result).toMatchObject({
+      status: "authoring_context_ready",
+      runId: "mcp-prepare",
+      next: {
+        recommendedTool: "learning_agent.publish_learning_course"
+      },
+      sourceSemantics: {
+        keyTerms: expect.arrayContaining([expect.objectContaining({ term: "tool feedback" })])
+      },
+      contentBlueprint: {
+        units: expect.arrayContaining([expect.objectContaining({ unitId: "unit-overview" })])
+      }
+    });
+  });
+
+  test("requires pages per unit before prepare_learning_course returns authoring context", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
+    const tools = new LearningAgentRuntimeTools(root);
+
+    const result = await tools.callTool("learning_agent.prepare_learning_course", {
+      request: "请用 /tmp/book.pdf 生成中文学习课程，面向中文工程师，教学难度为大学高年级/研究生课程。",
+      runId: "mcp-prepare-missing-pages"
+    });
+
+    expect(result).toMatchObject({
+      status: "clarification_required",
+      runId: "mcp-prepare-missing-pages",
+      clarificationQuestions: [expect.stringContaining("每个单元")],
+      next: {
+        recommendedTool: "learning_agent.prepare_learning_course"
+      }
+    });
+  });
+
+  test("compares authored and deterministic draft quality through tool handlers", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
+    const tools = new LearningAgentRuntimeTools(root);
+    await writeComparisonPreview(root, "mcp-draft", "draft-lesson", false);
+    await writeComparisonPreview(root, "mcp-authored", "authored-lesson", true);
+
+    const result = await tools.callTool("learning_agent.compare_authoring_quality", {
+      authoredRunId: "mcp-authored",
+      draftRunId: "mcp-draft"
+    });
+
+    expect(result).toMatchObject({
+      status: "authoring_quality_compared",
+      authoredRunId: "mcp-authored",
+      draftRunId: "mcp-draft",
+      improvements: expect.arrayContaining([expect.objectContaining({ id: "academic-depth" })])
+    });
+  });
+
+  test("creates quality revision briefs from authoring comparison gaps through tool handlers", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
+    const tools = new LearningAgentRuntimeTools(root);
+    const runDir = path.join(root, "runs", "mcp-quality-revision");
+    await mkdir(path.join(runDir, "quality"), { recursive: true });
+    await writeFile(
+      path.join(runDir, "quality", "authoring-quality-comparison.json"),
+      `${JSON.stringify({
+        status: "authoring_quality_compared",
+        authoredRunId: "mcp-quality-revision",
+        draftRunId: "mcp-quality-draft",
+        remainingGaps: [
+          {
+            id: "generic-content",
+            severity: "high",
+            description: "页面仍停留在泛化复述，没有显式证据链。"
+          }
+        ],
+        revisionInstructions: [
+          {
+            gapId: "generic-content",
+            instruction: "替换泛化页面，补充来源锚点、边界条件和可迁移练习。",
+            expectedEvidence: "genericPageCount 归零。"
+          }
+        ]
+      })}\n`,
+      "utf8"
+    );
+
+    const result = await tools.callTool("learning_agent.create_quality_revision", {
+      runId: "mcp-quality-revision"
+    });
+
+    expect(result).toMatchObject({
+      status: "quality_revision_brief_ready",
+      runId: "mcp-quality-revision",
+      revisionId: "revision-001",
+      target: {
+        scope: "course",
+        categories: expect.arrayContaining(["quality_gap"])
+      },
+      next: {
+        recommendedTool: "learning_agent.publish_learning_course"
+      }
+    });
+    await expect(
+      readFile(path.join(runDir, "learning-revisions", "revision-001.json"), "utf8")
+    ).resolves.toContain("替换泛化页面");
   });
 
   test("exports a preview-ready learning course through tool handlers", async () => {
@@ -474,4 +632,48 @@ function page(id: string, type: string, kind: "visual" | "interaction" | "assess
       incorrectFeedback: "不对，需要看机制。"
     }
   };
+}
+
+async function writeComparisonPreview(root: string, runId: string, lessonId: string, academic: boolean): Promise<void> {
+  const lessonDir = path.join(root, "runs", runId, "preview", "lessons");
+  const qualityDir = path.join(root, "runs", runId, "quality");
+  await mkdir(lessonDir, { recursive: true });
+  await mkdir(qualityDir, { recursive: true });
+  await writeFile(
+    path.join(lessonDir, `${lessonId}.json`),
+    `${JSON.stringify(
+      {
+        id: lessonId,
+        title: academic ? "研究生课程样例" : "deterministic draft",
+        sourceContext: { sourceAnchorIds: ["source-001:section-1"] },
+        pages: [
+          {
+            id: "p1",
+            type: "problem_scene",
+            title: "问题",
+            narrative: academic ? "先修概念、正式术语、课堂讨论、课后作业、证据链。" : "快速摘要。",
+            sourceAnchorIds: academic ? ["source-001:section-1"] : []
+          },
+          {
+            id: "p2",
+            type: "interactive_model",
+            title: "行动",
+            narrative: academic ? "选择证据链并解释局限边界。" : "选择路径。",
+            sourceAnchorIds: academic ? ["source-001:section-1"] : [],
+            interactionSpec: {
+              kind: "choice",
+              learnerAction: "选择证据链",
+              expectedObservation: "看到机制差异",
+              cognitivePurpose: "建立机制理解"
+            }
+          }
+        ],
+        transferTasks: academic ? [{ id: "t1", prompt: "课后作业式迁移", targetMentalModel: "正式术语到迁移" }] : []
+      },
+      null,
+      2
+    )}\n`,
+    "utf8"
+  );
+  await writeFile(path.join(qualityDir, "course-quality-report.json"), `${JSON.stringify({ status: "passed", score: academic ? 94 : 78 })}\n`, "utf8");
 }

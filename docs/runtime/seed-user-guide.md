@@ -4,17 +4,18 @@
 
 ## 1. 产品做什么
 
-AI Interactive Learning Agent 把书籍、论文、专利、博客、笔记和文档目录转成结构化学习项目。默认目标不是复述资料，而是生成总览课、核心 topic 课、可视化解释、互动练习、误区检查、迁移任务、教师材料和实验视图。
+AI Interactive Learning Agent 把书籍、论文、专利、博客、笔记和文档目录转成结构化学习项目。默认目标不是复述资料，而是生成总览课、核心 topic 课、可视化解释、互动练习、误区检查和迁移任务。
+
+当前默认学习者路径只展示学习核心：逐页学习、来源依据、课程结构、项目库、反馈修订和导出。知识地图、教师、实验和导师等模式保留为未来能力，不作为种子用户默认入口。
 
 ## 2. 使用 Web 工作区
 
 1. 运行 `npm run dev`。
 2. 打开 `http://127.0.0.1:5173/`。
-3. 首页先确认产品定位和支持的资料类型。
-4. 点击 `创建学习项目` 生成 Codex 可执行的中文请求。
-5. 点击 `查看示例课程` 进入课程工作区。
-6. 在工作区切换 `学习 / 知识地图 / 练习 / 教师 / 实验 / 导师`。
-7. 用 `分享输出` 面板复制介绍文案或导出 lesson JSON。
+3. 默认进入学习工作区。
+4. 在侧边栏切换 `学习 / 来源依据 / 课程结构 / 项目库`。
+5. 学习时逐页阅读，不需要审批内部 artifacts。
+6. 觉得某页太抽象、太浅、太难、缺例子或来源不清楚时，用自然语言把反馈交给 Codex/Claude，再走修订工具。
 
 ## 3. 创建项目提示词
 
@@ -23,7 +24,7 @@ AI Interactive Learning Agent 把书籍、论文、专利、博客、笔记和�
 - Codex 自然语言请求：适合直接贴给 Codex 或 Claude。
 - CLI 命令：适合本地通过 `npm run agent:plan` 创建计划。
 
-建议默认使用 `总览课 + 核心 topic` 策略。长书不应该只生成 12 页课程，而应该先生成总览课，再按核心 topic 拆成多个单元，每个单元页数由用户指定。
+建议默认使用 `总览课 + 核心 topic` 策略。长书不应该只生成 12 页课程，而应该先生成总览课，再按核心 topic 拆成多个单元，每个单元页数由用户指定。使用时还要引导用户说出教学难度层级：入门衔接、本科核心课程、大学高年级/研究生课程，或研究论文精读/前沿讨论。
 
 ## 4. 连接 Codex 或 Claude
 
@@ -49,9 +50,9 @@ npm run codex:mcp:check
 npm run mcp -- --list-tools
 ```
 
-外部客户端应优先调用 learner-facing tools：`learning_agent.create_learning_project`、`learning_agent.get_authoring_context`、`learning_agent.publish_learning_course`、`learning_agent.get_learning_preview`。Codex/Claude 应基于 authoring context 自己创作 coursePack 和 lessons，MCP 负责校验与发布。如果用户看完课程后提出“太难 / 加代码 / 多例子 / 拆细”，调用 `learning_agent.revise_learning_course` 记录反馈，再调用 `learning_agent.apply_learning_revision` 应用修订并重新预览。用户接受后再调用 `learning_agent.export_learning_course`。如果只想快速看低保真 deterministic 样例，可以调用 `learning_agent.generate_grounded_course` 或 `learning_agent.generate_quick_preview`。
+外部客户端应优先调用默认 learner tools：`learning_agent.prepare_learning_course`、`learning_agent.publish_learning_course`、`learning_agent.get_learning_preview`、`learning_agent.revise_learning_course`、`learning_agent.apply_learning_revision`、`learning_agent.export_learning_course`。Codex/Claude 应先确认 source、audience、教学难度、课程组织和每单元页数，再基于 `prepare_learning_course` 返回的 authoring context 自己创作 coursePack 和 lessons，MCP 负责校验与发布。如果用户看完课程后提出“太难 / 加代码 / 多例子 / 拆细”，调用 `learning_agent.revise_learning_course` 记录反馈，再调用 `learning_agent.apply_learning_revision` 应用修订并重新预览。用户接受后再调用 `learning_agent.export_learning_course`。低保真 deterministic 样例只用于高级 authoring 或 operator 验证，不作为默认试用路径。
 
-真实资料项目发布时必须保留来源依据。`get_authoring_context` 会返回来源锚点和推荐单元；通过 `publish_learning_course` 发布时，lesson 需要包含 `sourceContext.sourceAnchorIds`、页级 source anchors，或显式 inferred/analogy grounding。
+真实资料项目发布时必须保留来源依据。`prepare_learning_course` 会返回来源锚点和推荐单元；通过 `publish_learning_course` 发布时，lesson 需要包含 `sourceContext.sourceAnchorIds`、页级 source anchors，或显式 inferred/analogy grounding。
 
 ## 5. 专家审查模式
 
@@ -71,10 +72,9 @@ npm run mcp -- --list-tools
 生成并 promote 后，把 lesson 或 course pack 注册到前端 registry，即可在工作区查看。试用时优先分享：
 
 - Web Deck 的学习路径。
-- 知识地图的概念和来源映射。
-- 练习模式的反馈解释。
-- 教师模式的教学提纲。
-- 导出的 lesson JSON。
+- 来源依据和当前页锚点。
+- 反馈修订后的新版预览链接。
+- 导出的静态课程包或 lesson JSON。
 
 ## 7. 已知 beta 限制
 

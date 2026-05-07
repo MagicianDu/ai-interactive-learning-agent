@@ -19,10 +19,11 @@ Use this skill when the user asks Codex to generate, preview, revise, export, or
 
 ## Product Contract
 
-- Codex or Claude authors the final `coursePack` and `lessons`; MCP provides context, validation, publishing, preview, revision, and export.
+- Codex or Claude authors the final `coursePack` and `lessons`; MCP provides preparation, validation, publishing, preview, revision, and export in the default learner profile.
 - Keep all learner-facing lesson content中文优先.
 - Preserve source grounding with `sourceAnchorIds` at lesson or page level for source-backed courses.
-- `get_authoring_context` records Source Graph V2 and Course Planning V2 artifacts for audit and downstream quality checks. These are not learner approvals in the default flow.
+- Follow `docs/runtime/codex-authoring-protocol-v2.md` (Codex Authoring Protocol V2) before writing `coursePack` and `lessons`: every page needs a mental-model move, source synthesis, learner action or check, feedback mechanism, and `cognitivePurpose` when interactive.
+- Advanced authoring tools can record Source Graph V2 and Course Planning V2 artifacts for audit and downstream quality checks. These are not learner approvals in the default flow.
 - 不要让学习者审批内部 artifacts such as source maps, concept maps, curriculum plans, or critic reports in the default learner flow.
 
 ## Natural Language Mapping
@@ -46,28 +47,25 @@ Clarify only learner-visible choices when missing:
 
 - source scope: whole source, selected chapters, selected topics, or a practical task path
 - audience: beginner, experienced programmer, practitioner, researcher, or custom description
-- unit size: pages per unit; default to the existing product default when unspecified
+- teaching difficulty: 入门衔接, 本科核心课程, 大学高年级/研究生课程, or 研究论文精读/前沿讨论
+- unit size: pages per unit; do not silently default in the learner-facing flow
 - output: preview link, exported course pack, or both
 
-Ask at most three clarification questions. If the learner already gave source, audience, strategy, and unit size, do not ask more questions; proceed to MCP.
+Ask at most three clarification questions. If the learner already gave source, audience, teaching difficulty, strategy, and unit size, do not ask more questions; proceed to MCP.
 
 ## Default Learner Workflow
 
 Use this flow for normal Codex/Claude-style natural language operation. It should produce a previewable learning course without asking the learner to approve source maps, concept maps, curriculum plans, or other internal artifacts. Codex should author the course content; MCP should provide context, validate, and publish.
 
-1. Create or load a learner-facing project:
+1. Prepare a learner-facing project and authoring context in one call:
 
 ```json
-{"method":"tools/call","params":{"name":"learning_agent.create_learning_project","arguments":{"request":"<Chinese natural-language course request>"}}}
+{"method":"tools/call","params":{"name":"learning_agent.prepare_learning_course","arguments":{"request":"<Chinese natural-language course request>"}}}
 ```
 
-2. Get source and course authoring context:
+If this returns `clarification_required`, ask only those learner-visible questions and call `learning_agent.prepare_learning_course` again.
 
-```json
-{"method":"tools/call","params":{"name":"learning_agent.get_authoring_context","arguments":{"runId":"<run-id>"}}}
-```
-
-Use the returned `coursePlan.strategyReason`, `coursePlan.acceptanceExpectations`, and `coursePlan.recommendedUnits[*].expectedInteractions/expectedAssessments/transferExpectation` as authoring constraints. Do not paste source graph or course-plan artifacts to the learner unless they ask for expert details.
+2. Use Codex Authoring Protocol V2 with the returned `sourceSemantics`, `coursePlan.strategyReason`, `coursePlan.estimatedTotalPages`, `coursePlan.sourceCoveragePlan`, `coursePlan.acceptanceExpectations`, `coursePlan.recommendedUnits[*].expectedInteractions/expectedAssessments/transferExpectation`, and `contentBlueprint.units[*].pageBlueprints` as authoring constraints. For long books, `unitPages` is per unit and `estimatedTotalPages` is the approximate whole-course page budget. Do not paste source graph, course-plan, or content-blueprint artifacts to the learner unless they ask for expert details.
 
 3. Codex authors `coursePack` and `lessons`, then publishes:
 
@@ -91,13 +89,13 @@ Default publishing writes clean preview JSON under `runs/<run-id>/preview/` and 
 {"method":"tools/call","params":{"name":"learning_agent.get_learning_preview","arguments":{"runId":"<run-id>"}}}
 ```
 
+Use `apply_learning_revision.changedPages` and `qualityAfter`, then confirm `get_learning_preview.preview.revisionHistory` includes the new revision. This is the durable preview-based acceptance point: if the learner refreshes `#/preview/<run-id>`, the sidebar should still show the same learner-readable revision history.
+
 6. Export only after the visible preview matches the learner's request:
 
 ```json
 {"method":"tools/call","params":{"name":"learning_agent.export_learning_course","arguments":{"runId":"<run-id>"}}}
 ```
-
-Use `learning_agent.generate_grounded_course` only for deterministic quick drafts or smoke previews when the user explicitly prioritizes speed over content quality.
 
 When `qualityReport.status=failed`, do not export in the default learner flow. Revise the affected lesson/page from `topIssues` and call `learning_agent.publish_learning_course` again. `expertOverrideReason` is only for maintainer/debug exports.
 
@@ -108,9 +106,26 @@ After publish, preview, revision, or export, respond with only learner-actionabl
 - Preview URL, usually `http://127.0.0.1:5173/#/preview/<run-id>`
 - Course shape: unit count, strategy, pages per unit, source kind
 - Compact quality summary: `qualityReport.status`, score, major checks, `issueSummary`, and the first few `topIssues`
+- Academic depth signal when relevant: `qualityReport.checks.academicDepth` and the missing `depthRubric` moves, summarized in learner-friendly language
+- Optional authored-vs-draft comparison only when the user explicitly asks for advanced authoring comparison
+- For revisions: latest `revisionHistory` summary, changed page numbers, `qualityAfter.status`, and preview URL
 - One suggested next action: open preview, give feedback, revise, or export
 
 Do not paste large source maps, concept maps, curriculum plans, full critic reports, or raw nested JSON unless the user explicitly asks for expert/operator details.
+
+## Advanced Authoring
+
+Use this mode only when the user explicitly asks for separated authoring context, deterministic drafts, or authored-vs-draft comparison.
+
+```json
+{"method":"tools/call","params":{"name":"learning_agent.create_learning_project","arguments":{"request":"<Chinese natural-language course request>"}}}
+{"method":"tools/call","params":{"name":"learning_agent.get_authoring_context","arguments":{"runId":"<run-id>"}}}
+{"method":"tools/call","params":{"name":"learning_agent.generate_grounded_course","arguments":{"runId":"<draft-run-id>"}}}
+{"method":"tools/call","params":{"name":"learning_agent.compare_authoring_quality","arguments":{"authoredRunId":"<authored-run-id>","draftRunId":"<draft-run-id>"}}}
+{"method":"tools/call","params":{"name":"learning_agent.create_quality_revision","arguments":{"runId":"<authored-run-id>"}}}
+```
+
+Do not present deterministic drafts as the default high-quality product.
 
 ## Expert/Operator Mode
 
