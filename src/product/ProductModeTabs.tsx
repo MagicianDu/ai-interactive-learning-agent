@@ -12,14 +12,19 @@ type ProductModeTab = {
   icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
 };
 
-export const productModeTabs: ProductModeTab[] = [
-  { id: "deck", label: "学习", description: "逐页互动课件", icon: Presentation },
+export const defaultProductModeTabs: ProductModeTab[] = [
+  { id: "deck", label: "学习", description: "逐页互动课件", icon: Presentation }
+];
+
+export const experimentalProductModeTabs: ProductModeTab[] = [
   { id: "map", label: "知识地图", description: "概念与来源结构", icon: Map },
   { id: "assessment", label: "练习", description: "测验与反馈", icon: ClipboardCheck },
   { id: "teacher", label: "教师", description: "教学提纲与课堂问题", icon: School },
   { id: "playground", label: "实验", description: "操作模型与观察", icon: Beaker },
   { id: "tutor", label: "导师", description: "页面驱动辅导", icon: Bot }
 ];
+
+export const productModeTabs: ProductModeTab[] = [...defaultProductModeTabs, ...experimentalProductModeTabs];
 
 type ProductModeTabsProps = {
   value: CourseView;

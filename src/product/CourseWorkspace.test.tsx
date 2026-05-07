@@ -179,6 +179,19 @@ describe("CourseWorkspace", () => {
     expect(screen.getAllByRole("button", { name: /打开 /u }).length).toBeGreaterThan(0);
   });
 
+  test("default sidebar shows the learner core views and hides future modes", () => {
+    render(<CourseWorkspace coursePacks={coursePackRegistry} lessons={lessonRegistry} />);
+
+    expect(screen.getByRole("button", { name: "学习" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "来源依据" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "项目库" })).toBeInTheDocument();
+
+    expect(screen.queryByRole("button", { name: "知识地图" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "教师" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "实验" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "导师" })).not.toBeInTheDocument();
+  });
+
   test("opens source grounding as a course-aware learner page", async () => {
     const user = userEvent.setup();
     render(<CourseWorkspace coursePacks={coursePackRegistry} lessons={lessonRegistry} />);
@@ -243,26 +256,6 @@ describe("CourseWorkspace", () => {
     expect(screen.getByText("质量：passed")).toBeInTheDocument();
   });
 
-  test("sidebar product modes show actionable learner surfaces", async () => {
-    const user = userEvent.setup();
-    render(<CourseWorkspace coursePacks={coursePackRegistry} lessons={lessonRegistry} />);
-
-    await user.click(screen.getByRole("button", { name: "练习" }));
-    expect(screen.getByRole("heading", { name: "练习模式" })).toBeInTheDocument();
-    expect(screen.getByText("掌握度路径")).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "教师" }));
-    expect(screen.getByRole("heading", { name: "教师模式" })).toBeInTheDocument();
-    expect(screen.getByText("可直接使用的课堂动作")).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "实验" }));
-    expect(screen.getByRole("heading", { name: "实验模式" })).toBeInTheDocument();
-    expect(screen.getByText("实验记录")).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "导师" }));
-    expect(screen.getByRole("heading", { name: "导师模式" })).toBeInTheDocument();
-    expect(screen.getByText("当前页辅导策略")).toBeInTheDocument();
-  });
 });
 
 function jsonResponse(value: unknown): Response {

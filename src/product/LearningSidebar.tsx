@@ -2,7 +2,7 @@ import { BookOpen, CheckCircle2, FolderOpen, Layers3, MessageSquareText } from "
 
 import type { CoursePackRegistryEntry } from "../course-packs/registry";
 import { pageFeedbackOptions, type PageFeedbackOption, type PageFeedbackRevisionBrief, type RevisionHistoryItem } from "./learning-progress";
-import { productModeTabs, type CourseView } from "./ProductModeTabs";
+import { defaultProductModeTabs, type CourseView } from "./ProductModeTabs";
 
 export type WorkspaceView = CourseView | "library" | "structure" | "sources";
 
@@ -99,7 +99,7 @@ export function LearningSidebar({
         ) : null}
 
         <nav aria-label="学习功能" className="mt-4 grid gap-2">
-          {productModeTabs.map((tab) => {
+          {defaultProductModeTabs.map((tab) => {
             const Icon = tab.icon;
             return (
               <button
