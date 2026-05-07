@@ -18,7 +18,8 @@ export type RevisionFeedbackCategory =
   | "suspicious_claim"
   | "more_practice"
   | "structure_change"
-  | "style_change";
+  | "style_change"
+  | "quality_gap";
 
 export type RevisionTargetV2 = {
   scope: "course" | "unit" | "page" | "interaction" | "assessment" | "source" | "style";

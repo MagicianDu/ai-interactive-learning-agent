@@ -196,12 +196,23 @@ describe("course-quality-report", () => {
     });
 
     expect(report.status).toBe("warning");
+    expect(report.checks.academicDepth).toBe("warning");
+    expect(report.depthRubric).toMatchObject({
+      status: "warning",
+      difficultyLevel: "upper_undergraduate_or_graduate",
+      missingMoves: expect.arrayContaining([
+        expect.objectContaining({ id: "formal_abstraction" }),
+        expect.objectContaining({ id: "evidence_chain" }),
+        expect.objectContaining({ id: "critique_discussion" })
+      ])
+    });
     expect(report.issues).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           issueId: "quality.lesson.academic-depth-shallow",
           category: "learner_level_mismatch",
-          lessonId: "quality-shallow-graduate"
+          lessonId: "quality-shallow-graduate",
+          requiredFix: expect.stringContaining("formal abstraction")
         }),
         expect.objectContaining({
           issueId: "quality.interaction.cognitive-purpose-vague",
@@ -211,6 +222,55 @@ describe("course-quality-report", () => {
         })
       ])
     );
+  });
+
+  test("passes structured academic depth rubric for a rich graduate lesson", () => {
+    const lesson = publishableLessonFixture({ id: "quality-rich-graduate", targetPageCount: 8 });
+    lesson.prerequisites = ["先修：能阅读伪代码", "先修：理解基本复杂度"];
+    lesson.pages = lesson.pages.map((page, index) => ({
+      ...page,
+      sourceAnchorIds: ["source-001:section-1"],
+      narrative:
+        index === 0
+          ? "先修概念连接到正式术语：哈希函数、负载因子和冲突处理。"
+          : index === 1
+            ? "证据链来自来源锚点：实验现象显示候选范围缩小。"
+            : index === 2
+              ? "假设和适用条件：均匀散列成立时平均访问更稳定；局限是冲突集中。"
+              : index === 3
+                ? "课堂讨论：批判 O(1) 说法，给出反例并比较权衡。"
+                : index === 4
+                  ? "课后作业：把同一机制迁移到缓存 key 设计并说明迁移边界。"
+                  : "研究问题、方法边界和机制解释都要回到来源证据。"
+    }));
+    lesson.transferTasks = [
+      {
+        id: "t1",
+        prompt: "课后作业：迁移到缓存 key 设计，并写出假设、局限和反例。",
+        targetMentalModel: "用来源证据和边界条件解释迁移。"
+      }
+    ];
+
+    const report = buildCourseQualityReport({
+      runId: "quality-rich-depth",
+      coursePackId: "quality-rich-depth",
+      lessons: [lesson],
+      authoringContext: {
+        difficultyLevel: "upper_undergraduate_or_graduate",
+        sourceSemantics: {
+          keyTerms: [{ term: "哈希函数" }, { term: "负载因子" }, { term: "冲突处理" }]
+        }
+      }
+    });
+
+    expect(report.checks.academicDepth).toBe("passed");
+    expect(report.depthRubric).toMatchObject({
+      status: "passed",
+      requiredMoveCount: 6,
+      satisfiedMoveCount: 6,
+      missingMoves: []
+    });
+    expect(report.issues.map((issue) => issue.issueId)).not.toContain("quality.lesson.academic-depth-shallow");
   });
 
   test("categorizes missing interaction explanations as missing feedback", () => {

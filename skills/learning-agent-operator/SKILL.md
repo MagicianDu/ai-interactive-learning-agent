@@ -70,7 +70,7 @@ If this returns `clarification_required`, ask only those learner-visible questio
 {"method":"tools/call","params":{"name":"learning_agent.get_authoring_context","arguments":{"runId":"<run-id>"}}}
 ```
 
-2. Use Codex Authoring Protocol V2 with the returned `sourceSemantics`, `coursePlan.strategyReason`, `coursePlan.acceptanceExpectations`, `coursePlan.recommendedUnits[*].expectedInteractions/expectedAssessments/transferExpectation`, and `contentBlueprint.units[*].pageBlueprints` as authoring constraints. Do not paste source graph, course-plan, or content-blueprint artifacts to the learner unless they ask for expert details.
+2. Use Codex Authoring Protocol V2 with the returned `sourceSemantics`, `coursePlan.strategyReason`, `coursePlan.estimatedTotalPages`, `coursePlan.sourceCoveragePlan`, `coursePlan.acceptanceExpectations`, `coursePlan.recommendedUnits[*].expectedInteractions/expectedAssessments/transferExpectation`, and `contentBlueprint.units[*].pageBlueprints` as authoring constraints. For long books, `unitPages` is per unit and `estimatedTotalPages` is the approximate whole-course page budget. Do not paste source graph, course-plan, or content-blueprint artifacts to the learner unless they ask for expert details.
 
 3. Codex authors `coursePack` and `lessons`, then publishes:
 
@@ -86,7 +86,13 @@ If you created a deterministic baseline under a separate run, compare it after p
 {"method":"tools/call","params":{"name":"learning_agent.compare_authoring_quality","arguments":{"authoredRunId":"<authored-run-id>","draftRunId":"<draft-run-id>"}}}
 ```
 
-Summarize improvements and remaining gaps in learner-facing language. Do not present deterministic drafts as the default high-quality product.
+Summarize improvements and remaining gaps in learner-facing language. If `remainingGaps` is non-empty, call `learning_agent.create_quality_revision` to turn comparison `revisionInstructions` into a Codex-ready revision brief, then revise the authored course and publish again.
+
+```json
+{"method":"tools/call","params":{"name":"learning_agent.create_quality_revision","arguments":{"runId":"<authored-run-id>"}}}
+```
+
+Do not present deterministic drafts as the default high-quality product.
 
 4. Open a learner-visible preview:
 
@@ -122,6 +128,7 @@ After publish, preview, revision, or export, respond with only learner-actionabl
 - Preview URL, usually `http://127.0.0.1:5173/#/preview/<run-id>`
 - Course shape: unit count, strategy, pages per unit, source kind
 - Compact quality summary: `qualityReport.status`, score, major checks, `issueSummary`, and the first few `topIssues`
+- Academic depth signal when relevant: `qualityReport.checks.academicDepth` and the missing `depthRubric` moves, summarized in learner-friendly language
 - Optional authored-vs-draft comparison: improvements, remaining gaps, and recommended next action from `compare_authoring_quality`
 - For revisions: latest `revisionHistory` summary, changed page numbers, `qualityAfter.status`, and preview URL
 - One suggested next action: open preview, give feedback, revise, or export

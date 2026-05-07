@@ -70,3 +70,21 @@ The current automated sample set covers:
 - blog: public technical blog URL
 
 Documentation, notes, and topic-only are tracked here as benchmark categories and should be added as automated samples once lightweight public fixtures exist.
+
+## Automated Report Shape
+
+`npm run source:regression` now includes a `qualityBenchmark` object. It is intentionally a benchmark report, not a learner approval artifact.
+
+Fields:
+
+- `status`: `passed`, `warning`, or `failed`.
+- `summary`: source-kind coverage counts, sample readiness counts, warning sample count, and failed sample count.
+- `qualityDimensions`: the shared benchmark dimensions listed above.
+- `sourceKinds`: one row per benchmark source kind with `coverage`, `status`, `sampleIds`, missing dimensions, failing samples, warning samples, and acceptance checks.
+- `nextActions`: concrete maintainer actions, such as adding tracked-only samples or raising missing quality dimensions for an automated source kind.
+
+Interpretation:
+
+- `failed` means at least one automated sample failed project readiness, grounded publishing, semantic checks, source evidence, or source graph checks.
+- `warning` means automated samples are usable but some dimensions or tracked-only source kinds still need stronger coverage.
+- `tracked_only` source kinds keep future requirements visible without blocking the current public regression suite.

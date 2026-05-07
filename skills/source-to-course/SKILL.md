@@ -34,7 +34,7 @@ Use this skill to turn learner-supplied material into a course request that the 
 - `task_guided`: use when the learner wants practical workflow, exercises, or application tasks.
 - `hybrid`: use when the learner wants chapter traceability and topic-first learning.
 
-Track selected chapters, selected topics, audience, teaching difficulty level, language, and `unitPages` as learner-visible choices. `unitPages` means pages per unit.
+Track selected chapters, selected topics, audience, teaching difficulty level, language, and `unitPages` as learner-visible choices. `unitPages` means pages per unit. For long books, preserve the difference between per-unit pages and total course pages: a five-chapter request at 10 pages per chapter should become one overview unit plus five chapter units, approximately 60 pages total.
 
 Ask at most three learner-answerable clarification questions. If the learner did not state teaching difficulty, ask them to choose one of: 入门衔接, 本科核心课程, 大学高年级/研究生课程, 研究论文精读/前沿讨论. Never ask a learner to approve source maps, concept maps, curriculum plans, or critic reports in the default flow.
 
@@ -50,9 +50,9 @@ Call the learner-facing tools in this order for the default flow:
 
 Use the explicit `learning_agent.create_learning_project` -> `learning_agent.get_authoring_context` flow only when the user specifically asks to inspect or separate those steps.
 
-Normal outputs should be compact: preview URL, course shape, and `qualityReport` status/score/checks/issueSummary/topIssues. Keep detailed artifacts available only when the learner explicitly asks for expert review.
+Normal outputs should be compact: preview URL, course shape, `coursePlan.estimatedTotalPages` when available, and `qualityReport` status/score/checks/issueSummary/topIssues. Keep detailed artifacts available only when the learner explicitly asks for expert review.
 
-If the workflow produced both a deterministic draft run and a Codex-authored run, call `learning_agent.compare_authoring_quality` and summarize the authored-vs-draft improvements plus remaining gaps. This is a quality delta report, not a learner approval artifact.
+If the workflow produced both a deterministic draft run and a Codex-authored run, call `learning_agent.compare_authoring_quality` and summarize the authored-vs-draft improvements plus remaining gaps. If there are remaining gaps, call `learning_agent.create_quality_revision` for the authored run and use the resulting brief as Codex's revision worklist. This is a quality delta report and revision loop, not a learner approval artifact.
 
 When inspecting expert details, prefer the latest `source-graph`, `course-plan`, `unit-plan`, `authoring-context`, `course-ir`, `lesson-bundle`, and `publish-validation` artifacts. Do not turn those artifacts into learner approval steps.
 
@@ -63,6 +63,7 @@ When inspecting expert details, prefer the latest `source-graph`, `course-plan`,
 - Preserve the learner's requested teaching difficulty level in lesson prerequisites, examples, assessments, and transfer tasks.
 - For long sources, prefer an overview unit followed by focused units instead of compressing the entire source into one short lesson.
 - Use Course Planning V2 expectations from authoring context to preserve strategy reason, source mapping, expected interactions, expected assessments, and transfer expectations.
+- For long books, check `coursePlan.sourceCoveragePlan`, `estimatedTotalPages`, and `planningNotes` before authoring; do not compress all chapters into one short unit unless the learner explicitly asks for a summary-only course.
 - Use `contentBlueprint.units[*].pageBlueprints` as the page-by-page authoring checklist; do not collapse it into long prose.
 - Do not ask the learner to approve internal artifacts such as source maps, concept maps, or curriculum plans.
 - Preserve chapter or section mappings when the learner asks for them.

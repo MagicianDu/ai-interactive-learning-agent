@@ -70,6 +70,8 @@ export class LearningAgentRuntimeTools {
         return this.publishLearningCourse(input);
       case "learning_agent.compare_authoring_quality":
         return this.compareAuthoringQuality(input);
+      case "learning_agent.create_quality_revision":
+        return this.createQualityRevision(input);
       case "learning_agent.get_learning_preview":
         return this.getLearningPreview(input);
       case "learning_agent.generate_quick_preview":
@@ -198,6 +200,14 @@ export class LearningAgentRuntimeTools {
     return new AuthoringQualityComparisonService(this.workspaceRoot).compare({
       authoredRunId: requiredString(options, "authoredRunId"),
       draftRunId: requiredString(options, "draftRunId")
+    });
+  }
+
+  private async createQualityRevision(input: unknown): Promise<unknown> {
+    const options = expectRecord(input);
+    return new LearningRevisionService(this.workspaceRoot).requestQualityRevision({
+      runId: requiredString(options, "runId"),
+      comparisonReportPath: optionalString(options.comparisonReportPath)
     });
   }
 
@@ -492,6 +502,7 @@ function isLearningAgentToolName(name: string): name is LearningAgentToolName {
     "learning_agent.generate_grounded_course",
     "learning_agent.publish_learning_course",
     "learning_agent.compare_authoring_quality",
+    "learning_agent.create_quality_revision",
     "learning_agent.get_learning_preview",
     "learning_agent.generate_quick_preview",
     "learning_agent.revise_learning_course",

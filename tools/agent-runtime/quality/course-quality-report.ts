@@ -2,6 +2,11 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import type { RunConfig } from "../types.js";
+import {
+  evaluateAcademicDepthRubric,
+  formatMissingAcademicDepthMoves,
+  type AcademicDepthRubricResult
+} from "./academic-depth-rubric.js";
 import { validateChineseFirstLesson } from "./chinese-first-validator.js";
 import { validateLessonQuality } from "./lesson-quality-validator.js";
 import type { LessonCriticReport } from "./lesson-critic.js";
@@ -78,12 +83,14 @@ export type CourseQualityReport = {
     interactionQuality: CourseQualityStatus;
     assessmentCoverage: CourseQualityStatus;
     transferCoverage: CourseQualityStatus;
+    academicDepth: CourseQualityStatus;
   };
   issues: CourseQualityIssue[];
   issueSummary: CourseQualityIssueSummary;
   requiredFixes: string[];
   optionalImprovements: string[];
   sourceEvidence?: SourceEvidenceSummary;
+  depthRubric?: AcademicDepthRubricResult;
 };
 
 export type CompactCourseQualityReport = {
@@ -118,6 +125,7 @@ export function buildCourseQualityReport(input: BuildCourseQualityReportInput): 
   const sourceEvidence =
     input.sourceEvidence ?? (input.sourceGroundingConfig ? analyzeSourceEvidence(input.lessons, input.sourceGroundingConfig) : undefined);
   const sourceEvidenceIssue = sourceEvidenceToIssue(sourceEvidence);
+  const depthRubric = evaluateAcademicDepthRubric(input.lessons, input.authoringContext);
   const heuristicIssues = input.lessons.flatMap((lesson) => collectPageHeuristicIssues(lesson, input.authoringContext));
   const issues = sortCourseQualityIssues([
     ...lessonIssueGroups.flatMap((group) => group.issues.map((issue) => toCourseQualityIssue(issue, group.lessonId))),
@@ -136,7 +144,8 @@ export function buildCourseQualityReport(input: BuildCourseQualityReportInput): 
     ]),
     interactionQuality: statusFromIssues(lessonIssueGroups.flatMap((group) => group.issues.filter(isInteractionIssue))),
     assessmentCoverage: statusFromIssues(lessonIssueGroups.flatMap((group) => group.issues.filter(isAssessmentIssue))),
-    transferCoverage: statusFromIssues(lessonIssueGroups.flatMap((group) => group.issues.filter((issue) => issue.rule === "transfer-challenge")))
+    transferCoverage: statusFromIssues(lessonIssueGroups.flatMap((group) => group.issues.filter((issue) => issue.rule === "transfer-challenge"))),
+    academicDepth: depthRubric ? depthRubricStatusMap[depthRubric.status] : "passed"
   };
   const lessonScores = lessonIssueGroups.map((group, index) => {
     const critic = input.criticReports?.[index];
@@ -169,7 +178,8 @@ export function buildCourseQualityReport(input: BuildCourseQualityReportInput): 
     issueSummary,
     requiredFixes,
     optionalImprovements,
-    ...(sourceEvidence ? { sourceEvidence } : {})
+    ...(sourceEvidence ? { sourceEvidence } : {}),
+    ...(depthRubric ? { depthRubric } : {})
   };
 }
 
@@ -261,6 +271,11 @@ const sourceEvidenceStatusMap: Record<SourceEvidenceStatus, CourseQualityStatus>
   warning: "warning"
 };
 
+const depthRubricStatusMap: Record<AcademicDepthRubricResult["status"], CourseQualityStatus> = {
+  passed: "passed",
+  warning: "warning"
+};
+
 function sourceEvidenceToIssue(sourceEvidence: SourceEvidenceSummary | undefined): QualityIssue | undefined {
   if (!sourceEvidence || sourceEvidence.status === "passed") {
     return undefined;
@@ -301,15 +316,17 @@ function collectPageHeuristicIssues(lesson: unknown, authoringContext: CourseQua
   if (repetitiveIssue) {
     issues.push(repetitiveIssue);
   }
-  if (requiresAcademicDepth(authoringContext, lesson) && academicMarkerCount(JSON.stringify(lesson)) < 3) {
+  const lessonDepthRubric = evaluateAcademicDepthRubric([lesson], authoringContext);
+  if (lessonDepthRubric && lessonDepthRubric.status === "warning") {
+    const missingMoves = formatMissingAcademicDepthMoves(lessonDepthRubric);
     issues.push({
       issueId: "quality.lesson.academic-depth-shallow",
       scope: "lesson",
       severity: "warning",
       category: "learner_level_mismatch",
-      reason: "graduate or research-level course lacks prerequisites, formal terms, evidence, limitations, critique, or homework-style transfer density",
+      reason: `graduate or research-level course lacks required academic depth moves: ${missingMoves}`,
       requiredFix:
-        "Add prerequisites, formal terminology, source reading mapping, assumptions, limitations, critique prompts, and homework-style transfer tasks.",
+        `Add academic depth moves: ${missingMoves}. Include prerequisites, formal terminology, source reading mapping, assumptions, limitations, critique prompts, and homework-style transfer tasks.`,
       rule: "academic-depth",
       path: "lesson.academicDepth",
       lessonId
@@ -511,21 +528,6 @@ function sourceTermsFromAuthoringContext(authoringContext: CourseQualityAuthorin
         .filter((term) => term.length >= 3)
     )
   );
-}
-
-function requiresAcademicDepth(authoringContext: CourseQualityAuthoringContext | undefined, lesson: Record<string, unknown>): boolean {
-  const difficulty = authoringContext?.difficultyLevel ?? "";
-  if (difficulty === "upper_undergraduate_or_graduate" || difficulty === "research") {
-    return true;
-  }
-  const learnerLevelText = [lesson.audience, lesson.title].filter((value): value is string => typeof value === "string").join(" ");
-  return /研究生|论文精读|前沿讨论/u.test(learnerLevelText);
-}
-
-const academicDepthMarkers = ["先修", "正式术语", "证据", "局限", "假设", "批判", "课堂讨论", "课后作业", "研究问题", "方法边界"];
-
-function academicMarkerCount(text: string): number {
-  return academicDepthMarkers.reduce((count, marker) => count + (text.includes(marker) ? 1 : 0), 0);
 }
 
 function requiresPaperResearchDepth(authoringContext: CourseQualityAuthoringContext | undefined, lesson: Record<string, unknown>): boolean {

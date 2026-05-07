@@ -75,6 +75,7 @@ describe("MCP JSON-RPC server", () => {
       "learning_agent.generate_grounded_course",
       "learning_agent.publish_learning_course",
       "learning_agent.compare_authoring_quality",
+      "learning_agent.create_quality_revision",
       "learning_agent.get_learning_preview",
       "learning_agent.generate_quick_preview",
       "learning_agent.revise_learning_course",

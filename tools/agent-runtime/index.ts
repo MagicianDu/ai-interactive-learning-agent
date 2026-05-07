@@ -4,6 +4,11 @@ export { CodexAuthoredTrialService } from "./learner/codex-authored-trial.js";
 export { AuthoringQualityComparisonService } from "./learner/authoring-quality-comparison.js";
 export { AuthoringContextService } from "./learner/authoring-context-service.js";
 export { GroundedCourseService } from "./learner/grounded-course-service.js";
+export {
+  buildRealSourceQualityBenchmarkReport,
+  realSourceBenchmarkQualityDimensions,
+  realSourceBenchmarkSourceKinds
+} from "./learner/real-source-quality-benchmark.js";
 export { realSourceRegressionSamples, runRealSourceRegressionSuite } from "./learner/real-source-regression.js";
 export { CodexManualAdapter } from "./adapters/codex-manual-adapter.js";
 export { MockRuntimeAdapter } from "./adapters/mock-adapter.js";

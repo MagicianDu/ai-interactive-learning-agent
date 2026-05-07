@@ -122,4 +122,64 @@ describe("LearningRevisionService", () => {
     });
     expect(revisionBrief.expectedQualityChecks).toEqual(expect.arrayContaining(["source grounding"]));
   });
+
+  test("creates a quality revision brief from authoring comparison gaps", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-quality-revision-"));
+    const runDir = path.join(root, "runs", "quality-course");
+    await mkdir(path.join(runDir, "quality"), { recursive: true });
+    await writeFile(
+      path.join(runDir, "quality", "authoring-quality-comparison.json"),
+      `${JSON.stringify(
+        {
+          status: "authoring_quality_compared",
+          authoredRunId: "quality-course",
+          draftRunId: "quality-course-draft",
+          remainingGaps: [
+            {
+              id: "generic-content",
+              title: "Codex-authored 内容仍有泛化页面",
+              evidence: "泛化页数量=2。"
+            }
+          ],
+          revisionInstructions: [
+            {
+              gapId: "generic-content",
+              instruction: "替换泛化页面：每页必须围绕具体来源术语、机制、例子、证据或局限写成一屏学习动作。",
+              expectedEvidence: "genericPageCount 归零。"
+            }
+          ]
+        },
+        null,
+        2
+      )}\n`,
+      "utf8"
+    );
+
+    const result = await new LearningRevisionService(root).requestQualityRevision({
+      runId: "quality-course"
+    });
+    const revisionBrief = JSON.parse(await readFile(result.revisionBriefPath, "utf8")) as Record<string, unknown>;
+
+    expect(result).toMatchObject({
+      status: "quality_revision_brief_ready",
+      runId: "quality-course",
+      revisionId: "revision-001",
+      comparisonReportPath: path.join(runDir, "quality", "authoring-quality-comparison.json"),
+      target: {
+        scope: "course",
+        categories: expect.arrayContaining(["quality_gap"]),
+        requestedChange: expect.stringContaining("generic-content")
+      },
+      next: {
+        recommendedTool: "learning_agent.publish_learning_course"
+      }
+    });
+    expect(revisionBrief.revisionInstructions).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("替换泛化页面"),
+        expect.stringContaining("genericPageCount 归零")
+      ])
+    );
+    expect(revisionBrief.expectedQualityChecks).toEqual(expect.arrayContaining(["quality comparison", "quality report"]));
+  });
 });

@@ -36,6 +36,9 @@ export type CourseUnitPlan = {
   overviewUnitId: "unit-overview";
   strategy: CoursePlanningStrategy;
   strategyReason: string;
+  estimatedTotalPages: number;
+  planningNotes: string[];
+  sourceCoveragePlan: CourseSourceCoveragePlan;
   acceptanceExpectations: CoursePlanAcceptanceExpectation[];
   units: PlannedCourseUnit[];
 };
@@ -49,12 +52,20 @@ export type CoursePlanAcceptanceExpectation = {
   description: string;
 };
 
+export type CourseSourceCoveragePlan = {
+  coverageMode: "selected_chapters" | "selected_topics" | "inferred_concepts" | "fallback";
+  requestedChapterCount: number;
+  requestedTopicCount: number;
+  focusedUnitCount: number;
+  totalUnitCount: number;
+  totalPageBudget: number;
+  recommendation: string;
+};
+
 export function planCourseUnits(input: CourseUnitPlanInput): CourseUnitPlan {
   const strategy = normalizeStrategy(input.strategy);
-  const focusConcepts = uniqueStrings([...input.selectedTopics, ...input.concepts.filter((concept) => concept !== "全局地图")]).slice(0, 4);
-  const paddedFocusConcepts =
-    focusConcepts.length >= 2 ? focusConcepts : uniqueStrings([...focusConcepts, "核心机制", "迁移应用"]);
-  const focused = paddedFocusConcepts.slice(0, Math.max(2, Math.min(4, paddedFocusConcepts.length)));
+  const focusPlan = buildFocusPlan(input, strategy);
+  const focused = focusPlan.focusLabels;
   const focusedKind = unitKind(strategy);
   const commonCoverage = {
     minSourceAnchorCount: input.sourceAnchorIds.length > 0 ? 1 : 0,
@@ -95,14 +106,97 @@ export function planCourseUnits(input: CourseUnitPlanInput): CourseUnitPlan {
       } satisfies PlannedCourseUnit;
     })
   ];
+  const estimatedTotalPages = units.reduce((sum, unit) => sum + unit.targetPageCount, 0);
+  const sourceCoveragePlan = {
+    coverageMode: focusPlan.coverageMode,
+    requestedChapterCount: input.selectedChapters.length,
+    requestedTopicCount: input.selectedTopics.length,
+    focusedUnitCount: focused.length,
+    totalUnitCount: units.length,
+    totalPageBudget: estimatedTotalPages,
+    recommendation: coverageRecommendation(focusPlan.coverageMode, strategy, focused.length, estimatedTotalPages)
+  } satisfies CourseSourceCoveragePlan;
 
   return {
     overviewUnitId: "unit-overview",
     strategy,
     strategyReason: strategyReason(input.strategy, strategy, input.sourceKind),
+    estimatedTotalPages,
+    planningNotes: planningNotes(sourceCoveragePlan, input.unitPageCount),
+    sourceCoveragePlan,
     acceptanceExpectations: acceptanceExpectations(strategy, commonCoverage.preserveChapterRefs),
     units
   };
+}
+
+function buildFocusPlan(
+  input: CourseUnitPlanInput,
+  strategy: CoursePlanningStrategy
+): { focusLabels: string[]; coverageMode: CourseSourceCoveragePlan["coverageMode"] } {
+  if (strategy === "chapter_guided" && input.selectedChapters.length > 0) {
+    return {
+      focusLabels: ensureMinimumFocusedUnits(uniqueStrings(input.selectedChapters), input.concepts),
+      coverageMode: "selected_chapters"
+    };
+  }
+
+  const selectedTopics = uniqueStrings(input.selectedTopics);
+  if (selectedTopics.length > 0) {
+    return {
+      focusLabels: ensureMinimumFocusedUnits(selectedTopics, input.concepts),
+      coverageMode: "selected_topics"
+    };
+  }
+
+  const focusConcepts = uniqueStrings(input.concepts.filter((concept) => concept !== "全局地图")).slice(0, 4);
+  if (focusConcepts.length > 0) {
+    const paddedFocusConcepts =
+      focusConcepts.length >= 2 ? focusConcepts : uniqueStrings([...focusConcepts, "核心机制", "迁移应用"]);
+    return {
+      focusLabels: paddedFocusConcepts.slice(0, Math.max(2, Math.min(4, paddedFocusConcepts.length))),
+      coverageMode: "inferred_concepts"
+    };
+  }
+
+  return {
+    focusLabels: ["核心机制", "迁移应用"],
+    coverageMode: "fallback"
+  };
+}
+
+function ensureMinimumFocusedUnits(labels: string[], concepts: string[]): string[] {
+  if (labels.length >= 2) {
+    return labels;
+  }
+  return uniqueStrings([...labels, ...concepts.filter((concept) => concept !== "全局地图"), "核心机制", "迁移应用"]).slice(0, 2);
+}
+
+function coverageRecommendation(
+  coverageMode: CourseSourceCoveragePlan["coverageMode"],
+  strategy: CoursePlanningStrategy,
+  focusedUnitCount: number,
+  totalPageBudget: number
+): string {
+  if (coverageMode === "selected_chapters") {
+    return `按 ${focusedUnitCount} 个指定章节生成 focused units；每章保留来源映射，总页数约 ${totalPageBudget} 页。`;
+  }
+  if (coverageMode === "selected_topics") {
+    return `按 ${focusedUnitCount} 个指定 topic 生成 focused units；保留章节映射，避免按原文顺序被动复述。`;
+  }
+  if (strategy === "chapter_guided") {
+    return "未提供具体章节时先按核心概念拆单元；如用户需要全书覆盖，应补充章节清单或选择 topic 范围。";
+  }
+  return "先给总览课，再按核心概念拆课；如资料很长，可继续补充章节或 topic 范围扩展单元数。";
+}
+
+function planningNotes(sourceCoveragePlan: CourseSourceCoveragePlan, unitPageCount: number): string[] {
+  return [
+    sourceCoveragePlan.recommendation,
+    `每个单元 ${unitPageCount} 页；当前计划 ${sourceCoveragePlan.totalUnitCount} 个单元，总页数约 ${sourceCoveragePlan.totalPageBudget} 页。`,
+    sourceCoveragePlan.coverageMode === "selected_chapters"
+      ? "章节单元必须保留章节边界；Codex 可以在每章内部再按核心 topic 安排页面。"
+      : "非章节模式仍需在页面或单元级保留来源锚点映射。"
+  ];
 }
 
 function unitKind(strategy: CoursePlanningStrategy): PlannedCourseUnit["kind"] {

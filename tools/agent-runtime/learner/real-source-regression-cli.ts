@@ -2,16 +2,19 @@ import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+import { buildRealSourceQualityBenchmarkReport } from "./real-source-quality-benchmark.js";
 import { runRealSourceRegressionSuite } from "./real-source-regression.js";
 
 const workspaceRoot = await mkdtemp(path.join(tmpdir(), "learning-agent-real-source-regression-"));
 const result = await runRealSourceRegressionSuite(workspaceRoot, { generateGroundedCourse: true });
+const qualityBenchmark = buildRealSourceQualityBenchmarkReport(result);
 
 console.log(
   JSON.stringify(
     {
       workspaceRoot,
-      ...result
+      ...result,
+      qualityBenchmark
     },
     null,
     2
@@ -46,4 +49,8 @@ if (failedEvidenceSamples.length > 0) {
       .map((sample) => `${sample.id}(${sample.sourceEvidence?.unsupportedPages ?? "unknown"} unsupported page(s))`)
       .join("; ")}`
   );
+}
+
+if (qualityBenchmark.status === "failed") {
+  throw new Error(`real-source quality benchmark failed: ${qualityBenchmark.nextActions.join("; ")}`);
 }

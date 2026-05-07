@@ -7,7 +7,7 @@ The goal is not to summarize material into slides. The goal is to reconstruct th
 ## Default Flow
 
 1. Call `learning_agent.prepare_learning_course` after the learner has provided source or topic, audience, difficulty, structure, and pages per unit.
-2. Read `sourceSemantics`, `coursePlan.recommendedUnits`, and `contentBlueprint.units[*].pageBlueprints`.
+2. Read `sourceSemantics`, `coursePlan.recommendedUnits`, `coursePlan.sourceCoveragePlan`, `coursePlan.estimatedTotalPages`, and `contentBlueprint.units[*].pageBlueprints`.
 3. Author `coursePack` and `lessons` directly in Codex. MCP should validate and publish; it should not replace the large model's authoring work.
 4. Call `learning_agent.publish_learning_course`.
 5. If a deterministic draft exists, call `learning_agent.compare_authoring_quality`.
@@ -60,6 +60,7 @@ Weak source synthesis:
 - Include prerequisites, formal terminology, mechanism chains, tradeoffs, and source reading mapping.
 - Use classroom discussion prompts and homework-style transfer.
 - Preserve assumptions and limitations instead of flattening them away.
+- Quality reports expose `checks.academicDepth` and `depthRubric.missingMoves`; revise until prerequisite bridge, formal abstraction, evidence chain, assumption/boundary, critique/discussion, and homework transfer are all represented.
 
 ### Research Reading
 
@@ -103,6 +104,8 @@ The `interactionSpec.cognitivePurpose` must name the cognitive work. Vague purpo
 ## Revision Contract
 
 When `qualityReport.status=failed` or `compare_authoring_quality.remainingGaps` is non-empty, revise the course before export. Prefer `compare_authoring_quality.revisionInstructions` as the Codex worklist because each item maps a gap to concrete edits and expected verification evidence.
+
+If the comparison report has `remainingGaps`, call `learning_agent.create_quality_revision` for the authored run. This writes a revision brief under `runs/<run-id>/learning-revisions/` so Codex can revise from concrete quality instructions instead of ad hoc notes.
 
 Common fixes:
 

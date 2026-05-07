@@ -38,6 +38,8 @@ export type BuildRevisionBriefV2Input = {
   courseIRPath?: string;
   qualityReportPath?: string;
   sourceBacked?: boolean;
+  revisionInstructions?: string[];
+  expectedQualityChecks?: string[];
   previousFeedbackCount: number;
   now?: Date;
 };
@@ -61,8 +63,8 @@ export function buildRevisionBriefV2(input: BuildRevisionBriefV2Input): Revision
       allowInferredGrounding: true,
       sourceBacked
     },
-    revisionInstructions: revisionInstructionsForTarget(input.target, sourceBacked),
-    expectedQualityChecks: expectedQualityChecksForTarget(input.target, sourceBacked),
+    revisionInstructions: uniqueStrings([...revisionInstructionsForTarget(input.target, sourceBacked), ...(input.revisionInstructions ?? [])]),
+    expectedQualityChecks: uniqueStrings([...expectedQualityChecksForTarget(input.target, sourceBacked), ...(input.expectedQualityChecks ?? [])]),
     previousFeedbackCount: input.previousFeedbackCount,
     createdAt: (input.now ?? new Date()).toISOString()
   }) as RevisionBriefV2;
@@ -107,4 +109,8 @@ function expectedQualityChecksForTarget(target: RevisionTargetV2, sourceBacked: 
 
 function compactObject<T extends Record<string, unknown>>(value: T): Record<string, unknown> {
   return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined));
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
 }

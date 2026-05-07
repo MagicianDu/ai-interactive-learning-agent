@@ -59,6 +59,14 @@ runs/<authored-run-id>/quality/authoring-quality-comparison.json
 
 Use it when a deterministic draft run exists and Codex has published a higher-quality authored run. Summarize the concrete improvements, remaining gaps, and `revisionInstructions`; do not present the draft as the product-quality default.
 
+`learning_agent.create_quality_revision` converts those comparison `revisionInstructions` into:
+
+```text
+runs/<authored-run-id>/learning-revisions/revision-<n>.json
+```
+
+Use it when `compare_authoring_quality.remainingGaps` is non-empty. Codex should then revise `coursePack` and `lessons`, call `publish_learning_course` again, and rerun `compare_authoring_quality`.
+
 `learning_agent.export_learning_course` refuses to export when the quality report is `failed` unless a maintainer explicitly passes `expertOverrideReason`.
 
 ## Default Learner Flow
@@ -72,6 +80,7 @@ learning_agent.create_learning_project
 learning_agent.get_authoring_context
 learning_agent.publish_learning_course
 learning_agent.compare_authoring_quality   # optional, when a draft baseline exists
+learning_agent.create_quality_revision     # when comparison remainingGaps is non-empty
 learning_agent.get_learning_preview
 learning_agent.revise_learning_course
 learning_agent.apply_learning_revision

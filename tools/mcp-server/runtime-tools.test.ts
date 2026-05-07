@@ -21,6 +21,7 @@ describe("LearningAgentRuntimeTools", () => {
         "learning_agent.generate_grounded_course",
         "learning_agent.publish_learning_course",
         "learning_agent.compare_authoring_quality",
+        "learning_agent.create_quality_revision",
         "learning_agent.get_learning_preview",
         "learning_agent.generate_quick_preview",
         "learning_agent.revise_learning_course",
@@ -294,6 +295,56 @@ describe("LearningAgentRuntimeTools", () => {
       draftRunId: "mcp-draft",
       improvements: expect.arrayContaining([expect.objectContaining({ id: "academic-depth" })])
     });
+  });
+
+  test("creates quality revision briefs from authoring comparison gaps through tool handlers", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
+    const tools = new LearningAgentRuntimeTools(root);
+    const runDir = path.join(root, "runs", "mcp-quality-revision");
+    await mkdir(path.join(runDir, "quality"), { recursive: true });
+    await writeFile(
+      path.join(runDir, "quality", "authoring-quality-comparison.json"),
+      `${JSON.stringify({
+        status: "authoring_quality_compared",
+        authoredRunId: "mcp-quality-revision",
+        draftRunId: "mcp-quality-draft",
+        remainingGaps: [
+          {
+            id: "generic-content",
+            severity: "high",
+            description: "页面仍停留在泛化复述，没有显式证据链。"
+          }
+        ],
+        revisionInstructions: [
+          {
+            gapId: "generic-content",
+            instruction: "替换泛化页面，补充来源锚点、边界条件和可迁移练习。",
+            expectedEvidence: "genericPageCount 归零。"
+          }
+        ]
+      })}\n`,
+      "utf8"
+    );
+
+    const result = await tools.callTool("learning_agent.create_quality_revision", {
+      runId: "mcp-quality-revision"
+    });
+
+    expect(result).toMatchObject({
+      status: "quality_revision_brief_ready",
+      runId: "mcp-quality-revision",
+      revisionId: "revision-001",
+      target: {
+        scope: "course",
+        categories: expect.arrayContaining(["quality_gap"])
+      },
+      next: {
+        recommendedTool: "learning_agent.publish_learning_course"
+      }
+    });
+    await expect(
+      readFile(path.join(runDir, "learning-revisions", "revision-001.json"), "utf8")
+    ).resolves.toContain("替换泛化页面");
   });
 
   test("exports a preview-ready learning course through tool handlers", async () => {
