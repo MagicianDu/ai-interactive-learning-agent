@@ -130,6 +130,18 @@ describe("AuthoringQualityComparisonService", () => {
         expect.objectContaining({ id: "source-synthesis" })
       ])
     );
+    expect(result.revisionInstructions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          gapId: "generic-content",
+          instruction: expect.stringContaining("替换泛化页面")
+        }),
+        expect.objectContaining({
+          gapId: "source-synthesis",
+          instruction: expect.stringContaining("sourceAnchorIds")
+        })
+      ])
+    );
   });
 
   test("reports source-kind depth improvements and remaining gaps from quality issues", async () => {
@@ -233,6 +245,14 @@ describe("AuthoringQualityComparisonService", () => {
         expect.objectContaining({
           id: "missing-feedback",
           title: "解释性反馈机制仍不足"
+        })
+      ])
+    );
+    expect(weak.revisionInstructions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          gapId: "missing-feedback",
+          instruction: expect.stringContaining("feedbackSpec")
         })
       ])
     );

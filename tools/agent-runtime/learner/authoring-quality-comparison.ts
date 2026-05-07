@@ -20,6 +20,7 @@ export type AuthoringQualityComparisonResult = {
   authored: RunQualitySnapshot;
   improvements: ComparisonFinding[];
   remainingGaps: ComparisonFinding[];
+  revisionInstructions: ComparisonRevisionInstruction[];
   recommendedNextActions: string[];
 };
 
@@ -57,6 +58,12 @@ export type ComparisonFinding = {
   evidence: string;
 };
 
+export type ComparisonRevisionInstruction = {
+  gapId: string;
+  instruction: string;
+  expectedEvidence: string;
+};
+
 const safeRunIdPattern = /^[a-z][a-z0-9-]{0,63}$/u;
 
 const academicMarkers = [
@@ -85,6 +92,7 @@ export class AuthoringQualityComparisonService {
     const authored = await this.readSnapshot(input.authoredRunId);
     const improvements = buildImprovements(authored, draft);
     const remainingGaps = buildRemainingGaps(authored, draft);
+    const revisionInstructions = buildRevisionInstructions(remainingGaps);
     const result: AuthoringQualityComparisonResult = {
       status: "authoring_quality_compared",
       authoredRunId: input.authoredRunId,
@@ -96,6 +104,7 @@ export class AuthoringQualityComparisonService {
       authored,
       improvements,
       remainingGaps,
+      revisionInstructions,
       recommendedNextActions: recommendedNextActions(remainingGaps)
     };
 
@@ -364,12 +373,79 @@ function buildSummary(
   ];
 }
 
+function buildRevisionInstructions(remainingGaps: ComparisonFinding[]): ComparisonRevisionInstruction[] {
+  return remainingGaps.map((gap) => ({
+    gapId: gap.id,
+    ...revisionInstructionForGap(gap)
+  }));
+}
+
+function revisionInstructionForGap(gap: ComparisonFinding): Omit<ComparisonRevisionInstruction, "gapId"> {
+  switch (gap.id) {
+    case "scope-coverage":
+      return {
+        instruction: "扩展 authored coursePack 和 lessons，使单元数、页数和 draft 覆盖范围一致；不要只提交一个样例 lesson。",
+        expectedEvidence: "重新对比后，authored lesson/page count 不低于 draft 的 80%，且覆盖所有用户请求的章节或 topic。"
+      };
+    case "quality-report":
+      return {
+        instruction: "先读取 authored run 的 course-quality-report.json，按其中 issueId 逐项修复，再重新 publish_learning_course。",
+        expectedEvidence: "course-quality-report.status 变为 passed，或剩余 warning 有明确专家 override 理由。"
+      };
+    case "academic-depth":
+      return {
+        instruction: "把课程提升到声明难度：补先修概念、正式术语、证据链、局限边界、课堂讨论和课后作业式迁移。",
+        expectedEvidence: "页面文本能明确看到研究问题、方法假设、证据/局限和作业式 transfer，而不是泛泛解释。"
+      };
+    case "source-grounding":
+      return {
+        instruction: "为每个来源支持的页面补 sourceAnchorIds；推断、类比或背景知识必须标注 grounding kind 和来源理由。",
+        expectedEvidence: "页级来源覆盖率达到 0.8 以上，sourceEvidence 不再报告 unsupported pages。"
+      };
+    case "learner-action":
+      return {
+        instruction: "增加至少一个 interactionSpec 和一个 assessmentSpec，让学习者预测、选择、比较、诊断或迁移，而不是只阅读。",
+        expectedEvidence: "interactivePageCount 和 assessmentPageCount 都大于 0，并且 interactionSpec 有 cognitivePurpose。"
+      };
+    case "transfer-design":
+      return {
+        instruction: "补 transfer_challenge 页面或 transferTasks，把核心心智模型迁移到一个新的但相关的使用场景。",
+        expectedEvidence: "transferTaskCount 大于 0，任务要求学习者做判断或设计，而不是复述摘要。"
+      };
+    case "generic-content":
+      return {
+        instruction: "替换泛化页面：每页必须围绕具体来源术语、机制、例子、证据或局限写成一屏学习动作。",
+        expectedEvidence: "genericPageCount 归零，页面不再出现只说明“核心概念/整体内容/资料大意”的空泛叙述。"
+      };
+    case "source-synthesis":
+      return {
+        instruction: "逐页检查有 sourceAnchorIds 的页面，把锚点转成来源术语、证据链、限制条件、机制解释或具体例子。",
+        expectedEvidence: "weakSourceSynthesisPageCount 归零，sourceAnchorIds 对应页面能看到来源术语或证据/局限表达。"
+      };
+    case "source-kind-depth":
+      return {
+        instruction: "按 sourceKind 补专属深度动作：论文补研究问题/贡献/方法/证据/局限，专利补权利要求/实施例/边界，博客补实践问题/实现路径/caveat。",
+        expectedEvidence: "course-quality-report 不再包含 patent/blog/paper depth shallow 类 issueId。"
+      };
+    case "missing-feedback":
+      return {
+        instruction: "为所有 interactionSpec 和 assessmentSpec 页面补 feedbackSpec.correctFeedback、feedbackSpec.incorrectFeedback 或 options[].explanation，解释因果机制和错误假设。",
+        expectedEvidence: "missingFeedbackPageCount 归零，质量报告不再包含 quality.page.feedback-missing 或 quality.interaction.feedback-missing。"
+      };
+    default:
+      return {
+        instruction: `围绕 gap "${gap.title}" 修订课程内容，并在修订说明里引用该 gap 的 evidence。`,
+        expectedEvidence: "重新运行 compare_authoring_quality 后该 gap 不再出现在 remainingGaps。"
+      };
+  }
+}
+
 function recommendedNextActions(remainingGaps: ComparisonFinding[]): string[] {
   if (remainingGaps.length === 0) {
     return ["可进入真实学习者试用，并收集难度、节奏和练习反馈。"];
   }
   return [
-    "请由 Codex 按 remainingGaps 修订 coursePack 与 lessons，再调用 learning_agent.publish_learning_course。",
+    "请由 Codex 按 remainingGaps 和 revisionInstructions 逐项修订 coursePack 与 lessons，再调用 learning_agent.publish_learning_course。",
     "修订后再次调用 learning_agent.compare_authoring_quality，确认 authored 版本相对 deterministic draft 的改进仍然成立。"
   ];
 }

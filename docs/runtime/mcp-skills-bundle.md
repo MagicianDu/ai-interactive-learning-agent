@@ -57,7 +57,7 @@ Normal MCP responses should remain learner-facing. Summarize `qualityReport.stat
 runs/<authored-run-id>/quality/authoring-quality-comparison.json
 ```
 
-Use it when a deterministic draft run exists and Codex has published a higher-quality authored run. Summarize the concrete improvements and remaining gaps; do not present the draft as the product-quality default.
+Use it when a deterministic draft run exists and Codex has published a higher-quality authored run. Summarize the concrete improvements, remaining gaps, and `revisionInstructions`; do not present the draft as the product-quality default.
 
 `learning_agent.export_learning_course` refuses to export when the quality report is `failed` unless a maintainer explicitly passes `expertOverrideReason`.
 

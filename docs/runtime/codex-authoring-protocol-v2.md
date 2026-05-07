@@ -11,7 +11,7 @@ The goal is not to summarize material into slides. The goal is to reconstruct th
 3. Author `coursePack` and `lessons` directly in Codex. MCP should validate and publish; it should not replace the large model's authoring work.
 4. Call `learning_agent.publish_learning_course`.
 5. If a deterministic draft exists, call `learning_agent.compare_authoring_quality`.
-6. Use `qualityReport.topIssues` and comparison `remainingGaps` to revise before export.
+6. Use `qualityReport.topIssues`, comparison `remainingGaps`, and comparison `revisionInstructions` to revise before export.
 
 ## Page Contract
 
@@ -102,7 +102,7 @@ The `interactionSpec.cognitivePurpose` must name the cognitive work. Vague purpo
 
 ## Revision Contract
 
-When `qualityReport.status=failed` or `compare_authoring_quality.remainingGaps` is non-empty, revise the course before export.
+When `qualityReport.status=failed` or `compare_authoring_quality.remainingGaps` is non-empty, revise the course before export. Prefer `compare_authoring_quality.revisionInstructions` as the Codex worklist because each item maps a gap to concrete edits and expected verification evidence.
 
 Common fixes:
 
