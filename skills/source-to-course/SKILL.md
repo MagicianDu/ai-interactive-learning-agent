@@ -50,6 +50,8 @@ Call the learner-facing tools in this order:
 
 Normal outputs should be compact: preview URL, course shape, and `qualityReport` status/score/checks/issueSummary/topIssues. Keep detailed artifacts available only when the learner explicitly asks for expert review.
 
+If the workflow produced both a deterministic draft run and a Codex-authored run, call `learning_agent.compare_authoring_quality` and summarize the authored-vs-draft improvements plus remaining gaps. This is a quality delta report, not a learner approval artifact.
+
 When inspecting expert details, prefer the latest `source-graph`, `course-plan`, `unit-plan`, `authoring-context`, `course-ir`, `lesson-bundle`, and `publish-validation` artifacts. Do not turn those artifacts into learner approval steps.
 
 ## Quality Checklist

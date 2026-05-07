@@ -61,6 +61,7 @@ async function checkMcpToolList() {
     "learning_agent.get_authoring_context",
     "learning_agent.generate_grounded_course",
     "learning_agent.publish_learning_course",
+    "learning_agent.compare_authoring_quality",
     "learning_agent.revise_learning_course",
     "learning_agent.plan_run",
     "learning_agent.beta_status"

@@ -5,6 +5,7 @@ import {
   AgentWorkflow,
   ApprovalService,
   ArtifactStore,
+  AuthoringQualityComparisonService,
   AuthoringContextService,
   BetaStatusService,
   CodexManualAdapter,
@@ -64,6 +65,8 @@ export class LearningAgentRuntimeTools {
         return this.generateGroundedCourse(input);
       case "learning_agent.publish_learning_course":
         return this.publishLearningCourse(input);
+      case "learning_agent.compare_authoring_quality":
+        return this.compareAuthoringQuality(input);
       case "learning_agent.get_learning_preview":
         return this.getLearningPreview(input);
       case "learning_agent.generate_quick_preview":
@@ -167,6 +170,14 @@ export class LearningAgentRuntimeTools {
       coursePack: options.coursePack,
       publishNotes: optionalString(options.publishNotes),
       outputMode: optionalOutputMode(options.outputMode)
+    });
+  }
+
+  private async compareAuthoringQuality(input: unknown): Promise<unknown> {
+    const options = expectRecord(input);
+    return new AuthoringQualityComparisonService(this.workspaceRoot).compare({
+      authoredRunId: requiredString(options, "authoredRunId"),
+      draftRunId: requiredString(options, "draftRunId")
     });
   }
 
@@ -459,6 +470,7 @@ function isLearningAgentToolName(name: string): name is LearningAgentToolName {
     "learning_agent.get_authoring_context",
     "learning_agent.generate_grounded_course",
     "learning_agent.publish_learning_course",
+    "learning_agent.compare_authoring_quality",
     "learning_agent.get_learning_preview",
     "learning_agent.generate_quick_preview",
     "learning_agent.revise_learning_course",

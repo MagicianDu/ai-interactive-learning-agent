@@ -100,4 +100,5 @@ Codex 应调用 `learning_agent.revise_learning_course` 记录反馈，再调用
 - 默认高质量路径由 Codex 创作 source-grounded course bundle；MCP 负责准备 authoring context、校验、发布和导出。
 - `generate_grounded_course` 是 deterministic draft，不代表最终内容质量。
 - `generate_quick_preview` 是 deterministic smoke，用于快速看产品形态，不代表最终内容质量。
+- 如果同时保留 deterministic draft run 和 Codex-authored run，可调用 `learning_agent.compare_authoring_quality` 生成 authored-vs-draft 对照报告，说明内容质量提升和剩余 gap。
 - Advanced/operator 工具仍保留，用于调试、审计来源映射和专家审核。

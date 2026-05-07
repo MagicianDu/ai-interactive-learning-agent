@@ -5,6 +5,7 @@ export type LearningAgentToolName =
   | "learning_agent.get_authoring_context"
   | "learning_agent.generate_grounded_course"
   | "learning_agent.publish_learning_course"
+  | "learning_agent.compare_authoring_quality"
   | "learning_agent.get_learning_preview"
   | "learning_agent.generate_quick_preview"
   | "learning_agent.revise_learning_course"
@@ -98,6 +99,12 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
       { runId: stringSchema, coursePack: looseObjectSchema, lessons: arraySchema, publishNotes: stringSchema, outputMode: stringSchema },
       ["runId", "coursePack", "lessons"]
     )
+  },
+  {
+    name: "learning_agent.compare_authoring_quality",
+    description:
+      "Learner-facing quality tool. Compare a Codex-authored preview against a deterministic draft preview and return concrete content-quality improvements and remaining gaps.",
+    inputSchema: objectSchema({ authoredRunId: stringSchema, draftRunId: stringSchema }, ["authoredRunId", "draftRunId"])
   },
   {
     name: "learning_agent.get_learning_preview",

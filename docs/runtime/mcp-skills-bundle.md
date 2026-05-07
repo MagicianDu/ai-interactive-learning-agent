@@ -4,7 +4,7 @@ This document defines the local product bundle for AI Interactive Learning Agent
 
 The bundle has two parts:
 
-- MCP server: stable callable tools for creating projects, preparing authoring context, validating/publishing Codex-authored courses, generating deterministic drafts, previewing, revising, exporting, and running expert workflows.
+- MCP server: stable callable tools for creating projects, preparing authoring context, validating/publishing Codex-authored courses, generating deterministic drafts, comparing authored content against drafts, previewing, revising, exporting, and running expert workflows.
 - Skills: operating instructions for Codex, Claude, OpenClaw-style clients, and future agent runtimes so natural-language learner requests follow the right path.
 
 ## Codex Install
@@ -51,6 +51,14 @@ runs/<run-id>/quality/course-quality-report.json
 
 Normal MCP responses should remain learner-facing. Summarize `qualityReport.status`, score, checks, `issueSummary`, and the first few `topIssues`; do not ask learners to approve the internal artifacts.
 
+`learning_agent.compare_authoring_quality` writes:
+
+```text
+runs/<authored-run-id>/quality/authoring-quality-comparison.json
+```
+
+Use it when a deterministic draft run exists and Codex has published a higher-quality authored run. Summarize the concrete improvements and remaining gaps; do not present the draft as the product-quality default.
+
 `learning_agent.export_learning_course` refuses to export when the quality report is `failed` unless a maintainer explicitly passes `expertOverrideReason`.
 
 ## Default Learner Flow
@@ -63,6 +71,7 @@ Before `create_learning_project`, confirm learner-visible requirements: source s
 learning_agent.create_learning_project
 learning_agent.get_authoring_context
 learning_agent.publish_learning_course
+learning_agent.compare_authoring_quality   # optional, when a draft baseline exists
 learning_agent.get_learning_preview
 learning_agent.revise_learning_course
 learning_agent.apply_learning_revision
@@ -71,7 +80,7 @@ learning_agent.export_learning_course
 
 Use expert/operator tools only when the user explicitly asks to inspect artifacts, debug generation, or audit source coverage.
 
-Use `learning_agent.generate_grounded_course` only for quick deterministic drafts or smoke previews.
+Use `learning_agent.generate_grounded_course` only for quick deterministic drafts or smoke previews. If you generate such a draft and later publish Codex-authored content under another run, call `learning_agent.compare_authoring_quality` to make the quality delta explicit.
 
 ## Upgrade
 

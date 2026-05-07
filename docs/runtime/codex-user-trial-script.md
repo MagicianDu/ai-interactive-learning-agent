@@ -18,6 +18,7 @@ Expected MCP path:
 learning_agent.create_learning_project
 learning_agent.get_authoring_context
 learning_agent.publish_learning_course
+learning_agent.compare_authoring_quality   # optional, only if a deterministic draft baseline exists
 learning_agent.get_learning_preview
 ```
 
@@ -29,6 +30,7 @@ Each lesson page should follow the blueprint's pageType, learnerAction, visualRe
 If publish_learning_course returns publish.blueprint.* issues, Codex should revise the lesson directly instead of asking the learner to approve internal artifacts.
 For long books, get_authoring_context should surface content anchors instead of table-of-contents or dedication anchors; if the first anchors are front matter, revise the source sampling before authoring.
 Course posture must follow the learner's stated difficulty level. For upper-undergraduate / graduate requests, include prerequisites, formal terms, source reading anchors, classroom discussion prompts, and homework-style transfer tasks.
+If a deterministic draft baseline exists, call compare_authoring_quality after publish so the response can state what Codex-authored content improved and what still needs revision.
 ```
 
 Expected response:
@@ -37,6 +39,7 @@ Expected response:
 预览地址：http://127.0.0.1:5173/#/preview/<run-id>
 课程结构：总览 + topic 单元，8 页/单元
 质量摘要：status/score/checks/requiredFixCount
+内容对照：如果运行了 compare_authoring_quality，说明 authored 相对 draft 的 improvements 和 remainingGaps
 下一步：打开预览后告诉我哪一页太抽象、例子不够、来源依据不清楚，或希望更难/更简单。
 ```
 

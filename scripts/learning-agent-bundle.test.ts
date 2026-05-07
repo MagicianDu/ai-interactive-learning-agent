@@ -24,6 +24,7 @@ describe("learning agent MCP and skills bundle", () => {
       "learning_agent.create_learning_project",
       "learning_agent.get_authoring_context",
       "learning_agent.publish_learning_course",
+      "learning_agent.compare_authoring_quality",
       "learning_agent.get_learning_preview",
       "learning_agent.revise_learning_course",
       "learning_agent.apply_learning_revision",

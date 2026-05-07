@@ -78,6 +78,14 @@ Use the returned `coursePlan.strategyReason`, `coursePlan.acceptanceExpectations
 
 Default publishing writes clean preview JSON under `runs/<run-id>/preview/` and returns a compact `qualityReport`. Do not pass `outputMode=source` unless maintaining repository fixtures.
 
+If you created a deterministic baseline under a separate run, compare it after publishing:
+
+```json
+{"method":"tools/call","params":{"name":"learning_agent.compare_authoring_quality","arguments":{"authoredRunId":"<authored-run-id>","draftRunId":"<draft-run-id>"}}}
+```
+
+Summarize improvements and remaining gaps in learner-facing language. Do not present deterministic drafts as the default high-quality product.
+
 4. Open a learner-visible preview:
 
 ```json
@@ -101,6 +109,7 @@ Use `apply_learning_revision.changedPages` and `qualityAfter`, then confirm `get
 ```
 
 Use `learning_agent.generate_grounded_course` only for deterministic quick drafts or smoke previews when the user explicitly prioritizes speed over content quality.
+Use `learning_agent.compare_authoring_quality` when both a deterministic draft run and a Codex-authored run exist, so the quality delta is concrete instead of subjective.
 
 When `qualityReport.status=failed`, do not export in the default learner flow. Revise the affected lesson/page from `topIssues` and call `learning_agent.publish_learning_course` again. `expertOverrideReason` is only for maintainer/debug exports.
 
@@ -111,6 +120,7 @@ After publish, preview, revision, or export, respond with only learner-actionabl
 - Preview URL, usually `http://127.0.0.1:5173/#/preview/<run-id>`
 - Course shape: unit count, strategy, pages per unit, source kind
 - Compact quality summary: `qualityReport.status`, score, major checks, `issueSummary`, and the first few `topIssues`
+- Optional authored-vs-draft comparison: improvements, remaining gaps, and recommended next action from `compare_authoring_quality`
 - For revisions: latest `revisionHistory` summary, changed page numbers, `qualityAfter.status`, and preview URL
 - One suggested next action: open preview, give feedback, revise, or export
 
