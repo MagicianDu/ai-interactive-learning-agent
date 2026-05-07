@@ -73,7 +73,7 @@ Use it when `compare_authoring_quality.remainingGaps` is non-empty. Codex should
 
 Normal users should not review internal artifacts. The default flow is:
 
-Before `create_learning_project`, confirm learner-visible requirements: source scope, audience, teaching difficulty level, course organization, and pages per unit. Teaching difficulty should be one of 入门衔接, 本科核心课程, 大学高年级/研究生课程, or 研究论文精读/前沿讨论 unless the user gives a custom equivalent.
+Before `create_learning_project` or `prepare_learning_course`, confirm learner-visible requirements: source scope, audience, teaching difficulty level, course organization, and pages per unit. Teaching difficulty should be one of 入门衔接, 本科核心课程, 大学高年级/研究生课程, or 研究论文精读/前沿讨论 unless the user gives a custom equivalent. Missing teaching difficulty or pages per unit should return a learner-facing clarification instead of silently defaulting.
 
 ```text
 learning_agent.create_learning_project

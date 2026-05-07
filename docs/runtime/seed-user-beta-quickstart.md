@@ -29,7 +29,7 @@ Prefer the one-call preparation tool:
 {"method":"tools/call","params":{"name":"learning_agent.prepare_learning_course","arguments":{"request":"请用 /path/to/source.pdf 生成中文学习课程，面向有编程基础的中文学习者，教学难度为大学高年级/研究生课程，每个单元 8 页，先总览再按核心 topic 拆课。","runId":"my-course","sourcePath":"/path/to/source.pdf","sourceKind":"book","audience":"有编程基础的中文学习者","difficultyLevel":"upper_undergraduate_or_graduate","unitPages":8,"strategy":"overview_plus_topic"}}}
 ```
 
-If it returns `clarification_required`, ask the learner only those questions, then call `learning_agent.prepare_learning_course` again with the clarified request.
+If it returns `clarification_required`, ask the learner only those questions, then call `learning_agent.prepare_learning_course` again with the clarified request. Missing teaching difficulty or missing pages per unit should stop here; do not silently default and publish a preview.
 
 If it returns `authoring_context_ready`, Codex or Claude authors:
 

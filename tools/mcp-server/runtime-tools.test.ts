@@ -278,6 +278,25 @@ describe("LearningAgentRuntimeTools", () => {
     });
   });
 
+  test("requires pages per unit before prepare_learning_course returns authoring context", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
+    const tools = new LearningAgentRuntimeTools(root);
+
+    const result = await tools.callTool("learning_agent.prepare_learning_course", {
+      request: "请用 /tmp/book.pdf 生成中文学习课程，面向中文工程师，教学难度为大学高年级/研究生课程。",
+      runId: "mcp-prepare-missing-pages"
+    });
+
+    expect(result).toMatchObject({
+      status: "clarification_required",
+      runId: "mcp-prepare-missing-pages",
+      clarificationQuestions: [expect.stringContaining("每个单元")],
+      next: {
+        recommendedTool: "learning_agent.prepare_learning_course"
+      }
+    });
+  });
+
   test("compares authored and deterministic draft quality through tool handlers", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
     const tools = new LearningAgentRuntimeTools(root);

@@ -42,6 +42,24 @@ describe("LearnerProjectService", () => {
     expect(result.clarificationQuestions[0]).toContain("研究生");
   });
 
+  test("asks for unit pages when source audience and teaching difficulty are present but page count is missing", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learner-project-"));
+    const service = new LearnerProjectService(root);
+
+    const result = await service.createProject({
+      request: "请用 /tmp/book.pdf 生成中文学习材料，面向有编程基础的学习者，教学难度定位为大学高年级/研究生课程。"
+    });
+
+    expect(result.status).toBe("clarification_required");
+    if (result.status !== "clarification_required") {
+      throw new Error("expected clarification_required");
+    }
+    expect(result.clarificationQuestions).toEqual([
+      expect.stringContaining("每个单元")
+    ]);
+    expect(result.clarificationQuestions[0]).toContain("页");
+  });
+
   test("writes a ready learner brief for a complete request", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "learner-project-"));
     const service = new LearnerProjectService(root);

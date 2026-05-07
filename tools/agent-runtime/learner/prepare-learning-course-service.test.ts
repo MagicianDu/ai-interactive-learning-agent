@@ -75,4 +75,23 @@ describe("PrepareLearningCourseService", () => {
     }
     expect(result.clarificationQuestions.join("\n")).not.toContain("artifact");
   });
+
+  test("asks for pages per unit before returning authoring context", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "prepare-learning-course-"));
+
+    const result = await new PrepareLearningCourseService(root).prepare({
+      request: "请用 /tmp/book.pdf 生成中文学习课程，面向有编程基础的中文学习者，教学难度为大学高年级/研究生课程。",
+      runId: "prepare-missing-pages"
+    });
+
+    expect(result).toMatchObject({
+      status: "clarification_required",
+      runId: "prepare-missing-pages",
+      clarificationQuestions: [expect.stringContaining("每个单元")]
+    });
+    if (result.status !== "clarification_required") {
+      throw new Error("expected clarification_required");
+    }
+    expect(result.next.recommendedTool).toBe("learning_agent.prepare_learning_course");
+  });
 });

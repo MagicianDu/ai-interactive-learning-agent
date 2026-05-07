@@ -25,6 +25,7 @@ export type LearnerBrief = {
   audience?: string;
   difficultyLevel?: TeachingDifficultyLevel;
   unitPages: number;
+  unitPagesSpecified?: boolean;
   strategy: string;
   selectedChapters?: string[];
   selectedTopics?: string[];
@@ -119,13 +120,16 @@ function buildAuthoringContextGuidance(runId: string, brief: LearnerBrief): stri
 
 function buildBrief(input: CreateLearnerProjectInput): LearnerBrief {
   const request = input.request;
+  const inferredPages = inferPages(request);
+  const unitPages = input.unitPages ?? inferredPages ?? 8;
   return {
     topic: inferTopic(request),
     sourcePath: input.sourcePath ?? inferPath(request),
     sourceKind: input.sourceKind ?? inferSourceKind(request),
     audience: input.audience ?? inferAudience(request),
     difficultyLevel: input.difficultyLevel ?? inferTeachingDifficultyLevel(request),
-    unitPages: input.unitPages ?? inferPages(request) ?? 8,
+    unitPages,
+    unitPagesSpecified: input.unitPages !== undefined || inferredPages !== undefined,
     strategy: input.strategy ?? inferStrategy(request),
     selectedChapters: normalizeList(input.selectedChapters) ?? inferSelectedChapters(request),
     selectedTopics: normalizeList(input.selectedTopics) ?? inferSelectedTopics(request),
@@ -143,6 +147,9 @@ function buildClarificationQuestions(brief: LearnerBrief): string[] {
   }
   if (!brief.difficultyLevel) {
     questions.push("希望教学内容难度层级是什么？例如：入门衔接、本科核心、大学高年级/研究生课程，或研究论文精读/前沿讨论。");
+  }
+  if (brief.unitPagesSpecified === false) {
+    questions.push("希望每个单元多少页？例如：6、8、10 或 12 页。");
   }
   return questions;
 }
