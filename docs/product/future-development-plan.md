@@ -2,26 +2,23 @@
 
 Last updated: 2026-05-06
 
-This document defines the next product development path after the seed-ready beta. It should be read together with `docs/product/current-product-state.md`.
+Historical note: this document records the development direction used before
+the product-core pruning pass. Current product truth lives in `README.md` and
+`docs/product/product-core.md`. Use the references below for context only, not
+as the default learner workflow or current implementation order.
 
-The current serial product mainline is:
+Historical serial product mainline reference:
 
-```text
-docs/superpowers/specs/2026-05-06-product-mainline-development-spec.md
-```
+- Historical reference only: `docs/superpowers/specs/2026-05-06-product-mainline-development-spec.md`
 
-The execution plan for Milestone B plus bounded parallel pre-research is:
+Historical execution plan for Milestone B plus bounded parallel pre-research:
 
-```text
-docs/superpowers/plans/2026-05-06-milestone-b-parallel-workstreams.md
-```
+- Historical reference only: `docs/superpowers/plans/2026-05-06-milestone-b-parallel-workstreams.md`
 
-The current Milestone C feedback-to-revision spec and execution plan are:
+Historical Milestone C feedback-to-revision spec and execution plan:
 
-```text
-docs/superpowers/specs/2026-05-06-milestone-c-feedback-revision-design.md
-docs/superpowers/plans/2026-05-06-milestone-c-feedback-revision.md
-```
+- Historical reference only: `docs/superpowers/specs/2026-05-06-milestone-c-feedback-revision-design.md`
+- Historical reference only: `docs/superpowers/plans/2026-05-06-milestone-c-feedback-revision.md`
 
 Parallel exploration tracks are recorded for later promotion here:
 
@@ -29,13 +26,12 @@ Parallel exploration tracks are recorded for later promotion here:
 docs/product/parallel-exploration-backlog.md
 ```
 
-The executable spec for the next quality push is:
+Historical executable spec for the public-beta quality push:
 
-```text
-docs/superpowers/specs/2026-05-06-public-beta-quality-execution-spec.md
-```
+- Historical reference only: `docs/superpowers/specs/2026-05-06-public-beta-quality-execution-spec.md`
 
-Use that spec as the source of truth for task ordering, acceptance gates, and stop conditions.
+Do not use historical specs as the public product promise unless they are
+promoted back into `docs/product/product-core.md` or a current runtime guide.
 
 ## Product Direction
 

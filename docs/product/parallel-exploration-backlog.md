@@ -15,11 +15,9 @@ Execution rule:
   - Revision Brief
 - Exploration must not replace the default learner path until it has a dedicated spec and acceptance gate.
 
-Primary mainline reference:
+Historical mainline reference for context only:
 
-```text
-docs/superpowers/specs/2026-05-06-product-mainline-development-spec.md
-```
+- Historical reference only: `docs/superpowers/specs/2026-05-06-product-mainline-development-spec.md`
 
 ## Track A: Multi-Runtime Agent Entry
 
