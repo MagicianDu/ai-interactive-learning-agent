@@ -99,7 +99,8 @@ describe("validateContentBlueprintCompliance", () => {
   });
 
   it("defaults missing legacy course intent when extracting content blueprints", () => {
-    const { courseIntent: _courseIntent, ...legacyBlueprint } = blueprint();
+    const legacyBlueprint = { ...blueprint() } as Partial<ContentBlueprint>;
+    delete legacyBlueprint.courseIntent;
 
     expect(extractContentBlueprint({ contentBlueprint: legacyBlueprint })?.courseIntent).toBe("build_mental_model");
   });

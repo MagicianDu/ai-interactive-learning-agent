@@ -593,4 +593,76 @@ describe("course-quality-report", () => {
       ])
     );
   });
+
+  test("attributes professor lecture rubric warnings to each weak lesson in multi-lesson decks", () => {
+    const richLesson = publishableLessonFixture({ id: "quality-professor-rich-unit", targetPageCount: 8 });
+    richLesson.pages = richLesson.pages.map((page, index) => ({
+      ...page,
+      interactionSpec: undefined,
+      narrative:
+        index === 0
+          ? "课程框架：本讲定位、核心问题和学习边界。"
+          : index === 1
+            ? "先修要求：需要理解基本 agent、prompt 和工具调用。"
+            : index === 2
+              ? "概念地图：方法谱系、理论结构、关键定义和正式术语。"
+              : index === 3
+                ? "经典例题：用一个 agent orchestration case analysis 展开推导。"
+                : index === 4
+                  ? "方法比较：taxonomy、权衡、适用边界和反例。"
+                  : index === 5
+                    ? "课堂讨论题：批判一个设计选择并给出参考要点。"
+                    : index === 6
+                      ? "课后作业：阅读路径、problem set 和 homework。"
+                      : "本讲 takeaway：三条复习清单和下一讲衔接。"
+    }));
+    const summaryLesson = publishableLessonFixture({ id: "quality-professor-summary-unit", targetPageCount: 8 });
+    summaryLesson.pages = summaryLesson.pages.map((page) => ({
+      ...page,
+      interactionSpec: undefined,
+      narrative: "本页总结本章内容，介绍核心概念，帮助学习者理解资料大意。"
+    }));
+
+    const report = buildCourseQualityReport({
+      runId: "quality-professor-multi",
+      coursePackId: "quality-professor-multi",
+      lessons: [richLesson, summaryLesson],
+      authoringContext: {
+        courseIntent: "professor_lecture_deck"
+      }
+    });
+
+    expect(report.checks.professorLecture).toBe("warning");
+    expect(report.lessonScores).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          lessonId: "quality-professor-rich-unit",
+          status: "passed"
+        }),
+        expect.objectContaining({
+          lessonId: "quality-professor-summary-unit",
+          status: "warning"
+        })
+      ])
+    );
+    expect(report.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          issueId: "quality.professor-lecture.missing-course-framing",
+          category: "lecture_structure",
+          lessonId: "quality-professor-summary-unit"
+        }),
+        expect.objectContaining({
+          issueId: "quality.professor-lecture.missing-worked-example",
+          category: "lecture_structure",
+          lessonId: "quality-professor-summary-unit"
+        })
+      ])
+    );
+    expect(
+      report.issues.some(
+        (issue) => issue.category === "lecture_structure" && issue.lessonId === "quality-professor-rich-unit"
+      )
+    ).toBe(false);
+  });
 });

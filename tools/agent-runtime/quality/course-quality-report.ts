@@ -143,8 +143,8 @@ export function buildCourseQualityReport(input: BuildCourseQualityReportInput): 
   const depthRubric = evaluateAcademicDepthRubric(input.lessons, input.authoringContext);
   const professorLectureRubric = professorMode ? evaluateProfessorLectureRubric(input.lessons) : undefined;
   const heuristicIssues = input.lessons.flatMap((lesson) => collectPageHeuristicIssues(lesson, input.authoringContext));
-  const professorLectureIssues = professorLectureRubric
-    ? professorLectureRubricToIssues(professorLectureRubric, input.lessons)
+  const professorLectureIssues = professorMode
+    ? input.lessons.flatMap((lesson) => professorLectureRubricToIssues(evaluateProfessorLectureRubric([lesson]), lessonIdOf(lesson)))
     : [];
   const issues = sortCourseQualityIssues([
     ...lessonIssueGroups.flatMap((group) => group.issues.map((issue) => toCourseQualityIssue(issue, group.lessonId))),
@@ -166,7 +166,7 @@ export function buildCourseQualityReport(input: BuildCourseQualityReportInput): 
     assessmentCoverage: statusFromIssues(lessonIssueGroups.flatMap((group) => group.issues.filter(isAssessmentIssue))),
     transferCoverage: statusFromIssues(lessonIssueGroups.flatMap((group) => group.issues.filter((issue) => issue.rule === "transfer-challenge"))),
     academicDepth: depthRubric ? depthRubricStatusMap[depthRubric.status] : "passed",
-    professorLecture: professorLectureRubric ? professorLectureStatusMap[professorLectureRubric.status] : "passed"
+    professorLecture: statusFromCourseQualityIssues(professorLectureIssues)
   };
   const lessonScores = lessonIssueGroups.map((group, index) => {
     const critic = input.criticReports?.[index];
@@ -298,11 +298,6 @@ const depthRubricStatusMap: Record<AcademicDepthRubricResult["status"], CourseQu
   warning: "warning"
 };
 
-const professorLectureStatusMap: Record<ProfessorLectureRubricResult["status"], CourseQualityStatus> = {
-  passed: "passed",
-  warning: "warning"
-};
-
 function sourceEvidenceToIssue(sourceEvidence: SourceEvidenceSummary | undefined): QualityIssue | undefined {
   if (!sourceEvidence || sourceEvidence.status === "passed") {
     return undefined;
@@ -334,22 +329,17 @@ function isAssessmentIssue(issue: QualityIssue): boolean {
   return issue.rule === "assessment-count" || issue.rule === "assessment-feedback" || issue.path.includes("misconception");
 }
 
-function professorLectureRubricToIssues(
-  rubric: ProfessorLectureRubricResult,
-  lessons: unknown[]
-): CourseQualityIssue[] {
-  const lessonIds = lessons.map(lessonIdOf).filter((lessonId) => lessonId !== "unknown-lesson");
-  const lessonId = lessonIds.length === 1 ? lessonIds[0] : undefined;
+function professorLectureRubricToIssues(rubric: ProfessorLectureRubricResult, lessonId: string): CourseQualityIssue[] {
   return rubric.missingMoves.map((move) => ({
     issueId: `quality.professor-lecture.missing-${move.id.replace(/_/gu, "-")}`,
-    scope: lessonId ? "lesson" : "course",
+    scope: "lesson",
     severity: "warning",
     category: "lecture_structure",
     reason: `professor lecture deck is missing ${move.label}: ${move.description}`,
     requiredFix: `Add a professor-style lecture move for ${move.label}: ${move.description}`,
     rule: "professor-lecture-rubric",
     path: `professorLectureRubric.${move.id}`,
-    ...(lessonId ? { lessonId } : {})
+    lessonId
   }));
 }
 
