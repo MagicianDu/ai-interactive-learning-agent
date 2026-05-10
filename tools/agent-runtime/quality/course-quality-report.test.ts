@@ -429,4 +429,94 @@ describe("course-quality-report", () => {
       ])
     );
   });
+
+  test("does not fail professor lecture decks only because every page lacks interactions", () => {
+    const lesson = publishableLessonFixture({ id: "quality-professor-rich", targetPageCount: 8 });
+    lesson.pages = lesson.pages.map((page, index) => ({
+      ...page,
+      interactionSpec: undefined,
+      narrative:
+        index === 0
+          ? "课程框架：本讲定位、核心问题、先修要求和学习边界。"
+          : index === 1
+            ? "概念地图：关键定义、术语、方法谱系和理论结构。"
+            : index === 2
+              ? "方法结构：比较 planning、tool use、reflection 的适用条件。"
+              : index === 3
+                ? "经典例题：用一个 agent orchestration case analysis 展开推导。"
+                : index === 4
+                  ? "方法比较：taxonomy、权衡、适用边界和反例。"
+                  : index === 5
+                    ? "课堂讨论题：批判一个设计选择并给出参考要点。"
+                    : index === 6
+                      ? "课后作业：阅读路径、problem set 和 homework。"
+                      : "本讲 takeaway：三条复习清单和下一讲衔接。"
+    }));
+
+    const report = buildCourseQualityReport({
+      runId: "quality-professor-rich",
+      coursePackId: "quality-professor-rich",
+      lessons: [lesson],
+      authoringContext: {
+        courseIntent: "professor_lecture_deck"
+      }
+    });
+
+    expect(report.status).toBe("passed");
+    expect(report.checks.interactionQuality).toBe("passed");
+    expect(report.checks.professorLecture).toBe("passed");
+    expect(report.professorLectureRubric).toMatchObject({
+      status: "passed",
+      missingMoves: []
+    });
+    expect(report.issues.map((issue) => issue.rule)).not.toContain("interaction-count");
+  });
+
+  test("warns when professor lecture decks are only summaries", () => {
+    const lesson = publishableLessonFixture({ id: "quality-professor-summary", targetPageCount: 8 });
+    lesson.pages = lesson.pages.map((page) => ({
+      ...page,
+      interactionSpec: undefined,
+      narrative: "本页总结本章内容，介绍核心概念，帮助学习者理解资料大意。"
+    }));
+
+    const report = buildCourseQualityReport({
+      runId: "quality-professor-summary",
+      coursePackId: "quality-professor-summary",
+      lessons: [lesson],
+      authoringContext: {
+        courseIntent: "professor_lecture_deck"
+      }
+    });
+
+    expect(report.status).toBe("warning");
+    expect(report.checks.interactionQuality).toBe("passed");
+    expect(report.checks.professorLecture).toBe("warning");
+    expect(report.professorLectureRubric).toMatchObject({
+      status: "warning",
+      missingMoves: expect.arrayContaining([
+        expect.objectContaining({ id: "course_framing" }),
+        expect.objectContaining({ id: "worked_example" }),
+        expect.objectContaining({ id: "discussion_prompt" }),
+        expect.objectContaining({ id: "homework_or_reading" })
+      ])
+    });
+    expect(report.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          issueId: "quality.professor-lecture.missing-course-framing",
+          severity: "warning",
+          category: "lecture_structure",
+          lessonId: "quality-professor-summary"
+        }),
+        expect.objectContaining({
+          issueId: "quality.professor-lecture.missing-worked-example",
+          severity: "warning",
+          category: "lecture_structure",
+          lessonId: "quality-professor-summary"
+        })
+      ])
+    );
+    expect(report.issues.map((issue) => issue.rule)).not.toContain("interaction-count");
+  });
 });

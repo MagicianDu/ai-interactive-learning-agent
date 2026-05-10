@@ -10,6 +10,10 @@ import {
 import { validateChineseFirstLesson } from "./chinese-first-validator.js";
 import { validateLessonQuality } from "./lesson-quality-validator.js";
 import type { LessonCriticReport } from "./lesson-critic.js";
+import {
+  evaluateProfessorLectureRubric,
+  type ProfessorLectureRubricResult
+} from "./professor-lecture-rubric.js";
 import { validateSourceGrounding } from "./source-grounding-validator.js";
 import { analyzeSourceEvidence, type SourceEvidenceSummary, type SourceEvidenceStatus } from "./source-evidence-analyzer.js";
 import { isRecord, type QualityIssue } from "./validation-result.js";
@@ -25,11 +29,13 @@ export type CourseQualityIssueCategory =
   | "dense_page"
   | "learner_level_mismatch"
   | "page_structure"
+  | "lecture_structure"
   | "assessment"
   | "interaction"
   | "transfer";
 
 export type CourseQualityAuthoringContext = {
+  courseIntent?: string;
   difficultyLevel?: string;
   sourceKind?: string;
   sourceSemantics?: {
@@ -84,6 +90,7 @@ export type CourseQualityReport = {
     assessmentCoverage: CourseQualityStatus;
     transferCoverage: CourseQualityStatus;
     academicDepth: CourseQualityStatus;
+    professorLecture: CourseQualityStatus;
   };
   issues: CourseQualityIssue[];
   issueSummary: CourseQualityIssueSummary;
@@ -91,6 +98,7 @@ export type CourseQualityReport = {
   optionalImprovements: string[];
   sourceEvidence?: SourceEvidenceSummary;
   depthRubric?: AcademicDepthRubricResult;
+  professorLectureRubric?: ProfessorLectureRubricResult;
 };
 
 export type CompactCourseQualityReport = {
@@ -121,16 +129,28 @@ export type BuildCourseQualityReportInput = {
 };
 
 export function buildCourseQualityReport(input: BuildCourseQualityReportInput): CourseQualityReport {
-  const lessonIssueGroups = input.lessons.map((lesson) => collectLessonIssues(lesson, input.sourceGroundingConfig));
+  const professorMode = input.authoringContext?.courseIntent === "professor_lecture_deck";
+  const rawLessonIssueGroups = input.lessons.map((lesson) => collectLessonIssues(lesson, input.sourceGroundingConfig));
+  const lessonIssueGroups = professorMode
+    ? rawLessonIssueGroups.map((group) => ({
+        ...group,
+        issues: group.issues.filter((issue) => !isInteractionIssue(issue))
+      }))
+    : rawLessonIssueGroups;
   const sourceEvidence =
     input.sourceEvidence ?? (input.sourceGroundingConfig ? analyzeSourceEvidence(input.lessons, input.sourceGroundingConfig) : undefined);
   const sourceEvidenceIssue = sourceEvidenceToIssue(sourceEvidence);
   const depthRubric = evaluateAcademicDepthRubric(input.lessons, input.authoringContext);
+  const professorLectureRubric = professorMode ? evaluateProfessorLectureRubric(input.lessons) : undefined;
   const heuristicIssues = input.lessons.flatMap((lesson) => collectPageHeuristicIssues(lesson, input.authoringContext));
+  const professorLectureIssues = professorLectureRubric
+    ? professorLectureRubricToIssues(professorLectureRubric, input.lessons)
+    : [];
   const issues = sortCourseQualityIssues([
     ...lessonIssueGroups.flatMap((group) => group.issues.map((issue) => toCourseQualityIssue(issue, group.lessonId))),
     ...(sourceEvidenceIssue ? [toCourseQualityIssue(sourceEvidenceIssue)] : []),
-    ...heuristicIssues
+    ...heuristicIssues,
+    ...professorLectureIssues
   ]);
   const issueSummary = summarizeCourseQualityIssues(issues);
   const requiredFixes = issues.filter((issue) => issue.severity === "error").map(formatCourseQualityIssue);
@@ -142,10 +162,11 @@ export function buildCourseQualityReport(input: BuildCourseQualityReportInput): 
       ...lessonIssueGroups.flatMap((group) => group.issues.filter(isPageStructureIssue).map((issue) => toCourseQualityIssue(issue, group.lessonId))),
       ...heuristicIssues.filter((issue) => issue.category === "dense_page" || issue.category === "generic_page")
     ]),
-    interactionQuality: statusFromIssues(lessonIssueGroups.flatMap((group) => group.issues.filter(isInteractionIssue))),
+    interactionQuality: professorMode ? "passed" : statusFromIssues(lessonIssueGroups.flatMap((group) => group.issues.filter(isInteractionIssue))),
     assessmentCoverage: statusFromIssues(lessonIssueGroups.flatMap((group) => group.issues.filter(isAssessmentIssue))),
     transferCoverage: statusFromIssues(lessonIssueGroups.flatMap((group) => group.issues.filter((issue) => issue.rule === "transfer-challenge"))),
-    academicDepth: depthRubric ? depthRubricStatusMap[depthRubric.status] : "passed"
+    academicDepth: depthRubric ? depthRubricStatusMap[depthRubric.status] : "passed",
+    professorLecture: professorLectureRubric ? professorLectureStatusMap[professorLectureRubric.status] : "passed"
   };
   const lessonScores = lessonIssueGroups.map((group, index) => {
     const critic = input.criticReports?.[index];
@@ -179,7 +200,8 @@ export function buildCourseQualityReport(input: BuildCourseQualityReportInput): 
     requiredFixes,
     optionalImprovements,
     ...(sourceEvidence ? { sourceEvidence } : {}),
-    ...(depthRubric ? { depthRubric } : {})
+    ...(depthRubric ? { depthRubric } : {}),
+    ...(professorLectureRubric ? { professorLectureRubric } : {})
   };
 }
 
@@ -276,6 +298,11 @@ const depthRubricStatusMap: Record<AcademicDepthRubricResult["status"], CourseQu
   warning: "warning"
 };
 
+const professorLectureStatusMap: Record<ProfessorLectureRubricResult["status"], CourseQualityStatus> = {
+  passed: "passed",
+  warning: "warning"
+};
+
 function sourceEvidenceToIssue(sourceEvidence: SourceEvidenceSummary | undefined): QualityIssue | undefined {
   if (!sourceEvidence || sourceEvidence.status === "passed") {
     return undefined;
@@ -301,6 +328,25 @@ function isInteractionIssue(issue: QualityIssue): boolean {
 
 function isAssessmentIssue(issue: QualityIssue): boolean {
   return issue.rule === "assessment-count" || issue.rule === "assessment-feedback" || issue.path.includes("misconception");
+}
+
+function professorLectureRubricToIssues(
+  rubric: ProfessorLectureRubricResult,
+  lessons: unknown[]
+): CourseQualityIssue[] {
+  const lessonIds = lessons.map(lessonIdOf).filter((lessonId) => lessonId !== "unknown-lesson");
+  const lessonId = lessonIds.length === 1 ? lessonIds[0] : undefined;
+  return rubric.missingMoves.map((move) => ({
+    issueId: `quality.professor-lecture.missing-${move.id.replace(/_/gu, "-")}`,
+    scope: lessonId ? "lesson" : "course",
+    severity: "warning",
+    category: "lecture_structure",
+    reason: `professor lecture deck is missing ${move.label}: ${move.description}`,
+    requiredFix: `Add a professor-style lecture move for ${move.label}: ${move.description}`,
+    rule: "professor-lecture-rubric",
+    path: `professorLectureRubric.${move.id}`,
+    ...(lessonId ? { lessonId } : {})
+  }));
 }
 
 function collectPageHeuristicIssues(lesson: unknown, authoringContext: CourseQualityAuthoringContext | undefined): CourseQualityIssue[] {
