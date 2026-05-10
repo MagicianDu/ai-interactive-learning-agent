@@ -429,6 +429,9 @@ describe("LearningCoursePublisher", () => {
       unitPages: 8,
       courseIntent: "professor_lecture_deck"
     });
+    await expect(readFile(path.join(root, "runs", "professor-course", "learner-project.json"), "utf8")).resolves.toContain(
+      "\"courseIntent\": \"professor_lecture_deck\""
+    );
 
     const result = await publisher.publish({
       runId: "professor-course",
@@ -447,8 +450,12 @@ describe("LearningCoursePublisher", () => {
         professorLecture: "passed"
       }
     });
+    expect(result.qualityReport.topIssues.map((issue) => issue.issueId)).not.toContain("quality.lesson.interaction-count");
     await expect(readFile(path.join(root, "runs", "professor-course", "quality", "course-quality-report.json"), "utf8")).resolves.toContain(
       "\"professorLecture\": \"passed\""
+    );
+    await expect(readFile(path.join(root, "runs", "professor-course", "quality", "course-quality-report.json"), "utf8")).resolves.not.toContain(
+      "interaction-count"
     );
   });
 

@@ -94,4 +94,31 @@ describe("PrepareLearningCourseService", () => {
     }
     expect(result.next.recommendedTool).toBe("learning_agent.prepare_learning_course");
   });
+
+  test("prepares professor lecture Web Deck authoring context in one call", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "prepare-professor-"));
+    const sourcePath = path.join(root, "lecture-source.md");
+    await writeFile(
+      sourcePath,
+      "# Course Source\nPlanning, tool use, reflection, and evaluation form the core method taxonomy.\n",
+      "utf8"
+    );
+    const service = new PrepareLearningCourseService(root);
+
+    const result = await service.prepare({
+      request:
+        `请用 "${sourcePath}" 生成教授式中文 Web Deck，像大学/研究生课程讲义一样组织，面向研究生，教学难度为大学高年级/研究生课程，每个单元 10 页。`,
+      runId: "prepare-professor",
+      courseIntent: "professor_lecture_deck"
+    });
+
+    expect(result.status).toBe("authoring_context_ready");
+    if (result.status !== "authoring_context_ready") {
+      throw new Error("expected authoring_context_ready");
+    }
+    expect(result.brief.courseIntent).toBe("professor_lecture_deck");
+    expect(result.contentBlueprint.courseIntent).toBe("professor_lecture_deck");
+    expect(result.contentBlueprint.globalRules.join("\n")).toContain("教授式课程讲义 Web Deck");
+    expect(result.next.recommendedTool).toBe("learning_agent.publish_learning_course");
+  });
 });
