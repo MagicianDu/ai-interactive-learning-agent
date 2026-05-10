@@ -248,6 +248,24 @@ describe("LearningAgentRuntimeTools", () => {
     });
   });
 
+  test("create_learning_project rejects invalid explicit course intent", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
+    const tools = new LearningAgentRuntimeTools(root);
+
+    await expect(
+      tools.callTool("learning_agent.create_learning_project", {
+        request: "请用 /tmp/book.pdf 生成中文学习材料，面向研究生，教学难度为大学高年级/研究生课程，每个单元 10 页。",
+        runId: "runtime-create-invalid-intent",
+        sourcePath: "/tmp/book.pdf",
+        sourceKind: "book",
+        audience: "研究生",
+        difficultyLevel: "upper_undergraduate_or_graduate",
+        unitPages: 10,
+        courseIntent: "professor_lecture"
+      })
+    ).rejects.toThrow("courseIntent must be build_mental_model or professor_lecture_deck");
+  });
+
   test("returns authoring context through tool handlers", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
     const sourcePath = path.join(root, "source.md");
@@ -361,6 +379,24 @@ describe("LearningAgentRuntimeTools", () => {
       await readFile(path.join(root, "runs", "runtime-professor-intent", "artifacts", "authoring-context.draft.json"), "utf8")
     ) as { brief?: { courseIntent?: string } };
     expect(artifact.brief?.courseIntent).toBe("professor_lecture_deck");
+  });
+
+  test("prepare_learning_course rejects invalid explicit course intent", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
+    const tools = new LearningAgentRuntimeTools(root);
+
+    await expect(
+      tools.callTool("learning_agent.prepare_learning_course", {
+        request: "请用 /tmp/book.pdf 生成中文学习材料，面向研究生，教学难度为大学高年级/研究生课程，每个单元 10 页。",
+        runId: "runtime-prepare-invalid-intent",
+        sourcePath: "/tmp/book.pdf",
+        sourceKind: "book",
+        audience: "研究生",
+        difficultyLevel: "upper_undergraduate_or_graduate",
+        unitPages: 10,
+        courseIntent: "professor_lecture"
+      })
+    ).rejects.toThrow("courseIntent must be build_mental_model or professor_lecture_deck");
   });
 
   test("compares authored and deterministic draft quality through tool handlers", async () => {

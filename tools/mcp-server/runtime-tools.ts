@@ -25,7 +25,7 @@ import {
   RunStore
 } from "../agent-runtime/index.js";
 import type { ArtifactVersion } from "../agent-runtime/artifact-store.js";
-import { normalizeCourseIntent } from "../agent-runtime/learner/course-intent.js";
+import { courseIntentValues, normalizeCourseIntent, type CourseIntent } from "../agent-runtime/learner/course-intent.js";
 import { ProjectRegistry } from "../agent-runtime/learner/project-registry.js";
 import { TargetedRevisionService } from "../agent-runtime/learner/targeted-revision-service.js";
 import { ExportBundleService } from "../agent-runtime/learner/export-bundle-service.js";
@@ -574,8 +574,15 @@ function optionalDifficultyLevel(value: unknown): "introductory" | "undergraduat
   return undefined;
 }
 
-function optionalCourseIntent(value: unknown): "build_mental_model" | "professor_lecture_deck" | undefined {
-  return normalizeCourseIntent(value);
+function optionalCourseIntent(value: unknown): CourseIntent | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  const normalized = normalizeCourseIntent(value);
+  if (normalized) {
+    return normalized;
+  }
+  throw new Error(`courseIntent must be ${courseIntentValues.join(" or ")}`);
 }
 
 function optionalOutputMode(value: unknown): "preview" | "source" | undefined {

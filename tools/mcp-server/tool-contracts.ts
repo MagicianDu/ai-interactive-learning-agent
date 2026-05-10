@@ -1,3 +1,5 @@
+import { courseIntentValues } from "../agent-runtime/learner/course-intent.js";
+
 export type LearningAgentToolName =
   | "learning_agent.create_learning_project"
   | "learning_agent.prepare_learning_course"
@@ -48,6 +50,7 @@ const objectSchema = (properties: Record<string, unknown>, required: string[] = 
 const stringSchema = { type: "string" };
 const booleanSchema = { type: "boolean" };
 const numberSchema = { type: "number" };
+const courseIntentSchema = { type: "string", enum: [...courseIntentValues] };
 const stringArraySchema = { type: "array", items: { type: "string" } };
 const arraySchema = { type: "array", items: { type: "object" } };
 const looseObjectSchema = { type: "object" };
@@ -65,7 +68,7 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
         sourceKind: stringSchema,
         audience: stringSchema,
         difficultyLevel: stringSchema,
-        courseIntent: stringSchema,
+        courseIntent: courseIntentSchema,
         unitPages: numberSchema,
         strategy: stringSchema,
         selectedChapters: stringArraySchema,
@@ -86,7 +89,7 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
         sourceKind: stringSchema,
         audience: stringSchema,
         difficultyLevel: stringSchema,
-        courseIntent: stringSchema,
+        courseIntent: courseIntentSchema,
         unitPages: numberSchema,
         strategy: stringSchema,
         selectedChapters: stringArraySchema,

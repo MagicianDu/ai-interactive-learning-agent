@@ -1,11 +1,21 @@
 import { describe, expect, test } from "vitest";
 
-import { courseIntentLabel, defaultCourseIntent, inferCourseIntent, normalizeCourseIntent } from "./course-intent.js";
+import {
+  courseIntentLabel,
+  courseIntentValues,
+  defaultCourseIntent,
+  inferCourseIntent,
+  normalizeCourseIntent
+} from "./course-intent.js";
 
 describe("course-intent", () => {
   test("defaults to mental-model Web Decks", () => {
     expect(defaultCourseIntent).toBe("build_mental_model");
     expect(inferCourseIntent("请用 /tmp/book.pdf 生成中文学习材料")).toBe("build_mental_model");
+  });
+
+  test("exports canonical course intent values for boundary schemas", () => {
+    expect(courseIntentValues).toEqual(["build_mental_model", "professor_lecture_deck"]);
   });
 
   test("infers professor lecture Web Deck wording from Chinese and English requests", () => {

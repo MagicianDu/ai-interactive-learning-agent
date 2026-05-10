@@ -1,8 +1,10 @@
 export type CourseIntent = "build_mental_model" | "professor_lecture_deck";
 
+export const courseIntentValues = ["build_mental_model", "professor_lecture_deck"] as const satisfies readonly CourseIntent[];
+
 export const defaultCourseIntent: CourseIntent = "build_mental_model";
 
-const courseIntentSet = new Set<CourseIntent>(["build_mental_model", "professor_lecture_deck"]);
+const courseIntentSet = new Set<CourseIntent>(courseIntentValues);
 
 export function normalizeCourseIntent(value: unknown): CourseIntent | undefined {
   if (typeof value !== "string") {
