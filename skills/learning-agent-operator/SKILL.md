@@ -48,6 +48,7 @@ Clarify only learner-visible choices when missing:
 - source scope: whole source, selected chapters, selected topics, or a practical task path
 - audience: beginner, experienced programmer, practitioner, researcher, or custom description
 - teaching difficulty: 入门衔接, 本科核心课程, 大学高年级/研究生课程, or 研究论文精读/前沿讨论
+- course intent: `build_mental_model` for interactive self-study, or `professor_lecture_deck` for professor-style university/graduate Web Decks.
 - unit size: pages per unit; do not silently default in the learner-facing flow
 - output: preview link, exported course pack, or both
 
@@ -105,6 +106,7 @@ After publish, preview, revision, or export, respond with only learner-actionabl
 
 - Preview URL, usually `http://127.0.0.1:5173/#/preview/<run-id>`
 - Course shape: unit count, strategy, pages per unit, source kind
+- Chosen `courseIntent`; if it is `professor_lecture_deck`, describe it as a professor-style Web Deck and do not promise PPTX, Slides, or file export.
 - Compact quality summary: `qualityReport.status`, score, major checks, `issueSummary`, and the first few `topIssues`
 - Academic depth signal when relevant: `qualityReport.checks.academicDepth` and the missing `depthRubric` moves, summarized in learner-friendly language
 - Optional authored-vs-draft comparison only when the user explicitly asks for advanced authoring comparison

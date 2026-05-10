@@ -22,6 +22,11 @@ that combines:
   playgrounds, tutor mode, teacher mode, and assessment mode. These modes are
   experimental and hidden from the default learner path.
 
+The Web Deck supports multiple authoring intents. The default is
+`build_mental_model`; learners may also request `professor_lecture_deck` when
+they want a university or graduate lecture-style course deck. This still outputs
+a Web Deck, not PPTX or slide files.
+
 Generated learner-facing content is Chinese-first by default.
 
 ## Status

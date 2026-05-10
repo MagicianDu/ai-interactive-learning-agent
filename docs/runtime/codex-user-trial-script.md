@@ -41,6 +41,22 @@ Expected response:
 下一步：打开预览后告诉我哪一页太抽象、例子不够、来源依据不清楚，或希望更难/更简单。
 ```
 
+## Professor Lecture Web Deck
+
+```text
+请把这本书生成教授式中文 Web Deck，像大学/研究生课程讲义一样组织。
+我想快速掌握课程核心内容、关键概念、方法谱系、经典例题、课堂讨论题和课后阅读路径。
+资料路径：/tmp/book.pdf
+```
+
+Expected MCP path:
+
+```text
+learning_agent.prepare_learning_course with courseIntent=professor_lecture_deck
+learning_agent.publish_learning_course
+learning_agent.get_learning_preview
+```
+
 ## Paper
 
 ```text

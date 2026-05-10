@@ -15,6 +15,14 @@
 
 See `docs/runtime/source-type-acceptance.md` for the expected source anchors, unit structure, and pass/fail checks for book, paper, patent, and blog trials.
 
+## Professor Lecture Web Deck
+
+```text
+请把这本书生成教授式中文 Web Deck，像大学/研究生课程讲义一样组织。
+我想快速掌握课程核心内容、关键概念、方法谱系、经典例题、课堂讨论题和课后阅读路径。
+资料路径：/tmp/book.pdf
+```
+
 ## Paper -> Learner-First Publish
 
 ```text

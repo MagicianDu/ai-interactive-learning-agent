@@ -10,6 +10,11 @@ The default product is a Chinese interactive learning loop:
 6. Revise through `learning_agent.revise_learning_course` and `learning_agent.apply_learning_revision`.
 7. Export through `learning_agent.export_learning_course`.
 
+The core Web Deck can be authored with different course intents:
+
+- `build_mental_model`: default interactive learning path for mental model construction.
+- `professor_lecture_deck`: optional professor-style university or graduate course deck, still rendered as a Web Deck.
+
 Internal by default:
 
 - artifact approvals
@@ -18,4 +23,3 @@ Internal by default:
 - benchmark comparisons
 - child unit promotion
 - tutor, teacher, playground, and canvas experiments
-

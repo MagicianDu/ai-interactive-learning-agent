@@ -1,4 +1,5 @@
 import path from "node:path";
+import { readFileSync } from "node:fs";
 
 import { describe, expect, test } from "vitest";
 
@@ -68,5 +69,20 @@ describe("learning agent MCP and skills bundle", () => {
     expect(report.ok).toBe(true);
     expect(report.checked).toContain("docs/runtime/codex-authoring-protocol-v2.md");
     expect(report.checked).toContain("docs/runtime/real-source-quality-benchmark.md");
+  });
+
+  test("bundle docs describe professor lecture Web Deck as optional mode without PPTX export", () => {
+    const sourceToCourse = readFileSync("skills/source-to-course/SKILL.md", "utf8");
+    const operator = readFileSync("skills/learning-agent-operator/SKILL.md", "utf8");
+    const productCore = readFileSync("docs/product/product-core.md", "utf8");
+    const trialScript = readFileSync("docs/runtime/codex-user-trial-script.md", "utf8");
+
+    for (const text of [sourceToCourse, operator, productCore, trialScript]) {
+      expect(text).toContain("professor_lecture_deck");
+      expect(text).toContain("Web Deck");
+    }
+    expect(`${sourceToCourse}\n${operator}\n${productCore}\n${trialScript}`).not.toMatch(
+      /生成\s*(PPTX|Slides)|导出\s*(PPTX|Slides)/iu
+    );
   });
 });

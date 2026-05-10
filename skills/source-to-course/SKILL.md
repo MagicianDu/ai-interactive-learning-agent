@@ -38,11 +38,19 @@ Track selected chapters, selected topics, audience, teaching difficulty level, l
 
 Ask at most three learner-answerable clarification questions. If the learner did not state teaching difficulty, ask them to choose one of: 入门衔接, 本科核心课程, 大学高年级/研究生课程, 研究论文精读/前沿讨论. If the learner did not state `unitPages`, ask for pages per unit, such as 6, 8, 10, or 12. Never ask a learner to approve source maps, concept maps, curriculum plans, or critic reports in the default flow.
 
+Ask for course intent when the learner's goal is ambiguous:
+
+- `build_mental_model`: interactive Web Deck for mental model construction, self-study, learner actions, feedback, misconception checks, and transfer.
+- `professor_lecture_deck`: professor-style Web Deck that feels like university or graduate lecture notes, with course framing, prerequisites, concept maps, method taxonomy, worked examples, discussion prompts, homework, reading path, and lecture takeaways.
+
+If the learner says "教授 PPT", "lecture slides", "大学课程讲义", or similar, route to `professor_lecture_deck` but state that the output is still a Web Deck, not PPTX or Slides export.
+
 ## Apply The Plan Through MCP
 
 Call the learner-facing tools in this order for the default flow:
 
 ```json
+{"method":"tools/call","params":{"name":"learning_agent.prepare_learning_course","arguments":{"request":"请用 /tmp/book.pdf 生成教授式中文 Web Deck，面向研究生，教学难度为大学高年级/研究生课程，每个单元 10 页。","sourcePath":"/tmp/book.pdf","sourceKind":"book","audience":"研究生","difficultyLevel":"upper_undergraduate_or_graduate","unitPages":10,"courseIntent":"professor_lecture_deck"}}}
 {"method":"tools/call","params":{"name":"learning_agent.prepare_learning_course","arguments":{"request":"<Chinese learner request with source path or URL, audience, difficulty level, strategy, and unitPages>"}}}
 {"method":"tools/call","params":{"name":"learning_agent.publish_learning_course","arguments":{"runId":"<run-id>","coursePack":{},"lessons":[]}}}
 {"method":"tools/call","params":{"name":"learning_agent.get_learning_preview","arguments":{"runId":"<run-id>"}}}
