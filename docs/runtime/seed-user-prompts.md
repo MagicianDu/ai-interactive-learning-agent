@@ -23,6 +23,14 @@ See `docs/runtime/source-type-acceptance.md` for the expected source anchors, un
 资料路径：/tmp/book.pdf
 ```
 
+Expected MCP path:
+
+```text
+learning_agent.prepare_learning_course with courseIntent=professor_lecture_deck
+learning_agent.publish_learning_course
+learning_agent.get_learning_preview
+```
+
 ## Paper -> Learner-First Publish
 
 ```text

@@ -13,7 +13,7 @@ The default product is a Chinese interactive learning loop:
 The core Web Deck can be authored with different course intents:
 
 - `build_mental_model`: default interactive learning path for mental model construction.
-- `professor_lecture_deck`: optional professor-style university or graduate course deck, still rendered as a Web Deck.
+- `professor_lecture_deck`: optional professor-style university or graduate course deck, still rendered as a Web Deck. It does not generate or export PPTX or Slides files.
 
 Internal by default:
 
