@@ -105,6 +105,7 @@ function blueprint(
   const sourceAnchorIds = sourceRequirement.includes("topic-only") ? [] : ["source-001:p1"];
   return {
     version: "content-blueprint/v1",
+    courseIntent: "build_mental_model",
     globalRules: ["中文优先"],
     units: [
       {
