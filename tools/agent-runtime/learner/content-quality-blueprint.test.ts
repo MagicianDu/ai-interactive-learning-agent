@@ -181,6 +181,48 @@ describe("content-quality-blueprint", () => {
     expect(blogBlueprint.units[0]?.pageBlueprints[5]?.mustInclude).toEqual(expect.arrayContaining([expect.stringContaining("caveat/失败模式")]));
     expect(blogBlueprint.units[0]?.pageBlueprints[6]?.mustInclude).toEqual(expect.arrayContaining([expect.stringContaining("迁移边界")]));
   });
+
+  test("builds professor lecture deck page blueprints when requested", () => {
+    const blueprint = buildContentBlueprint({
+      audience: "研究生",
+      difficultyLevel: "upper_undergraduate_or_graduate",
+      sourceKind: "book",
+      courseIntent: "professor_lecture_deck",
+      units: [plannedUnit({ targetPageCount: 10, focusConcepts: ["Agentic Design Patterns"] })]
+    });
+
+    expect(blueprint.courseIntent).toBe("professor_lecture_deck");
+    expect(blueprint.globalRules.join("\n")).toContain("教授式课程讲义 Web Deck");
+    expect(blueprint.globalRules.join("\n")).toContain("不要生成 PPTX");
+    expect(blueprint.units[0]?.pageBlueprints.map((page) => page.lectureRole)).toEqual([
+      "lecture_framing",
+      "prerequisite_map",
+      "concept_framework",
+      "definition_block",
+      "method_structure",
+      "worked_example",
+      "comparison_taxonomy",
+      "discussion_prompt",
+      "homework_task",
+      "lecture_takeaway"
+    ]);
+    expect(blueprint.units[0]?.pageBlueprints[0]).toMatchObject({
+      pageType: "problem_scene",
+      teachingMove: expect.stringContaining("课程定位"),
+      learnerAction: expect.stringContaining("判断这门课要解决什么问题"),
+      mustInclude: expect.arrayContaining([expect.stringContaining("课程框架")])
+    });
+    expect(blueprint.units[0]?.pageBlueprints[7]).toMatchObject({
+      pageType: "quiz",
+      lectureRole: "discussion_prompt",
+      mustInclude: expect.arrayContaining([expect.stringContaining("课堂讨论题")])
+    });
+    expect(blueprint.units[0]?.pageBlueprints[8]).toMatchObject({
+      pageType: "transfer_challenge",
+      lectureRole: "homework_task",
+      mustInclude: expect.arrayContaining([expect.stringContaining("课后作业")])
+    });
+  });
 });
 
 function plannedUnit(overrides: Partial<PlannedCourseUnit> = {}): PlannedCourseUnit {

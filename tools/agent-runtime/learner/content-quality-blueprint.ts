@@ -1,9 +1,11 @@
 import type { PlannedCourseUnit } from "./course-unit-planner.js";
+import { defaultCourseIntent, type CourseIntent } from "./course-intent.js";
 import { difficultyLabel, type TeachingDifficultyLevel } from "./learner-project-service.js";
 import type { SourceSemantics } from "./source-semantic-extractor.js";
 
 export type ContentBlueprint = {
   version: "content-blueprint/v1";
+  courseIntent: CourseIntent;
   globalRules: string[];
   units: UnitContentBlueprint[];
 };
@@ -31,6 +33,7 @@ export type UnitSemanticHints = {
 export type PageContentBlueprint = {
   pageNumber: number;
   pageType: string;
+  lectureRole?: string;
   teachingMove: string;
   learnerAction: string;
   visualRequirement: string;
@@ -43,6 +46,7 @@ export type BuildContentBlueprintInput = {
   audience: string;
   difficultyLevel?: TeachingDifficultyLevel;
   sourceKind: string;
+  courseIntent?: CourseIntent;
   units: PlannedCourseUnit[];
   sourceSemantics?: SourceSemantics;
 };
@@ -52,10 +56,12 @@ type PageTemplate = Omit<PageContentBlueprint, "pageNumber" | "sourceRequirement
 };
 
 export function buildContentBlueprint(input: BuildContentBlueprintInput): ContentBlueprint {
+  const courseIntent = input.courseIntent ?? defaultCourseIntent;
   return {
     version: "content-blueprint/v1",
-    globalRules: globalRules(input),
-    units: input.units.map((unit) => buildUnitBlueprint(unit, input.sourceKind, input.difficultyLevel, input.sourceSemantics))
+    courseIntent,
+    globalRules: globalRules({ ...input, courseIntent }),
+    units: input.units.map((unit) => buildUnitBlueprint(unit, input.sourceKind, input.difficultyLevel, input.sourceSemantics, courseIntent))
   };
 }
 
@@ -64,9 +70,17 @@ function globalRules(input: BuildContentBlueprintInput): string[] {
   return [
     `所有 learner-facing 内容必须中文优先，围绕 ${input.audience} 的已有知识和阅读习惯设计。`,
     `教学难度层级为${levelLabel}：要有先修概念、正式术语、来源阅读映射、课堂讨论题和课后作业感，避免泛泛科普。`,
-    "不要把资料改写成摘要；每页必须有一个学习动作、一个可见结构或一个可检查判断。",
-    "术语、公式、代码和定义必须放在直觉、视觉模型和 learner action 之后。",
-    "反馈必须解释为什么，指出错误假设、因果机制和可迁移规则。",
+    ...(input.courseIntent === "professor_lecture_deck"
+      ? [
+          "课程形态为教授式课程讲义 Web Deck：像大学/研究生课堂讲义一样组织课程框架、概念地图、方法谱系、经典例题、课堂讨论和课后作业。",
+          "不要生成 PPTX、Slides 或文件导出话术；最终产物仍是 Web Deck。",
+          "不要求每页都有操作型 interaction，但每页必须有清晰 lecture purpose、可见结构或课堂判断任务。"
+        ]
+      : [
+          "不要把资料改写成摘要；每页必须有一个学习动作、一个可见结构或一个可检查判断。",
+          "术语、公式、代码和定义必须放在直觉、视觉模型和 learner action 之后。",
+          "反馈必须解释为什么，指出错误假设、因果机制和可迁移规则。"
+        ]),
     ...(requiresPaperResearchMoves(input.sourceKind, input.difficultyLevel)
       ? ["论文精读必须显式覆盖：研究问题、论文贡献、方法机制、实验/证据、局限/威胁、迁移判断。"]
       : []),
@@ -86,10 +100,13 @@ function buildUnitBlueprint(
   unit: PlannedCourseUnit,
   sourceKind: string,
   difficultyLevel: TeachingDifficultyLevel | undefined,
-  sourceSemantics: SourceSemantics | undefined
+  sourceSemantics: SourceSemantics | undefined,
+  courseIntent: CourseIntent
 ): UnitContentBlueprint {
   const sourceRequirement = sourceRequirementForUnit(unit, sourceKind);
   const semanticHints = semanticHintsForUnit(unit, sourceSemantics);
+  const templates =
+    courseIntent === "professor_lecture_deck" ? professorLectureTemplatesForPageCount(unit.targetPageCount) : templatesForPageCount(unit.targetPageCount);
   return {
     unitId: unit.unitId,
     lessonId: unit.lessonId,
@@ -100,9 +117,10 @@ function buildUnitBlueprint(
     sourceAnchorIds: unit.sourceAnchorIds,
     ...(semanticHints ? { semanticHints } : {}),
     sourceRequirement,
-    pageBlueprints: templatesForPageCount(unit.targetPageCount).map((template, index) => ({
+    pageBlueprints: templates.map((template, index) => ({
       pageNumber: index + 1,
       pageType: template.pageType,
+      ...(template.lectureRole ? { lectureRole: template.lectureRole } : {}),
       teachingMove: template.teachingMove,
       learnerAction: template.learnerAction,
       visualRequirement: template.visualRequirement,
@@ -259,6 +277,128 @@ function templatesForPageCount(targetPageCount: number): PageTemplate[] {
     transfer,
     summary
   ].slice(0, targetPageCount);
+}
+
+function professorLectureTemplatesForPageCount(targetPageCount: number): PageTemplate[] {
+  const templates: PageTemplate[] = [
+    professorTemplate(
+      "lecture_framing",
+      "problem_scene",
+      "用一页说明这门课/本单元的课程定位、核心问题和学习收益。",
+      "判断这门课要解决什么问题，以及哪些内容不是本讲重点。",
+      "课程框架图或问题空间地图。",
+      "用课堂讲义式答案说明为什么这些问题构成课程主线。",
+      ["课程框架", "核心问题", "本讲边界"]
+    ),
+    professorTemplate(
+      "prerequisite_map",
+      "structure_diagram",
+      "列出先修知识、符号、术语和学习者需要补齐的背景。",
+      "标记自己已掌握、需要复习和可以跳过的先修点。",
+      "先修知识依赖图。",
+      "解释缺少哪些先修会影响后续理解。",
+      ["先修要求", "术语准备", "学习路径"]
+    ),
+    professorTemplate(
+      "concept_framework",
+      "structure_diagram",
+      "给出本讲概念地图、方法谱系或理论框架。",
+      "指出核心概念之间的依赖、对比和层级。",
+      "概念地图、分类树或方法谱系图。",
+      "解释概念之间的关系，而不是逐条摘要。",
+      ["概念框架", "方法谱系", "课程骨架"]
+    ),
+    professorTemplate(
+      "definition_block",
+      "intuition_visual",
+      "在课程语境中引入关键定义、记号或正式术语。",
+      "把定义和前面的课程问题对应起来。",
+      "定义卡片加例子/反例。",
+      "说明定义服务于哪个后续推理或方法。",
+      ["关键定义", "术语", "例子/反例"]
+    ),
+    professorTemplate(
+      "method_structure",
+      "structure_diagram",
+      "拆解核心方法、理论结构、机制或算法流程。",
+      "沿结构图说明每个组成部分承担什么功能。",
+      "方法结构图、流程图或系统图。",
+      "说明结构中每一步的因果角色。",
+      ["方法结构", "机制", "适用条件"]
+    ),
+    professorTemplate(
+      "worked_example",
+      "code_walkthrough",
+      "用经典例题、案例、推导或 proof sketch 连接抽象和应用。",
+      "跟随例题判断每一步为什么成立。",
+      "例题分步板书、公式推导或案例表。",
+      "解释例题暴露了什么通用解题模式。",
+      ["经典例题", "推导", "case analysis"]
+    ),
+    professorTemplate(
+      "comparison_taxonomy",
+      "structure_diagram",
+      "比较相关方法、理论分支、设计选择或常见路线。",
+      "根据条件选择适合的方法，并说明权衡。",
+      "对比表、二维坐标或 taxonomy。",
+      "解释不同方法的适用边界和取舍。",
+      ["方法比较", "taxonomy", "权衡"]
+    ),
+    professorTemplate(
+      "discussion_prompt",
+      "quiz",
+      "提出课堂讨论题，要求学习者做诊断、批判或设计判断。",
+      "给出自己的判断和依据。",
+      "讨论题卡片和参考要点。",
+      "提供课堂式参考答案，不只给对错。",
+      ["课堂讨论题", "批判性问题", "参考要点"]
+    ),
+    professorTemplate(
+      "homework_task",
+      "transfer_challenge",
+      "给出课后作业、阅读路径或小型 problem set。",
+      "选择一道作业并说明需要回看哪些来源。",
+      "作业列表、阅读路径或 problem set。",
+      "说明作业如何巩固课程主线。",
+      ["课后作业", "阅读路径", "problem set"]
+    ),
+    professorTemplate(
+      "lecture_takeaway",
+      "summary_card",
+      "压缩本讲 takeaways、考试/研究/实践中最该带走的结构。",
+      "复述三条 takeaway 并指出一条仍不清楚的点。",
+      "takeaway 卡片和复习清单。",
+      "说明这些 takeaway 如何指导后续学习。",
+      ["本讲 takeaway", "复习清单", "下一讲衔接"]
+    )
+  ];
+  if (targetPageCount <= 6) {
+    return [templates[0]!, templates[2]!, templates[4]!, templates[5]!, templates[7]!, templates[9]!];
+  }
+  if (targetPageCount <= 8) {
+    return [templates[0]!, templates[1]!, templates[2]!, templates[4]!, templates[5]!, templates[6]!, templates[7]!, templates[9]!];
+  }
+  return templates.slice(0, Math.min(targetPageCount, templates.length));
+}
+
+function professorTemplate(
+  lectureRole: string,
+  pageType: string,
+  teachingMove: string,
+  learnerAction: string,
+  visualRequirement: string,
+  feedbackRequirement: string,
+  mustInclude: string[]
+): PageTemplate {
+  return {
+    lectureRole,
+    pageType,
+    teachingMove,
+    learnerAction,
+    visualRequirement,
+    feedbackRequirement,
+    mustInclude: () => mustInclude
+  };
 }
 
 function sourceRequirementForUnit(unit: PlannedCourseUnit, sourceKind: string): string {

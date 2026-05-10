@@ -1,3 +1,4 @@
+import { courseIntentLabel } from "./course-intent.js";
 import type { LearnerBrief } from "./learner-project-service.js";
 import { difficultyLabel } from "./learner-project-service.js";
 
@@ -9,6 +10,7 @@ export function buildBundleAuthoringGuidance(brief: LearnerBrief): string {
   return [
     "请基于 learner brief 和用户资料生成 coursePack 与 lessons，然后调用 learning_agent.publish_learning_course。",
     `目标学习者：${brief.audience ?? "中文学习者"}`,
+    `课程形态：${courseIntentLabel(brief.courseIntent)}（${brief.courseIntent}）。`,
     brief.difficultyLevel ? `教学难度层级：${difficultyLabel(brief.difficultyLevel)}（${brief.difficultyLevel}）。` : undefined,
     `课程组织：${brief.strategy}，每个单元 ${brief.unitPages} 页，输出语言 ${brief.language}。`,
     strategyInstruction(brief.strategy),
@@ -17,10 +19,19 @@ export function buildBundleAuthoringGuidance(brief: LearnerBrief): string {
     "生成要求：",
     "1. 所有 learner-facing 文案必须中文优先；技术术语可以保留英文，但解释必须中文。",
     "2. 每个 lesson 必须包含 learningObjectives、prerequisites、pages、misconceptions、transferTasks、summary。",
-    "3. 每个 lesson 至少包含 3 个 visualSpec、2 个 meaningful interactionSpec、2 个 assessmentSpec，并且 assessment 页面必须有 feedbackSpec。",
-    "4. interactionSpec 必须说明 learnerAction、expectedObservation、cognitivePurpose；选项必须提供 explanation。",
-    "5. feedbackSpec 不能只说对/错，必须解释学习者可能误解了什么，以及正确心智模型如何更新。",
-    "6. transferTasks 必须把同一机制迁移到新但相关的场景，不能只是复述。",
+    ...(brief.courseIntent === "professor_lecture_deck"
+      ? [
+          "3. 教授式课程讲义不强制每页都有 interactionSpec；但每页必须有 lecture purpose、可见结构或课堂判断任务。",
+          "4. 至少包含课程框架、先修要求、概念地图、经典例题/推导/案例、方法比较、课堂讨论题、课后作业或阅读路径。",
+          "5. 讨论题和作业必须有参考要点或 answer notes，不能只列题目。",
+          "6. 不要写 PPTX、Slides 或导出文件话术；产物仍是 Web Deck。"
+        ]
+      : [
+          "3. 每个 lesson 至少包含 3 个 visualSpec、2 个 meaningful interactionSpec、2 个 assessmentSpec，并且 assessment 页面必须有 feedbackSpec。",
+          "4. interactionSpec 必须说明 learnerAction、expectedObservation、cognitivePurpose；选项必须提供 explanation。",
+          "5. feedbackSpec 不能只说对/错，必须解释学习者可能误解了什么，以及正确心智模型如何更新。",
+          "6. transferTasks 必须把同一机制迁移到新但相关的场景，不能只是复述。"
+        ]),
     `7. ${sourceGroundingRule}`,
     "8. coursePack.units 必须引用已生成 lessonId，并保留 sourceAnchorIds、conceptIds、targetPageCount。",
     "9. 发布前自查：如果缺中文、缺互动、缺反馈、缺迁移、缺来源锚点，不要调用 publish，先修订 bundle。"

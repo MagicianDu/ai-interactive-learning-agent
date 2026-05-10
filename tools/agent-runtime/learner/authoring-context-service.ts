@@ -8,7 +8,7 @@ import { createRunConfigFromArgs } from "../run-config.js";
 import { normalizeSources } from "../source/source-normalizer.js";
 import type { RunConfig } from "../types.js";
 import { buildContentBlueprint, type ContentBlueprint } from "./content-quality-blueprint.js";
-import { defaultCourseIntent, type CourseIntent } from "./course-intent.js";
+import { courseIntentLabel, defaultCourseIntent, type CourseIntent } from "./course-intent.js";
 import { planCourseUnits } from "./course-unit-planner.js";
 import { difficultyLabel, type TeachingDifficultyLevel } from "./learner-project-service.js";
 import { sampleAuthoringAnchors } from "./source-anchor-sampler.js";
@@ -109,6 +109,7 @@ export type AuthoringContextResult = {
   };
   qualityContract: {
     language: "zh-CN";
+    courseIntent: CourseIntent;
     academicRigor: {
       positioning: TeachingDifficultyLevel;
       label: string;
@@ -210,6 +211,7 @@ export class AuthoringContextService {
       audience: brief.audience,
       difficultyLevel: brief.difficultyLevel,
       sourceKind: brief.sourceKind,
+      courseIntent: brief.courseIntent,
       units: unitPlan.units,
       sourceSemantics: semantics
     });
@@ -260,7 +262,9 @@ export class AuthoringContextService {
         language: "zh-CN",
         requirements: [
           "请由 Codex 创作 coursePack 和 lessons，不要让 MCP deterministic generator 代写正式内容。",
-          "每个 lesson 必须中文优先，并包含问题、视觉模型、学习动作、反馈、误区检查和迁移任务。",
+          brief.courseIntent === "professor_lecture_deck"
+            ? "每个 lesson 必须中文优先，并包含课程框架、先修要求、概念地图、核心定义、经典例题、课堂讨论、课后作业或阅读路径。"
+            : "每个 lesson 必须中文优先，并包含问题、视觉模型、学习动作、反馈、误区检查和迁移任务。",
           "每个 source-backed 页面必须包含 page.sourceAnchorIds，或显式标注 grounding.kind 为 inferred/analogy。",
           "教学页面应一页一学习目标；如果内容过多，请拆页而不是堆长段落。",
           "完成后调用 learning_agent.publish_learning_course，并用 learning_agent.get_learning_preview 返回网页。"
@@ -314,6 +318,7 @@ function buildQualityContract(brief: AuthoringContextResult["brief"]): Authoring
   const levelLabel = difficultyLabel(brief.difficultyLevel);
   return {
     language: "zh-CN",
+    courseIntent: brief.courseIntent,
     academicRigor: {
       positioning: brief.difficultyLevel,
       label: levelLabel,
@@ -490,7 +495,11 @@ function buildLearnerClarificationHints(brief: AuthoringContextResult["brief"]):
 function buildCodexInstruction(brief: AuthoringContextResult["brief"], unitCount: number): string {
   return [
     "请由 Codex 创作 coursePack 和 lessons，然后调用 learning_agent.publish_learning_course。",
+    `课程形态：${courseIntentLabel(brief.courseIntent)}（${brief.courseIntent}）。`,
     `教学难度层级：${difficultyLabel(brief.difficultyLevel)}（${brief.difficultyLevel}）；不要写成泛泛科普、博客摘要或产品介绍。`,
+    brief.courseIntent === "professor_lecture_deck"
+      ? "请写成教授式课程讲义 Web Deck：课程框架、概念地图、方法谱系、经典例题、课堂讨论、阅读路径和课后作业是重点；不要生成 PPTX 或 Slides。"
+      : "请写成互动学习 Web Deck：问题、视觉模型、学习动作、反馈、误区检查和迁移任务是重点。",
     ...(requiresResearchReadingContract(brief)
       ? ["这是一套论文精读课；每个相关 lesson 必须显式覆盖：研究问题、论文贡献、方法机制、实验/证据、局限/威胁、迁移判断。"]
       : []),

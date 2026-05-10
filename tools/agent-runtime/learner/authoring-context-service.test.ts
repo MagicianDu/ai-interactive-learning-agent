@@ -290,6 +290,36 @@ describe("AuthoringContextService", () => {
     expect(blogContext.codexInstruction).toContain("实际问题、作者方案、实现路径、caveat/失败模式、可操作检查、迁移边界");
   });
 
+  test("returns professor lecture deck intent and authoring guidance", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "authoring-context-professor-"));
+    const sourcePath = path.join(root, "lecture-book.md");
+    await writeFile(
+      sourcePath,
+      [
+        "# Agentic Design Patterns",
+        "This chapter introduces planning, tool use, reflection, and evaluation.",
+        "A graduate course should compare agent orchestration patterns and assign homework."
+      ].join("\n"),
+      "utf8"
+    );
+    const project = await new LearnerProjectService(root).createProject({
+      request:
+        `请用 "${sourcePath}" 生成教授式中文 Web Deck，像大学/研究生课程讲义一样组织，面向研究生，教学难度为大学高年级/研究生课程，每个单元 10 页。`,
+      runId: "professor-authoring",
+      courseIntent: "professor_lecture_deck"
+    });
+    expect(project.status).toBe("project_ready");
+
+    const context = await new AuthoringContextService(root).getContext({ runId: "professor-authoring" });
+
+    expect(context.brief.courseIntent).toBe("professor_lecture_deck");
+    expect(context.contentBlueprint.courseIntent).toBe("professor_lecture_deck");
+    expect(context.contentBlueprint.globalRules.join("\n")).toContain("教授式课程讲义 Web Deck");
+    expect(context.contentBlueprint.units[0]?.pageBlueprints.some((page) => page.lectureRole === "worked_example")).toBe(true);
+    expect(context.qualityContract.courseIntent).toBe("professor_lecture_deck");
+    expect(context.codexInstruction).toContain("教授式课程讲义 Web Deck");
+  });
+
   test("samples long book anchors from content pages instead of front matter", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "learning-authoring-context-"));
     const sourcePath = path.join(root, "agentic-book.md");
