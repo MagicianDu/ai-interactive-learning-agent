@@ -393,7 +393,7 @@ function professorLectureTemplatesForPageCount(targetPageCount: number): PageTem
     )
   ];
   if (targetPageCount <= 6) {
-    return [templates[0]!, templates[2]!, templates[4]!, templates[5]!, templates[7]!, templates[9]!];
+    return [templates[0]!, templates[4]!, templates[6]!, templates[7]!, templates[8]!, templates[9]!].slice(0, Math.max(1, targetPageCount));
   }
   if (targetPageCount <= 8) {
     return [templates[0]!, templates[1]!, templates[2]!, templates[4]!, templates[5]!, templates[6]!, templates[7]!, templates[9]!];

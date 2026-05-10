@@ -265,6 +265,28 @@ describe("content-quality-blueprint", () => {
       expect.arrayContaining(["interactive_model", "misconception_check"])
     );
   });
+
+  test("keeps compact 6-page professor blueprints aligned with publisher baseline", () => {
+    const blueprint = buildContentBlueprint({
+      audience: "研究生",
+      difficultyLevel: "upper_undergraduate_or_graduate",
+      sourceKind: "book",
+      courseIntent: "professor_lecture_deck",
+      units: [plannedUnit({ targetPageCount: 6, focusConcepts: ["Agentic Design Patterns"] })]
+    });
+
+    expect(blueprint.units[0]?.pageBlueprints.map((page) => page.pageType)).toEqual([
+      "problem_scene",
+      "interactive_model",
+      "misconception_check",
+      "quiz",
+      "transfer_challenge",
+      "summary_card"
+    ]);
+    expect(blueprint.units[0]?.pageBlueprints.map((page) => page.pageType)).toEqual(
+      expect.arrayContaining(["problem_scene", "interactive_model", "quiz", "misconception_check", "transfer_challenge", "summary_card"])
+    );
+  });
 });
 
 function plannedUnit(overrides: Partial<PlannedCourseUnit> = {}): PlannedCourseUnit {
