@@ -18,6 +18,17 @@ describe("course-intent", () => {
     expect(inferCourseIntent("请做成研究生课程讲义，包含概念框架、经典例题和课后阅读路径")).toBe("professor_lecture_deck");
   });
 
+  test("lets explicit mental-model intent override professor and graduate wording", () => {
+    expect(inferCourseIntent("courseIntent=build_mental_model 请做成教授式研究生课程讲义 Web Deck")).toBe("build_mental_model");
+  });
+
+  test("keeps ordinary graduate difficulty requests as mental-model Web Decks", () => {
+    expect(inferCourseIntent("请用 /tmp/book.pdf 生成中文学习材料，教学难度为研究生课程，每个单元 10 页")).toBe(
+      "build_mental_model"
+    );
+    expect(inferCourseIntent("请生成大学课程难度的中文互动学习材料")).toBe("build_mental_model");
+  });
+
   test("prefers explicit normalized course intent over ambiguous wording", () => {
     expect(normalizeCourseIntent("professor_lecture_deck")).toBe("professor_lecture_deck");
     expect(normalizeCourseIntent("build_mental_model")).toBe("build_mental_model");

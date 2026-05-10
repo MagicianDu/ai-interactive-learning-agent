@@ -13,18 +13,14 @@ export function normalizeCourseIntent(value: unknown): CourseIntent | undefined 
 
 export function inferCourseIntent(request: string): CourseIntent {
   const normalized = request.toLocaleLowerCase();
-  if (
-    /教授\s*ppt|教授式|大学课程|研究生课程|课程讲义|像老师上课|快速掌握.*课程核心|lecture\s*slides?|lecture\s*deck|professor/i.test(
-      normalized
-    )
-  ) {
-    return "professor_lecture_deck";
-  }
   if (/courseintent\s*[=＝:：]\s*professor_lecture_deck/i.test(normalized)) {
     return "professor_lecture_deck";
   }
   if (/courseintent\s*[=＝:：]\s*build_mental_model/i.test(normalized)) {
     return "build_mental_model";
+  }
+  if (/教授\s*ppt|教授式|课程讲义|像老师上课|ppt|lecture\s*slides?|lecture\s*deck|professor/i.test(normalized)) {
+    return "professor_lecture_deck";
   }
   return defaultCourseIntent;
 }

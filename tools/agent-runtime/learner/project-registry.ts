@@ -1,6 +1,8 @@
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { normalizeCourseIntent, type CourseIntent } from "./course-intent.js";
+
 export type LearningProjectStatus =
   | "draft"
   | "generating"
@@ -23,7 +25,7 @@ export type LearningProjectRecord = {
   unitPageCount: number;
   selectedChapters?: string[];
   selectedTopics?: string[];
-  courseIntent?: string;
+  courseIntent?: CourseIntent;
   status: LearningProjectStatus;
   createdAt?: string;
   updatedAt?: string;
@@ -100,7 +102,7 @@ export class ProjectRegistry {
       unitPageCount: optionalNumber(brief.unitPages) ?? 8,
       selectedChapters: optionalStringArray(brief.selectedChapters),
       selectedTopics: optionalStringArray(brief.selectedTopics),
-      courseIntent: optionalString(brief.courseIntent),
+      courseIntent: normalizeCourseIntent(brief.courseIntent),
       status: "draft"
     };
   }
@@ -192,7 +194,7 @@ function normalizeProject(value: Record<string, unknown>, projectId: string): Le
     unitPageCount: optionalNumber(value.unitPageCount) ?? 8,
     selectedChapters: optionalStringArray(value.selectedChapters),
     selectedTopics: optionalStringArray(value.selectedTopics),
-    courseIntent: optionalString(value.courseIntent),
+    courseIntent: normalizeCourseIntent(value.courseIntent),
     status: normalizeStatus(value.status),
     createdAt: optionalString(value.createdAt),
     updatedAt: optionalString(value.updatedAt)
