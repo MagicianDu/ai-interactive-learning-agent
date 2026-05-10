@@ -59,4 +59,12 @@ describe("parseRunIntent", () => {
     expect(intent.audience).toBe("有基础编程经验的学习者");
     expect(intent.difficultyLevel).toBe("undergraduate_core");
   });
+
+  test("maps professor lecture deck requests into course intent", () => {
+    const intent = parseRunIntent(
+      "请把 /tmp/book.pdf 这本书生成教授式中文 Web Deck，像大学课程 PPT 一样组织，每个单元 10 页，面向研究生。"
+    );
+
+    expect(intent.courseIntent).toBe("professor_lecture_deck");
+  });
 });

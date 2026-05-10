@@ -177,4 +177,49 @@ describe("LearnerProjectService", () => {
       difficultyLevel: "research"
     });
   });
+
+  test("records professor lecture deck intent from explicit input and natural language", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learner-project-"));
+    const service = new LearnerProjectService(root);
+
+    const result = await service.createProject({
+      request:
+        "请用 /tmp/book.pdf 生成教授式中文 Web Deck，像大学/研究生课程讲义一样组织，面向有基础的学习者，教学难度为大学高年级/研究生课程，每个单元 10 页。",
+      runId: "professor-deck"
+    });
+
+    expect(result).toMatchObject({
+      status: "project_ready",
+      brief: {
+        courseIntent: "professor_lecture_deck",
+        unitPages: 10
+      }
+    });
+    if (result.status !== "project_ready") {
+      throw new Error("expected project_ready");
+    }
+    expect(result.next.codexInstruction).toContain("教授式课程讲义 Web Deck");
+    const manifest = JSON.parse(await readFile(path.join(root, "runs", "professor-deck", "learner-project.json"), "utf8")) as {
+      brief: { courseIntent?: string };
+      project?: { courseIntent?: string };
+    };
+    expect(manifest.brief.courseIntent).toBe("professor_lecture_deck");
+    expect(manifest.project?.courseIntent).toBe("professor_lecture_deck");
+  });
+
+  test("keeps mental model intent as the default", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learner-project-"));
+    const service = new LearnerProjectService(root);
+
+    const result = await service.createProject({
+      request:
+        "请用 /tmp/book.pdf 生成中文互动学习材料，面向有基础的学习者，教学难度为本科核心课程，每个单元 8 页。"
+    });
+
+    expect(result.status).toBe("project_ready");
+    if (result.status !== "project_ready") {
+      throw new Error("expected project_ready");
+    }
+    expect(result.brief.courseIntent).toBe("build_mental_model");
+  });
 });
