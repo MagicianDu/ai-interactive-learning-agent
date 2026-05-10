@@ -76,12 +76,13 @@ describe("learning agent MCP and skills bundle", () => {
     const operator = readFileSync("skills/learning-agent-operator/SKILL.md", "utf8");
     const productCore = readFileSync("docs/product/product-core.md", "utf8");
     const trialScript = readFileSync("docs/runtime/codex-user-trial-script.md", "utf8");
+    const seedPrompts = readFileSync("docs/runtime/seed-user-prompts.md", "utf8");
 
-    for (const text of [sourceToCourse, operator, productCore, trialScript]) {
+    for (const text of [sourceToCourse, operator, productCore, trialScript, seedPrompts]) {
       expect(text).toContain("professor_lecture_deck");
       expect(text).toContain("Web Deck");
     }
-    expect(`${sourceToCourse}\n${operator}\n${productCore}\n${trialScript}`).not.toMatch(
+    expect(`${sourceToCourse}\n${operator}\n${productCore}\n${trialScript}\n${seedPrompts}`).not.toMatch(
       /生成\s*(PPTX|Slides)|导出\s*(PPTX|Slides)/iu
     );
   });

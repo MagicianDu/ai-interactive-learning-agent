@@ -50,10 +50,15 @@ If the learner says "教授 PPT", "lecture slides", "大学课程讲义", or sim
 Call the learner-facing tools in this order for the default flow:
 
 ```json
-{"method":"tools/call","params":{"name":"learning_agent.prepare_learning_course","arguments":{"request":"请用 /tmp/book.pdf 生成教授式中文 Web Deck，面向研究生，教学难度为大学高年级/研究生课程，每个单元 10 页。","sourcePath":"/tmp/book.pdf","sourceKind":"book","audience":"研究生","difficultyLevel":"upper_undergraduate_or_graduate","unitPages":10,"courseIntent":"professor_lecture_deck"}}}
 {"method":"tools/call","params":{"name":"learning_agent.prepare_learning_course","arguments":{"request":"<Chinese learner request with source path or URL, audience, difficulty level, strategy, and unitPages>"}}}
 {"method":"tools/call","params":{"name":"learning_agent.publish_learning_course","arguments":{"runId":"<run-id>","coursePack":{},"lessons":[]}}}
 {"method":"tools/call","params":{"name":"learning_agent.get_learning_preview","arguments":{"runId":"<run-id>"}}}
+```
+
+Professor lecture Web Deck example:
+
+```json
+{"method":"tools/call","params":{"name":"learning_agent.prepare_learning_course","arguments":{"request":"请用 /tmp/book.pdf 生成教授式中文 Web Deck，面向研究生，教学难度为大学高年级/研究生课程，每个单元 10 页。","sourcePath":"/tmp/book.pdf","sourceKind":"book","audience":"研究生","difficultyLevel":"upper_undergraduate_or_graduate","unitPages":10,"courseIntent":"professor_lecture_deck"}}}
 ```
 
 Normal outputs should be compact: preview URL, course shape, `coursePlan.estimatedTotalPages` when available, and `qualityReport` status/score/checks/issueSummary/topIssues. Keep detailed artifacts available only when the learner explicitly asks for expert review.
