@@ -396,6 +396,62 @@ describe("LearningCoursePublisher", () => {
     );
   });
 
+  test("publishes professor lecture decks without blocking only on missing interactions", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-course-publisher-professor-"));
+    const publisher = new LearningCoursePublisher(root);
+    const lesson = publishableLessonFixture({ id: "professor-lecture-overview", title: "Agent 编排：教授讲义", targetPageCount: 8 });
+    lesson.pages = lesson.pages.map((page, index) => ({
+      ...page,
+      interactionSpec: undefined,
+      narrative:
+        index === 0
+          ? "课程框架：本讲定位、核心问题和学习边界。"
+          : index === 1
+            ? "先修要求：需要理解基本 agent、prompt 和工具调用。"
+            : index === 2
+              ? "概念地图：方法谱系、理论结构、关键定义和正式术语。"
+              : index === 3
+                ? "经典例题：用一个 agent orchestration case analysis 展开推导。"
+                : index === 4
+                  ? "方法比较：taxonomy、权衡、适用边界和反例。"
+                  : index === 5
+                    ? "课堂讨论题：批判一个设计选择并给出参考要点。"
+                    : index === 6
+                      ? "课后作业：阅读路径、problem set 和 homework。"
+                      : "本讲 takeaway：三条复习清单和下一讲衔接。"
+    }));
+    await new LearnerProjectService(root).createProject({
+      request: "请生成教授式课程讲义 Web Deck，主题是 Agent 编排，面向研究生，教学难度为大学高年级/研究生课程，每个单元 8 页。",
+      runId: "professor-course",
+      sourceKind: "topic",
+      audience: "研究生",
+      difficultyLevel: "upper_undergraduate_or_graduate",
+      unitPages: 8,
+      courseIntent: "professor_lecture_deck"
+    });
+
+    const result = await publisher.publish({
+      runId: "professor-course",
+      lessons: [lesson],
+      coursePack: coursePackFixture("professor-course", "professor-lecture-overview")
+    });
+
+    expect(result.status).toBe("preview_ready");
+    if (result.status !== "preview_ready") {
+      expect(result.issues.map((issue) => issue.rule)).not.toContain("interaction-count");
+      throw new Error("expected preview_ready");
+    }
+    expect(result.qualityReport).toMatchObject({
+      checks: {
+        interactionQuality: "passed",
+        professorLecture: "passed"
+      }
+    });
+    await expect(readFile(path.join(root, "runs", "professor-course", "quality", "course-quality-report.json"), "utf8")).resolves.toContain(
+      "\"professorLecture\": \"passed\""
+    );
+  });
+
   test("rejects unsafe lesson and course pack ids before writing files", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "learning-course-publisher-"));
     const publisher = new LearningCoursePublisher(root);

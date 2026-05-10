@@ -517,6 +517,80 @@ describe("course-quality-report", () => {
         })
       ])
     );
+    expect(report.lessonScores).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          lessonId: "quality-professor-summary",
+          status: "warning"
+        })
+      ])
+    );
     expect(report.issues.map((issue) => issue.rule)).not.toContain("interaction-count");
+  });
+
+  test("keeps malformed interaction feedback issues in professor mode", () => {
+    const lesson = publishableLessonFixture({ id: "quality-professor-broken-interaction", targetPageCount: 8 });
+    lesson.pages = lesson.pages.map((page, index) => ({
+      ...page,
+      interactionSpec:
+        index === 3
+          ? {
+              kind: "choice",
+              learnerAction: "",
+              expectedObservation: "看到课堂推导路径",
+              cognitivePurpose: "比较方法边界",
+              options: [
+                {
+                  id: "a",
+                  label: "选择 A",
+                  resultTitle: "方法边界",
+                  outcomeId: "boundary",
+                  resultTone: "success",
+                  explanation: ""
+                }
+              ]
+            }
+          : undefined,
+      narrative:
+        index === 0
+          ? "课程框架：本讲定位、核心问题和学习边界。"
+          : index === 1
+            ? "先修要求：需要理解基本 agent、prompt 和工具调用。"
+            : index === 2
+              ? "概念地图：方法谱系、理论结构、关键定义和正式术语。"
+              : index === 3
+                ? "经典例题：用一个 agent orchestration case analysis 展开推导。"
+                : index === 4
+                  ? "方法比较：taxonomy、权衡、适用边界和反例。"
+                  : index === 5
+                    ? "课堂讨论题：批判一个设计选择并给出参考要点。"
+                    : index === 6
+                      ? "课后作业：阅读路径、problem set 和 homework。"
+                      : "本讲 takeaway：三条复习清单和下一讲衔接。"
+    }));
+
+    const report = buildCourseQualityReport({
+      runId: "quality-professor-broken-interaction",
+      coursePackId: "quality-professor-broken-interaction",
+      lessons: [lesson],
+      authoringContext: {
+        courseIntent: "professor_lecture_deck"
+      }
+    });
+
+    expect(report.status).toBe("failed");
+    expect(report.checks.interactionQuality).toBe("failed");
+    expect(report.issues.map((issue) => issue.rule)).not.toContain("interaction-count");
+    expect(report.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          issueId: "quality.interaction.feedback-missing",
+          severity: "error",
+          category: "missing_feedback",
+          lessonId: "quality-professor-broken-interaction",
+          pageId: "p4"
+        })
+      ])
+    );
   });
 });

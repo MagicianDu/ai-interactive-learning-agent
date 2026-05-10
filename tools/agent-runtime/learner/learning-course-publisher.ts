@@ -21,6 +21,7 @@ import { RunStore } from "../run-store.js";
 import type { RunConfig } from "../types.js";
 import { extractContentBlueprint } from "./content-blueprint-compliance.js";
 import type { ContentBlueprint } from "./content-quality-blueprint.js";
+import { normalizeCourseIntent } from "./course-intent.js";
 import { buildCourseIR, type CourseIR } from "./course-ir.js";
 import { validatePublishBundle, type PublishValidationIssue, type PublishValidationResult } from "./publish-validation.js";
 
@@ -113,6 +114,7 @@ type LearnerProjectFile = {
     selectedTopics?: string[];
     language?: string;
     difficultyLevel?: string;
+    courseIntent?: string;
   };
 };
 
@@ -220,7 +222,7 @@ export class LearningCoursePublisher {
       ...publishValidation.issues
         .filter((issue) => issue.severity === "error")
         .map((issue) => publishValidationIssueToBlockingIssue(issue)),
-      ...collectBlockingIssues(lessons, sourceGroundingConfig)
+      ...collectBlockingIssues(lessons, sourceGroundingConfig, authoringContext)
     ];
     if (blockingIssues.length > 0) {
       return {
@@ -384,12 +386,15 @@ export class LearningCoursePublisher {
   }
 
   private async resolveQualityAuthoringContext(runId: string): Promise<CourseQualityAuthoringContext | undefined> {
+    let draftContext: CourseQualityAuthoringContext = {};
     try {
       const artifactStore = new ArtifactStore(path.join(this.workspaceRoot, "runs", runId));
       const authoringContext = await artifactStore.readDraft<unknown>("authoring-context");
       if (isRecord(authoringContext)) {
         const brief = isRecord(authoringContext.brief) ? authoringContext.brief : {};
-        return {
+        const courseIntent = normalizeCourseIntent(brief.courseIntent);
+        draftContext = {
+          ...(courseIntent ? { courseIntent } : {}),
           ...(typeof brief.difficultyLevel === "string" ? { difficultyLevel: brief.difficultyLevel } : {}),
           ...(typeof brief.sourceKind === "string" ? { sourceKind: brief.sourceKind } : {}),
           ...(isRecord(authoringContext.sourceSemantics) ? { sourceSemantics: authoringContext.sourceSemantics } : {})
@@ -403,11 +408,18 @@ export class LearningCoursePublisher {
 
     const learnerProject = await readLearnerProject(this.workspaceRoot, runId);
     if (!learnerProject?.brief) {
-      return undefined;
+      return Object.keys(draftContext).length > 0 ? draftContext : undefined;
     }
-    return {
+    const courseIntent = normalizeCourseIntent(learnerProject.brief.courseIntent);
+    const projectContext: CourseQualityAuthoringContext = {
+      ...(courseIntent ? { courseIntent } : {}),
       ...(learnerProject.brief.difficultyLevel ? { difficultyLevel: learnerProject.brief.difficultyLevel } : {}),
       ...(learnerProject.brief.sourceKind ? { sourceKind: learnerProject.brief.sourceKind } : {})
+    };
+    return {
+      ...projectContext,
+      ...draftContext,
+      courseIntent: draftContext.courseIntent ?? projectContext.courseIntent
     };
   }
 
@@ -603,7 +615,12 @@ function revisionHistoryKey(item: PublishedRevisionHistoryItem): string {
   return `${item.runId}:${item.revisionId}`;
 }
 
-function collectBlockingIssues(lessons: LessonLike[], sourceGroundingConfig: RunConfig | undefined): Array<{ lessonId: string; issue: QualityIssue }> {
+function collectBlockingIssues(
+  lessons: LessonLike[],
+  sourceGroundingConfig: RunConfig | undefined,
+  authoringContext: CourseQualityAuthoringContext | undefined
+): Array<{ lessonId: string; issue: QualityIssue }> {
+  const professorMode = authoringContext?.courseIntent === "professor_lecture_deck";
   return lessons.flatMap((lesson) =>
     [
       ...validateLessonQuality(lesson).issues,
@@ -611,6 +628,7 @@ function collectBlockingIssues(lessons: LessonLike[], sourceGroundingConfig: Run
       ...(sourceGroundingConfig ? validateSourceGrounding(lesson, sourceGroundingConfig).issues : [])
     ]
       .filter((issue) => issue.severity === "error")
+      .filter((issue) => !(professorMode && issue.rule === "interaction-count"))
       .map((issue) => ({ lessonId: lesson.id, issue }))
   );
 }

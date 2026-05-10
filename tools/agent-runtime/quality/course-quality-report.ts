@@ -134,7 +134,7 @@ export function buildCourseQualityReport(input: BuildCourseQualityReportInput): 
   const lessonIssueGroups = professorMode
     ? rawLessonIssueGroups.map((group) => ({
         ...group,
-        issues: group.issues.filter((issue) => !isInteractionIssue(issue))
+        issues: group.issues.filter((issue) => !isProfessorModeSuppressedIssue(issue))
       }))
     : rawLessonIssueGroups;
   const sourceEvidence =
@@ -162,7 +162,7 @@ export function buildCourseQualityReport(input: BuildCourseQualityReportInput): 
       ...lessonIssueGroups.flatMap((group) => group.issues.filter(isPageStructureIssue).map((issue) => toCourseQualityIssue(issue, group.lessonId))),
       ...heuristicIssues.filter((issue) => issue.category === "dense_page" || issue.category === "generic_page")
     ]),
-    interactionQuality: professorMode ? "passed" : statusFromIssues(lessonIssueGroups.flatMap((group) => group.issues.filter(isInteractionIssue))),
+    interactionQuality: statusFromIssues(lessonIssueGroups.flatMap((group) => group.issues.filter(isInteractionIssue))),
     assessmentCoverage: statusFromIssues(lessonIssueGroups.flatMap((group) => group.issues.filter(isAssessmentIssue))),
     transferCoverage: statusFromIssues(lessonIssueGroups.flatMap((group) => group.issues.filter((issue) => issue.rule === "transfer-challenge"))),
     academicDepth: depthRubric ? depthRubricStatusMap[depthRubric.status] : "passed",
@@ -176,7 +176,7 @@ export function buildCourseQualityReport(input: BuildCourseQualityReportInput): 
     return {
       lessonId: group.lessonId,
       score: critic?.score ?? scoreFromIssues(required.length, optional.length),
-      status: statusFromIssues(group.issues),
+      status: statusFromCourseQualityIssues(lessonIssues),
       requiredFixes: required,
       optionalImprovements: optional
     };
@@ -324,6 +324,10 @@ function isPageStructureIssue(issue: QualityIssue): boolean {
 
 function isInteractionIssue(issue: QualityIssue): boolean {
   return issue.rule === "interaction-count" || issue.rule === "interaction-feedback";
+}
+
+function isProfessorModeSuppressedIssue(issue: QualityIssue): boolean {
+  return issue.rule === "interaction-count";
 }
 
 function isAssessmentIssue(issue: QualityIssue): boolean {
