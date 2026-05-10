@@ -24,6 +24,29 @@ describe("bundle authoring guidance", () => {
     expect(guidance).toContain("transferTasks");
   });
 
+  test("keeps professor lecture guidance aligned with publisher baseline", () => {
+    const guidance = buildBundleAuthoringGuidance({
+      topic: "Agent Workflow Patterns",
+      sourcePath: "/tmp/book.pdf",
+      sourceKind: "book",
+      audience: "研究生",
+      difficultyLevel: "upper_undergraduate_or_graduate",
+      unitPages: 10,
+      strategy: "overview_plus_topic",
+      language: "zh-CN",
+      courseIntent: "professor_lecture_deck"
+    });
+
+    expect(guidance).toContain("教授式课程讲义 Web Deck");
+    expect(guidance).toContain("至少 2 个教学目的明确的 interactionSpec");
+    expect(guidance).toContain("课堂讨论题");
+    expect(guidance).toContain("课后作业或阅读路径");
+    expect(guidance).toContain("不要写 PPTX");
+    expect(guidance).toContain("缺少可见结构");
+    expect(guidance).toContain("缺少讨论/作业参考要点");
+    expect(guidance).not.toContain("缺互动");
+  });
+
   test("project_ready points Codex to authoring context before publishing", async () => {
     const service = new LearnerProjectService(await import("node:fs/promises").then(({ mkdtemp }) => mkdtemp("/tmp/learner-guidance-")));
     const result = await service.createProject({

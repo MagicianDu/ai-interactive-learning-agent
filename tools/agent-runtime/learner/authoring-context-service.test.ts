@@ -317,6 +317,27 @@ describe("AuthoringContextService", () => {
     expect(context.contentBlueprint.globalRules.join("\n")).toContain("教授式课程讲义 Web Deck");
     expect(context.contentBlueprint.units[0]?.pageBlueprints.some((page) => page.lectureRole === "worked_example")).toBe(true);
     expect(context.qualityContract.courseIntent).toBe("professor_lecture_deck");
+    expect(context.qualityContract.requiredPageTypes).toEqual([
+      "problem_scene",
+      "structure_diagram",
+      "intuition_visual",
+      "interactive_model",
+      "code_walkthrough",
+      "misconception_check",
+      "quiz",
+      "transfer_challenge",
+      "summary_card"
+    ]);
+    expect(context.qualityContract.requiredLearningActions).toEqual([
+      "frame",
+      "map_prerequisites",
+      "compare",
+      "walkthrough",
+      "discuss",
+      "plan_homework"
+    ]);
+    expect(context.qualityContract.publishChecklist.join("\n")).toContain("至少 2 个教学目的明确的 interactionSpec");
+    expect(context.qualityContract.publishChecklist.join("\n")).toContain("讨论题和作业必须有参考要点");
     expect(context.codexInstruction).toContain("教授式课程讲义 Web Deck");
   });
 

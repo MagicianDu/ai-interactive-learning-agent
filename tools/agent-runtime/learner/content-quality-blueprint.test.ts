@@ -206,6 +206,21 @@ describe("content-quality-blueprint", () => {
       "homework_task",
       "lecture_takeaway"
     ]);
+    expect(blueprint.units[0]?.pageBlueprints.map((page) => page.pageType)).toEqual([
+      "problem_scene",
+      "structure_diagram",
+      "structure_diagram",
+      "intuition_visual",
+      "interactive_model",
+      "code_walkthrough",
+      "misconception_check",
+      "quiz",
+      "transfer_challenge",
+      "summary_card"
+    ]);
+    expect(blueprint.units[0]?.pageBlueprints.map((page) => page.pageType)).toEqual(
+      expect.arrayContaining(["interactive_model", "misconception_check", "quiz", "transfer_challenge", "summary_card"])
+    );
     expect(blueprint.units[0]?.pageBlueprints[0]).toMatchObject({
       pageType: "problem_scene",
       teachingMove: expect.stringContaining("课程定位"),
@@ -222,6 +237,33 @@ describe("content-quality-blueprint", () => {
       lectureRole: "homework_task",
       mustInclude: expect.arrayContaining([expect.stringContaining("课后作业")])
     });
+  });
+
+  test("extends professor lecture deck page blueprints to 12 pages when requested", () => {
+    const blueprint = buildContentBlueprint({
+      audience: "研究生",
+      difficultyLevel: "upper_undergraduate_or_graduate",
+      sourceKind: "book",
+      courseIntent: "professor_lecture_deck",
+      units: [plannedUnit({ targetPageCount: 12, focusConcepts: ["Agentic Design Patterns"] })]
+    });
+
+    expect(blueprint.units[0]?.pageBlueprints).toHaveLength(12);
+    expect(blueprint.units[0]?.pageBlueprints.slice(0, 10).map((page) => page.lectureRole)).toEqual([
+      "lecture_framing",
+      "prerequisite_map",
+      "concept_framework",
+      "definition_block",
+      "method_structure",
+      "worked_example",
+      "comparison_taxonomy",
+      "discussion_prompt",
+      "homework_task",
+      "lecture_takeaway"
+    ]);
+    expect(blueprint.units[0]?.pageBlueprints.map((page) => page.pageType)).toEqual(
+      expect.arrayContaining(["interactive_model", "misconception_check"])
+    );
   });
 });
 

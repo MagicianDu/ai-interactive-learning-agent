@@ -74,7 +74,7 @@ function globalRules(input: BuildContentBlueprintInput): string[] {
       ? [
           "课程形态为教授式课程讲义 Web Deck：像大学/研究生课堂讲义一样组织课程框架、概念地图、方法谱系、经典例题、课堂讨论和课后作业。",
           "不要生成 PPTX、Slides 或文件导出话术；最终产物仍是 Web Deck。",
-          "不要求每页都有操作型 interaction，但每页必须有清晰 lecture purpose、可见结构或课堂判断任务。"
+          "不要求每页都有操作型 interaction，但每个 lesson 至少包含 2 个教学目的明确的 interactionSpec，且每页必须有清晰 lecture purpose、可见结构或课堂判断任务。"
         ]
       : [
           "不要把资料改写成摘要；每页必须有一个学习动作、一个可见结构或一个可检查判断。",
@@ -319,10 +319,10 @@ function professorLectureTemplatesForPageCount(targetPageCount: number): PageTem
     ),
     professorTemplate(
       "method_structure",
-      "structure_diagram",
+      "interactive_model",
       "拆解核心方法、理论结构、机制或算法流程。",
       "沿结构图说明每个组成部分承担什么功能。",
-      "方法结构图、流程图或系统图。",
+      "可逐步操作的方法结构图、流程图或系统图。",
       "说明结构中每一步的因果角色。",
       ["方法结构", "机制", "适用条件"]
     ),
@@ -337,7 +337,7 @@ function professorLectureTemplatesForPageCount(targetPageCount: number): PageTem
     ),
     professorTemplate(
       "comparison_taxonomy",
-      "structure_diagram",
+      "misconception_check",
       "比较相关方法、理论分支、设计选择或常见路线。",
       "根据条件选择适合的方法，并说明权衡。",
       "对比表、二维坐标或 taxonomy。",
@@ -372,13 +372,33 @@ function professorLectureTemplatesForPageCount(targetPageCount: number): PageTem
       ["本讲 takeaway", "复习清单", "下一讲衔接"]
     )
   ];
+  const extensionTemplates: PageTemplate[] = [
+    professorTemplate(
+      "reading_path",
+      "structure_diagram",
+      "补充本讲之后的阅读路径、来源章节和扩展材料定位。",
+      "选择一条阅读路径并说明它补齐哪一类理解缺口。",
+      "来源阅读路径图或章节到概念映射。",
+      "说明不同阅读路径适合的学习目标和先修状态。",
+      ["阅读路径", "来源章节", "扩展材料"]
+    ),
+    professorTemplate(
+      "synthesis_review",
+      "quiz",
+      "用综合复盘题检查学习者能否把框架、方法和边界连起来。",
+      "回答一个综合判断题，并指出需要回看的概念或例题。",
+      "综合复盘题卡片和参考答案要点。",
+      "用课堂式 answer notes 解释判断依据和常见遗漏。",
+      ["综合复盘", "answer notes", "回看路径"]
+    )
+  ];
   if (targetPageCount <= 6) {
     return [templates[0]!, templates[2]!, templates[4]!, templates[5]!, templates[7]!, templates[9]!];
   }
   if (targetPageCount <= 8) {
     return [templates[0]!, templates[1]!, templates[2]!, templates[4]!, templates[5]!, templates[6]!, templates[7]!, templates[9]!];
   }
-  return templates.slice(0, Math.min(targetPageCount, templates.length));
+  return [...templates, ...extensionTemplates].slice(0, targetPageCount);
 }
 
 function professorTemplate(

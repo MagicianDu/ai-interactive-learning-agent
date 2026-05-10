@@ -97,6 +97,23 @@ describe("validateContentBlueprintCompliance", () => {
       })
     ).toBeUndefined();
   });
+
+  it("defaults missing legacy course intent when extracting content blueprints", () => {
+    const { courseIntent: _courseIntent, ...legacyBlueprint } = blueprint();
+
+    expect(extractContentBlueprint({ contentBlueprint: legacyBlueprint })?.courseIntent).toBe("build_mental_model");
+  });
+
+  it("rejects content blueprints with invalid course intent", () => {
+    expect(
+      extractContentBlueprint({
+        contentBlueprint: {
+          ...blueprint(),
+          courseIntent: "slide_export"
+        }
+      })
+    ).toBeUndefined();
+  });
 });
 
 function blueprint(

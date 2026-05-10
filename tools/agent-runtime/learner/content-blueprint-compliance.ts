@@ -1,11 +1,16 @@
 import type { CourseIR, CourseIRLesson, CourseIRPage, CourseIRUnit } from "./course-ir.js";
 import type { ContentBlueprint, PageContentBlueprint, UnitContentBlueprint } from "./content-quality-blueprint.js";
+import { defaultCourseIntent, normalizeCourseIntent } from "./course-intent.js";
 import type { PublishValidationIssue } from "./publish-validation.js";
 import { isRecord, isStringArray } from "../quality/validation-result.js";
 
 export type ValidateContentBlueprintComplianceInput = {
   courseIR: CourseIR;
   contentBlueprint: ContentBlueprint;
+};
+
+type ContentBlueprintCandidate = Omit<ContentBlueprint, "courseIntent"> & {
+  courseIntent?: unknown;
 };
 
 const visualRequiredPageTypes = new Set(["problem_scene", "intuition_visual", "structure_diagram", "process_animation", "summary_card"]);
@@ -42,7 +47,15 @@ export function validateContentBlueprintCompliance(input: ValidateContentBluepri
 
 export function extractContentBlueprint(value: unknown): ContentBlueprint | undefined {
   const candidate = isRecord(value) && "contentBlueprint" in value ? value.contentBlueprint : value;
-  return isContentBlueprint(candidate) ? candidate : undefined;
+  if (!isContentBlueprint(candidate)) {
+    return undefined;
+  }
+  const blueprint = candidate;
+  if ("courseIntent" in blueprint) {
+    const courseIntent = normalizeCourseIntent(blueprint.courseIntent);
+    return courseIntent ? { ...blueprint, courseIntent } : undefined;
+  }
+  return { ...blueprint, courseIntent: defaultCourseIntent };
 }
 
 function validateUnitPages(coursePackId: string, unitBlueprint: UnitContentBlueprint, lesson: CourseIRLesson): PublishValidationIssue[] {
@@ -92,7 +105,7 @@ function requiresSourceSupport(unitBlueprint: UnitContentBlueprint, pageBlueprin
   );
 }
 
-function isContentBlueprint(value: unknown): value is ContentBlueprint {
+function isContentBlueprint(value: unknown): value is ContentBlueprintCandidate {
   return (
     isRecord(value) &&
     value.version === "content-blueprint/v1" &&

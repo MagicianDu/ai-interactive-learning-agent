@@ -263,7 +263,7 @@ export class AuthoringContextService {
         requirements: [
           "请由 Codex 创作 coursePack 和 lessons，不要让 MCP deterministic generator 代写正式内容。",
           brief.courseIntent === "professor_lecture_deck"
-            ? "每个 lesson 必须中文优先，并包含课程框架、先修要求、概念地图、核心定义、经典例题、课堂讨论、课后作业或阅读路径。"
+            ? "每个 lesson 必须中文优先，并包含课程框架、先修要求、概念地图、核心定义、经典例题、课堂讨论、课后作业或阅读路径，且至少有 2 个教学目的明确的 interactionSpec。"
             : "每个 lesson 必须中文优先，并包含问题、视觉模型、学习动作、反馈、误区检查和迁移任务。",
           "每个 source-backed 页面必须包含 page.sourceAnchorIds，或显式标注 grounding.kind 为 inferred/analogy。",
           "教学页面应一页一学习目标；如果内容过多，请拆页而不是堆长段落。",
@@ -340,17 +340,33 @@ function buildQualityContract(brief: AuthoringContextResult["brief"]): Authoring
       ]
     },
     supportedStrategies: ["overview_plus_topic", "chapter_guided", "topic_guided", "task_guided", "hybrid"],
-    requiredPageTypes: [
-      "problem_scene",
-      "intuition_visual",
-      "structure_diagram",
-      "interactive_model",
-      "quiz",
-      "misconception_check",
-      "transfer_challenge",
-      "summary_card"
-    ],
-    requiredLearningActions: ["predict", "manipulate", "compare", "explain", "debug", "transfer"],
+    requiredPageTypes:
+      brief.courseIntent === "professor_lecture_deck"
+        ? [
+            "problem_scene",
+            "structure_diagram",
+            "intuition_visual",
+            "interactive_model",
+            "code_walkthrough",
+            "misconception_check",
+            "quiz",
+            "transfer_challenge",
+            "summary_card"
+          ]
+        : [
+            "problem_scene",
+            "intuition_visual",
+            "structure_diagram",
+            "interactive_model",
+            "quiz",
+            "misconception_check",
+            "transfer_challenge",
+            "summary_card"
+          ],
+    requiredLearningActions:
+      brief.courseIntent === "professor_lecture_deck"
+        ? ["frame", "map_prerequisites", "compare", "walkthrough", "discuss", "plan_homework"]
+        : ["predict", "manipulate", "compare", "explain", "debug", "transfer"],
     pageRules: [
       `页面应符合${levelLabel}的课堂 slide 密度：有问题、模型、来源依据、讨论或练习，而不是只有解释性段落。`,
       "每页只承载一个学习目标，正文应短，优先使用图、流程、状态变化或可操作模型。",
@@ -371,14 +387,24 @@ function buildQualityContract(brief: AuthoringContextResult["brief"]): Authoring
     sourceKindGuidance: sourceKindGuidance(brief.sourceKind),
     ...(requiresResearchReadingContract(brief) ? { researchReadingContract: researchReadingContract() } : {}),
     ...(sourceKindDepthContract(brief.sourceKind) ? { sourceKindDepthContract: sourceKindDepthContract(brief.sourceKind) } : {}),
-    publishChecklist: [
-      "coursePack.units 引用的 lessonId 必须存在。",
-      `每个 lesson 的 prerequisites、learningObjectives、pages、summary 要体现${levelLabel}定位。`,
-      "每个 lesson 必须中文优先，并包含 objectives、prerequisites、pages、misconceptions、transferTasks、summary。",
-      "每个 lesson 至少包含 3 个 visualSpec、2 个 interactionSpec、2 个 assessmentSpec、1 个 misconception_check 和 1 个 transfer_challenge。",
-      "每个 interactionSpec 必须说明 learnerAction、expectedObservation、cognitivePurpose，并提供解释性结果。",
-      "每个 assessment 页面必须有 feedbackSpec。"
-    ]
+    publishChecklist:
+      brief.courseIntent === "professor_lecture_deck"
+        ? [
+            "coursePack.units 引用的 lessonId 必须存在。",
+            `每个 lesson 的 prerequisites、learningObjectives、pages、summary 要体现${levelLabel}定位。`,
+            "每个 lesson 必须中文优先，并包含课程框架、先修要求、概念地图、核心定义、经典例题、课堂讨论、课后作业或阅读路径。",
+            "每个 lesson 至少包含 3 个 visualSpec、至少 2 个教学目的明确的 interactionSpec、2 个 assessmentSpec、1 个 misconception_check 和 1 个 transfer_challenge。",
+            "教授式 interactionSpec 可用于方法 walkthrough、比较决策、课堂讨论选择或作业规划动作，并必须说明 learnerAction、expectedObservation、cognitivePurpose。",
+            "讨论题和作业必须有参考要点或 answer notes；每个 assessment 页面必须有 feedbackSpec。"
+          ]
+        : [
+            "coursePack.units 引用的 lessonId 必须存在。",
+            `每个 lesson 的 prerequisites、learningObjectives、pages、summary 要体现${levelLabel}定位。`,
+            "每个 lesson 必须中文优先，并包含 objectives、prerequisites、pages、misconceptions、transferTasks、summary。",
+            "每个 lesson 至少包含 3 个 visualSpec、2 个 interactionSpec、2 个 assessmentSpec、1 个 misconception_check 和 1 个 transfer_challenge。",
+            "每个 interactionSpec 必须说明 learnerAction、expectedObservation、cognitivePurpose，并提供解释性结果。",
+            "每个 assessment 页面必须有 feedbackSpec。"
+          ]
   };
 }
 
@@ -498,7 +524,7 @@ function buildCodexInstruction(brief: AuthoringContextResult["brief"], unitCount
     `课程形态：${courseIntentLabel(brief.courseIntent)}（${brief.courseIntent}）。`,
     `教学难度层级：${difficultyLabel(brief.difficultyLevel)}（${brief.difficultyLevel}）；不要写成泛泛科普、博客摘要或产品介绍。`,
     brief.courseIntent === "professor_lecture_deck"
-      ? "请写成教授式课程讲义 Web Deck：课程框架、概念地图、方法谱系、经典例题、课堂讨论、阅读路径和课后作业是重点；不要生成 PPTX 或 Slides。"
+      ? "请写成教授式课程讲义 Web Deck：课程框架、概念地图、方法谱系、经典例题、课堂讨论、阅读路径和课后作业是重点；每个 lesson 至少 2 个教学目的明确的 interactionSpec；不要生成 PPTX 或 Slides。"
       : "请写成互动学习 Web Deck：问题、视觉模型、学习动作、反馈、误区检查和迁移任务是重点。",
     ...(requiresResearchReadingContract(brief)
       ? ["这是一套论文精读课；每个相关 lesson 必须显式覆盖：研究问题、论文贡献、方法机制、实验/证据、局限/威胁、迁移判断。"]

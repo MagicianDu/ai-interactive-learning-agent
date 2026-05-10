@@ -22,9 +22,9 @@ export function buildBundleAuthoringGuidance(brief: LearnerBrief): string {
     ...(brief.courseIntent === "professor_lecture_deck"
       ? [
           "3. 教授式课程讲义不强制每页都有 interactionSpec；但每页必须有 lecture purpose、可见结构或课堂判断任务。",
-          "4. 至少包含课程框架、先修要求、概念地图、经典例题/推导/案例、方法比较、课堂讨论题、课后作业或阅读路径。",
-          "5. 讨论题和作业必须有参考要点或 answer notes，不能只列题目。",
-          "6. 不要写 PPTX、Slides 或导出文件话术；产物仍是 Web Deck。"
+          "4. 每个 lesson 仍需至少 2 个教学目的明确的 interactionSpec，例如方法 walkthrough、比较决策、课堂讨论选择或作业规划动作。",
+          "5. 至少包含课程框架、先修要求、概念地图、经典例题/推导/案例、方法比较、课堂讨论题、课后作业或阅读路径。",
+          "6. 讨论题和作业必须有参考要点或 answer notes，不能只列题目；不要写 PPTX、Slides 或导出文件话术，产物仍是 Web Deck。"
         ]
       : [
           "3. 每个 lesson 至少包含 3 个 visualSpec、2 个 meaningful interactionSpec、2 个 assessmentSpec，并且 assessment 页面必须有 feedbackSpec。",
@@ -34,7 +34,9 @@ export function buildBundleAuthoringGuidance(brief: LearnerBrief): string {
         ]),
     `7. ${sourceGroundingRule}`,
     "8. coursePack.units 必须引用已生成 lessonId，并保留 sourceAnchorIds、conceptIds、targetPageCount。",
-    "9. 发布前自查：如果缺中文、缺互动、缺反馈、缺迁移、缺来源锚点，不要调用 publish，先修订 bundle。"
+    brief.courseIntent === "professor_lecture_deck"
+      ? "9. 发布前自查：如果缺中文、缺少可见结构、缺少讨论/作业参考要点、缺少课后作业或阅读路径、缺少来源锚点，或少于 2 个教学目的明确的 interactionSpec，不要调用 publish，先修订 bundle。"
+      : "9. 发布前自查：如果缺中文、缺互动、缺反馈、缺迁移、缺来源锚点，不要调用 publish，先修订 bundle。"
   ]
     .filter((line): line is string => typeof line === "string")
     .join("\n");
