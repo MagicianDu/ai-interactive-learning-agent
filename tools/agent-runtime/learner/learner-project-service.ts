@@ -1,7 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { courseIntentLabel, defaultCourseIntent, inferCourseIntent, normalizeCourseIntent, type CourseIntent } from "./course-intent.js";
+import { courseIntentLabel, inferCourseIntent, normalizeCourseIntent, type CourseIntent } from "./course-intent.js";
 import { ProjectRegistry } from "./project-registry.js";
 
 export type TeachingDifficultyLevel = "introductory" | "undergraduate_core" | "upper_undergraduate_or_graduate" | "research";
@@ -32,7 +32,7 @@ export type LearnerBrief = {
   selectedChapters?: string[];
   selectedTopics?: string[];
   language: "zh-CN";
-  courseIntent?: CourseIntent;
+  courseIntent: CourseIntent;
 };
 
 export type CreateLearnerProjectResult =
@@ -95,7 +95,7 @@ export class LearnerProjectService {
       unitPageCount: brief.unitPages,
       selectedChapters: brief.selectedChapters,
       selectedTopics: brief.selectedTopics,
-      courseIntent: brief.courseIntent ?? defaultCourseIntent,
+      courseIntent: brief.courseIntent,
       status: "draft"
     });
     const projectPath = path.join(runPath, "learner-project.json");
@@ -105,12 +105,11 @@ export class LearnerProjectService {
 }
 
 function buildAuthoringContextGuidance(runId: string, brief: LearnerBrief): string {
-  const courseIntent = brief.courseIntent ?? defaultCourseIntent;
   return [
     "learner brief 已记录。下一步请调用 learning_agent.get_authoring_context 获取来源锚点、推荐单元和发布约束。",
     `runId：${runId}`,
     `输出语言：${brief.language}`,
-    `课程形态：${courseIntentLabel(courseIntent)}（${courseIntent}）。`,
+    `课程形态：${courseIntentLabel(brief.courseIntent)}（${brief.courseIntent}）。`,
     `目标学习者：${brief.audience ?? "中文学习者"}`,
     brief.difficultyLevel ? `教学难度层级：${difficultyLabel(brief.difficultyLevel)}（${brief.difficultyLevel}）。` : undefined,
     `课程组织：${brief.strategy}，每个单元 ${brief.unitPages} 页。`,

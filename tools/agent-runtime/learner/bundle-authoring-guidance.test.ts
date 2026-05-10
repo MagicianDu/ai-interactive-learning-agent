@@ -13,7 +13,8 @@ describe("bundle authoring guidance", () => {
       difficultyLevel: "upper_undergraduate_or_graduate",
       unitPages: 8,
       strategy: "overview_plus_topic",
-      language: "zh-CN"
+      language: "zh-CN",
+      courseIntent: "build_mental_model"
     });
 
     expect(guidance).toContain("中文");
