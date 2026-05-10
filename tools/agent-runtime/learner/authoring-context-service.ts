@@ -8,6 +8,7 @@ import { createRunConfigFromArgs } from "../run-config.js";
 import { normalizeSources } from "../source/source-normalizer.js";
 import type { RunConfig } from "../types.js";
 import { buildContentBlueprint, type ContentBlueprint } from "./content-quality-blueprint.js";
+import { defaultCourseIntent, type CourseIntent } from "./course-intent.js";
 import { planCourseUnits } from "./course-unit-planner.js";
 import { difficultyLabel, type TeachingDifficultyLevel } from "./learner-project-service.js";
 import { sampleAuthoringAnchors } from "./source-anchor-sampler.js";
@@ -26,6 +27,7 @@ type LearnerProjectFile = {
     selectedChapters?: string[];
     selectedTopics?: string[];
     language?: string;
+    courseIntent?: CourseIntent;
   };
 };
 
@@ -48,6 +50,7 @@ export type AuthoringContextResult = {
     selectedChapters: string[];
     selectedTopics: string[];
     language: "zh-CN";
+    courseIntent: CourseIntent;
   };
   source: {
     sourceKind: string;
@@ -200,7 +203,8 @@ export class AuthoringContextService {
       strategy: config.coursePack?.strategy ?? "overview_plus_topic",
       selectedChapters: config.coursePack?.selectedChapters ?? [],
       selectedTopics: config.coursePack?.selectedTopics ?? [],
-      language: "zh-CN" as const
+      language: "zh-CN" as const,
+      courseIntent: project.brief?.courseIntent ?? defaultCourseIntent
     };
     const contentBlueprint = buildContentBlueprint({
       audience: brief.audience,

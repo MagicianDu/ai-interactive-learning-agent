@@ -225,6 +225,29 @@ describe("LearningAgentRuntimeTools", () => {
     expect(manifest.project?.status).toBe("archived");
   });
 
+  test("create_learning_project direct runtime call preserves explicit professor course intent", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
+    const tools = new LearningAgentRuntimeTools(root);
+
+    const result = await tools.callTool("learning_agent.create_learning_project", {
+      request: "请用 /tmp/book.pdf 生成中文学习材料，面向研究生，教学难度为大学高年级/研究生课程，每个单元 10 页。",
+      runId: "runtime-create-professor-intent",
+      sourcePath: "/tmp/book.pdf",
+      sourceKind: "book",
+      audience: "研究生",
+      difficultyLevel: "upper_undergraduate_or_graduate",
+      unitPages: 10,
+      courseIntent: "professor_lecture_deck"
+    });
+
+    expect(result).toMatchObject({
+      status: "project_ready",
+      brief: {
+        courseIntent: "professor_lecture_deck"
+      }
+    });
+  });
+
   test("returns authoring context through tool handlers", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
     const sourcePath = path.join(root, "source.md");
@@ -334,6 +357,10 @@ describe("LearningAgentRuntimeTools", () => {
         courseIntent: "professor_lecture_deck"
       }
     });
+    const artifact = JSON.parse(
+      await readFile(path.join(root, "runs", "runtime-professor-intent", "artifacts", "authoring-context.draft.json"), "utf8")
+    ) as { brief?: { courseIntent?: string } };
+    expect(artifact.brief?.courseIntent).toBe("professor_lecture_deck");
   });
 
   test("compares authored and deterministic draft quality through tool handlers", async () => {

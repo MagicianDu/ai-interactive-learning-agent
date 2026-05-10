@@ -136,6 +136,34 @@ describe("MCP JSON-RPC server", () => {
     });
   });
 
+  test("create_learning_project accepts explicit professor lecture course intent", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-create-professor-intent-"));
+    const tools = new LearningAgentRuntimeTools(root);
+
+    const project = await callMcpTool(tools, "learning_agent.create_learning_project", {
+      request: "请用 /tmp/book.pdf 生成中文学习材料，面向研究生，教学难度为大学高年级/研究生课程，每个单元 10 页。",
+      runId: "create-professor-intent-mcp",
+      sourcePath: "/tmp/book.pdf",
+      sourceKind: "book",
+      audience: "研究生",
+      difficultyLevel: "upper_undergraduate_or_graduate",
+      unitPages: 10,
+      courseIntent: "professor_lecture_deck"
+    });
+    const manifest = JSON.parse(
+      await readFile(path.join(root, "runs", "create-professor-intent-mcp", "learner-project.json"), "utf8")
+    ) as { brief?: { courseIntent?: string } };
+
+    expect(project).toMatchObject({
+      status: "project_ready",
+      runId: "create-professor-intent-mcp",
+      brief: {
+        courseIntent: "professor_lecture_deck"
+      }
+    });
+    expect(manifest.brief?.courseIntent).toBe("professor_lecture_deck");
+  });
+
   test("prepare_learning_course accepts professor lecture course intent", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "learning-agent-professor-intent-"));
     const tools = new LearningAgentRuntimeTools(root);
@@ -160,6 +188,10 @@ describe("MCP JSON-RPC server", () => {
         unitPages: 10
       }
     });
+    const artifact = JSON.parse(
+      await readFile(path.join(root, "runs", "professor-intent-mcp", "artifacts", "authoring-context.draft.json"), "utf8")
+    ) as { brief?: { courseIntent?: string } };
+    expect(artifact.brief?.courseIntent).toBe("professor_lecture_deck");
   });
 
   test("publishes a learner-facing course through MCP without artifact approvals", async () => {
