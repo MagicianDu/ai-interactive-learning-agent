@@ -3,13 +3,14 @@ import { isRecord } from "./validation-result.js";
 export type ProfessorLectureStatus = "passed" | "warning";
 export type ProfessorLectureMoveId =
   | "course_framing"
-  | "concept_map"
-  | "method_structure"
+  | "prerequisites"
+  | "concept_framework"
+  | "definitions"
   | "worked_example"
-  | "comparative_boundary"
+  | "comparison"
   | "discussion_prompt"
   | "homework_or_reading"
-  | "takeaway";
+  | "lecture_takeaway";
 
 export type ProfessorLectureRubricMoveResult = {
   id: ProfessorLectureMoveId;
@@ -38,20 +39,26 @@ const professorLectureMoves: ProfessorLectureMove[] = [
   {
     id: "course_framing",
     label: "course framing",
-    description: "Frame the lecture with positioning, core question, prerequisites, or learning boundary.",
-    markers: ["课程框架", "本讲定位", "核心问题", "学习边界", "先修要求", "lecture frame", "framing"]
+    description: "Frame the lecture with positioning, core question, or learning boundary.",
+    markers: ["课程框架", "本讲定位", "核心问题", "学习边界", "lecture frame", "framing"]
   },
   {
-    id: "concept_map",
-    label: "concept map",
-    description: "Name the lecture's key definitions, terms, taxonomy, or theory map.",
-    markers: ["概念地图", "关键定义", "术语", "方法谱系", "理论结构", "concept map", "taxonomy"]
+    id: "prerequisites",
+    label: "prerequisites",
+    description: "Name the prerequisite knowledge or preparation learners need for the lecture.",
+    markers: ["先修", "预备知识", "已有基础", "prerequisite", "prerequisites"]
   },
   {
-    id: "method_structure",
-    label: "method structure",
-    description: "Explain the method, mechanism, reasoning structure, or applicable conditions.",
-    markers: ["方法结构", "机制结构", "推导", "适用条件", "reasoning structure", "method structure"]
+    id: "concept_framework",
+    label: "concept framework",
+    description: "Map the lecture's conceptual framework, taxonomy, theory structure, or method family.",
+    markers: ["概念地图", "概念框架", "方法谱系", "理论结构", "concept framework", "concept map", "taxonomy"]
+  },
+  {
+    id: "definitions",
+    label: "definitions",
+    description: "Introduce key definitions, terms, or formal terminology as explicit lecture content.",
+    markers: ["关键定义", "定义", "术语", "正式术语", "definition", "definitions", "terminology"]
   },
   {
     id: "worked_example",
@@ -60,10 +67,10 @@ const professorLectureMoves: ProfessorLectureMove[] = [
     markers: ["经典例题", "案例分析", "case analysis", "worked example", "展开推导", "example"]
   },
   {
-    id: "comparative_boundary",
-    label: "comparative boundary",
+    id: "comparison",
+    label: "comparison",
     description: "Compare alternatives and name tradeoffs, boundaries, or counterexamples.",
-    markers: ["方法比较", "比较", "权衡", "适用边界", "反例", "boundary", "tradeoff"]
+    markers: ["方法比较", "比较", "权衡", "适用边界", "反例", "comparison", "tradeoff"]
   },
   {
     id: "discussion_prompt",
@@ -78,8 +85,8 @@ const professorLectureMoves: ProfessorLectureMove[] = [
     markers: ["课后作业", "阅读路径", "problem set", "homework", "reading"]
   },
   {
-    id: "takeaway",
-    label: "takeaway",
+    id: "lecture_takeaway",
+    label: "lecture takeaway",
     description: "Close with takeaways, review checklist, or next-lecture connection.",
     markers: ["takeaway", "复习清单", "下一讲", "总结要点", "takeaways"]
   }

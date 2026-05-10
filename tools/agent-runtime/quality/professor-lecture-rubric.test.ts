@@ -48,4 +48,35 @@ describe("professor lecture rubric", () => {
       expect.arrayContaining(["course_framing", "worked_example", "discussion_prompt", "homework_or_reading"])
     );
   });
+
+  test("requires prerequisites and definitions as independent lecture moves", () => {
+    const lesson = publishableLessonFixture({ id: "professor-missing-separate-moves", targetPageCount: 8 });
+    lesson.pages = lesson.pages.map((page, index) => ({
+      ...page,
+      interactionSpec: undefined,
+      narrative:
+        index === 0
+          ? "课程框架：本讲定位、核心问题和学习边界。"
+          : index === 1
+            ? "概念地图：方法谱系和理论结构。"
+            : index === 2
+              ? "方法结构：比较 planning、tool use、reflection 的适用条件。"
+              : index === 3
+                ? "经典例题：用一个 agent orchestration case analysis 展开推导。"
+                : index === 4
+                  ? "方法比较：taxonomy、权衡、适用边界和反例。"
+                  : index === 5
+                    ? "课堂讨论题：批判一个设计选择并给出参考要点。"
+                    : index === 6
+                      ? "课后作业：阅读路径、problem set 和 homework。"
+                      : "本讲 takeaway：三条复习清单和下一讲衔接。"
+    }));
+
+    const result = evaluateProfessorLectureRubric([lesson]);
+
+    expect(result.status).toBe("warning");
+    expect(result.missingMoves.map((move) => move.id)).toEqual(
+      expect.arrayContaining(["prerequisites", "definitions"])
+    );
+  });
 });
