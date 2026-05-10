@@ -312,6 +312,30 @@ describe("LearningAgentRuntimeTools", () => {
     });
   });
 
+  test("prepare_learning_course direct runtime call preserves professor course intent", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
+    const tools = new LearningAgentRuntimeTools(root);
+
+    const result = await tools.callTool("learning_agent.prepare_learning_course", {
+      request:
+        "请用 /tmp/book.pdf 生成教授式中文 Web Deck，面向研究生，教学难度为大学高年级/研究生课程，每个单元 10 页。",
+      runId: "runtime-professor-intent",
+      sourcePath: "/tmp/book.pdf",
+      sourceKind: "book",
+      audience: "研究生",
+      difficultyLevel: "upper_undergraduate_or_graduate",
+      unitPages: 10,
+      courseIntent: "professor_lecture_deck"
+    });
+
+    expect(result).toMatchObject({
+      status: "authoring_context_ready",
+      brief: {
+        courseIntent: "professor_lecture_deck"
+      }
+    });
+  });
+
   test("compares authored and deterministic draft quality through tool handlers", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
     const tools = new LearningAgentRuntimeTools(root);

@@ -128,10 +128,37 @@ describe("MCP JSON-RPC server", () => {
       properties: {
         request: { type: "string" },
         difficultyLevel: { type: "string" },
+        courseIntent: { type: "string" },
         unitPages: { type: "number" },
         maxAnchors: { type: "number" }
       },
       required: ["request"]
+    });
+  });
+
+  test("prepare_learning_course accepts professor lecture course intent", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-professor-intent-"));
+    const tools = new LearningAgentRuntimeTools(root);
+
+    const prepared = await callMcpTool(tools, "learning_agent.prepare_learning_course", {
+      request:
+        "请用 /tmp/book.pdf 生成教授式中文 Web Deck，像大学/研究生课程讲义一样组织，面向研究生，教学难度为大学高年级/研究生课程，每个单元 10 页。",
+      runId: "professor-intent-mcp",
+      sourcePath: "/tmp/book.pdf",
+      sourceKind: "book",
+      audience: "研究生",
+      difficultyLevel: "upper_undergraduate_or_graduate",
+      unitPages: 10,
+      courseIntent: "professor_lecture_deck"
+    });
+
+    expect(prepared).toMatchObject({
+      status: "authoring_context_ready",
+      runId: "professor-intent-mcp",
+      brief: {
+        courseIntent: "professor_lecture_deck",
+        unitPages: 10
+      }
     });
   });
 

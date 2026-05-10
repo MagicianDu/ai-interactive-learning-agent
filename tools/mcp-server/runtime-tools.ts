@@ -126,6 +126,7 @@ export class LearningAgentRuntimeTools {
       sourceKind: optionalString(options.sourceKind),
       audience: optionalString(options.audience),
       difficultyLevel: optionalDifficultyLevel(options.difficultyLevel),
+      courseIntent: optionalCourseIntent(options.courseIntent),
       unitPages: optionalNumber(options.unitPages),
       strategy: optionalString(options.strategy),
       selectedChapters: optionalStringArray(options.selectedChapters),
@@ -135,19 +136,21 @@ export class LearningAgentRuntimeTools {
 
   private async prepareLearningCourse(input: unknown): Promise<unknown> {
     const options = expectRecord(input);
-    return new PrepareLearningCourseService(this.workspaceRoot).prepare({
+    const result = await new PrepareLearningCourseService(this.workspaceRoot).prepare({
       request: requiredString(options, "request"),
       runId: optionalString(options.runId),
       sourcePath: optionalString(options.sourcePath),
       sourceKind: optionalString(options.sourceKind),
       audience: optionalString(options.audience),
       difficultyLevel: optionalDifficultyLevel(options.difficultyLevel),
+      courseIntent: optionalCourseIntent(options.courseIntent),
       unitPages: optionalNumber(options.unitPages),
       strategy: optionalString(options.strategy),
       selectedChapters: optionalStringArray(options.selectedChapters),
       selectedTopics: optionalStringArray(options.selectedTopics),
       maxAnchors: optionalNumber(options.maxAnchors)
     });
+    return withPreparedCourseIntent(result);
   }
 
   private async listLearningProjects(input: unknown): Promise<unknown> {
@@ -538,6 +541,28 @@ function expectRecord(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
+function withPreparedCourseIntent(result: unknown): unknown {
+  if (!isRecordLike(result)) {
+    return result;
+  }
+  const projectBrief = isRecordLike(result.project) ? result.project.brief : undefined;
+  const courseIntent = isRecordLike(projectBrief) ? optionalCourseIntent(projectBrief.courseIntent) : undefined;
+  if (!courseIntent || !isRecordLike(result.brief)) {
+    return result;
+  }
+  return {
+    ...result,
+    brief: {
+      ...result.brief,
+      courseIntent
+    }
+  };
+}
+
+function isRecordLike(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 function requiredString(input: Record<string, unknown>, key: string): string {
   const value = input[key];
   if (typeof value !== "string" || value.trim().length === 0) {
@@ -569,6 +594,10 @@ function optionalDifficultyLevel(value: unknown): "introductory" | "undergraduat
     return normalized;
   }
   return undefined;
+}
+
+function optionalCourseIntent(value: unknown): "build_mental_model" | "professor_lecture_deck" | undefined {
+  return value === "build_mental_model" || value === "professor_lecture_deck" ? value : undefined;
 }
 
 function optionalOutputMode(value: unknown): "preview" | "source" | undefined {
