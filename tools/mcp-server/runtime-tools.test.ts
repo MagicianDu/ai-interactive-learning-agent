@@ -118,6 +118,25 @@ describe("LearningAgentRuntimeTools", () => {
     await expect(readFile(path.join(root, "runs", "mcp-smoke", "run.config.json"), "utf8")).resolves.toContain("哈希表");
   });
 
+  test("init_run preserves target total pages through tool handlers", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
+    const tools = new LearningAgentRuntimeTools(root);
+
+    await tools.callTool("learning_agent.init_run", {
+      topic: "哈希表",
+      unitPages: "8",
+      targetTotalPages: "80",
+      language: "zh-CN",
+      adapter: "mock",
+      run: "mcp-total-pages"
+    });
+
+    const config = JSON.parse(await readFile(path.join(root, "runs", "mcp-total-pages", "run.config.json"), "utf8")) as {
+      coursePack?: { targetTotalPages?: number };
+    };
+    expect(config.coursePack?.targetTotalPages).toBe(80);
+  });
+
   test("applies the latest targeted revision through tool handlers", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
     const tools = new LearningAgentRuntimeTools(root);

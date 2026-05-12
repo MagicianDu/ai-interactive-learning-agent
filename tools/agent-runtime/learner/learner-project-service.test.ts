@@ -276,4 +276,44 @@ describe("LearnerProjectService", () => {
     expect(manifest.brief?.targetTotalPages).toBe(80);
     expect(manifest.project?.targetTotalPages).toBe(80);
   });
+
+  test("treats standalone large self-study page counts as total pages", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learner-project-"));
+    const service = new LearnerProjectService(root);
+
+    const result = await service.createProject({
+      request:
+        "请用 /tmp/book.pdf 做成学生自学 Web 教材 80 页，面向有基础的学习者，教学难度为大学高年级/研究生课程。",
+      runId: "self-study-standalone"
+    });
+
+    expect(result.status).toBe("project_ready");
+    if (result.status !== "project_ready") {
+      throw new Error("expected project_ready");
+    }
+    expect(result.brief).toMatchObject({
+      unitPages: 10,
+      targetTotalPages: 80,
+      totalPagesSpecified: true
+    });
+  });
+
+  test("rejects invalid unit and total page counts", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learner-project-"));
+    const service = new LearnerProjectService(root);
+
+    await expect(
+      service.createProject({
+        request:
+          "请用 /tmp/book.pdf 做成学生自学 Web 教材，总共 0 页，面向有基础的学习者，教学难度为大学高年级/研究生课程。"
+      })
+    ).rejects.toThrow(/target total page count/);
+    await expect(
+      service.createProject({
+        request:
+          "请用 /tmp/book.pdf 生成中文学习材料，面向有基础的学习者，教学难度为大学高年级/研究生课程。",
+        unitPages: 80
+      })
+    ).rejects.toThrow(/unit page count/);
+  });
 });

@@ -139,6 +139,21 @@ describe("MCP JSON-RPC server", () => {
     });
   });
 
+  test("init_run schema exposes target total pages", async () => {
+    const tools = new LearningAgentRuntimeTools(await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-rpc-")));
+
+    const response = await handleMcpRequest({ jsonrpc: "2.0", id: "tools", method: "tools/list" }, tools, "operator");
+    const listedTools = (response as { result: { tools: Array<{ name: string; inputSchema: Record<string, unknown> }> } }).result.tools;
+    const initTool = listedTools.find((tool) => tool.name === "learning_agent.init_run");
+
+    expect(initTool?.inputSchema).toMatchObject({
+      properties: {
+        unitPages: { type: "string" },
+        targetTotalPages: { type: "string" }
+      }
+    });
+  });
+
   test("create_learning_project accepts explicit professor lecture course intent", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "learning-agent-create-professor-intent-"));
     const tools = new LearningAgentRuntimeTools(root);

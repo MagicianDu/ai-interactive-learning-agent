@@ -28,6 +28,8 @@ type LearnerProjectFile = {
     selectedTopics?: string[];
     language?: string;
     courseIntent?: CourseIntent;
+    targetTotalPages?: number;
+    totalPagesSpecified?: boolean;
   };
 };
 
@@ -46,6 +48,8 @@ export type AuthoringContextResult = {
     audience: string;
     difficultyLevel: TeachingDifficultyLevel;
     unitPages: number;
+    targetTotalPages?: number;
+    totalPagesSpecified?: boolean;
     strategy: string;
     selectedChapters: string[];
     selectedTopics: string[];
@@ -76,6 +80,9 @@ export type AuthoringContextResult = {
     strategy: string;
     strategyReason: string;
     unitPages: number;
+    targetTotalPages?: number;
+    estimatedTotalPages: number;
+    pageBudgetReminder?: string;
     acceptanceExpectations: Array<{
       id: string;
       scope: "course" | "unit";
@@ -213,6 +220,8 @@ export class AuthoringContextService {
       audience: config.audience,
       difficultyLevel: project.brief?.difficultyLevel ?? "upper_undergraduate_or_graduate",
       unitPages: config.coursePack?.unitPageCount ?? config.pageCount.target,
+      ...(project.brief?.targetTotalPages ? { targetTotalPages: project.brief.targetTotalPages } : {}),
+      ...(typeof project.brief?.totalPagesSpecified === "boolean" ? { totalPagesSpecified: project.brief.totalPagesSpecified } : {}),
       strategy: config.coursePack?.strategy ?? "overview_plus_topic",
       selectedChapters: config.coursePack?.selectedChapters ?? [],
       selectedTopics: config.coursePack?.selectedTopics ?? [],
@@ -256,6 +265,9 @@ export class AuthoringContextService {
         strategy: unitPlan.strategy,
         strategyReason: unitPlan.strategyReason,
         unitPages: brief.unitPages,
+        ...(brief.targetTotalPages ? { targetTotalPages: brief.targetTotalPages } : {}),
+        estimatedTotalPages: unitPlan.estimatedTotalPages,
+        ...(pageBudgetReminder(brief) ? { pageBudgetReminder: pageBudgetReminder(brief) } : {}),
         acceptanceExpectations: unitPlan.acceptanceExpectations,
         recommendedUnits: unitPlan.units.map((unit) => ({
           unitId: unit.unitId,
@@ -527,8 +539,21 @@ function buildLearnerClarificationHints(brief: AuthoringContextResult["brief"]):
     `确认难度层级：当前为 ${difficultyLabel(brief.difficultyLevel)}；用户也可以选择入门衔接、本科核心、大学高年级/研究生课程或研究论文精读。`,
     `确认课程组织：当前为 ${brief.strategy}；用户也可以选择按章节、按 topic、按任务或混合路径。`,
     `确认阅读习惯：每个单元当前 ${brief.unitPages} 页，可按用户耐心和基础调整。`,
+    ...(brief.courseIntent === "student_self_study_textbook" && brief.targetTotalPages
+      ? [`确认总页数预算：当前约 ${brief.targetTotalPages} 页；用户可以改成更短或更长。`]
+      : []),
     `确认受众水平：当前为 ${brief.audience}；内容深度、例子和练习都应围绕该画像。`
   ];
+}
+
+function pageBudgetReminder(brief: AuthoringContextResult["brief"]): string | undefined {
+  if (brief.courseIntent !== "student_self_study_textbook" || brief.targetTotalPages === undefined) {
+    return undefined;
+  }
+  if (brief.totalPagesSpecified === false) {
+    return `默认约 ${brief.targetTotalPages} 页；学习者可以用自然语言调整总页数或每单元页数。`;
+  }
+  return `学习者指定总页数约 ${brief.targetTotalPages} 页。`;
 }
 
 function buildCodexInstruction(brief: AuthoringContextResult["brief"], unitCount: number): string {
@@ -555,6 +580,9 @@ function buildCodexInstruction(brief: AuthoringContextResult["brief"], unitCount
     `输出语言：${brief.language}。`,
     `课程策略：${brief.strategy}。`,
     `每个单元页数：${brief.unitPages}。`,
+    brief.courseIntent === "student_self_study_textbook" && brief.targetTotalPages
+      ? `总页数预算：约 ${brief.targetTotalPages} 页。${brief.totalPagesSpecified === false ? "这是默认建议值，用户可以继续改短或改长。" : "这是用户指定值，优先遵守。"}`
+      : undefined,
     `建议单元数：${unitCount}。`,
     brief.courseIntent === "professor_lecture_deck"
       ? "不要把资料压缩成摘要；每个页面要讲清一个知识节点或一条关键链路。"
@@ -579,6 +607,7 @@ function buildRunConfig(runId: string, project: LearnerProjectFile): RunConfig {
     sourceKind: brief?.sourceKind === "topic" ? undefined : brief?.sourceKind,
     sourceTitle,
     unitPages: String(brief?.unitPages ?? 8),
+    targetTotalPages: brief?.targetTotalPages ? String(brief.targetTotalPages) : undefined,
     strategy: brief?.strategy,
     chapters: brief?.selectedChapters?.join(","),
     topics: brief?.selectedTopics?.join(","),

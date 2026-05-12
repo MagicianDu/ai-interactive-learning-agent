@@ -88,4 +88,18 @@ describe("parseRunIntent", () => {
     expect(intent.unitPages).toBe(10);
     expect(intent.targetTotalPages).toBeUndefined();
   });
+
+  test("maps standalone large page counts in self-study requests to total pages", () => {
+    const intent = parseRunIntent("把 /tmp/book.pdf 做成学生自学 Web 教材 80 页，面向研究生。");
+
+    expect(intent.unitPages).toBe(10);
+    expect(intent.targetTotalPages).toBe(80);
+  });
+
+  test("does not confuse source length with target total pages", () => {
+    const intent = parseRunIntent("我不想读 800 页的书，请把 /tmp/book.pdf 做成学生自学 Web 教材。");
+
+    expect(intent.unitPages).toBe(10);
+    expect(intent.targetTotalPages).toBeUndefined();
+  });
 });

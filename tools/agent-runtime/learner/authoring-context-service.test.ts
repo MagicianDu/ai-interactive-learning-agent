@@ -390,6 +390,43 @@ describe("AuthoringContextService", () => {
     expect(context.qualityContract.requiredPageTypes).not.toContain("transfer_challenge");
   });
 
+  test("exposes self-study textbook total page budget to Codex authoring context", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "authoring-context-self-study-"));
+    const sourcePath = path.join(root, "agentic-book.md");
+    await writeFile(
+      sourcePath,
+      [
+        "# Agentic Design Patterns",
+        "Prompt chaining decomposes a complex task into sequential steps.",
+        "Routing chooses the next path based on the input and intermediate state."
+      ].join("\n\n"),
+      "utf8"
+    );
+    const project = await new LearnerProjectService(root).createProject({
+      request:
+        `请用 "${sourcePath}" 做成学生自学 Web 教材，总共 80 页，每个单元 8 页，面向研究生，教学难度为大学高年级/研究生课程。`,
+      runId: "self-study-authoring",
+      sourcePath,
+      sourceKind: "book"
+    });
+    expect(project.status).toBe("project_ready");
+
+    const context = await new AuthoringContextService(root).getContext({ runId: "self-study-authoring" });
+
+    expect(context.brief).toMatchObject({
+      courseIntent: "student_self_study_textbook",
+      targetTotalPages: 80,
+      totalPagesSpecified: true
+    });
+    expect(context.coursePlan).toMatchObject({
+      targetTotalPages: 80,
+      estimatedTotalPages: expect.any(Number),
+      pageBudgetReminder: "学习者指定总页数约 80 页。"
+    });
+    expect(context.codexInstruction).toContain("总页数预算：约 80 页");
+    expect(context.codexInstruction).toContain("这是用户指定值");
+  });
+
   test("matches professor required page types to the requested 7-page blueprint", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "authoring-context-professor-7-"));
     const sourcePath = path.join(root, "lecture-book.md");

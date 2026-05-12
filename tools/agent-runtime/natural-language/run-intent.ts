@@ -33,19 +33,20 @@ export function parseRunIntent(request: string): RunIntent {
 
   const source = extractSource(rawRequest);
   const strategy = extractStrategy(rawRequest);
+  const courseIntent = inferCourseIntent(rawRequest);
 
   return {
     rawRequest,
     source,
     language: "zh-CN",
-    unitPages: extractUnitPages(rawRequest),
-    targetTotalPages: extractTargetTotalPages(rawRequest),
+    unitPages: extractUnitPages(rawRequest, courseIntent),
+    targetTotalPages: extractTargetTotalPages(rawRequest, courseIntent),
     strategy,
     planningMode: extractPlanningMode(rawRequest, strategy),
     adapter: "codex",
     audience: extractAudience(rawRequest),
     difficultyLevel: inferTeachingDifficultyLevel(rawRequest),
-    courseIntent: inferCourseIntent(rawRequest)
+    courseIntent
   };
 }
 
@@ -118,11 +119,15 @@ function extractSourceKind(request: string, sourceType: "file" | "url"): SourceM
   return "unknown";
 }
 
-function extractUnitPages(request: string): number {
+function extractUnitPages(request: string, courseIntent: CourseIntent): number {
   const specific = request.match(/每(?:个)?(?:学习)?(?:单元|课|课程单元)?\s*(\d{1,2})\s*页/u)?.[1];
-  const withoutTotalPages = request.replace(/(?:总共|总计|总页数|全部|整套|整体|压缩成)\s*\d{1,3}\s*页/gu, "");
+  const withoutTotalPages = request
+    .replace(/(?:总共|总计|总页数|全部|整套|整体|压缩成)\s*\d{1,3}\s*页/gu, "")
+    .replace(/\d{2,4}\s*页(?:的)?(?:书|大部头|资料)/gu, "");
   const generic = withoutTotalPages.match(/(\d{1,2})\s*页/u)?.[1];
-  const parsed = Number(specific || generic || defaultUnitPages);
+  const genericNumber = generic ? Number(generic) : undefined;
+  const genericUnitPages = courseIntent === "student_self_study_textbook" && genericNumber !== undefined && genericNumber > 40 ? undefined : generic;
+  const parsed = Number(specific || genericUnitPages || defaultUnitPages);
 
   if (!Number.isInteger(parsed) || parsed < 1 || parsed > 40) {
     throw new Error("unit page count must be between 1 and 40");
@@ -130,12 +135,17 @@ function extractUnitPages(request: string): number {
   return parsed;
 }
 
-function extractTargetTotalPages(request: string): number | undefined {
+function extractTargetTotalPages(request: string, courseIntent: CourseIntent): number | undefined {
   const explicit = request.match(/(?:总共|总计|总页数|全部|整套|整体|压缩成)\s*(\d{1,3})\s*页/u)?.[1];
-  if (!explicit) {
+  const withoutPerUnitPages = request
+    .replace(/每(?:个)?(?:学习)?(?:单元|课|课程单元)?\s*\d{1,2}\s*页/gu, "")
+    .replace(/\d{2,4}\s*页(?:的)?(?:书|大部头|资料)/gu, "");
+  const standalone = courseIntent === "student_self_study_textbook" ? withoutPerUnitPages.match(/(\d{2,3})\s*页/u)?.[1] : undefined;
+  const value = explicit || (standalone && Number(standalone) > 40 ? standalone : undefined);
+  if (!value) {
     return undefined;
   }
-  const parsed = Number(explicit);
+  const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed < 5 || parsed > 300) {
     throw new Error("target total page count must be between 5 and 300");
   }

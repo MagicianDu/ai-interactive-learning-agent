@@ -129,6 +129,7 @@ export class RunPlanService {
 function toInitArgs(intent: RunIntent): CliInitArgs {
   const initArgs: CliInitArgs = {
     unitPages: String(intent.unitPages),
+    targetTotalPages: intent.targetTotalPages ? String(intent.targetTotalPages) : undefined,
     sourceKind: intent.source.kind,
     planningMode: intent.planningMode,
     strategy: intent.strategy,
@@ -164,6 +165,7 @@ function buildSummary(intent: RunIntent, runId: string): string[] {
     `strategy=${intent.strategy}`,
     `planningMode=${intent.planningMode}`,
     `unitPages=${intent.unitPages}`,
+    intent.targetTotalPages ? `targetTotalPages=${intent.targetTotalPages}` : "targetTotalPages=unspecified",
     intent.difficultyLevel ? `difficultyLevel=${intent.difficultyLevel}` : "difficultyLevel=unspecified",
     `language=${intent.language}`,
     `adapter=${intent.adapter}`
@@ -174,6 +176,9 @@ function buildReviewItems(intent: RunIntent): string[] {
   return [
     `确认 sourceKind=${intent.source.kind} 是否符合输入资料。`,
     `确认每个学习单元 ${intent.unitPages} 页是否符合学习节奏。`,
+    intent.targetTotalPages
+      ? `确认整套课程总页数约 ${intent.targetTotalPages} 页是否符合学习目标。`
+      : "确认是否需要指定整套课程总页数；未指定时会按课程形态使用默认建议。",
     intent.difficultyLevel
       ? `确认 teaching difficulty=${difficultyLabel(intent.difficultyLevel)} 是否符合学习目标。`
       : "确认教学难度层级：入门衔接、本科核心课程、大学高年级/研究生课程，或研究论文精读/前沿讨论。",

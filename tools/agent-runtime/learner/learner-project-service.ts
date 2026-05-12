@@ -132,12 +132,12 @@ function buildBrief(input: CreateLearnerProjectInput): LearnerBrief {
   const request = input.request;
   const sourceKind = input.sourceKind ?? inferSourceKind(request);
   const courseIntent = normalizeCourseIntent(input.courseIntent) ?? inferCourseIntent(request);
-  const inferredPages = inferPages(request);
-  const inferredTotalPages = inferTargetTotalPages(request);
+  const inferredPages = inferPages(request, courseIntent);
+  const inferredTotalPages = inferTargetTotalPages(request, courseIntent);
   const targetTotalPages = normalizeTargetTotalPages(
     input.targetTotalPages ?? inferredTotalPages ?? defaultTargetTotalPages(courseIntent, sourceKind)
   );
-  const unitPages = input.unitPages ?? inferredPages ?? defaultUnitPages(courseIntent);
+  const unitPages = normalizeUnitPages(input.unitPages ?? inferredPages ?? defaultUnitPages(courseIntent));
   return {
     topic: inferTopic(request),
     sourcePath: input.sourcePath ?? inferPath(request),
@@ -194,9 +194,15 @@ function defaultTargetTotalPages(courseIntent: CourseIntent, sourceKind: string)
   return courseIntent === "student_self_study_textbook" && sourceKind === "book" ? 100 : undefined;
 }
 
-function inferTargetTotalPages(request: string): number | undefined {
-  const match = /(?:总共|总计|总页数|全部|整套|整体|压缩成)\s*(?<pages>[1-9][0-9]{0,2})\s*页/u.exec(request);
-  return normalizeTargetTotalPages(match?.groups?.pages ? Number(match.groups.pages) : undefined);
+function inferTargetTotalPages(request: string, courseIntent: CourseIntent): number | undefined {
+  const match = /(?:总共|总计|总页数|全部|整套|整体|压缩成)\s*(?<pages>\d{1,3})\s*页/u.exec(request);
+  const withoutPerUnitPages = request
+    .replace(/每(?:个)?(?:学习)?(?:单元|课|课程单元)?\s*\d{1,2}\s*页/gu, "")
+    .replace(/\d{2,4}\s*页(?:的)?(?:书|大部头|资料)/gu, "");
+  const standalone =
+    courseIntent === "student_self_study_textbook" ? /(?<pages>\d{2,3})\s*页/u.exec(withoutPerUnitPages)?.groups?.pages : undefined;
+  const value = match?.groups?.pages ?? (standalone && Number(standalone) > 40 ? standalone : undefined);
+  return normalizeTargetTotalPages(value ? Number(value) : undefined);
 }
 
 function normalizeTargetTotalPages(value: number | undefined): number | undefined {
@@ -275,13 +281,23 @@ export function inferTeachingDifficultyLevel(request: string): TeachingDifficult
   return undefined;
 }
 
-function inferPages(request: string): number | undefined {
-  const withoutTotalPages = request.replace(/(?:总共|总计|总页数|全部|整套|整体|压缩成)\s*[1-9][0-9]{0,2}\s*页/gu, "");
+function normalizeUnitPages(value: number): number {
+  if (!Number.isInteger(value) || value < 1 || value > 40) {
+    throw new Error("unit page count must be between 1 and 40");
+  }
+  return value;
+}
+
+function inferPages(request: string, courseIntent: CourseIntent): number | undefined {
+  const withoutTotalPages = request
+    .replace(/(?:总共|总计|总页数|全部|整套|整体|压缩成)\s*\d{1,3}\s*页/gu, "")
+    .replace(/\d{2,4}\s*页(?:的)?(?:书|大部头|资料)/gu, "");
   const match = /(?:每个单元|每单元|单元)?\s*(?<pages>[1-9][0-9]?)\s*页/u.exec(withoutTotalPages);
   if (!match?.groups?.pages) {
     return undefined;
   }
-  return Number(match.groups.pages);
+  const parsed = Number(match.groups.pages);
+  return courseIntent === "student_self_study_textbook" && parsed > 40 ? undefined : parsed;
 }
 
 function inferStrategy(request: string): string {

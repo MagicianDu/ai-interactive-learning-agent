@@ -179,6 +179,7 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
     inputSchema: objectSchema({
       topic: stringSchema,
       unitPages: stringSchema,
+      targetTotalPages: stringSchema,
       sourceFile: stringSchema,
       sourceFolder: stringSchema,
       sourceUrl: stringSchema,

@@ -34,6 +34,26 @@ describe("RunPlanService", () => {
     expect(plan.reviewItems).toContain("确认 teaching difficulty=大学高年级/研究生课程 是否符合学习目标。");
   });
 
+  test("preserves total page budgets from plan to initialized run config", async () => {
+    const workspaceRoot = await mkdtemp(path.join(tmpdir(), "learning-agent-plan-"));
+    const service = new RunPlanService(workspaceRoot);
+    const plan = service.createPlan(
+      "用 /tmp/book.pdf 做成学生自学 Web 教材，总共 80 页，每个单元 8 页，面向中文学习者，教学难度为大学高年级/研究生课程。",
+      { runId: "self-study-plan" }
+    );
+
+    expect(plan.intent.targetTotalPages).toBe(80);
+    expect(plan.initArgs.targetTotalPages).toBe("80");
+    expect(plan.summary).toContain("targetTotalPages=80");
+    expect(plan.reviewItems).toContain("确认整套课程总页数约 80 页是否符合学习目标。");
+
+    await service.writePlan(plan);
+    await service.initializeRunFromPlan("self-study-plan", { approve: true });
+    const config = await new RunStore(workspaceRoot).readConfig("self-study-plan");
+
+    expect(config.coursePack?.targetTotalPages).toBe(80);
+  });
+
   test("writes a run plan to the run directory", async () => {
     const workspaceRoot = await mkdtemp(path.join(tmpdir(), "learning-agent-plan-"));
     const service = new RunPlanService(workspaceRoot);
