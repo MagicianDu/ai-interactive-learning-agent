@@ -206,7 +206,7 @@ function sourceChapterFocusItems(input: CourseUnitPlanInput): FocusPlanItem[] {
     input.strategy === "chapter_guided"
       ? chapterHints.length
       : input.courseIntent === "student_self_study_textbook" && input.targetTotalPages
-        ? Math.min(chapterHints.length, Math.max(2, Math.ceil(input.targetTotalPages / input.unitPageCount) - 1))
+        ? Math.min(chapterHints.length, Math.max(2, Math.ceil(input.targetTotalPages / 10) - 1))
         : Math.min(6, chapterHints.length);
   return chapterHints.slice(0, maxInferredChapters).map((chapter) => ({
     label: chapter.title,

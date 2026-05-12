@@ -303,4 +303,34 @@ describe("planCourseUnits", () => {
     expect(plan.units).toHaveLength(8);
     expect(plan.units.every((unit) => unit.targetPageCount >= 8 && unit.targetPageCount <= 12)).toBe(true);
   });
+
+  it("keeps self-study total budget one-screen friendly even when unitPageCount is high", () => {
+    const plan = planCourseUnits({
+      runId: "self-study-high-unit-pages",
+      topic: "Agentic Design Patterns",
+      sourceKind: "book",
+      strategy: "overview_plus_topic",
+      courseIntent: "student_self_study_textbook",
+      unitPageCount: 20,
+      targetTotalPages: 80,
+      selectedTopics: [],
+      selectedChapters: [],
+      concepts: ["全局地图", "Prompt Chaining", "Routing", "Parallelization", "Reflection"],
+      sourceAnchorIds: Array.from({ length: 20 }, (_, index) => `book:p${index + 1}`),
+      sourceNodeIds: ["book:root"],
+      sourceChapters: [
+        { title: "Prompt Chaining", sourceNodeId: "book:c1", sourceAnchorIds: ["book:p1"] },
+        { title: "Routing", sourceNodeId: "book:c2", sourceAnchorIds: ["book:p2"] },
+        { title: "Parallelization", sourceNodeId: "book:c3", sourceAnchorIds: ["book:p3"] },
+        { title: "Reflection", sourceNodeId: "book:c4", sourceAnchorIds: ["book:p4"] },
+        { title: "Tool Use", sourceNodeId: "book:c5", sourceAnchorIds: ["book:p5"] },
+        { title: "Planning", sourceNodeId: "book:c6", sourceAnchorIds: ["book:p6"] },
+        { title: "Evaluation", sourceNodeId: "book:c7", sourceAnchorIds: ["book:p7"] }
+      ]
+    });
+
+    expect(plan.estimatedTotalPages).toBe(80);
+    expect(plan.units).toHaveLength(8);
+    expect(plan.units.every((unit) => unit.targetPageCount >= 8 && unit.targetPageCount <= 12)).toBe(true);
+  });
 });
