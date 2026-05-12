@@ -37,13 +37,17 @@ describe("bundle authoring guidance", () => {
       courseIntent: "professor_lecture_deck"
     });
 
-    expect(guidance).toContain("教授式课程讲义 Web Deck");
-    expect(guidance).toContain("至少 2 个教学目的明确的 interactionSpec");
-    expect(guidance).toContain("课堂讨论题");
-    expect(guidance).toContain("课后作业或阅读路径");
+    expect(guidance).toContain("教授式 Web Deck");
+    expect(guidance).toContain("教材式知识链路");
+    expect(guidance).toContain("知识节点");
+    expect(guidance).toContain("关键链路");
+    expect(guidance).toContain("knowledgeBoard");
+    expect(guidance).toContain("source proposition");
+    expect(guidance).toContain("leftColumn");
+    expect(guidance).toContain("rightColumn");
     expect(guidance).toContain("不要写 PPTX");
     expect(guidance).toContain("缺少可见结构");
-    expect(guidance).toContain("缺少讨论/作业参考要点");
+    expect(guidance).toContain("缺少知识节点");
     expect(guidance).not.toContain("缺互动");
   });
 

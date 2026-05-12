@@ -2,14 +2,14 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { ArtifactStore } from "../artifact-store.js";
-import type { SourceAnchor } from "../corpus-types.js";
+import type { SourceAnchor, SourceStructureNode } from "../corpus-types.js";
 import { AgentRuntimeError } from "../errors.js";
 import { createRunConfigFromArgs } from "../run-config.js";
 import { normalizeSources } from "../source/source-normalizer.js";
 import type { RunConfig } from "../types.js";
 import { buildContentBlueprint, type ContentBlueprint } from "./content-quality-blueprint.js";
 import { courseIntentLabel, defaultCourseIntent, type CourseIntent } from "./course-intent.js";
-import { planCourseUnits } from "./course-unit-planner.js";
+import { planCourseUnits, type SourceChapterPlanHint } from "./course-unit-planner.js";
 import { difficultyLabel, type TeachingDifficultyLevel } from "./learner-project-service.js";
 import { sampleAuthoringAnchors } from "./source-anchor-sampler.js";
 import { extractSourceSemantics, type SourceSemantics } from "./source-semantic-extractor.js";
@@ -57,6 +57,12 @@ export type AuthoringContextResult = {
     sourcePath?: string;
     anchorCount: number;
     warningCount: number;
+    chapters: Array<{
+      title: string;
+      sourceNodeId: string;
+      sourceAnchorIds: string[];
+      sourceAnchorCount: number;
+    }>;
     anchors: Array<{
       anchorId: string;
       label: string;
@@ -160,13 +166,18 @@ export class AuthoringContextService {
     const project = await readLearnerProject(this.workspaceRoot, input.runId);
     const config = buildRunConfig(input.runId, project);
     const normalizedSources = await normalizeSources(config.sources);
+    const sourceChapters = extractSourceChapterHints(normalizedSources.structure, normalizedSources.anchors);
     const sampledAnchors = sampleAuthoringAnchors({
       anchors: normalizedSources.anchors,
       sourceKind: config.sourceKind ?? "topic",
       maxAnchors,
       selectedTopics: config.coursePack?.selectedTopics ?? [],
       selectedChapters: config.coursePack?.selectedChapters ?? [],
-      topic: config.topic
+      topic: config.topic,
+      chapterAnchorGroups: sourceChapters.map((chapter) => ({
+        title: chapter.title,
+        anchorIds: chapter.sourceAnchorIds
+      }))
     });
     const semantics = extractSourceSemantics({
       sourceKind: config.sourceKind ?? "topic",
@@ -191,7 +202,8 @@ export class AuthoringContextService {
       selectedChapters: config.coursePack?.selectedChapters ?? [],
       concepts,
       sourceAnchorIds: sampledAnchorIds,
-      sourceNodeIds: config.sources.map((source) => `${source.id}:root`)
+      sourceNodeIds: sourceChapters.length > 0 ? sourceChapters.map((chapter) => chapter.sourceNodeId) : config.sources.map((source) => `${source.id}:root`),
+      sourceChapters
     });
     const displaySourceKind = project.brief?.sourceKind === "topic" && !project.brief.sourcePath ? "topic" : (config.sourceKind ?? "topic");
     const brief = {
@@ -225,6 +237,12 @@ export class AuthoringContextService {
         ...(brief.sourcePath ? { sourcePath: brief.sourcePath } : {}),
         anchorCount: normalizedSources.anchors.length,
         warningCount: normalizedSources.extractionWarnings.length,
+        chapters: sourceChapters.map((chapter) => ({
+          title: chapter.title,
+          sourceNodeId: chapter.sourceNodeId,
+          sourceAnchorIds: chapter.sourceAnchorIds,
+          sourceAnchorCount: chapter.sourceAnchorIds.length
+        })),
         anchors: sampledAnchors.slice(0, maxAnchors).map((anchor) => ({
           anchorId: anchor.anchorId,
           label: anchor.label,
@@ -263,14 +281,14 @@ export class AuthoringContextService {
         requirements: [
           "请由 Codex 创作 coursePack 和 lessons，不要让 MCP deterministic generator 代写正式内容。",
           brief.courseIntent === "professor_lecture_deck"
-            ? "每个 lesson 必须中文优先，并包含课程框架、先修要求、概念地图、核心定义、经典例题、课堂讨论、课后作业或阅读路径，且至少有 2 个教学目的明确的 interactionSpec。"
+            ? "每个 professor_lecture_deck 页面必须优先写 page.knowledgeBoard：headline、coreProposition、leftColumn、rightColumn、sourceTrace、bottomLine；内容逻辑为原文命题 -> 拆解 -> 证据 -> 重构，左栏放概念/机制/定义/推导，右栏放例子/反例/来源证据/边界。"
             : "每个 lesson 必须中文优先，并包含问题、视觉模型、学习动作、反馈、误区检查和迁移任务。",
           "每个 source-backed 页面必须包含 page.sourceAnchorIds，或显式标注 grounding.kind 为 inferred/analogy。",
           "教学页面应一页一学习目标；如果内容过多，请拆页而不是堆长段落。",
           "完成后调用 learning_agent.publish_learning_course，并用 learning_agent.get_learning_preview 返回网页。"
         ]
       },
-      qualityContract: buildQualityContract(brief),
+      qualityContract: buildQualityContract(brief, contentBlueprint),
       learnerClarificationHints: buildLearnerClarificationHints(brief),
       codexInstruction: buildCodexInstruction(brief, unitPlan.units.length)
     } satisfies Omit<AuthoringContextResult, "artifacts">;
@@ -314,7 +332,7 @@ export class AuthoringContextService {
   }
 }
 
-function buildQualityContract(brief: AuthoringContextResult["brief"]): AuthoringContextResult["qualityContract"] {
+function buildQualityContract(brief: AuthoringContextResult["brief"], contentBlueprint: ContentBlueprint): AuthoringContextResult["qualityContract"] {
   const levelLabel = difficultyLabel(brief.difficultyLevel);
   return {
     language: "zh-CN",
@@ -324,13 +342,13 @@ function buildQualityContract(brief: AuthoringContextResult["brief"]): Authoring
       label: levelLabel,
       requirements: [
         `按${levelLabel}设计，不做泛泛科普或轻量博客摘要。`,
-        "每个 unit 必须显式给出先修概念、核心术语、来源阅读映射和可迁移的分析框架。",
+        "每个 unit 必须显式给出先修概念、核心术语、来源阅读映射、知识节点和关键链路。",
         "解释必须有学术密度：问题定义、机制模型、证据/来源边界、反例和适用条件。",
-        "长资料要保留章节或主题的课程结构，让学习者知道课前读什么、课上讨论什么、课后练什么。"
+        "长资料要保留章节或主题的课程结构，让学生知道先看什么、节点如何相连、边界在哪里。"
       ],
       assessmentExpectations: [
-        "课堂讨论题：要求学习者比较两个设计选择、解释假设或指出边界。",
-        "课后作业题：要求学习者把同一模型迁移到新资料、新系统或新案例。",
+        "案例判断：用短案例说明一个概念如何进入具体判断。",
+        "边界判断：用反例或相邻场景说明结论何时失效。",
         "研究生级检查：避免术语记忆题，优先使用论证、诊断、设计和批判性分析。"
       ],
       avoid: [
@@ -342,17 +360,7 @@ function buildQualityContract(brief: AuthoringContextResult["brief"]): Authoring
     supportedStrategies: ["overview_plus_topic", "chapter_guided", "topic_guided", "task_guided", "hybrid"],
     requiredPageTypes:
       brief.courseIntent === "professor_lecture_deck"
-        ? [
-            "problem_scene",
-            "structure_diagram",
-            "intuition_visual",
-            "interactive_model",
-            "code_walkthrough",
-            "misconception_check",
-            "quiz",
-            "transfer_challenge",
-            "summary_card"
-          ]
+        ? requiredPageTypesFromBlueprint(contentBlueprint)
         : [
             "problem_scene",
             "intuition_visual",
@@ -365,10 +373,10 @@ function buildQualityContract(brief: AuthoringContextResult["brief"]): Authoring
           ],
     requiredLearningActions:
       brief.courseIntent === "professor_lecture_deck"
-        ? ["frame", "map_prerequisites", "compare", "walkthrough", "discuss", "plan_homework"]
+        ? ["map_knowledge_nodes", "explain_key_links", "define_terms", "work_example", "compare_boundaries", "summarize_structure"]
         : ["predict", "manipulate", "compare", "explain", "debug", "transfer"],
     pageRules: [
-      `页面应符合${levelLabel}的课堂 slide 密度：有问题、模型、来源依据、讨论或练习，而不是只有解释性段落。`,
+      `页面应符合${levelLabel}的教材课件密度：有问题、概念、来源依据、关键链路、例子或边界，而不是只有解释性段落。`,
       "每页只承载一个学习目标，正文应短，优先使用图、流程、状态变化或可操作模型。",
       "不要把一整章压缩进一页；内容过多时拆成多个 unit 或多页。",
       "先从问题、情境、视觉模型和学习动作进入，再引入术语、公式、代码或定义。",
@@ -392,10 +400,10 @@ function buildQualityContract(brief: AuthoringContextResult["brief"]): Authoring
         ? [
             "coursePack.units 引用的 lessonId 必须存在。",
             `每个 lesson 的 prerequisites、learningObjectives、pages、summary 要体现${levelLabel}定位。`,
-            "每个 lesson 必须中文优先，并包含课程框架、先修要求、概念地图、核心定义、经典例题、课堂讨论、课后作业或阅读路径。",
-            "每个 lesson 至少包含 3 个 visualSpec、至少 2 个教学目的明确的 interactionSpec、2 个 assessmentSpec、1 个 misconception_check 和 1 个 transfer_challenge。",
-            "教授式 interactionSpec 可用于方法 walkthrough、比较决策、课堂讨论选择或作业规划动作，并必须说明 learnerAction、expectedObservation、cognitivePurpose。",
-            "讨论题和作业必须有参考要点或 answer notes；每个 assessment 页面必须有 feedbackSpec。"
+            "每个 lesson 必须中文优先，并包含本讲定位、先修要求、知识节点、关键链路、核心定义、经典例题、方法比较、边界案例和总结图。",
+            "每个 lesson 至少包含 3 个 visualSpec；interactionSpec 和 assessmentSpec 是可选内部结构，不应强迫学生逐页审批或答题。",
+            "如果保留 interactionSpec 或 assessmentSpec，必须服务内容理解；在 textbook_deck 显示模式下不要显性渲染为教学设计模块。",
+            "学生侧页面应像教材课件：标题、正文、图/表/代码/例子，避免暴露教学设计话术。"
           ]
         : [
             "coursePack.units 引用的 lessonId 必须存在。",
@@ -406,6 +414,11 @@ function buildQualityContract(brief: AuthoringContextResult["brief"]): Authoring
             "每个 assessment 页面必须有 feedbackSpec。"
           ]
   };
+}
+
+function requiredPageTypesFromBlueprint(contentBlueprint: ContentBlueprint): string[] {
+  const pageTypes = contentBlueprint.units.flatMap((unit) => unit.pageBlueprints.map((page) => page.pageType));
+  return Array.from(new Set(pageTypes));
 }
 
 function sourceKindGuidance(sourceKind: string): AuthoringContextResult["qualityContract"]["sourceKindGuidance"] {
@@ -524,8 +537,11 @@ function buildCodexInstruction(brief: AuthoringContextResult["brief"], unitCount
     `课程形态：${courseIntentLabel(brief.courseIntent)}（${brief.courseIntent}）。`,
     `教学难度层级：${difficultyLabel(brief.difficultyLevel)}（${brief.difficultyLevel}）；不要写成泛泛科普、博客摘要或产品介绍。`,
     brief.courseIntent === "professor_lecture_deck"
-      ? "请写成教授式课程讲义 Web Deck：课程框架、概念地图、方法谱系、经典例题、课堂讨论、阅读路径和课后作业是重点；每个 lesson 至少 2 个教学目的明确的 interactionSpec；不要生成 PPTX 或 Slides。"
+      ? "请写成教材式知识链路 Web Deck：像大学/研究生课程课件，重点是概念密度、知识节点、关键链路、方法谱系、经典例题、边界条件和总结图；不是教师备课提纲；不要生成 PPTX 或 Slides；不要把教学设计词显性写到页面上。"
       : "请写成互动学习 Web Deck：问题、视觉模型、学习动作、反馈、误区检查和迁移任务是重点。",
+    brief.courseIntent === "professor_lecture_deck"
+      ? "保持 title/narrative 作为兼容字段，但正式内容必须进入 page.knowledgeBoard；knowledgeBoard 字段为 headline、coreProposition、leftColumn、rightColumn、sourceTrace、bottomLine。内容逻辑按原文命题 -> 拆解 -> 证据 -> 重构组织。左栏用于概念、机制、定义或推导；右栏用于例子、反例、来源证据或边界；sourceTrace 记录 anchorId/supports，学生视图默认隐藏。"
+      : undefined,
     ...(requiresResearchReadingContract(brief)
       ? ["这是一套论文精读课；每个相关 lesson 必须显式覆盖：研究问题、论文贡献、方法机制、实验/证据、局限/威胁、迁移判断。"]
       : []),
@@ -540,7 +556,9 @@ function buildCodexInstruction(brief: AuthoringContextResult["brief"], unitCount
     `课程策略：${brief.strategy}。`,
     `每个单元页数：${brief.unitPages}。`,
     `建议单元数：${unitCount}。`,
-    "不要把资料压缩成摘要；每个页面要围绕一个学习动作或心智模型推进。",
+    brief.courseIntent === "professor_lecture_deck"
+      ? "不要把资料压缩成摘要；每个页面要讲清一个知识节点或一条关键链路。"
+      : "不要把资料压缩成摘要；每个页面要围绕一个学习动作或心智模型推进。",
     "保留 sourceAnchorIds，并让反馈解释原因、机制和误区。"
   ].join("\n");
 }
@@ -550,6 +568,7 @@ function buildRunConfig(runId: string, project: LearnerProjectFile): RunConfig {
   const sourcePath = brief?.sourcePath;
   const isUrl = sourcePath ? /^https?:\/\//u.test(sourcePath) : false;
   const sourceLooksLikeFolder = sourcePath ? !isUrl && !/\.[a-z0-9]{1,8}$/iu.test(sourcePath) : false;
+  const sourceTitle = sourcePath && !isGenericRequestedTopic(brief?.topic) ? brief?.topic : undefined;
 
   return createRunConfigFromArgs({
     run: runId,
@@ -558,7 +577,7 @@ function buildRunConfig(runId: string, project: LearnerProjectFile): RunConfig {
     sourceFolder: sourcePath && sourceLooksLikeFolder ? sourcePath : undefined,
     sourceUrl: sourcePath && isUrl ? sourcePath : undefined,
     sourceKind: brief?.sourceKind === "topic" ? undefined : brief?.sourceKind,
-    sourceTitle: sourcePath ? brief?.topic : undefined,
+    sourceTitle,
     unitPages: String(brief?.unitPages ?? 8),
     strategy: brief?.strategy,
     chapters: brief?.selectedChapters?.join(","),
@@ -569,12 +588,63 @@ function buildRunConfig(runId: string, project: LearnerProjectFile): RunConfig {
   });
 }
 
+function isGenericRequestedTopic(topic: string | undefined): boolean {
+  if (!topic) {
+    return true;
+  }
+  return /^(?:教授式中文 Web Deck|中文互动学习网页|中文学习材料|中文学习课程|学习材料|学习课程)$/iu.test(topic.trim());
+}
+
 function ensureAnchorIds(anchorIds: string[], config: RunConfig): string[] {
   if (anchorIds.length > 0) {
     return uniqueStrings(anchorIds);
   }
   const sourceId = config.sources[0]?.id ?? "source-001";
   return [`${sourceId}:root`];
+}
+
+function extractSourceChapterHints(structure: SourceStructureNode[], anchors: SourceAnchor[]): SourceChapterPlanHint[] {
+  const anchorsById = new Map(anchors.map((anchor) => [anchor.anchorId, anchor]));
+  const seenTitles = new Set<string>();
+  return structure
+    .filter((node) => node.type === "chapter")
+    .flatMap((node) => {
+      const title = node.title.trim();
+      if (!title || seenTitles.has(title)) {
+        return [];
+      }
+      const sourceAnchorIds = prioritizedChapterAnchorIds(node.anchorIds, anchorsById);
+      if (sourceAnchorIds.length === 0) {
+        return [];
+      }
+      seenTitles.add(title);
+      return [
+        {
+          title,
+          sourceNodeId: node.id,
+          sourceAnchorIds
+        }
+      ];
+    });
+}
+
+function prioritizedChapterAnchorIds(anchorIds: string[], anchorsById: Map<string, SourceAnchor>): string[] {
+  const existing = uniqueStrings(anchorIds.filter((anchorId) => anchorsById.has(anchorId)));
+  const ranked = [...existing].sort((left, right) => anchorPriority(anchorsById.get(left)) - anchorPriority(anchorsById.get(right)));
+  return ranked.slice(0, 24);
+}
+
+function anchorPriority(anchor: SourceAnchor | undefined): number {
+  if (!anchor) {
+    return 99;
+  }
+  if (anchor.locator.kind === "heading") {
+    return 0;
+  }
+  if (anchor.locator.kind === "page") {
+    return 1;
+  }
+  return 2;
 }
 
 function uniqueStrings(values: string[]): string[] {

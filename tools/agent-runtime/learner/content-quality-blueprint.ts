@@ -69,12 +69,16 @@ function globalRules(input: BuildContentBlueprintInput): string[] {
   const levelLabel = difficultyLabel(input.difficultyLevel ?? "upper_undergraduate_or_graduate");
   return [
     `所有 learner-facing 内容必须中文优先，围绕 ${input.audience} 的已有知识和阅读习惯设计。`,
-    `教学难度层级为${levelLabel}：要有先修概念、正式术语、来源阅读映射、课堂讨论题和课后作业感，避免泛泛科普。`,
+    `教学难度层级为${levelLabel}：要有先修概念、正式术语、来源阅读映射、关键节点、关键链路、例子和边界条件，避免泛泛科普。`,
     ...(input.courseIntent === "professor_lecture_deck"
       ? [
-          "课程形态为教授式课程讲义 Web Deck：像大学/研究生课堂讲义一样组织课程框架、概念地图、方法谱系、经典例题、课堂讨论和课后作业。",
+          "课程形态为教材式知识链路 Web Deck：像大学/研究生课程课件，标题清楚、内容高密度、图表服务理解。",
+          "每页只讲一个知识节点或一条关键链路；显性页面结构优先使用定义、公式/伪代码、图、例子、对比、边界和总结。",
+          "教授式页面必须优先产出 page.knowledgeBoard，字段包括 headline、coreProposition、leftColumn、rightColumn、sourceTrace、bottomLine；title/narrative 只保留兼容摘要。",
+          "knowledgeBoard 内容逻辑必须是 source proposition -> decomposition -> evidence -> reconstruction：先写原文命题，再拆解为结构化知识链，给出来源证据，最后重构为可迁移结论。",
+          "每个 knowledgeBoard 至少包含两个结构化 sections：leftColumn 与 rightColumn；section 可承载 example、mechanism、comparison、boundary，sourceTrace 必须记录来源支持关系。",
           "不要生成 PPTX、Slides 或文件导出话术；最终产物仍是 Web Deck。",
-          "不要求每页都有操作型 interaction，但每个 lesson 至少包含 2 个教学目的明确的 interactionSpec，且每页必须有清晰 lecture purpose、可见结构或课堂判断任务。"
+          "教授式 Web Deck 不强制 interactionSpec 或页内 assessment；如果保留内部 spec，学生侧也不应显性看到教学设计包装。"
         ]
       : [
           "不要把资料改写成摘要；每页必须有一个学习动作、一个可见结构或一个可检查判断。",
@@ -282,101 +286,101 @@ function templatesForPageCount(targetPageCount: number): PageTemplate[] {
 function professorLectureTemplatesForPageCount(targetPageCount: number): PageTemplate[] {
   const templates: PageTemplate[] = [
     professorTemplate(
-      "lecture_framing",
+      "course_framing",
       "problem_scene",
-      "用一页说明这门课/本单元的课程定位、核心问题和学习收益。",
-      "判断这门课要解决什么问题，以及哪些内容不是本讲重点。",
-      "课程框架图或问题空间地图。",
-      "用课堂讲义式答案说明为什么这些问题构成课程主线。",
-      ["课程框架", "核心问题", "本讲边界"]
+      "说明本单元在整门课中的位置、核心问题和不覆盖的边界。",
+      "沿着页面给出的主线识别本单元要解释的关键问题。",
+      "课程路线图或问题空间地图。",
+      "解释为什么这个问题是理解本章的入口，以及哪些直觉会误导后续阅读。",
+      ["本讲定位", "核心问题", "覆盖边界"]
     ),
     professorTemplate(
       "prerequisite_map",
       "structure_diagram",
-      "列出先修知识、符号、术语和学习者需要补齐的背景。",
-      "标记自己已掌握、需要复习和可以跳过的先修点。",
-      "先修知识依赖图。",
-      "解释缺少哪些先修会影响后续理解。",
-      ["先修要求", "术语准备", "学习路径"]
+      "列出理解本单元前必须知道的先修、符号和术语。",
+      "识别哪些先修会在后续链路中被反复使用。",
+      "先修知识依赖图和术语表。",
+      "解释缺少哪些先修会导致后续关键链路断裂。",
+      ["先修要求", "术语表", "知识依赖"]
     ),
     professorTemplate(
       "concept_framework",
       "structure_diagram",
-      "给出本讲概念地图、方法谱系或理论框架。",
-      "指出核心概念之间的依赖、对比和层级。",
+      "给出本单元概念地图、方法谱系或理论框架，并标出概念间依赖。",
+      "指出核心概念之间的依赖、对比、层级和不可混淆处。",
       "概念地图、分类树或方法谱系图。",
-      "解释概念之间的关系，而不是逐条摘要。",
-      ["概念框架", "方法谱系", "课程骨架"]
+      "解释概念之间的关系，而不是逐条摘要；指出每个概念在后续推理中的用途。",
+      ["知识节点", "概念框架", "方法谱系", "概念依赖", "易混概念"]
     ),
     professorTemplate(
-      "definition_block",
+      "formal_definition",
       "intuition_visual",
-      "在课程语境中引入关键定义、记号或正式术语。",
-      "把定义和前面的课程问题对应起来。",
-      "定义卡片加例子/反例。",
-      "说明定义服务于哪个后续推理或方法。",
-      ["关键定义", "术语", "例子/反例"]
+      "引入关键定义、记号或正式术语，并说明定义解决了什么歧义。",
+      "把正式定义改写成自己的话，并给出一个正例和一个反例。",
+      "定义卡片、正例/反例和最小判别条件。",
+      "说明定义如何支撑后续机制推导，而不是停留在术语记忆。",
+      ["关键定义", "正式术语", "判别条件", "正例/反例"]
     ),
     professorTemplate(
-      "method_structure",
+      "knowledge_link",
       "interactive_model",
-      "拆解核心方法、理论结构、机制或算法流程。",
-      "沿结构图说明每个组成部分承担什么功能。",
-      "可逐步操作的方法结构图、流程图或系统图。",
-      "说明结构中每一步的因果角色。",
-      ["方法结构", "机制", "适用条件"]
+      "逐步拆解核心机制、理论结构、状态变化或算法流程。",
+      "顺着关键链路解释每一步为什么会进入下一步。",
+      "流程图、状态图、系统图或推导链。",
+      "说明结构中每一步的因果角色、失败信号和适用条件。",
+      ["关键链路", "因果角色", "状态变化", "适用条件"]
     ),
     professorTemplate(
       "worked_example",
       "code_walkthrough",
       "用经典例题、案例、推导或 proof sketch 连接抽象和应用。",
-      "跟随例题判断每一步为什么成立。",
+      "跟随例题判断每一步为什么成立，并补全缺失的中间理由。",
       "例题分步板书、公式推导或案例表。",
-      "解释例题暴露了什么通用解题模式。",
-      ["经典例题", "推导", "case analysis"]
+      "解释例题暴露了什么通用解题模式，以及哪些条件改变后结论会失效。",
+      ["经典例题", "推导步骤", "case analysis", "可复用解法"]
     ),
     professorTemplate(
       "comparison_taxonomy",
       "misconception_check",
-      "比较相关方法、理论分支、设计选择或常见路线。",
-      "根据条件选择适合的方法，并说明权衡。",
+      "比较相关方法、理论分支、设计选择或常见边界误用。",
+      "根据条件选择适合的方法，并说明权衡、边界和反例。",
       "对比表、二维坐标或 taxonomy。",
-      "解释不同方法的适用边界和取舍。",
-      ["方法比较", "taxonomy", "权衡"]
+      "解释不同方法的适用边界和取舍，并指出一个常见错误判断。",
+      ["方法比较", "taxonomy", "权衡", "反例", "边界条件"]
     ),
     professorTemplate(
-      "discussion_prompt",
+      "application_case",
       "quiz",
-      "提出课堂讨论题，要求学习者做诊断、批判或设计判断。",
-      "给出自己的判断和依据。",
-      "讨论题卡片和参考要点。",
-      "提供课堂式参考答案，不只给对错。",
-      ["课堂讨论题", "批判性问题", "参考要点"]
+      "给出一个短应用案例，用来说明前面节点和链路如何落到具体判断。",
+      "根据案例识别可复用结构、限制条件和可能失效点。",
+      "案例表、判断表或短场景图。",
+      "说明案例如何连接定义、链路和边界条件。",
+      ["应用案例", "判断依据", "边界条件"]
     ),
     professorTemplate(
-      "homework_task",
+      "boundary_case",
       "transfer_challenge",
-      "给出课后作业、阅读路径或小型 problem set。",
-      "选择一道作业并说明需要回看哪些来源。",
-      "作业列表、阅读路径或 problem set。",
-      "说明作业如何巩固课程主线。",
-      ["课后作业", "阅读路径", "problem set"]
+      "给出一个相邻场景或反例，标出原有结论在哪些条件下仍然成立。",
+      "比较原场景和新场景，识别保留条件与断裂条件。",
+      "边界案例、反例或条件对照表。",
+      "说明哪些结构可以沿用，哪些条件改变后结论不再成立。",
+      ["相邻场景", "反例", "保留条件", "断裂条件"]
     ),
     professorTemplate(
-      "lecture_takeaway",
+      "summary_map",
       "summary_card",
-      "压缩本讲 takeaways、考试/研究/实践中最该带走的结构。",
-      "复述三条 takeaway 并指出一条仍不清楚的点。",
-      "takeaway 卡片和复习清单。",
-      "说明这些 takeaway 如何指导后续学习。",
-      ["本讲 takeaway", "复习清单", "下一讲衔接"]
+      "压缩本单元最该记住的知识节点、关键链路、例子和边界。",
+      "用短链路复述本单元从问题到结论的结构。",
+      "总结图、要点表和下一单元衔接。",
+      "说明这些要点如何帮助之后阅读相邻章节。",
+      ["总结图", "知识节点", "关键链路", "下一单元衔接"]
     )
   ];
   const extensionTemplates: PageTemplate[] = [
     professorTemplate(
       "reading_path",
       "structure_diagram",
-      "补充本讲之后的阅读路径、来源章节和扩展材料定位。",
+      "补充本单元之后的来源阅读路径、章节定位和扩展材料。",
       "选择一条阅读路径并说明它补齐哪一类理解缺口。",
       "来源阅读路径图或章节到概念映射。",
       "说明不同阅读路径适合的学习目标和先修状态。",
@@ -385,15 +389,18 @@ function professorLectureTemplatesForPageCount(targetPageCount: number): PageTem
     professorTemplate(
       "synthesis_review",
       "quiz",
-      "用综合复盘题检查学习者能否把框架、方法和边界连起来。",
-      "回答一个综合判断题，并指出需要回看的概念或例题。",
-      "综合复盘题卡片和参考答案要点。",
-      "用课堂式 answer notes 解释判断依据和常见遗漏。",
-      ["综合复盘", "answer notes", "回看路径"]
+      "补充一页综合回看，把定义、关键链路、例子和边界连成完整结构。",
+      "顺着综合图回看本单元的节点和链路。",
+      "综合结构图和回看路径。",
+      "解释各节点之间的依赖和常见遗漏。",
+      ["综合回看", "知识节点", "关键链路", "回看路径"]
     )
   ];
   if (targetPageCount <= 6) {
     return [templates[0]!, templates[4]!, templates[6]!, templates[7]!, templates[8]!, templates[9]!].slice(0, Math.max(1, targetPageCount));
+  }
+  if (targetPageCount === 7) {
+    return [templates[0]!, templates[1]!, templates[2]!, templates[4]!, templates[5]!, templates[6]!, templates[9]!];
   }
   if (targetPageCount <= 8) {
     return [templates[0]!, templates[1]!, templates[2]!, templates[4]!, templates[5]!, templates[6]!, templates[7]!, templates[9]!];
@@ -417,9 +424,11 @@ function professorTemplate(
     learnerAction,
     visualRequirement,
     feedbackRequirement,
-    mustInclude: () => mustInclude
+    mustInclude: () => [...mustInclude, ...professorKnowledgeBoardMustInclude]
   };
 }
+
+const professorKnowledgeBoardMustInclude = ["knowledgeBoard", "coreProposition", "leftColumn", "rightColumn", "sourceTrace", "bottomLine"];
 
 function sourceRequirementForUnit(unit: PlannedCourseUnit, sourceKind: string): string {
   if (sourceKind === "topic" || unit.sourceAnchorIds.length === 0) {

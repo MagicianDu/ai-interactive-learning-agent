@@ -25,6 +25,7 @@ describe("content-quality-blueprint", () => {
     expect(blueprint.globalRules).toEqual(
       expect.arrayContaining([expect.stringContaining("中文优先"), expect.stringContaining("大学高年级/研究生课程")])
     );
+    expect(blueprint.globalRules.join("\n")).not.toContain("knowledgeBoard");
     expect(blueprint.units[0]?.pageBlueprints.map((page) => page.pageType)).toEqual([
       "problem_scene",
       "intuition_visual",
@@ -192,19 +193,22 @@ describe("content-quality-blueprint", () => {
     });
 
     expect(blueprint.courseIntent).toBe("professor_lecture_deck");
-    expect(blueprint.globalRules.join("\n")).toContain("教授式课程讲义 Web Deck");
+    expect(blueprint.globalRules.join("\n")).toContain("教材式知识链路 Web Deck");
+    expect(blueprint.globalRules.join("\n")).toContain("关键链路");
     expect(blueprint.globalRules.join("\n")).toContain("不要生成 PPTX");
+    expect(blueprint.globalRules.join("\n")).toContain("knowledgeBoard");
+    expect(blueprint.globalRules.join("\n")).toContain("原文命题");
     expect(blueprint.units[0]?.pageBlueprints.map((page) => page.lectureRole)).toEqual([
-      "lecture_framing",
+      "course_framing",
       "prerequisite_map",
       "concept_framework",
-      "definition_block",
-      "method_structure",
+      "formal_definition",
+      "knowledge_link",
       "worked_example",
       "comparison_taxonomy",
-      "discussion_prompt",
-      "homework_task",
-      "lecture_takeaway"
+      "application_case",
+      "boundary_case",
+      "summary_map"
     ]);
     expect(blueprint.units[0]?.pageBlueprints.map((page) => page.pageType)).toEqual([
       "problem_scene",
@@ -223,19 +227,22 @@ describe("content-quality-blueprint", () => {
     );
     expect(blueprint.units[0]?.pageBlueprints[0]).toMatchObject({
       pageType: "problem_scene",
-      teachingMove: expect.stringContaining("课程定位"),
-      learnerAction: expect.stringContaining("判断这门课要解决什么问题"),
-      mustInclude: expect.arrayContaining([expect.stringContaining("课程框架")])
+      teachingMove: expect.stringContaining("核心问题"),
+      learnerAction: expect.stringContaining("主线"),
+      mustInclude: expect.arrayContaining([expect.stringContaining("本讲定位")])
     });
+    expect(blueprint.units[0]?.pageBlueprints[0]?.mustInclude).toEqual(
+      expect.arrayContaining(["knowledgeBoard", "coreProposition", "leftColumn", "rightColumn", "sourceTrace", "bottomLine"])
+    );
     expect(blueprint.units[0]?.pageBlueprints[7]).toMatchObject({
       pageType: "quiz",
-      lectureRole: "discussion_prompt",
-      mustInclude: expect.arrayContaining([expect.stringContaining("课堂讨论题")])
+      lectureRole: "application_case",
+      mustInclude: expect.arrayContaining([expect.stringContaining("应用案例")])
     });
     expect(blueprint.units[0]?.pageBlueprints[8]).toMatchObject({
       pageType: "transfer_challenge",
-      lectureRole: "homework_task",
-      mustInclude: expect.arrayContaining([expect.stringContaining("课后作业")])
+      lectureRole: "boundary_case",
+      mustInclude: expect.arrayContaining([expect.stringContaining("相邻场景")])
     });
   });
 
@@ -250,16 +257,16 @@ describe("content-quality-blueprint", () => {
 
     expect(blueprint.units[0]?.pageBlueprints).toHaveLength(12);
     expect(blueprint.units[0]?.pageBlueprints.slice(0, 10).map((page) => page.lectureRole)).toEqual([
-      "lecture_framing",
+      "course_framing",
       "prerequisite_map",
       "concept_framework",
-      "definition_block",
-      "method_structure",
+      "formal_definition",
+      "knowledge_link",
       "worked_example",
       "comparison_taxonomy",
-      "discussion_prompt",
-      "homework_task",
-      "lecture_takeaway"
+      "application_case",
+      "boundary_case",
+      "summary_map"
     ]);
     expect(blueprint.units[0]?.pageBlueprints.map((page) => page.pageType)).toEqual(
       expect.arrayContaining(["interactive_model", "misconception_check"])
@@ -286,6 +293,27 @@ describe("content-quality-blueprint", () => {
     expect(blueprint.units[0]?.pageBlueprints.map((page) => page.pageType)).toEqual(
       expect.arrayContaining(["problem_scene", "interactive_model", "quiz", "misconception_check", "transfer_challenge", "summary_card"])
     );
+  });
+
+  test("keeps 7-page professor blueprints at the requested page count", () => {
+    const blueprint = buildContentBlueprint({
+      audience: "研究生",
+      difficultyLevel: "upper_undergraduate_or_graduate",
+      sourceKind: "book",
+      courseIntent: "professor_lecture_deck",
+      units: [plannedUnit({ targetPageCount: 7, focusConcepts: ["Agentic Design Patterns"] })]
+    });
+
+    expect(blueprint.units[0]?.pageBlueprints).toHaveLength(7);
+    expect(blueprint.units[0]?.pageBlueprints.map((page) => page.pageType)).toEqual([
+      "problem_scene",
+      "structure_diagram",
+      "structure_diagram",
+      "interactive_model",
+      "code_walkthrough",
+      "misconception_check",
+      "summary_card"
+    ]);
   });
 });
 

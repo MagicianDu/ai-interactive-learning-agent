@@ -122,7 +122,7 @@ describe("AuthoringContextService", () => {
         positioning: "upper_undergraduate_or_graduate",
         label: "大学高年级/研究生课程",
         requirements: expect.arrayContaining([expect.stringContaining("大学高年级/研究生课程")]),
-        assessmentExpectations: expect.arrayContaining([expect.stringContaining("课堂讨论"), expect.stringContaining("课后作业")])
+        assessmentExpectations: expect.arrayContaining([expect.stringContaining("案例判断"), expect.stringContaining("边界判断")])
       },
       requiredPageTypes: expect.arrayContaining(["problem_scene", "interactive_model", "quiz", "misconception_check", "transfer_challenge"]),
       requiredLearningActions: expect.arrayContaining(["predict", "manipulate", "explain", "transfer"]),
@@ -314,7 +314,7 @@ describe("AuthoringContextService", () => {
 
     expect(context.brief.courseIntent).toBe("professor_lecture_deck");
     expect(context.contentBlueprint.courseIntent).toBe("professor_lecture_deck");
-    expect(context.contentBlueprint.globalRules.join("\n")).toContain("教授式课程讲义 Web Deck");
+    expect(context.contentBlueprint.globalRules.join("\n")).toContain("教材式知识链路 Web Deck");
     expect(context.contentBlueprint.units[0]?.pageBlueprints.some((page) => page.lectureRole === "worked_example")).toBe(true);
     expect(context.qualityContract.courseIntent).toBe("professor_lecture_deck");
     expect(context.qualityContract.requiredPageTypes).toEqual([
@@ -329,16 +329,106 @@ describe("AuthoringContextService", () => {
       "summary_card"
     ]);
     expect(context.qualityContract.requiredLearningActions).toEqual([
-      "frame",
-      "map_prerequisites",
-      "compare",
-      "walkthrough",
-      "discuss",
-      "plan_homework"
+      "map_knowledge_nodes",
+      "explain_key_links",
+      "define_terms",
+      "work_example",
+      "compare_boundaries",
+      "summarize_structure"
     ]);
-    expect(context.qualityContract.publishChecklist.join("\n")).toContain("至少 2 个教学目的明确的 interactionSpec");
-    expect(context.qualityContract.publishChecklist.join("\n")).toContain("讨论题和作业必须有参考要点");
-    expect(context.codexInstruction).toContain("教授式课程讲义 Web Deck");
+    expect(context.qualityContract.publishChecklist.join("\n")).toContain("interactionSpec 和 assessmentSpec 是可选内部结构");
+    expect(context.qualityContract.publishChecklist.join("\n")).toContain("学生侧页面应像教材课件");
+    expect(context.authoringContract.requirements.join("\n")).toContain("knowledgeBoard");
+    expect(context.authoringContract.requirements.join("\n")).toContain("原文命题");
+    expect(context.authoringContract.requirements.join("\n")).toContain("左栏");
+    expect(context.authoringContract.requirements.join("\n")).toContain("右栏");
+    expect(context.codexInstruction).toContain("教材式知识链路 Web Deck");
+    expect(context.codexInstruction).toContain("knowledgeBoard");
+    expect(context.codexInstruction).toContain("原文命题");
+    expect(context.codexInstruction).toContain("左栏");
+    expect(context.codexInstruction).toContain("右栏");
+  });
+
+  test("matches professor required page types to the requested 8-page blueprint", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "authoring-context-professor-8-"));
+    const sourcePath = path.join(root, "lecture-book.md");
+    await writeFile(
+      sourcePath,
+      [
+        "# Agentic Design Patterns",
+        "This chapter introduces planning, tool use, reflection, and evaluation.",
+        "A graduate course should compare agent orchestration patterns and assign homework."
+      ].join("\n"),
+      "utf8"
+    );
+    await new LearnerProjectService(root).createProject({
+      request: `请用 "${sourcePath}" 生成教授式中文 Web Deck，面向研究生，教学难度为大学高年级/研究生课程，每个单元 8 页。`,
+      runId: "professor-authoring-8",
+      sourcePath,
+      sourceKind: "book",
+      audience: "研究生",
+      difficultyLevel: "upper_undergraduate_or_graduate",
+      unitPages: 8,
+      courseIntent: "professor_lecture_deck"
+    });
+
+    const context = await new AuthoringContextService(root).getContext({ runId: "professor-authoring-8" });
+    const blueprintPageTypes = context.contentBlueprint.units[0]?.pageBlueprints.map((page) => page.pageType) ?? [];
+    const uniqueBlueprintPageTypes = Array.from(new Set(blueprintPageTypes));
+
+    expect(context.qualityContract.requiredPageTypes).toEqual(uniqueBlueprintPageTypes);
+    expect(context.qualityContract.requiredPageTypes).toEqual([
+      "problem_scene",
+      "structure_diagram",
+      "interactive_model",
+      "code_walkthrough",
+      "misconception_check",
+      "quiz",
+      "summary_card"
+    ]);
+    expect(context.qualityContract.requiredPageTypes).not.toContain("intuition_visual");
+    expect(context.qualityContract.requiredPageTypes).not.toContain("transfer_challenge");
+  });
+
+  test("matches professor required page types to the requested 7-page blueprint", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "authoring-context-professor-7-"));
+    const sourcePath = path.join(root, "lecture-book.md");
+    await writeFile(
+      sourcePath,
+      [
+        "# Agentic Design Patterns",
+        "This chapter introduces planning, tool use, reflection, and evaluation.",
+        "A graduate course should compare agent orchestration patterns and assign homework."
+      ].join("\n"),
+      "utf8"
+    );
+    await new LearnerProjectService(root).createProject({
+      request: `请用 "${sourcePath}" 生成教授式中文 Web Deck，面向研究生，教学难度为大学高年级/研究生课程，每个单元 7 页。`,
+      runId: "professor-authoring-7",
+      sourcePath,
+      sourceKind: "book",
+      audience: "研究生",
+      difficultyLevel: "upper_undergraduate_or_graduate",
+      unitPages: 7,
+      courseIntent: "professor_lecture_deck"
+    });
+
+    const context = await new AuthoringContextService(root).getContext({ runId: "professor-authoring-7" });
+    const blueprintPageTypes = context.contentBlueprint.units[0]?.pageBlueprints.map((page) => page.pageType) ?? [];
+    const uniqueBlueprintPageTypes = Array.from(new Set(blueprintPageTypes));
+
+    expect(context.contentBlueprint.units[0]?.pageBlueprints).toHaveLength(7);
+    expect(context.qualityContract.requiredPageTypes).toEqual(uniqueBlueprintPageTypes);
+    expect(context.qualityContract.requiredPageTypes).toEqual([
+      "problem_scene",
+      "structure_diagram",
+      "interactive_model",
+      "code_walkthrough",
+      "misconception_check",
+      "summary_card"
+    ]);
+    expect(context.qualityContract.requiredPageTypes).not.toContain("quiz");
+    expect(context.qualityContract.requiredPageTypes).not.toContain("transfer_challenge");
   });
 
   test("samples long book anchors from content pages instead of front matter", async () => {
@@ -384,6 +474,60 @@ describe("AuthoringContextService", () => {
     expect(quoteText).not.toContain("Table of Contents total 424 pages");
     expect(context.coursePlan.recommendedUnits[0]?.sourceAnchorIds).toContain(context.source.anchors[0]?.anchorId);
     expect(context.contentBlueprint.units[0]?.sourceAnchorIds).toContain(context.source.anchors[0]?.anchorId);
+  });
+
+  test("surfaces source chapters and plans professor book units from chapter-level patterns", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-authoring-context-chapters-"));
+    const sourcePath = path.join(root, "Agentic Design Patterns.md");
+    await writeFile(
+      sourcePath,
+      [
+        "# Table of Contents",
+        "1. Chapter 1: Prompt Chaining",
+        "2. Chapter 2: Routing",
+        "3. Chapter 3: Parallelization",
+        "# Chapter 1: Prompt Chaining",
+        "Prompt chaining breaks complex tasks into sequential, inspectable LLM steps.",
+        "# Chapter 2: Routing",
+        "Routing classifies requests and dispatches each request to a suitable model or workflow.",
+        "# Chapter 3: Parallelization",
+        "Parallelization runs independent subtasks concurrently and combines outputs."
+      ].join("\n\n"),
+      "utf8"
+    );
+    await new LearnerProjectService(root).createProject({
+      request:
+        `请用 "${sourcePath}" 生成教授式中文 Web Deck，像大学/研究生课程讲义一样组织，面向研究生，教学难度为大学高年级/研究生课程，每个单元 10 页。先总览，再按核心 pattern 拆课。`,
+      runId: "context-professor-chapters",
+      sourcePath,
+      sourceKind: "book",
+      audience: "研究生",
+      difficultyLevel: "upper_undergraduate_or_graduate",
+      unitPages: 10,
+      strategy: "overview_plus_topic",
+      courseIntent: "professor_lecture_deck"
+    });
+
+    const context = await new AuthoringContextService(root).getContext({ runId: "context-professor-chapters", maxAnchors: 6 });
+
+    expect(context.source.chapters.map((chapter) => chapter.title)).toEqual([
+      "Chapter 1: Prompt Chaining",
+      "Chapter 2: Routing",
+      "Chapter 3: Parallelization"
+    ]);
+    expect(context.source.anchors.map((anchor) => anchor.anchorId)).toEqual(
+      expect.arrayContaining(["source-001:chapter-1-prompt-chaining", "source-001:chapter-2-routing", "source-001:chapter-3-parallelization"])
+    );
+    expect(context.coursePlan.recommendedUnits.slice(1).map((unit) => unit.title)).toEqual([
+      "Agentic Design Patterns：Chapter 1: Prompt Chaining",
+      "Agentic Design Patterns：Chapter 2: Routing",
+      "Agentic Design Patterns：Chapter 3: Parallelization"
+    ]);
+    expect(context.coursePlan.recommendedUnits[1]).toMatchObject({
+      sourceAnchorIds: expect.arrayContaining(["source-001:chapter-1-prompt-chaining"]),
+      chapterRefs: ["Chapter 1: Prompt Chaining"]
+    });
+    expect(context.contentBlueprint.units[1]?.focusConcepts).toEqual(["Chapter 1: Prompt Chaining"]);
   });
 
   test.each([

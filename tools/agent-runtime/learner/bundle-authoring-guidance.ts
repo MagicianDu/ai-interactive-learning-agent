@@ -21,10 +21,12 @@ export function buildBundleAuthoringGuidance(brief: LearnerBrief): string {
     "2. 每个 lesson 必须包含 learningObjectives、prerequisites、pages、misconceptions、transferTasks、summary。",
     ...(brief.courseIntent === "professor_lecture_deck"
       ? [
-          "3. 教授式课程讲义不强制每页都有 interactionSpec；但每页必须有 lecture purpose、可见结构或课堂判断任务。",
-          "4. 每个 lesson 仍需至少 2 个教学目的明确的 interactionSpec，例如方法 walkthrough、比较决策、课堂讨论选择或作业规划动作。",
-          "5. 至少包含课程框架、先修要求、概念地图、经典例题/推导/案例、方法比较、课堂讨论题、课后作业或阅读路径。",
-          "6. 讨论题和作业必须有参考要点或 answer notes，不能只列题目；不要写 PPTX、Slides 或导出文件话术，产物仍是 Web Deck。"
+          "3. 教授式 Web Deck 采用教材式知识链路 knowledgeBoard：headline、coreProposition、leftColumn、rightColumn、sourceTrace、bottomLine。",
+          "4. 内容逻辑必须是 source proposition -> decomposition -> evidence -> reconstruction；不要只写一个 narrative 段落。",
+          "5. leftColumn 放知识链、机制链、定义或推导；rightColumn 放例子、反例、来源证据或边界；sourceTrace 保留来源支持关系。",
+          "6. 至少包含本讲定位、先修要求、知识节点、关键链路、核心定义、经典例题/推导/案例、方法比较、边界案例和总结图。",
+          "7. 页面正文不要显性出现教学设计包装词；这些可以作为内部结构，但不应成为学生看到的模块。",
+          "8. 不要写 PPTX、Slides 或导出文件话术，产物仍是 Web Deck。"
         ]
       : [
           "3. 每个 lesson 至少包含 3 个 visualSpec、2 个 meaningful interactionSpec、2 个 assessmentSpec，并且 assessment 页面必须有 feedbackSpec。",
@@ -32,11 +34,11 @@ export function buildBundleAuthoringGuidance(brief: LearnerBrief): string {
           "5. feedbackSpec 不能只说对/错，必须解释学习者可能误解了什么，以及正确心智模型如何更新。",
           "6. transferTasks 必须把同一机制迁移到新但相关的场景，不能只是复述。"
         ]),
-    `7. ${sourceGroundingRule}`,
-    "8. coursePack.units 必须引用已生成 lessonId，并保留 sourceAnchorIds、conceptIds、targetPageCount。",
+    `来源约束：${sourceGroundingRule}`,
+    "coursePack 约束：coursePack.units 必须引用已生成 lessonId，并保留 sourceAnchorIds、conceptIds、targetPageCount。",
     brief.courseIntent === "professor_lecture_deck"
-      ? "9. 发布前自查：如果缺中文、缺少可见结构、缺少讨论/作业参考要点、缺少课后作业或阅读路径、缺少来源锚点，或少于 2 个教学目的明确的 interactionSpec，不要调用 publish，先修订 bundle。"
-      : "9. 发布前自查：如果缺中文、缺互动、缺反馈、缺迁移、缺来源锚点，不要调用 publish，先修订 bundle。"
+      ? "发布前自查：如果缺中文、缺少可见结构、缺少知识节点、关键链路、例子、边界或来源锚点，不要调用 publish，先修订 bundle。"
+      : "发布前自查：如果缺中文、缺互动、缺反馈、缺迁移、缺来源锚点，不要调用 publish，先修订 bundle。"
   ]
     .filter((line): line is string => typeof line === "string")
     .join("\n");
