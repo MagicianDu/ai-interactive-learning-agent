@@ -55,7 +55,7 @@ describe("WebDeckRenderer", () => {
 
     render(<WebDeckRenderer lesson={incompleteLesson} />);
 
-    expect(screen.getByText("先聚焦这一页的问题")).toBeInTheDocument();
+    expect(screen.getByText("内容页")).toBeInTheDocument();
     expect(screen.queryByText(/visualSpec|interactionSpec|待补充/)).not.toBeInTheDocument();
   });
 
@@ -97,6 +97,121 @@ describe("WebDeckRenderer", () => {
 
     expect(screen.getByRole("button", { name: "控制到可接受区间" })).toBeInTheDocument();
     expect(screen.queryByText("先聚焦这一页的问题")).not.toBeInTheDocument();
+  });
+
+  test("hides productized interaction and assessment panels in textbook deck mode", () => {
+    const textbookLesson: Lesson = {
+      ...databaseIndexLesson,
+      id: "textbook-deck-test",
+      displayMode: "textbook_deck",
+      pages: [
+        {
+          id: "p1",
+          type: "interactive_model",
+          title: "关键链路",
+          learningGoal: "判断目标范围是否匹配控制能力",
+          narrative: "标题和正文说明关键链路。",
+          interactionSpec: {
+            kind: "choice",
+            learnerAction: "选择合理目标范围。",
+            expectedObservation: "目标越窄，需要的控制能力越强。",
+            cognitivePurpose: "比较目标范围和控制能力的边界。",
+            options: [
+              {
+                id: "range",
+                label: "控制到可接受区间",
+                outcomeId: "bounded-range",
+                resultTitle: "合理",
+                resultTone: "success",
+                explanation: "可接受区间能降低控制成本。"
+              }
+            ]
+          },
+          assessmentSpec: {
+            kind: "multiple_choice",
+            prompt: "应该先看什么？",
+            options: ["关键链路", "术语名称"],
+            correctAnswer: "关键链路"
+          },
+          feedbackSpec: {
+            correctFeedback: "正确。",
+            incorrectFeedback: "不对。"
+          },
+          visualSpec: {
+            kind: "flow",
+            description: "关键链路图",
+            keyElements: ["目标", "状态", "边界"]
+          }
+        }
+      ],
+      config: {
+        targetPageCount: 1
+      }
+    };
+
+    render(<WebDeckRenderer lesson={textbookLesson} />);
+
+    expect(screen.getByText("标题和正文说明关键链路。")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "控制到可接受区间" })).not.toBeInTheDocument();
+    expect(screen.queryByText("应该先看什么？")).not.toBeInTheDocument();
+  });
+
+  test("renders a knowledge board in textbook deck mode without source trace anchors", () => {
+    const textbookLesson: Lesson = {
+      ...databaseIndexLesson,
+      id: "textbook-knowledge-board-test",
+      displayMode: "textbook_deck",
+      pages: [
+        {
+          id: "p1",
+          type: "structure_diagram",
+          title: "知识板书页",
+          learningGoal: "把命题、机制和边界压缩到一屏。",
+          narrative: "本页使用知识板书替代普通视觉区。",
+          knowledgeBoard: {
+            boardKind: "mechanism_board",
+            headline: "从来源命题到机制链",
+            coreProposition: "可靠的 agent workflow 需要显式状态和失败恢复。",
+            leftColumn: [
+              {
+                label: "机制链",
+                emphasis: "mechanism",
+                items: ["任务压力进入 workflow", "中间状态被记录", "失败信号触发恢复"],
+              },
+            ],
+            rightColumn: [
+              {
+                label: "例子与边界",
+                emphasis: "example",
+                items: ["资料采样 -> 章节映射 -> 单元生成", "短任务可能不需要复杂 workflow"],
+              },
+            ],
+            sourceTrace: [
+              {
+                anchorId: "source-001:page-1",
+                supports: "支持 workflow 需要显式步骤。",
+              },
+            ],
+            bottomLine: "本页结论：知识板书必须把命题、机制、证据和边界放在一屏内。",
+          },
+          visualSpec: {
+            kind: "diagram",
+            description: "旧的视觉渲染回退内容",
+            keyElements: ["旧视觉"],
+          },
+        },
+      ],
+      config: {
+        targetPageCount: 1,
+      },
+    };
+
+    render(<WebDeckRenderer lesson={textbookLesson} />);
+
+    expect(screen.getByTestId("knowledge-board")).toBeInTheDocument();
+    expect(screen.getByText("从来源命题到机制链")).toBeInTheDocument();
+    expect(screen.getByText("本页结论：知识板书必须把命题、机制、证据和边界放在一屏内。")).toBeInTheDocument();
+    expect(screen.queryByText("source-001:page-1")).not.toBeInTheDocument();
   });
 
   test("accepts an initial page index and reports page changes", async () => {

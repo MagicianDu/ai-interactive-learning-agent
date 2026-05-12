@@ -4,6 +4,7 @@ import { CodeBlock } from "../components/common/CodeBlock";
 import { ConceptCard } from "../components/common/ConceptCard";
 import { DeckPage } from "../components/deck/DeckPage";
 import { DeckShell } from "../components/deck/DeckShell";
+import { KnowledgeBoard } from "../components/deck/KnowledgeBoard";
 import { InteractionRenderer } from "../components/interaction/InteractionRenderer";
 import { VisualRenderer } from "../components/visual/VisualRenderer";
 
@@ -14,6 +15,8 @@ type WebDeckRendererProps = {
 };
 
 export function WebDeckRenderer({ initialPageIndex, lesson, onPageChange }: WebDeckRendererProps) {
+  const isTextbookDeck = lesson.displayMode === "textbook_deck";
+
   return (
     <DeckShell
       initialPageIndex={initialPageIndex}
@@ -21,9 +24,12 @@ export function WebDeckRenderer({ initialPageIndex, lesson, onPageChange }: WebD
       onPageChange={onPageChange}
       renderPage={(currentIndex) => {
         const page = lesson.pages[currentIndex];
+        const hasInteractionContent = !isTextbookDeck && Boolean(page?.interactionSpec);
+        const hasAssessmentContent = !isTextbookDeck && Boolean(page?.assessmentSpec);
+        const hasKnowledgeBoard = isTextbookDeck && Boolean(page?.knowledgeBoard);
         const hasSideContent =
-          Boolean(page?.interactionSpec) ||
-          Boolean(page?.assessmentSpec) ||
+          hasInteractionContent ||
+          hasAssessmentContent ||
           Boolean(page?.code) ||
           page?.type === "summary_card";
 
@@ -44,38 +50,42 @@ export function WebDeckRenderer({ initialPageIndex, lesson, onPageChange }: WebD
             pageNumber={currentIndex + 1}
             totalPages={lesson.pages.length}
           >
-            <div
-              className={
-                page.visualSpec && hasSideContent
-                  ? "grid min-h-0 gap-3 lg:gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(20rem,0.8fr)]"
-                  : "grid min-h-0 gap-3 lg:gap-4"
-              }
-            >
-              {page.visualSpec || !hasSideContent ? (
-                <VisualRenderer title={page.title} visualSpec={page.visualSpec} />
-              ) : null}
+            {hasKnowledgeBoard && page.knowledgeBoard ? (
+              <KnowledgeBoard board={page.knowledgeBoard} />
+            ) : (
+              <div
+                className={
+                  page.visualSpec && hasSideContent
+                    ? "grid min-h-0 gap-3 lg:gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(20rem,0.8fr)]"
+                    : "grid min-h-0 gap-3 lg:gap-4"
+                }
+              >
+                {page.visualSpec || !hasSideContent ? (
+                  <VisualRenderer title={page.title} visualSpec={page.visualSpec} />
+                ) : null}
 
-              {hasSideContent ? (
-                <div className="grid min-h-0 content-start gap-3">
-                  <InteractionRenderer interactionSpec={page.interactionSpec} />
+                {hasSideContent ? (
+                  <div className="grid min-h-0 content-start gap-3">
+                    {hasInteractionContent ? <InteractionRenderer interactionSpec={page.interactionSpec} /> : null}
 
-                  {page.assessmentSpec ? (
-                    <AssessmentRenderer
-                      assessmentSpec={page.assessmentSpec}
-                      feedbackSpec={page.feedbackSpec}
-                    />
-                  ) : null}
+                    {hasAssessmentContent && page.assessmentSpec ? (
+                      <AssessmentRenderer
+                        assessmentSpec={page.assessmentSpec}
+                        feedbackSpec={page.feedbackSpec}
+                      />
+                    ) : null}
 
-                  {page.code ? (
-                    <CodeBlock language={page.code.language} value={page.code.value} />
-                  ) : null}
+                    {page.code ? (
+                      <CodeBlock language={page.code.language} value={page.code.value} />
+                    ) : null}
 
-                  {page.type === "summary_card" ? (
-                    <ConceptCard title="记住这张心智模型卡" items={lesson.summary} />
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
+                    {page.type === "summary_card" ? (
+                      <ConceptCard title={isTextbookDeck ? "总结" : "记住这张心智模型卡"} items={lesson.summary} />
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            )}
           </DeckPage>
         );
       }}
