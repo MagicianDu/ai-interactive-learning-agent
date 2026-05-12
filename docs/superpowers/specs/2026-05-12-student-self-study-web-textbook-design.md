@@ -11,7 +11,8 @@ The target job is:
 
 ```text
 I do not want to read an 800-page technical book from beginning to end.
-I want to learn the core content through about 100 one-screen Web pages.
+I want to learn the core content through a configurable number of one-screen
+Web pages.
 Each page should teach one knowledge fragment well enough that I can continue
 without a teacher explaining the slide.
 ```
@@ -35,7 +36,8 @@ The new mode becomes the preferred route when the learner asks for:
 
 - self-study from a long book
 - a compressed Web textbook
-- "100 pages to understand the core content"
+- a configurable Web textbook page budget such as "80 pages", "100 pages", or
+  "12 pages per unit"
 - "I do not want to read the whole source"
 - course-level understanding without teacher-facing materials
 
@@ -110,7 +112,29 @@ Rules:
 - The renderer may use sidebars and navigation, but the study surface must stay
   one-screen.
 
-For a long book, the default target is about 100 pages total, organized as:
+For a long book, the system should propose a default total page budget instead
+of treating any example number as mandatory.
+
+Default policy:
+
+```text
+defaultTotalPages: 100 for long books
+defaultUnitPages: 10
+defaultRange: 80-120 pages for long books
+```
+
+If the learner does not specify a total page count, Codex/MCP should tell the
+learner the default before authoring:
+
+```text
+我会先按默认约 100 页的一屏式 Web 教材规划；如果你希望更短或更长，可以直接说总页数或每个单元页数。
+```
+
+If the learner has no objection or continues without changing the number, use
+the default. If the learner specifies a number, treat that learner-specified
+budget as the source of truth.
+
+Recommended default organization:
 
 ```text
 overview unit: 8-12 pages
@@ -118,7 +142,9 @@ core topic units: 8-12 pages each
 total target: about 80-120 pages unless the learner requests otherwise
 ```
 
-The exact page count should remain learner-configurable.
+The exact page count must remain learner-configurable. The planner should
+track both `targetTotalPages` and `unitPages` when possible; if only one is
+provided, derive the other conservatively from the planned unit count.
 
 ## Self-Study Page Model
 
@@ -196,7 +222,7 @@ Allowed replacements:
 
 ## Page Sequence For A Long Book
 
-For an 800-page technical book compressed into about 100 Web pages:
+For a long technical book compressed into a configurable Web textbook:
 
 1. Overview unit, 8-12 pages
    - What problem domain does the book address?
@@ -257,7 +283,8 @@ high-quality authoring.
 
 Inference rules:
 
-- If the learner says "自学", "不想读完整本书", "压缩成 100 页", "Web 教材",
+- If the learner says "自学", "不想读完整本书", "压缩成 80 页/100 页/若干页",
+  "Web 教材",
   "快速掌握核心内容", or "自己看懂", infer
   `student_self_study_textbook`.
 - If the learner says "教授 PPT", "课堂", "老师上课", "讲义", "课后作业",
@@ -338,10 +365,11 @@ self-study-agentic-design-textbook-20260512
 
 ## Acceptance Criteria
 
-1. A learner request such as "我不想读 800 页书，想看 100 页 Web 教材掌握核心"
+1. A learner request such as "我不想读 800 页书，想看 Web 教材掌握核心"
    infers `student_self_study_textbook`.
 2. `prepare_learning_course` returns a course plan with an estimated total page
-   budget around the learner's requested total.
+   budget around the learner's requested total, or the documented default when
+   the learner did not specify one.
 3. Authoring guidance forbids teacher-facing terms in student mode.
 4. Published self-study pages include `knowledgeBoard` on every page.
 5. Quality report fails when self-study pages contain teacher-facing template
@@ -360,8 +388,10 @@ http://127.0.0.1:5173/#/preview/self-study-agentic-design-textbook-20260512
 
 ## Open Implementation Notes
 
-- The first implementation can keep `unitPages` as the input shape, but long
-  source planning should also expose `estimatedTotalPages`.
+- The first implementation can keep `unitPages` as the backward-compatible
+  input shape, but long source planning should also expose
+  `targetTotalPages`, `estimatedTotalPages`, and a user-facing default-page
+  reminder when the learner did not specify a page budget.
 - If a learner requests exactly 100 pages, the planner can distribute pages
   across units rather than forcing every unit to the same length.
 - Existing `knowledgeBoard` type is sufficient for v1; do not add a second page
