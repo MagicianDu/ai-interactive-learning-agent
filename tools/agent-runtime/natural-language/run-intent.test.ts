@@ -67,4 +67,10 @@ describe("parseRunIntent", () => {
 
     expect(intent.courseIntent).toBe("professor_lecture_deck");
   });
+
+  test("maps self-study textbook requests into course intent", () => {
+    const intent = parseRunIntent("请把 /tmp/book.pdf 这本书做成学生自学 Web 教材，我不想读完整本书。");
+
+    expect(intent.courseIntent).toBe("student_self_study_textbook");
+  });
 });
