@@ -118,7 +118,7 @@ describe("PrepareLearningCourseService", () => {
     }
     expect(result.brief.courseIntent).toBe("professor_lecture_deck");
     expect(result.contentBlueprint.courseIntent).toBe("professor_lecture_deck");
-    expect(result.contentBlueprint.globalRules.join("\n")).toContain("教授式课程讲义 Web Deck");
+    expect(result.contentBlueprint.globalRules.join("\n")).toContain("教材式知识链路 Web Deck");
     expect(result.next.recommendedTool).toBe("learning_agent.publish_learning_course");
   });
 });

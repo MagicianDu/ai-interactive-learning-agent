@@ -205,6 +205,8 @@ export class AuthoringContextService {
       sourceKind: config.sourceKind ?? "topic",
       strategy: config.coursePack?.strategy ?? "overview_plus_topic",
       unitPageCount: config.coursePack?.unitPageCount ?? config.pageCount.target,
+      courseIntent: project.brief?.courseIntent ?? defaultCourseIntent,
+      targetTotalPages: project.brief?.targetTotalPages ?? config.coursePack?.targetTotalPages,
       selectedTopics: config.coursePack?.selectedTopics ?? [],
       selectedChapters: config.coursePack?.selectedChapters ?? [],
       concepts,

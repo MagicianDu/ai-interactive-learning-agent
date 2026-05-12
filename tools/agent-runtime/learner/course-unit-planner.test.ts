@@ -222,4 +222,85 @@ describe("planCourseUnits", () => {
     expect(topicPlan.units).toHaveLength(3);
     expect(topicPlan.units.slice(1).map((unit) => unit.title)).toEqual(["单 topic 课程：method", "单 topic 课程：方法结构"]);
   });
+
+  it("uses source chapter hints as deep core-pattern units for overview-plus-topic book plans", () => {
+    const plan = planCourseUnits({
+      runId: "agentic-patterns",
+      topic: "Agentic Design Patterns",
+      sourceKind: "book",
+      strategy: "overview_plus_topic",
+      unitPageCount: 10,
+      selectedTopics: [],
+      selectedChapters: [],
+      concepts: ["全局地图", "核心机制"],
+      sourceAnchorIds: ["book:intro", "book:c1", "book:c2", "book:c3"],
+      sourceNodeIds: ["book:root", "book:chapter-1", "book:chapter-2", "book:chapter-3"],
+      sourceChapters: [
+        {
+          title: "Chapter 1: Prompt Chaining",
+          sourceNodeId: "book:chapter-1",
+          sourceAnchorIds: ["book:c1"]
+        },
+        {
+          title: "Chapter 2: Routing",
+          sourceNodeId: "book:chapter-2",
+          sourceAnchorIds: ["book:c2"]
+        },
+        {
+          title: "Chapter 3: Parallelization",
+          sourceNodeId: "book:chapter-3",
+          sourceAnchorIds: ["book:c3"]
+        }
+      ]
+    });
+
+    expect(plan.sourceCoveragePlan.coverageMode).toBe("inferred_chapters");
+    expect(plan.units.map((unit) => unit.title)).toEqual([
+      "Agentic Design Patterns：总览课",
+      "Agentic Design Patterns：Chapter 1: Prompt Chaining",
+      "Agentic Design Patterns：Chapter 2: Routing",
+      "Agentic Design Patterns：Chapter 3: Parallelization"
+    ]);
+    expect(plan.units[1]).toMatchObject({
+      kind: "topic",
+      sourceAnchorIds: ["book:c1"],
+      sourceNodeIds: ["book:chapter-1"],
+      chapterRefs: ["Chapter 1: Prompt Chaining"],
+      focusConcepts: ["Chapter 1: Prompt Chaining"]
+    });
+    expect(plan.units[2]?.sourceAnchorIds).toEqual(["book:c2"]);
+    expect(plan.units[3]?.sourceAnchorIds).toEqual(["book:c3"]);
+  });
+
+  it("distributes self-study total page budgets across planned units", () => {
+    const plan = planCourseUnits({
+      runId: "self-study-book",
+      topic: "Agentic Design Patterns",
+      sourceKind: "book",
+      strategy: "overview_plus_topic",
+      courseIntent: "student_self_study_textbook",
+      unitPageCount: 10,
+      targetTotalPages: 80,
+      selectedTopics: [],
+      selectedChapters: [],
+      concepts: ["全局地图", "Prompt Chaining", "Routing", "Parallelization", "Reflection"],
+      sourceAnchorIds: Array.from({ length: 20 }, (_, index) => `book:p${index + 1}`),
+      sourceNodeIds: ["book:root"],
+      sourceChapters: [
+        { title: "Prompt Chaining", sourceNodeId: "book:c1", sourceAnchorIds: ["book:p1"] },
+        { title: "Routing", sourceNodeId: "book:c2", sourceAnchorIds: ["book:p2"] },
+        { title: "Parallelization", sourceNodeId: "book:c3", sourceAnchorIds: ["book:p3"] },
+        { title: "Reflection", sourceNodeId: "book:c4", sourceAnchorIds: ["book:p4"] },
+        { title: "Tool Use", sourceNodeId: "book:c5", sourceAnchorIds: ["book:p5"] },
+        { title: "Planning", sourceNodeId: "book:c6", sourceAnchorIds: ["book:p6"] },
+        { title: "Evaluation", sourceNodeId: "book:c7", sourceAnchorIds: ["book:p7"] }
+      ]
+    });
+
+    expect(plan.estimatedTotalPages).toBe(80);
+    expect(plan.sourceCoveragePlan.totalPageBudget).toBe(80);
+    expect(plan.planningNotes.join("\n")).toContain("总页数约 80");
+    expect(plan.units).toHaveLength(8);
+    expect(plan.units.every((unit) => unit.targetPageCount >= 8 && unit.targetPageCount <= 12)).toBe(true);
+  });
 });

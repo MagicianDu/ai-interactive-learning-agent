@@ -1,3 +1,5 @@
+import type { CourseIntent } from "./course-intent.js";
+
 export type PlannedCourseUnit = {
   unitId: string;
   title: string;
@@ -19,6 +21,12 @@ export type PlannedCourseUnit = {
   };
 };
 
+export type SourceChapterPlanHint = {
+  title: string;
+  sourceNodeId: string;
+  sourceAnchorIds: string[];
+};
+
 export type CourseUnitPlanInput = {
   runId: string;
   topic: string;
@@ -30,6 +38,9 @@ export type CourseUnitPlanInput = {
   concepts: string[];
   sourceAnchorIds: string[];
   sourceNodeIds: string[];
+  sourceChapters?: SourceChapterPlanHint[];
+  courseIntent?: CourseIntent;
+  targetTotalPages?: number;
 };
 
 export type CourseUnitPlan = {
@@ -53,7 +64,7 @@ export type CoursePlanAcceptanceExpectation = {
 };
 
 export type CourseSourceCoveragePlan = {
-  coverageMode: "selected_chapters" | "selected_topics" | "inferred_concepts" | "fallback";
+  coverageMode: "selected_chapters" | "selected_topics" | "inferred_chapters" | "inferred_concepts" | "fallback";
   requestedChapterCount: number;
   requestedTopicCount: number;
   focusedUnitCount: number;
@@ -62,11 +73,19 @@ export type CourseSourceCoveragePlan = {
   recommendation: string;
 };
 
+type FocusPlanItem = {
+  label: string;
+  sourceAnchorIds?: string[];
+  sourceNodeIds?: string[];
+  chapterRefs?: string[];
+};
+
 export function planCourseUnits(input: CourseUnitPlanInput): CourseUnitPlan {
   const strategy = normalizeStrategy(input.strategy);
   const focusPlan = buildFocusPlan(input, strategy);
-  const focused = focusPlan.focusLabels;
+  const focused = focusPlan.focusItems;
   const focusedKind = unitKind(strategy);
+  const pageCounts = pageCountsForUnits(focused.length + 1, input.unitPageCount, input.targetTotalPages);
   const commonCoverage = {
     minSourceAnchorCount: input.sourceAnchorIds.length > 0 ? 1 : 0,
     preserveChapterRefs: shouldPreserveChapterRefs(strategy, input.selectedChapters)
@@ -77,7 +96,7 @@ export function planCourseUnits(input: CourseUnitPlanInput): CourseUnitPlan {
       title: `${input.topic}：总览课`,
       kind: "overview",
       lessonId: `${input.runId}-overview`,
-      targetPageCount: input.unitPageCount,
+      targetPageCount: pageCounts[0] ?? input.unitPageCount,
       sourceAnchorIds: input.sourceAnchorIds,
       sourceNodeIds: input.sourceNodeIds,
       chapterRefs: input.selectedChapters,
@@ -88,20 +107,20 @@ export function planCourseUnits(input: CourseUnitPlanInput): CourseUnitPlan {
       expectedAssessments: ["comprehension_check", "misconception_check"],
       expectedSourceCoverage: commonCoverage
     },
-    ...focused.map((concept, index) => {
+    ...focused.map((item, index) => {
       const unitIndex = index + 1;
-      const unitExpectations = expectationsForUnit(focusedKind, concept, commonCoverage);
+      const unitExpectations = expectationsForUnit(focusedKind, item.label, commonCoverage);
       return {
         unitId: `unit-${focusedKind}-${String(unitIndex).padStart(2, "0")}`,
-        title: `${input.topic}：${concept}`,
+        title: `${input.topic}：${item.label}`,
         kind: focusedKind,
         lessonId: `${input.runId}-${focusedKind}-${String(unitIndex).padStart(2, "0")}`,
-        targetPageCount: input.unitPageCount,
-        sourceAnchorIds: anchorSlice(input.sourceAnchorIds, unitIndex, focused.length + 1),
-        sourceNodeIds: input.sourceNodeIds,
-        chapterRefs: input.selectedChapters,
+        targetPageCount: pageCounts[unitIndex] ?? input.unitPageCount,
+        sourceAnchorIds: item.sourceAnchorIds?.length ? item.sourceAnchorIds : anchorSlice(input.sourceAnchorIds, unitIndex, focused.length + 1),
+        sourceNodeIds: item.sourceNodeIds?.length ? item.sourceNodeIds : input.sourceNodeIds,
+        chapterRefs: item.chapterRefs ?? input.selectedChapters,
         conceptIds: [conceptId(unitIndex)],
-        focusConcepts: [concept],
+        focusConcepts: [item.label],
         ...unitExpectations
       } satisfies PlannedCourseUnit;
     })
@@ -122,7 +141,7 @@ export function planCourseUnits(input: CourseUnitPlanInput): CourseUnitPlan {
     strategy,
     strategyReason: strategyReason(input.strategy, strategy, input.sourceKind),
     estimatedTotalPages,
-    planningNotes: planningNotes(sourceCoveragePlan, input.unitPageCount),
+    planningNotes: planningNotes(sourceCoveragePlan, input.unitPageCount, input.targetTotalPages),
     sourceCoveragePlan,
     acceptanceExpectations: acceptanceExpectations(strategy, commonCoverage.preserveChapterRefs),
     units
@@ -132,10 +151,13 @@ export function planCourseUnits(input: CourseUnitPlanInput): CourseUnitPlan {
 function buildFocusPlan(
   input: CourseUnitPlanInput,
   strategy: CoursePlanningStrategy
-): { focusLabels: string[]; coverageMode: CourseSourceCoveragePlan["coverageMode"] } {
+): { focusItems: FocusPlanItem[]; coverageMode: CourseSourceCoveragePlan["coverageMode"] } {
   if (strategy === "chapter_guided" && input.selectedChapters.length > 0) {
     return {
-      focusLabels: ensureMinimumFocusedUnits(uniqueStrings(input.selectedChapters), input.concepts),
+      focusItems: ensureMinimumFocusedItems(
+        uniqueStrings(input.selectedChapters).map((label) => ({ label, chapterRefs: [label] })),
+        input.concepts
+      ),
       coverageMode: "selected_chapters"
     };
   }
@@ -143,8 +165,19 @@ function buildFocusPlan(
   const selectedTopics = uniqueStrings(input.selectedTopics);
   if (selectedTopics.length > 0) {
     return {
-      focusLabels: ensureMinimumFocusedUnits(selectedTopics, input.concepts),
+      focusItems: ensureMinimumFocusedItems(
+        selectedTopics.map((label) => ({ label })),
+        input.concepts
+      ),
       coverageMode: "selected_topics"
+    };
+  }
+
+  const chapterItems = sourceChapterFocusItems(input);
+  if ((strategy === "chapter_guided" || strategy === "overview_plus_topic" || strategy === "topic_guided" || strategy === "hybrid") && chapterItems.length > 0) {
+    return {
+      focusItems: chapterItems,
+      coverageMode: "inferred_chapters"
     };
   }
 
@@ -153,22 +186,43 @@ function buildFocusPlan(
     const paddedFocusConcepts =
       focusConcepts.length >= 2 ? focusConcepts : uniqueStrings([...focusConcepts, "核心机制", "迁移应用"]);
     return {
-      focusLabels: paddedFocusConcepts.slice(0, Math.max(2, Math.min(4, paddedFocusConcepts.length))),
+      focusItems: paddedFocusConcepts.slice(0, Math.max(2, Math.min(4, paddedFocusConcepts.length))).map((label) => ({ label })),
       coverageMode: "inferred_concepts"
     };
   }
 
   return {
-    focusLabels: ["核心机制", "迁移应用"],
+    focusItems: ["核心机制", "迁移应用"].map((label) => ({ label })),
     coverageMode: "fallback"
   };
 }
 
-function ensureMinimumFocusedUnits(labels: string[], concepts: string[]): string[] {
-  if (labels.length >= 2) {
-    return labels;
+function sourceChapterFocusItems(input: CourseUnitPlanInput): FocusPlanItem[] {
+  const chapterHints = (input.sourceChapters ?? []).filter((chapter) => chapter.title.trim().length > 0);
+  if (chapterHints.length === 0 || input.sourceKind !== "book") {
+    return [];
   }
-  return uniqueStrings([...labels, ...concepts.filter((concept) => concept !== "全局地图"), "核心机制", "迁移应用"]).slice(0, 2);
+  const maxInferredChapters =
+    input.strategy === "chapter_guided"
+      ? chapterHints.length
+      : input.courseIntent === "student_self_study_textbook" && input.targetTotalPages
+        ? Math.min(chapterHints.length, Math.max(2, Math.ceil(input.targetTotalPages / input.unitPageCount) - 1))
+        : Math.min(6, chapterHints.length);
+  return chapterHints.slice(0, maxInferredChapters).map((chapter) => ({
+    label: chapter.title,
+    sourceAnchorIds: chapter.sourceAnchorIds,
+    sourceNodeIds: [chapter.sourceNodeId],
+    chapterRefs: [chapter.title]
+  }));
+}
+
+function ensureMinimumFocusedItems(items: FocusPlanItem[], concepts: string[]): FocusPlanItem[] {
+  if (items.length >= 2) {
+    return items;
+  }
+  const existingLabels = items.map((item) => item.label);
+  const fallbackLabels = uniqueStrings([...existingLabels, ...concepts.filter((concept) => concept !== "全局地图"), "核心机制", "迁移应用"]).slice(0, 2);
+  return fallbackLabels.map((label) => items.find((item) => item.label === label) ?? { label });
 }
 
 function coverageRecommendation(
@@ -183,20 +237,35 @@ function coverageRecommendation(
   if (coverageMode === "selected_topics") {
     return `按 ${focusedUnitCount} 个指定 topic 生成 focused units；保留章节映射，避免按原文顺序被动复述。`;
   }
+  if (coverageMode === "inferred_chapters") {
+    return `从来源 TOC/章节结构推断 ${focusedUnitCount} 个核心 pattern 单元；每个单元绑定对应章节 anchors，总页数约 ${totalPageBudget} 页。`;
+  }
   if (strategy === "chapter_guided") {
     return "未提供具体章节时先按核心概念拆单元；如用户需要全书覆盖，应补充章节清单或选择 topic 范围。";
   }
   return "先给总览课，再按核心概念拆课；如资料很长，可继续补充章节或 topic 范围扩展单元数。";
 }
 
-function planningNotes(sourceCoveragePlan: CourseSourceCoveragePlan, unitPageCount: number): string[] {
+function planningNotes(sourceCoveragePlan: CourseSourceCoveragePlan, unitPageCount: number, targetTotalPages: number | undefined): string[] {
   return [
     sourceCoveragePlan.recommendation,
-    `每个单元 ${unitPageCount} 页；当前计划 ${sourceCoveragePlan.totalUnitCount} 个单元，总页数约 ${sourceCoveragePlan.totalPageBudget} 页。`,
+    targetTotalPages
+      ? `目标总页数约 ${targetTotalPages} 页；当前计划 ${sourceCoveragePlan.totalUnitCount} 个单元，总页数约 ${sourceCoveragePlan.totalPageBudget} 页。`
+      : `每个单元 ${unitPageCount} 页；当前计划 ${sourceCoveragePlan.totalUnitCount} 个单元，总页数约 ${sourceCoveragePlan.totalPageBudget} 页。`,
     sourceCoveragePlan.coverageMode === "selected_chapters"
       ? "章节单元必须保留章节边界；Codex 可以在每章内部再按核心 topic 安排页面。"
       : "非章节模式仍需在页面或单元级保留来源锚点映射。"
   ];
+}
+
+function pageCountsForUnits(unitCount: number, defaultUnitPageCount: number, targetTotalPages: number | undefined): number[] {
+  if (!targetTotalPages || unitCount <= 0) {
+    return Array.from({ length: unitCount }, () => defaultUnitPageCount);
+  }
+  const boundedTotal = Math.max(unitCount, Math.min(300, targetTotalPages));
+  const base = Math.floor(boundedTotal / unitCount);
+  const remainder = boundedTotal - base * unitCount;
+  return Array.from({ length: unitCount }, (_, index) => Math.max(1, Math.min(40, base + (index < remainder ? 1 : 0))));
 }
 
 function unitKind(strategy: CoursePlanningStrategy): PlannedCourseUnit["kind"] {
@@ -230,7 +299,7 @@ function strategyReason(inputStrategy: string, strategy: CoursePlanningStrategy,
     return "按核心 topic 组织，适合先建立概念心智模型，再回看来源章节映射。";
   }
   if (strategy === "task_guided") {
-    return "按任务组织，适合把资料转成可操作步骤、判断题和迁移练习。";
+    return "按任务组织，适合把资料转成可操作步骤、判断点和边界案例。";
   }
   if (strategy === "hybrid") {
     return "混合组织，适合先给总览，再按 topic 或章节保留来源映射。";
