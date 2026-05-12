@@ -4,6 +4,7 @@ import path from "node:path";
 import { ArtifactStore } from "../artifact-store.js";
 import { AgentRuntimeError } from "../errors.js";
 import { validateChineseFirstLesson } from "../quality/chinese-first-validator.js";
+import { evaluateKnowledgeBoardRubric } from "../quality/knowledge-board-rubric.js";
 import {
   buildCourseQualityReport,
   toCompactCourseQualityReport,
@@ -625,12 +626,35 @@ function collectBlockingIssues(
     [
       ...validateLessonQuality(lesson).issues,
       ...validateChineseFirstLesson(lesson).issues,
-      ...(sourceGroundingConfig ? validateSourceGrounding(lesson, sourceGroundingConfig).issues : [])
+      ...(sourceGroundingConfig ? validateSourceGrounding(lesson, sourceGroundingConfig).issues : []),
+      ...(professorMode ? knowledgeBoardBlockingIssues(lesson) : [])
     ]
       .filter((issue) => issue.severity === "error")
       .filter((issue) => !(professorMode && issue.rule === "interaction-count"))
       .map((issue) => ({ lessonId: lesson.id, issue }))
   );
+}
+
+function knowledgeBoardBlockingIssues(lesson: LessonLike): QualityIssue[] {
+  return evaluateKnowledgeBoardRubric([lesson]).pageResults
+    .filter((page) => page.status === "failed")
+    .map((page) => {
+      const sourceTraceMissing =
+        page.missingItems.includes("knowledgeBoard.sourceTrace") || page.weakItems.includes("knowledgeBoard.sourceTrace");
+      const primaryItem = page.missingItems.includes("knowledgeBoard")
+        ? "knowledgeBoard"
+        : sourceTraceMissing
+          ? "knowledgeBoard.sourceTrace"
+          : (page.missingItems[0] ?? page.weakItems[0] ?? "knowledgeBoard");
+      return {
+        rule: "knowledge-board",
+        path: `pages.${page.pageId}.${primaryItem}`,
+        message: sourceTraceMissing
+          ? "page.knowledgeBoard.sourceTrace must map board propositions to source evidence"
+          : "page.knowledgeBoard is required for professor lecture deck pages and must include useful board fields",
+        severity: "error"
+      };
+    });
 }
 
 function publishValidationIssueToBlockingIssue(issue: PublishValidationIssue): { lessonId: string; issue: QualityIssue } {

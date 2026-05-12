@@ -8,6 +8,11 @@ import {
   type AcademicDepthRubricResult
 } from "./academic-depth-rubric.js";
 import { validateChineseFirstLesson } from "./chinese-first-validator.js";
+import {
+  evaluateKnowledgeBoardRubric,
+  type KnowledgeBoardPageResult,
+  type KnowledgeBoardRubricResult
+} from "./knowledge-board-rubric.js";
 import { validateLessonQuality } from "./lesson-quality-validator.js";
 import type { LessonCriticReport } from "./lesson-critic.js";
 import {
@@ -99,6 +104,7 @@ export type CourseQualityReport = {
   sourceEvidence?: SourceEvidenceSummary;
   depthRubric?: AcademicDepthRubricResult;
   professorLectureRubric?: ProfessorLectureRubricResult;
+  knowledgeBoardRubric?: KnowledgeBoardRubricResult;
 };
 
 export type CompactCourseQualityReport = {
@@ -142,15 +148,18 @@ export function buildCourseQualityReport(input: BuildCourseQualityReportInput): 
   const sourceEvidenceIssue = sourceEvidenceToIssue(sourceEvidence);
   const depthRubric = evaluateAcademicDepthRubric(input.lessons, input.authoringContext);
   const professorLectureRubric = professorMode ? evaluateProfessorLectureRubric(input.lessons) : undefined;
+  const knowledgeBoardRubric = professorMode ? evaluateKnowledgeBoardRubric(input.lessons) : undefined;
   const heuristicIssues = input.lessons.flatMap((lesson) => collectPageHeuristicIssues(lesson, input.authoringContext));
   const professorLectureIssues = professorMode
     ? input.lessons.flatMap((lesson) => professorLectureRubricToIssues(evaluateProfessorLectureRubric([lesson]), lessonIdOf(lesson)))
     : [];
+  const knowledgeBoardIssues = knowledgeBoardRubric ? knowledgeBoardRubricToIssues(knowledgeBoardRubric) : [];
   const issues = sortCourseQualityIssues([
     ...lessonIssueGroups.flatMap((group) => group.issues.map((issue) => toCourseQualityIssue(issue, group.lessonId))),
     ...(sourceEvidenceIssue ? [toCourseQualityIssue(sourceEvidenceIssue)] : []),
     ...heuristicIssues,
-    ...professorLectureIssues
+    ...professorLectureIssues,
+    ...knowledgeBoardIssues
   ]);
   const issueSummary = summarizeCourseQualityIssues(issues);
   const requiredFixes = issues.filter((issue) => issue.severity === "error").map(formatCourseQualityIssue);
@@ -166,7 +175,7 @@ export function buildCourseQualityReport(input: BuildCourseQualityReportInput): 
     assessmentCoverage: statusFromIssues(lessonIssueGroups.flatMap((group) => group.issues.filter(isAssessmentIssue))),
     transferCoverage: statusFromIssues(lessonIssueGroups.flatMap((group) => group.issues.filter((issue) => issue.rule === "transfer-challenge"))),
     academicDepth: depthRubric ? depthRubricStatusMap[depthRubric.status] : "passed",
-    professorLecture: statusFromCourseQualityIssues(professorLectureIssues)
+    professorLecture: statusFromCourseQualityIssues([...professorLectureIssues, ...knowledgeBoardIssues])
   };
   const lessonScores = lessonIssueGroups.map((group, index) => {
     const critic = input.criticReports?.[index];
@@ -201,7 +210,8 @@ export function buildCourseQualityReport(input: BuildCourseQualityReportInput): 
     optionalImprovements,
     ...(sourceEvidence ? { sourceEvidence } : {}),
     ...(depthRubric ? { depthRubric } : {}),
-    ...(professorLectureRubric ? { professorLectureRubric } : {})
+    ...(professorLectureRubric ? { professorLectureRubric } : {}),
+    ...(knowledgeBoardRubric ? { knowledgeBoardRubric } : {})
   };
 }
 
@@ -343,6 +353,52 @@ function professorLectureRubricToIssues(rubric: ProfessorLectureRubricResult, le
   }));
 }
 
+function knowledgeBoardRubricToIssues(rubric: KnowledgeBoardRubricResult): CourseQualityIssue[] {
+  return rubric.pageResults
+    .filter((page) => page.status === "failed")
+    .map((page) => {
+      const primaryItem = primaryKnowledgeBoardIssueItem(page);
+      const sourceTraceMissing = primaryItem === "knowledgeBoard.sourceTrace";
+      const wholeBoardMissing = primaryItem === "knowledgeBoard";
+      return {
+        issueId: sourceTraceMissing
+          ? "quality.knowledge-board.source-trace-missing"
+          : wholeBoardMissing
+            ? "quality.knowledge-board.missing"
+            : "quality.knowledge-board.weak-field",
+        scope: "page",
+        severity: "error",
+        category: "lecture_structure",
+        reason: knowledgeBoardIssueReason(page),
+        requiredFix: sourceTraceMissing
+          ? "Add knowledgeBoard.sourceTrace entries that map this page's board proposition to source anchor evidence."
+          : wholeBoardMissing
+            ? "Add page.knowledgeBoard with a proposition, two-column board structure, sourceTrace, and bottomLine."
+            : "Repair weak knowledgeBoard fields so the board has a useful proposition, column items, sourceTrace, and bottomLine.",
+        rule: "knowledge-board",
+        path: `pages.${page.pageId}.${primaryItem}`,
+        lessonId: page.lessonId,
+        pageId: page.pageId
+      } satisfies CourseQualityIssue;
+    });
+}
+
+function primaryKnowledgeBoardIssueItem(page: KnowledgeBoardPageResult): string {
+  if (page.missingItems.includes("knowledgeBoard")) {
+    return "knowledgeBoard";
+  }
+  if (page.missingItems.includes("knowledgeBoard.sourceTrace") || page.weakItems.includes("knowledgeBoard.sourceTrace")) {
+    return "knowledgeBoard.sourceTrace";
+  }
+  return page.missingItems[0] ?? page.weakItems[0] ?? "knowledgeBoard";
+}
+
+function knowledgeBoardIssueReason(page: KnowledgeBoardPageResult): string {
+  const missing = page.missingItems.length > 0 ? `missing ${page.missingItems.join(", ")}` : "";
+  const weak = page.weakItems.length > 0 ? `weak ${page.weakItems.join(", ")}` : "";
+  return ["professor lecture page has an incomplete knowledgeBoard", missing, weak].filter(Boolean).join(": ");
+}
+
 function collectPageHeuristicIssues(lesson: unknown, authoringContext: CourseQualityAuthoringContext | undefined): CourseQualityIssue[] {
   if (!isRecord(lesson)) {
     return [];
@@ -366,7 +422,7 @@ function collectPageHeuristicIssues(lesson: unknown, authoringContext: CourseQua
       category: "learner_level_mismatch",
       reason: `graduate or research-level course lacks required academic depth moves: ${missingMoves}`,
       requiredFix:
-        `Add academic depth moves: ${missingMoves}. Include prerequisites, formal terminology, source reading mapping, assumptions, limitations, critique prompts, and homework-style transfer tasks.`,
+        `Add academic depth moves: ${missingMoves}. Include prerequisites, formal terminology, source reading mapping, assumptions, limitations, page-level self-checks with answer explanations, and guided transfer practice.`,
       rule: "academic-depth",
       path: "lesson.academicDepth",
       lessonId

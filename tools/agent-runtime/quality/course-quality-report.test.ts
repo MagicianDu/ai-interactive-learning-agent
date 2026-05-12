@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { describe, expect, test } from "vitest";
 
-import { publishableLessonFixture } from "./test-fixtures.js";
+import { professorBoardLessonFixture, publishableLessonFixture } from "./test-fixtures.js";
 import { buildCourseQualityReport, toCompactCourseQualityReport, writeCourseQualityReport } from "./course-quality-report.js";
 
 describe("course-quality-report", () => {
@@ -203,7 +203,7 @@ describe("course-quality-report", () => {
       missingMoves: expect.arrayContaining([
         expect.objectContaining({ id: "formal_abstraction" }),
         expect.objectContaining({ id: "evidence_chain" }),
-        expect.objectContaining({ id: "critique_discussion" })
+        expect.objectContaining({ id: "case_analysis" })
       ])
     });
     expect(report.issues).toEqual(
@@ -238,15 +238,15 @@ describe("course-quality-report", () => {
             : index === 2
               ? "假设和适用条件：均匀散列成立时平均访问更稳定；局限是冲突集中。"
               : index === 3
-                ? "课堂讨论：批判 O(1) 说法，给出反例并比较权衡。"
+                ? "案例分析：批判 O(1) 说法，给出反例并比较权衡。"
                 : index === 4
-                  ? "课后作业：把同一机制迁移到缓存 key 设计并说明迁移边界。"
+                  ? "边界案例：把同一机制应用到缓存 key 设计并说明迁移边界。"
                   : "研究问题、方法边界和机制解释都要回到来源证据。"
     }));
     lesson.transferTasks = [
       {
         id: "t1",
-        prompt: "课后作业：迁移到缓存 key 设计，并写出假设、局限和反例。",
+        prompt: "边界案例：应用到缓存 key 设计，并写出假设、局限和反例。",
         targetMentalModel: "用来源证据和边界条件解释迁移。"
       }
     ];
@@ -364,14 +364,14 @@ describe("course-quality-report", () => {
     const lesson = publishableLessonFixture({ id: "quality-overloaded-pages", targetPageCount: 8 });
     const longTitle = "Talker-Reasoner 架构、研究问题、系统机制、实验证据、局限边界、迁移应用、方法结构、证据边界：研究问题";
     const repeatedNarrative =
-      "研究问题要求区分交互职责和内部推理职责。机制模型连接 Talker、Reasoner、证据链、局限边界和迁移条件。课后作业要求写出反例和失败模式。";
+      "研究问题要求区分交互职责和内部推理职责。机制模型连接 Talker、Reasoner、证据链、局限边界和迁移条件。边界案例要求写出反例和失败模式。";
     lesson.pages = lesson.pages.map((page, index) => ({
       ...page,
       ...(index < 4
         ? {
             title: longTitle,
             learningGoal:
-              "用研究论文精读方式完成一个过载的 mental-model move：同时解释研究问题、方法假设、机制模型、证据链、局限边界、反例、适用条件、迁移应用和课堂讨论路径。",
+              "用研究论文精读方式完成一个过载的 mental-model move：同时解释研究问题、方法假设、机制模型、证据链、局限边界、反例、适用条件、应用案例和边界路径。",
             narrative: repeatedNarrative
           }
         : {})
@@ -431,26 +431,26 @@ describe("course-quality-report", () => {
   });
 
   test("does not fail professor lecture decks only because every page lacks interactions", () => {
-    const lesson = publishableLessonFixture({ id: "quality-professor-rich", targetPageCount: 8 });
+    const lesson = professorBoardLessonFixture({ id: "quality-professor-rich", targetPageCount: 8 });
     lesson.pages = lesson.pages.map((page, index) => ({
       ...page,
       interactionSpec: undefined,
       narrative:
         index === 0
-          ? "课程框架：本讲定位、核心问题、先修要求和学习边界。"
+          ? "本讲定位：核心问题、覆盖边界。先修要求：理解基本 agent、prompt 和 workflow。"
           : index === 1
-            ? "概念地图：关键定义、术语、方法谱系和理论结构。"
-            : index === 2
-              ? "方法结构：比较 planning、tool use、reflection 的适用条件。"
-              : index === 3
-                ? "经典例题：用一个 agent orchestration case analysis 展开推导。"
-                : index === 4
-                  ? "方法比较：taxonomy、权衡、适用边界和反例。"
-                  : index === 5
-                    ? "课堂讨论题：批判一个设计选择并给出参考要点。"
-                    : index === 6
-                      ? "课后作业：阅读路径、problem set 和 homework。"
-                      : "本讲 takeaway：三条复习清单和下一讲衔接。"
+            ? "知识节点：概念地图、方法谱系和理论结构。"
+          : index === 2
+              ? "核心定义：定义、正式术语和最小判别条件。"
+          : index === 3
+                ? "关键链路：从输入状态到工具调用，再到观察和评估。"
+          : index === 4
+                  ? "经典例题：用一个 agent orchestration case analysis 展开推导。"
+          : index === 5
+                    ? "方法比较：taxonomy、权衡、适用边界和反例。"
+          : index === 6
+                      ? "边界案例：相邻场景、保留条件和断裂条件。"
+                      : "总结图：三条总结要点和下一单元衔接。"
     }));
 
     const report = buildCourseQualityReport({
@@ -472,8 +472,114 @@ describe("course-quality-report", () => {
     expect(report.issues.map((issue) => issue.rule)).not.toContain("interaction-count");
   });
 
+  test("fails professor lecture decks when page knowledge boards are missing", () => {
+    const lesson = publishableLessonFixture({ id: "quality-professor-missing-board", targetPageCount: 8 });
+
+    const report = buildCourseQualityReport({
+      runId: "quality-professor-missing-board",
+      coursePackId: "quality-professor-missing-board",
+      lessons: [lesson],
+      authoringContext: {
+        courseIntent: "professor_lecture_deck"
+      }
+    });
+
+    expect(report.status).toBe("failed");
+    expect(report.checks.professorLecture).toBe("failed");
+    expect(report.knowledgeBoardRubric).toMatchObject({
+      status: "failed",
+      requiredPageCount: 8,
+      satisfiedPageCount: 0
+    });
+    expect(report.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          issueId: "quality.knowledge-board.missing",
+          severity: "error",
+          category: "lecture_structure",
+          lessonId: "quality-professor-missing-board",
+          pageId: "p1"
+        })
+      ])
+    );
+  });
+
+  test("passes professor knowledge board gate for board-rich professor lessons", () => {
+    const lesson = professorBoardLessonFixture({ id: "quality-professor-board-rich", targetPageCount: 8 });
+
+    const report = buildCourseQualityReport({
+      runId: "quality-professor-board-rich",
+      coursePackId: "quality-professor-board-rich",
+      lessons: [lesson],
+      authoringContext: {
+        courseIntent: "professor_lecture_deck"
+      }
+    });
+
+    expect(report.knowledgeBoardRubric).toMatchObject({
+      status: "passed",
+      requiredPageCount: 8,
+      satisfiedPageCount: 8,
+      failedPageCount: 0
+    });
+    expect(report.issues.map((issue) => issue.issueId)).not.toContain("quality.knowledge-board.missing");
+  });
+
+  test("fails professor knowledge board gate when sourceTrace is empty", () => {
+    const lesson = professorBoardLessonFixture({ id: "quality-professor-board-no-source", targetPageCount: 8 });
+    if (!lesson.pages[0]?.knowledgeBoard) {
+      throw new Error("expected fixture page to include knowledgeBoard");
+    }
+    lesson.pages[0] = {
+      ...lesson.pages[0],
+      knowledgeBoard: {
+        ...lesson.pages[0].knowledgeBoard,
+        sourceTrace: []
+      }
+    };
+
+    const report = buildCourseQualityReport({
+      runId: "quality-professor-board-no-source",
+      coursePackId: "quality-professor-board-no-source",
+      lessons: [lesson],
+      authoringContext: {
+        courseIntent: "professor_lecture_deck"
+      }
+    });
+
+    expect(report.status).toBe("failed");
+    expect(report.checks.professorLecture).toBe("failed");
+    expect(report.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          issueId: "quality.knowledge-board.source-trace-missing",
+          severity: "error",
+          category: "lecture_structure",
+          lessonId: "quality-professor-board-no-source",
+          pageId: "p1"
+        })
+      ])
+    );
+  });
+
+  test("does not require knowledge boards for non-professor courses", () => {
+    const report = buildCourseQualityReport({
+      runId: "quality-non-professor-no-board",
+      coursePackId: "quality-non-professor-no-board",
+      lessons: [publishableLessonFixture({ id: "quality-non-professor-no-board", targetPageCount: 8 })],
+      authoringContext: {
+        courseIntent: "build_mental_model"
+      }
+    });
+
+    expect(report.status).toBe("passed");
+    expect(report.knowledgeBoardRubric).toBeUndefined();
+    expect(report.issues.map((issue) => issue.issueId)).not.toContain("quality.knowledge-board.missing");
+  });
+
   test("warns when professor lecture decks are only summaries", () => {
-    const lesson = publishableLessonFixture({ id: "quality-professor-summary", targetPageCount: 8 });
+    const lesson = professorBoardLessonFixture({ id: "quality-professor-summary", targetPageCount: 8 });
+    lesson.learningObjectives = ["理解资料大意"];
     lesson.pages = lesson.pages.map((page) => ({
       ...page,
       interactionSpec: undefined,
@@ -496,9 +602,9 @@ describe("course-quality-report", () => {
       status: "warning",
       missingMoves: expect.arrayContaining([
         expect.objectContaining({ id: "course_framing" }),
-        expect.objectContaining({ id: "worked_example" }),
-        expect.objectContaining({ id: "discussion_prompt" }),
-        expect.objectContaining({ id: "homework_or_reading" })
+        expect.objectContaining({ id: "concept_framework" }),
+        expect.objectContaining({ id: "key_link" }),
+        expect.objectContaining({ id: "boundary_case" })
       ])
     });
     expect(report.issues).toEqual(
@@ -510,7 +616,7 @@ describe("course-quality-report", () => {
           lessonId: "quality-professor-summary"
         }),
         expect.objectContaining({
-          issueId: "quality.professor-lecture.missing-worked-example",
+          issueId: "quality.professor-lecture.missing-key-link",
           severity: "warning",
           category: "lecture_structure",
           lessonId: "quality-professor-summary"
@@ -529,7 +635,7 @@ describe("course-quality-report", () => {
   });
 
   test("keeps malformed interaction feedback issues in professor mode", () => {
-    const lesson = publishableLessonFixture({ id: "quality-professor-broken-interaction", targetPageCount: 8 });
+    const lesson = professorBoardLessonFixture({ id: "quality-professor-broken-interaction", targetPageCount: 8 });
     lesson.pages = lesson.pages.map((page, index) => ({
       ...page,
       interactionSpec:
@@ -553,20 +659,20 @@ describe("course-quality-report", () => {
           : undefined,
       narrative:
         index === 0
-          ? "课程框架：本讲定位、核心问题和学习边界。"
+          ? "本讲定位：核心问题和覆盖边界。"
           : index === 1
             ? "先修要求：需要理解基本 agent、prompt 和工具调用。"
-            : index === 2
+          : index === 2
               ? "概念地图：方法谱系、理论结构、关键定义和正式术语。"
-              : index === 3
-                ? "经典例题：用一个 agent orchestration case analysis 展开推导。"
-                : index === 4
+          : index === 3
+                ? "关键链路：从输入状态到工具调用，再到观察和评估。经典例题：用一个 agent orchestration case analysis 展开推导。"
+          : index === 4
                   ? "方法比较：taxonomy、权衡、适用边界和反例。"
-                  : index === 5
-                    ? "课堂讨论题：批判一个设计选择并给出参考要点。"
-                    : index === 6
-                      ? "课后作业：阅读路径、problem set 和 homework。"
-                      : "本讲 takeaway：三条复习清单和下一讲衔接。"
+          : index === 5
+                    ? "边界案例：相邻场景、保留条件和断裂条件。"
+          : index === 6
+                      ? "应用案例：具体场景和判断依据。"
+                      : "总结图：三条总结要点和下一单元衔接。"
     }));
 
     const report = buildCourseQualityReport({
@@ -595,28 +701,29 @@ describe("course-quality-report", () => {
   });
 
   test("attributes professor lecture rubric warnings to each weak lesson in multi-lesson decks", () => {
-    const richLesson = publishableLessonFixture({ id: "quality-professor-rich-unit", targetPageCount: 8 });
+    const richLesson = professorBoardLessonFixture({ id: "quality-professor-rich-unit", targetPageCount: 8 });
     richLesson.pages = richLesson.pages.map((page, index) => ({
       ...page,
       interactionSpec: undefined,
       narrative:
         index === 0
-          ? "课程框架：本讲定位、核心问题和学习边界。"
+          ? "本讲定位：核心问题和覆盖边界。"
           : index === 1
             ? "先修要求：需要理解基本 agent、prompt 和工具调用。"
-            : index === 2
+          : index === 2
               ? "概念地图：方法谱系、理论结构、关键定义和正式术语。"
-              : index === 3
-                ? "经典例题：用一个 agent orchestration case analysis 展开推导。"
-                : index === 4
-                  ? "方法比较：taxonomy、权衡、适用边界和反例。"
-                  : index === 5
-                    ? "课堂讨论题：批判一个设计选择并给出参考要点。"
-                    : index === 6
-                      ? "课后作业：阅读路径、problem set 和 homework。"
-                      : "本讲 takeaway：三条复习清单和下一讲衔接。"
+          : index === 3
+                ? "关键链路：从输入状态到工具调用，再到观察和评估。"
+          : index === 4
+                  ? "经典例题：用一个 agent orchestration case analysis 展开推导。"
+          : index === 5
+                    ? "方法比较：taxonomy、权衡、适用边界和反例。"
+          : index === 6
+                      ? "边界案例：相邻场景、保留条件和断裂条件。"
+                      : "总结图：三条总结要点和下一单元衔接。"
     }));
-    const summaryLesson = publishableLessonFixture({ id: "quality-professor-summary-unit", targetPageCount: 8 });
+    const summaryLesson = professorBoardLessonFixture({ id: "quality-professor-summary-unit", targetPageCount: 8 });
+    summaryLesson.learningObjectives = ["理解资料大意"];
     summaryLesson.pages = summaryLesson.pages.map((page) => ({
       ...page,
       interactionSpec: undefined,
@@ -653,7 +760,7 @@ describe("course-quality-report", () => {
           lessonId: "quality-professor-summary-unit"
         }),
         expect.objectContaining({
-          issueId: "quality.professor-lecture.missing-worked-example",
+          issueId: "quality.professor-lecture.missing-key-link",
           category: "lecture_structure",
           lessonId: "quality-professor-summary-unit"
         })

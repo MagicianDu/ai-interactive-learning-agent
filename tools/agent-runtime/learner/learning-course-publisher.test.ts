@@ -5,7 +5,7 @@ import path from "node:path";
 import { describe, expect, test } from "vitest";
 
 import { ArtifactStore } from "../artifact-store.js";
-import { publishableLessonFixture } from "../quality/test-fixtures.js";
+import { professorBoardLessonFixture, publishableLessonFixture } from "../quality/test-fixtures.js";
 import { LearnerProjectService } from "./learner-project-service.js";
 import { LearningCoursePublisher } from "./learning-course-publisher.js";
 
@@ -399,26 +399,26 @@ describe("LearningCoursePublisher", () => {
   test("publishes professor lecture decks without blocking only on missing interactions", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "learning-course-publisher-professor-"));
     const publisher = new LearningCoursePublisher(root);
-    const lesson = publishableLessonFixture({ id: "professor-lecture-overview", title: "Agent 编排：教授讲义", targetPageCount: 8 });
+    const lesson = professorBoardLessonFixture({ id: "professor-lecture-overview", title: "Agent 编排：教授讲义", targetPageCount: 8 });
     lesson.pages = lesson.pages.map((page, index) => ({
       ...page,
       interactionSpec: undefined,
       narrative:
         index === 0
-          ? "课程框架：本讲定位、核心问题和学习边界。"
+          ? "本讲定位：核心问题和覆盖边界。"
           : index === 1
             ? "先修要求：需要理解基本 agent、prompt 和工具调用。"
-            : index === 2
-              ? "概念地图：方法谱系、理论结构、关键定义和正式术语。"
-              : index === 3
-                ? "经典例题：用一个 agent orchestration case analysis 展开推导。"
-                : index === 4
+          : index === 2
+              ? "知识节点：方法谱系、理论结构、关键定义和正式术语。"
+          : index === 3
+                ? "关键链路：从输入状态到工具调用，再到观察和评估。经典例题：用一个 agent orchestration case analysis 展开推导。"
+          : index === 4
                   ? "方法比较：taxonomy、权衡、适用边界和反例。"
-                  : index === 5
-                    ? "课堂讨论题：批判一个设计选择并给出参考要点。"
-                    : index === 6
-                      ? "课后作业：阅读路径、problem set 和 homework。"
-                      : "本讲 takeaway：三条复习清单和下一讲衔接。"
+          : index === 5
+                    ? "边界案例：相邻场景、保留条件和断裂条件。"
+          : index === 6
+                      ? "应用案例：具体场景和判断依据。"
+                      : "总结图：三条总结要点和下一单元衔接。"
     }));
     await new LearnerProjectService(root).createProject({
       request: "请生成教授式课程讲义 Web Deck，主题是 Agent 编排，面向研究生，教学难度为大学高年级/研究生课程，每个单元 8 页。",
@@ -456,6 +456,52 @@ describe("LearningCoursePublisher", () => {
     );
     await expect(readFile(path.join(root, "runs", "professor-course", "quality", "course-quality-report.json"), "utf8")).resolves.not.toContain(
       "interaction-count"
+    );
+  });
+
+  test("returns revision_required when professor lecture decks omit page knowledge boards", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-course-publisher-professor-board-"));
+    const publisher = new LearningCoursePublisher(root);
+    await new LearnerProjectService(root).createProject({
+      request: "请生成教授式课程讲义 Web Deck，主题是 Agent 编排，面向研究生，每个单元 8 页。",
+      runId: "professor-board-course",
+      sourceKind: "topic",
+      audience: "研究生",
+      difficultyLevel: "upper_undergraduate_or_graduate",
+      unitPages: 8,
+      courseIntent: "professor_lecture_deck"
+    });
+
+    const result = await publisher.publish({
+      runId: "professor-board-course",
+      lessons: [publishableLessonFixture({ id: "professor-board-overview", title: "Agent 编排：教授讲义", targetPageCount: 8 })],
+      coursePack: coursePackFixture("professor-board-course", "professor-board-overview")
+    });
+
+    expect(result).toMatchObject({
+      status: "revision_required",
+      runId: "professor-board-course",
+      qualityReport: {
+        status: "failed",
+        checks: {
+          professorLecture: "failed"
+        }
+      }
+    });
+    if (result.status !== "revision_required") {
+      throw new Error("expected revision_required");
+    }
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          lessonId: "professor-board-overview",
+          rule: "knowledge-board",
+          message: expect.stringContaining("knowledgeBoard")
+        })
+      ])
+    );
+    await expect(readFile(path.join(root, "runs", "professor-board-course", "quality", "course-quality-report.json"), "utf8")).resolves.toContain(
+      "quality.knowledge-board.missing"
     );
   });
 
