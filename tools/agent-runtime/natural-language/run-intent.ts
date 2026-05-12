@@ -14,6 +14,7 @@ export type RunIntent = {
   };
   language: "zh-CN";
   unitPages: number;
+  targetTotalPages?: number;
   strategy: CoursePackStrategy;
   planningMode: CurriculumPlanningMode;
   adapter: string;
@@ -38,6 +39,7 @@ export function parseRunIntent(request: string): RunIntent {
     source,
     language: "zh-CN",
     unitPages: extractUnitPages(rawRequest),
+    targetTotalPages: extractTargetTotalPages(rawRequest),
     strategy,
     planningMode: extractPlanningMode(rawRequest, strategy),
     adapter: "codex",
@@ -118,11 +120,24 @@ function extractSourceKind(request: string, sourceType: "file" | "url"): SourceM
 
 function extractUnitPages(request: string): number {
   const specific = request.match(/每(?:个)?(?:学习)?(?:单元|课|课程单元)?\s*(\d{1,2})\s*页/u)?.[1];
-  const generic = request.match(/(\d{1,2})\s*页/u)?.[1];
+  const withoutTotalPages = request.replace(/(?:总共|总计|总页数|全部|整套|整体|压缩成)\s*\d{1,3}\s*页/gu, "");
+  const generic = withoutTotalPages.match(/(\d{1,2})\s*页/u)?.[1];
   const parsed = Number(specific || generic || defaultUnitPages);
 
   if (!Number.isInteger(parsed) || parsed < 1 || parsed > 40) {
     throw new Error("unit page count must be between 1 and 40");
+  }
+  return parsed;
+}
+
+function extractTargetTotalPages(request: string): number | undefined {
+  const explicit = request.match(/(?:总共|总计|总页数|全部|整套|整体|压缩成)\s*(\d{1,3})\s*页/u)?.[1];
+  if (!explicit) {
+    return undefined;
+  }
+  const parsed = Number(explicit);
+  if (!Number.isInteger(parsed) || parsed < 5 || parsed > 300) {
+    throw new Error("target total page count must be between 5 and 300");
   }
   return parsed;
 }

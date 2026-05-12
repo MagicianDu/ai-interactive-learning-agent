@@ -381,6 +381,33 @@ describe("LearningAgentRuntimeTools", () => {
     expect(artifact.brief?.courseIntent).toBe("professor_lecture_deck");
   });
 
+  test("prepare_learning_course direct runtime call preserves self-study total page budget", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
+    const tools = new LearningAgentRuntimeTools(root);
+
+    const result = await tools.callTool("learning_agent.prepare_learning_course", {
+      request:
+        "请用 /tmp/book.pdf 做成学生自学 Web 教材，总共 80 页，每个单元 8 页，面向研究生，教学难度为大学高年级/研究生课程。",
+      runId: "runtime-self-study-budget",
+      sourcePath: "/tmp/book.pdf",
+      sourceKind: "book",
+      audience: "研究生",
+      difficultyLevel: "upper_undergraduate_or_graduate",
+      unitPages: 8,
+      targetTotalPages: 80,
+      courseIntent: "student_self_study_textbook"
+    });
+
+    expect(result).toMatchObject({
+      status: "authoring_context_ready"
+    });
+    const artifact = JSON.parse(
+      await readFile(path.join(root, "runs", "runtime-self-study-budget", "learner-project.json"), "utf8")
+    ) as { brief?: { targetTotalPages?: number }; project?: { targetTotalPages?: number } };
+    expect(artifact.brief?.targetTotalPages).toBe(80);
+    expect(artifact.project?.targetTotalPages).toBe(80);
+  });
+
   test("prepare_learning_course rejects invalid explicit course intent", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
     const tools = new LearningAgentRuntimeTools(root);

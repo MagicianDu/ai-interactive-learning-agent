@@ -43,12 +43,13 @@ function baseConfig(overrides: Partial<RunConfig> = {}): RunConfig {
 
 describe("run config", () => {
   test("creates a Chinese-first run config from CLI args", () => {
-    const config = createRunConfigFromArgs({ topic: "哈希表", pages: "8" });
+    const config = createRunConfigFromArgs({ topic: "哈希表", pages: "8", targetTotalPages: "80" });
 
     expect(config.runId).toBe("hash-table-001");
     expect(config.topic).toBe("哈希表");
     expect(config.outputLanguage).toBe("zh-CN");
     expect(config.pageCount).toEqual({ target: 8, min: 6, max: 10 });
+    expect(config.coursePack?.targetTotalPages).toBe(80);
     expect(config.runtime.adapter).toBe("mock");
   });
 
@@ -80,6 +81,15 @@ describe("run config", () => {
         run: undefined
       })
     ).toThrow(/pages must be between 1 and 40/);
+  });
+
+  test("rejects invalid course pack total page budget", () => {
+    expect(() => createRunConfigFromArgs({ topic: "哈希表", pages: "8", targetTotalPages: "3" })).toThrow(
+      /coursePack.targetTotalPages/
+    );
+    expect(() => createRunConfigFromArgs({ topic: "哈希表", pages: "8", targetTotalPages: "301" })).toThrow(
+      /targetTotalPages/
+    );
   });
 
   test("validates required run config fields", () => {

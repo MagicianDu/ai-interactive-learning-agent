@@ -134,6 +134,7 @@ export function createRunConfigFromArgs(args: CliInitArgs): RunConfig {
   if (!Number.isInteger(targetPages) || targetPages < 1 || targetPages > 40) {
     throw new AgentRuntimeError("pages must be between 1 and 40", "INVALID_RUN_CONFIG");
   }
+  const targetTotalPages = parseOptionalPositiveInteger(args.targetTotalPages, "targetTotalPages", 300);
   const requestedAdapter = (args.adapter || "mock").trim().toLowerCase();
   const adapter = normalizeAdapter(requestedAdapter);
   const manualAdapterId = manualAdapterHint(requestedAdapter);
@@ -151,6 +152,7 @@ export function createRunConfigFromArgs(args: CliInitArgs): RunConfig {
   const coursePack = buildCoursePackConfig({
     strategy,
     targetPages,
+    targetTotalPages,
     preferredUnitCount,
     selectedChapters,
     selectedTopics
@@ -357,12 +359,14 @@ function parseList(value: string | undefined): string[] | undefined {
 function buildCoursePackConfig({
   strategy,
   targetPages,
+  targetTotalPages,
   preferredUnitCount,
   selectedChapters,
   selectedTopics
 }: {
   strategy: CoursePackStrategy;
   targetPages: number;
+  targetTotalPages?: number;
   preferredUnitCount?: number;
   selectedChapters?: string[];
   selectedTopics?: string[];
@@ -372,6 +376,7 @@ function buildCoursePackConfig({
     includeOverview: strategy === "overview_plus_topic" || strategy === "hybrid",
     preserveSourceMapping: true,
     unitPageCount: targetPages,
+    targetTotalPages,
     preferredUnitCount,
     selectedChapters,
     selectedTopics,
@@ -697,6 +702,12 @@ function validateCoursePack(coursePack: CoursePackConfig | undefined): void {
   }
   if (!Number.isInteger(coursePack.unitPageCount) || coursePack.unitPageCount < 1 || coursePack.unitPageCount > 40) {
     throw new AgentRuntimeError("coursePack.unitPageCount must be an integer between 1 and 40", "INVALID_RUN_CONFIG");
+  }
+  if (
+    coursePack.targetTotalPages !== undefined &&
+    (!Number.isInteger(coursePack.targetTotalPages) || coursePack.targetTotalPages < 5 || coursePack.targetTotalPages > 300)
+  ) {
+    throw new AgentRuntimeError("coursePack.targetTotalPages must be an integer between 5 and 300", "INVALID_RUN_CONFIG");
   }
   if (
     coursePack.preferredUnitCount !== undefined &&

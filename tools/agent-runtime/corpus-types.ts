@@ -118,6 +118,7 @@ export type CoursePackConfig = {
   includeOverview: boolean;
   preserveSourceMapping: boolean;
   unitPageCount: number;
+  targetTotalPages?: number;
   preferredUnitCount?: number;
   selectedChapters?: string[];
   selectedTopics?: string[];

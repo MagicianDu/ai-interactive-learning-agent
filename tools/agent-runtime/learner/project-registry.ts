@@ -23,6 +23,7 @@ export type LearningProjectRecord = {
   language: "zh-CN";
   strategy: string;
   unitPageCount: number;
+  targetTotalPages?: number;
   selectedChapters?: string[];
   selectedTopics?: string[];
   courseIntent?: CourseIntent;
@@ -100,6 +101,7 @@ export class ProjectRegistry {
       language: "zh-CN",
       strategy: optionalString(brief.strategy) ?? "overview_plus_topic",
       unitPageCount: optionalNumber(brief.unitPages) ?? 8,
+      targetTotalPages: optionalNumber(brief.targetTotalPages),
       selectedChapters: optionalStringArray(brief.selectedChapters),
       selectedTopics: optionalStringArray(brief.selectedTopics),
       courseIntent: normalizeCourseIntent(brief.courseIntent),
@@ -192,6 +194,7 @@ function normalizeProject(value: Record<string, unknown>, projectId: string): Le
     language: "zh-CN",
     strategy: optionalString(value.strategy) ?? "overview_plus_topic",
     unitPageCount: optionalNumber(value.unitPageCount) ?? 8,
+    targetTotalPages: optionalNumber(value.targetTotalPages),
     selectedChapters: optionalStringArray(value.selectedChapters),
     selectedTopics: optionalStringArray(value.selectedTopics),
     courseIntent: normalizeCourseIntent(value.courseIntent),

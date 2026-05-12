@@ -67,6 +67,7 @@ export type CliInitArgs = {
   topic?: string;
   pages?: string;
   unitPages?: string;
+  targetTotalPages?: string;
   sourceFile?: string;
   sourceFolder?: string;
   sourceUrl?: string;

@@ -129,6 +129,7 @@ export class LearningAgentRuntimeTools {
       difficultyLevel: optionalDifficultyLevel(options.difficultyLevel),
       courseIntent: optionalCourseIntent(options.courseIntent),
       unitPages: optionalNumber(options.unitPages),
+      targetTotalPages: optionalNumber(options.targetTotalPages),
       strategy: optionalString(options.strategy),
       selectedChapters: optionalStringArray(options.selectedChapters),
       selectedTopics: optionalStringArray(options.selectedTopics)
@@ -146,6 +147,7 @@ export class LearningAgentRuntimeTools {
       difficultyLevel: optionalDifficultyLevel(options.difficultyLevel),
       courseIntent: optionalCourseIntent(options.courseIntent),
       unitPages: optionalNumber(options.unitPages),
+      targetTotalPages: optionalNumber(options.targetTotalPages),
       strategy: optionalString(options.strategy),
       selectedChapters: optionalStringArray(options.selectedChapters),
       selectedTopics: optionalStringArray(options.selectedTopics),
@@ -255,6 +257,7 @@ export class LearningAgentRuntimeTools {
       topic: optionalString(options.topic),
       pages: optionalString(options.pages),
       unitPages: optionalString(options.unitPages),
+      targetTotalPages: optionalString(options.targetTotalPages),
       sourceFile: optionalString(options.sourceFile),
       sourceFolder: optionalString(options.sourceFolder),
       sourceUrl: optionalString(options.sourceUrl),

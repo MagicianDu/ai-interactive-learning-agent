@@ -73,4 +73,19 @@ describe("parseRunIntent", () => {
 
     expect(intent.courseIntent).toBe("student_self_study_textbook");
   });
+
+  test("keeps total page budget separate from per-unit page count", () => {
+    const intent = parseRunIntent("把 /tmp/book.pdf 做成学生自学 Web 教材，总共 80 页，每个单元 8 页。");
+
+    expect(intent.courseIntent).toBe("student_self_study_textbook");
+    expect(intent.unitPages).toBe(8);
+    expect(intent.targetTotalPages).toBe(80);
+  });
+
+  test("does not treat the default self-study budget as learner-specified", () => {
+    const intent = parseRunIntent("把 /tmp/book.pdf 做成学生自学 Web 教材，我不想读完整本书。");
+
+    expect(intent.unitPages).toBe(10);
+    expect(intent.targetTotalPages).toBeUndefined();
+  });
 });

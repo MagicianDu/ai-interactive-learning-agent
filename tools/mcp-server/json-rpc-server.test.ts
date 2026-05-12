@@ -111,7 +111,8 @@ describe("MCP JSON-RPC server", () => {
     expect(createTool?.inputSchema).toMatchObject({
       properties: {
         difficultyLevel: { type: "string" },
-        courseIntent: { type: "string", enum: ["build_mental_model", "professor_lecture_deck"] },
+        courseIntent: { type: "string", enum: ["build_mental_model", "professor_lecture_deck", "student_self_study_textbook"] },
+        targetTotalPages: { type: "number" },
         selectedChapters: { type: "array", items: { type: "string" } },
         selectedTopics: { type: "array", items: { type: "string" } }
       }
@@ -129,8 +130,9 @@ describe("MCP JSON-RPC server", () => {
       properties: {
         request: { type: "string" },
         difficultyLevel: { type: "string" },
-        courseIntent: { type: "string", enum: ["build_mental_model", "professor_lecture_deck"] },
+        courseIntent: { type: "string", enum: ["build_mental_model", "professor_lecture_deck", "student_self_study_textbook"] },
         unitPages: { type: "number" },
+        targetTotalPages: { type: "number" },
         maxAnchors: { type: "number" }
       },
       required: ["request"]

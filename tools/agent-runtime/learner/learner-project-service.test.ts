@@ -198,7 +198,7 @@ describe("LearnerProjectService", () => {
     if (result.status !== "project_ready") {
       throw new Error("expected project_ready");
     }
-    expect(result.next.codexInstruction).toContain("教授式课程讲义 Web Deck");
+    expect(result.next.codexInstruction).toContain("教师/课堂 Web Deck");
     const manifest = JSON.parse(await readFile(path.join(root, "runs", "professor-deck", "learner-project.json"), "utf8")) as {
       brief: { courseIntent?: string };
       project?: { courseIntent?: string };
@@ -221,5 +221,59 @@ describe("LearnerProjectService", () => {
       throw new Error("expected project_ready");
     }
     expect(result.brief.courseIntent).toBe("build_mental_model");
+  });
+
+  test("uses default total pages for self-study textbook book projects and reminds the learner", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learner-project-"));
+    const service = new LearnerProjectService(root);
+
+    const result = await service.createProject({
+      request:
+        "请用 /tmp/book.pdf 做成学生自学 Web 教材，我不想读完整本书，面向有基础的学习者，教学难度为大学高年级/研究生课程。",
+      runId: "self-study-default"
+    });
+
+    expect(result.status).toBe("project_ready");
+    if (result.status !== "project_ready") {
+      throw new Error("expected project_ready");
+    }
+    expect(result.brief).toMatchObject({
+      courseIntent: "student_self_study_textbook",
+      sourceKind: "book",
+      unitPages: 10,
+      unitPagesSpecified: false,
+      targetTotalPages: 100,
+      totalPagesSpecified: false
+    });
+    expect(result.next.codexInstruction).toContain("默认约 100 页");
+  });
+
+  test("preserves explicit total pages for self-study textbook projects", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learner-project-"));
+    const service = new LearnerProjectService(root);
+
+    const result = await service.createProject({
+      request:
+        "请用 /tmp/book.pdf 做成学生自学 Web 教材，总共 80 页，每个单元 8 页，面向有基础的学习者，教学难度为大学高年级/研究生课程。",
+      runId: "self-study-explicit"
+    });
+
+    expect(result.status).toBe("project_ready");
+    if (result.status !== "project_ready") {
+      throw new Error("expected project_ready");
+    }
+    expect(result.brief).toMatchObject({
+      courseIntent: "student_self_study_textbook",
+      unitPages: 8,
+      targetTotalPages: 80,
+      totalPagesSpecified: true
+    });
+    expect(result.next.codexInstruction).toContain("总页数约 80 页");
+    const manifest = JSON.parse(await readFile(path.join(root, "runs", "self-study-explicit", "learner-project.json"), "utf8")) as {
+      brief?: { targetTotalPages?: number };
+      project?: { targetTotalPages?: number };
+    };
+    expect(manifest.brief?.targetTotalPages).toBe(80);
+    expect(manifest.project?.targetTotalPages).toBe(80);
   });
 });

@@ -70,6 +70,7 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
         difficultyLevel: stringSchema,
         courseIntent: courseIntentSchema,
         unitPages: numberSchema,
+        targetTotalPages: numberSchema,
         strategy: stringSchema,
         selectedChapters: stringArraySchema,
         selectedTopics: stringArraySchema
@@ -91,6 +92,7 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
         difficultyLevel: stringSchema,
         courseIntent: courseIntentSchema,
         unitPages: numberSchema,
+        targetTotalPages: numberSchema,
         strategy: stringSchema,
         selectedChapters: stringArraySchema,
         selectedTopics: stringArraySchema,

@@ -14,6 +14,7 @@ export type CreateLearnerProjectInput = {
   audience?: string;
   difficultyLevel?: TeachingDifficultyLevel;
   unitPages?: number;
+  targetTotalPages?: number;
   strategy?: string;
   selectedChapters?: string[];
   selectedTopics?: string[];
@@ -28,6 +29,8 @@ export type LearnerBrief = {
   difficultyLevel?: TeachingDifficultyLevel;
   unitPages: number;
   unitPagesSpecified?: boolean;
+  targetTotalPages?: number;
+  totalPagesSpecified?: boolean;
   strategy: string;
   selectedChapters?: string[];
   selectedTopics?: string[];
@@ -93,6 +96,7 @@ export class LearnerProjectService {
       language: "zh-CN",
       strategy: brief.strategy,
       unitPageCount: brief.unitPages,
+      targetTotalPages: brief.targetTotalPages,
       selectedChapters: brief.selectedChapters,
       selectedTopics: brief.selectedTopics,
       courseIntent: brief.courseIntent,
@@ -113,6 +117,7 @@ function buildAuthoringContextGuidance(runId: string, brief: LearnerBrief): stri
     `目标学习者：${brief.audience ?? "中文学习者"}`,
     brief.difficultyLevel ? `教学难度层级：${difficultyLabel(brief.difficultyLevel)}（${brief.difficultyLevel}）。` : undefined,
     `课程组织：${brief.strategy}，每个单元 ${brief.unitPages} 页。`,
+    pageBudgetGuidance(brief),
     brief.sourcePath ? `资料路径：${brief.sourcePath}` : undefined,
     `资料类型：${brief.sourceKind}`,
     brief.selectedChapters?.length ? `指定章节：${brief.selectedChapters.join("、")}。` : undefined,
@@ -125,21 +130,29 @@ function buildAuthoringContextGuidance(runId: string, brief: LearnerBrief): stri
 
 function buildBrief(input: CreateLearnerProjectInput): LearnerBrief {
   const request = input.request;
+  const sourceKind = input.sourceKind ?? inferSourceKind(request);
+  const courseIntent = normalizeCourseIntent(input.courseIntent) ?? inferCourseIntent(request);
   const inferredPages = inferPages(request);
-  const unitPages = input.unitPages ?? inferredPages ?? 8;
+  const inferredTotalPages = inferTargetTotalPages(request);
+  const targetTotalPages = normalizeTargetTotalPages(
+    input.targetTotalPages ?? inferredTotalPages ?? defaultTargetTotalPages(courseIntent, sourceKind)
+  );
+  const unitPages = input.unitPages ?? inferredPages ?? defaultUnitPages(courseIntent);
   return {
     topic: inferTopic(request),
     sourcePath: input.sourcePath ?? inferPath(request),
-    sourceKind: input.sourceKind ?? inferSourceKind(request),
+    sourceKind,
     audience: input.audience ?? inferAudience(request),
     difficultyLevel: input.difficultyLevel ?? inferTeachingDifficultyLevel(request),
     unitPages,
     unitPagesSpecified: input.unitPages !== undefined || inferredPages !== undefined,
+    targetTotalPages,
+    totalPagesSpecified: input.targetTotalPages !== undefined || inferredTotalPages !== undefined,
     strategy: input.strategy ?? inferStrategy(request),
     selectedChapters: normalizeList(input.selectedChapters) ?? inferSelectedChapters(request),
     selectedTopics: normalizeList(input.selectedTopics) ?? inferSelectedTopics(request),
     language: "zh-CN",
-    courseIntent: normalizeCourseIntent(input.courseIntent) ?? inferCourseIntent(request)
+    courseIntent
   };
 }
 
@@ -154,10 +167,46 @@ function buildClarificationQuestions(brief: LearnerBrief): string[] {
   if (!brief.difficultyLevel) {
     questions.push("希望教学内容难度层级是什么？例如：入门衔接、本科核心、大学高年级/研究生课程，或研究论文精读/前沿讨论。");
   }
-  if (brief.unitPagesSpecified === false) {
+  if (
+    brief.unitPagesSpecified === false &&
+    !(brief.courseIntent === "student_self_study_textbook" && brief.targetTotalPages !== undefined)
+  ) {
     questions.push("希望每个单元多少页？例如：6、8、10 或 12 页。");
   }
   return questions;
+}
+
+function pageBudgetGuidance(brief: LearnerBrief): string | undefined {
+  if (brief.courseIntent !== "student_self_study_textbook" || brief.targetTotalPages === undefined) {
+    return undefined;
+  }
+  if (brief.totalPagesSpecified === false) {
+    return `页数策略：我会先按默认约 ${brief.targetTotalPages} 页的一屏式 Web 教材规划；如果你希望更短或更长，可以直接说总页数或每个单元页数。`;
+  }
+  return `页数策略：总页数约 ${brief.targetTotalPages} 页，每个单元约 ${brief.unitPages} 页。`;
+}
+
+function defaultUnitPages(courseIntent: CourseIntent): number {
+  return courseIntent === "student_self_study_textbook" ? 10 : 8;
+}
+
+function defaultTargetTotalPages(courseIntent: CourseIntent, sourceKind: string): number | undefined {
+  return courseIntent === "student_self_study_textbook" && sourceKind === "book" ? 100 : undefined;
+}
+
+function inferTargetTotalPages(request: string): number | undefined {
+  const match = /(?:总共|总计|总页数|全部|整套|整体|压缩成)\s*(?<pages>[1-9][0-9]{0,2})\s*页/u.exec(request);
+  return normalizeTargetTotalPages(match?.groups?.pages ? Number(match.groups.pages) : undefined);
+}
+
+function normalizeTargetTotalPages(value: number | undefined): number | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!Number.isInteger(value) || value < 5 || value > 300) {
+    throw new Error("target total page count must be between 5 and 300");
+  }
+  return value;
 }
 
 function slugFromText(value: string): string {
@@ -227,7 +276,8 @@ export function inferTeachingDifficultyLevel(request: string): TeachingDifficult
 }
 
 function inferPages(request: string): number | undefined {
-  const match = /(?:每个单元|每单元|单元)?\s*(?<pages>[1-9][0-9]?)\s*页/u.exec(request);
+  const withoutTotalPages = request.replace(/(?:总共|总计|总页数|全部|整套|整体|压缩成)\s*[1-9][0-9]{0,2}\s*页/gu, "");
+  const match = /(?:每个单元|每单元|单元)?\s*(?<pages>[1-9][0-9]?)\s*页/u.exec(withoutTotalPages);
   if (!match?.groups?.pages) {
     return undefined;
   }

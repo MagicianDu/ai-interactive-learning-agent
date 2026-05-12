@@ -19,6 +19,7 @@ describe("ProjectRegistry", () => {
       language: "zh-CN",
       strategy: "overview_plus_topic",
       unitPageCount: 8,
+      targetTotalPages: 100,
       status: "draft"
     });
     await writeFile(
@@ -34,6 +35,7 @@ describe("ProjectRegistry", () => {
       projectId: "agentic-book",
       title: "Agent Workflow Patterns",
       sourceKind: "book",
+      targetTotalPages: 100,
       status: "preview-ready",
       preview: {
         courseTitle: "Agent Workflow Patterns：课程包",
@@ -58,6 +60,7 @@ describe("ProjectRegistry", () => {
             sourceKind: "book",
             audience: "中文学习者",
             unitPages: 8,
+            targetTotalPages: 80,
             strategy: "chapter_guided",
             selectedChapters: ["第 1 章"],
             language: "zh-CN"
@@ -77,6 +80,7 @@ describe("ProjectRegistry", () => {
       sourceKind: "book",
       sourceRefs: ["/tmp/book.pdf"],
       unitPageCount: 8,
+      targetTotalPages: 80,
       selectedChapters: ["第 1 章"],
       status: "draft"
     });
