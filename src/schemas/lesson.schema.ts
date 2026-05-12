@@ -91,6 +91,38 @@ export type FeedbackSpec = {
   misconceptionAddressed?: string;
 };
 
+export type KnowledgeBoardKind =
+  | "definition_board"
+  | "mechanism_board"
+  | "evidence_board"
+  | "example_board"
+  | "comparison_board"
+  | "boundary_board"
+  | "synthesis_board";
+
+export type BoardSectionEmphasis = "definition" | "mechanism" | "example" | "boundary" | "note";
+
+export type BoardSection = {
+  label: string;
+  items: string[];
+  emphasis?: BoardSectionEmphasis;
+};
+
+export type SourceTraceItem = {
+  anchorId: string;
+  supports: string;
+};
+
+export type KnowledgeBoard = {
+  boardKind: KnowledgeBoardKind;
+  headline: string;
+  coreProposition: string;
+  leftColumn: BoardSection[];
+  rightColumn: BoardSection[];
+  sourceTrace: SourceTraceItem[];
+  bottomLine: string;
+};
+
 export type LessonPage = {
   id: string;
   type: LessonPageType;
@@ -106,6 +138,7 @@ export type LessonPage = {
   interactionSpec?: InteractionSpec;
   assessmentSpec?: AssessmentSpec;
   feedbackSpec?: FeedbackSpec;
+  knowledgeBoard?: KnowledgeBoard;
   code?: {
     language: string;
     value: string;
@@ -127,6 +160,7 @@ export type TransferTask = {
 export type Lesson = {
   id: string;
   title: string;
+  displayMode?: "learning_deck" | "textbook_deck";
   audience: string;
   config: LessonConfig;
   sourceContext?: {

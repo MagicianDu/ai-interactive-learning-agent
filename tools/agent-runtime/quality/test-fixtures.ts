@@ -1,3 +1,24 @@
+type TestKnowledgeBoardKind =
+  | "definition_board"
+  | "mechanism_board"
+  | "evidence_board"
+  | "example_board"
+  | "comparison_board"
+  | "boundary_board"
+  | "synthesis_board";
+
+type TestBoardSectionEmphasis = "definition" | "mechanism" | "example" | "boundary" | "note";
+
+type TestKnowledgeBoard = {
+  boardKind: TestKnowledgeBoardKind;
+  headline: string;
+  coreProposition: string;
+  leftColumn: Array<{ label: string; items: string[]; emphasis?: TestBoardSectionEmphasis }>;
+  rightColumn: Array<{ label: string; items: string[]; emphasis?: TestBoardSectionEmphasis }>;
+  sourceTrace: Array<{ anchorId: string; supports: string }>;
+  bottomLine: string;
+};
+
 type TestLesson = Record<string, unknown> & {
   config: { targetPageCount: number; minPageCount: number; maxPageCount: number };
   pages: TestPage[];
@@ -18,6 +39,7 @@ type TestPage = Record<string, unknown> & {
       explanation: string;
     }>;
   };
+  knowledgeBoard?: TestKnowledgeBoard;
 };
 
 export function buildCompleteLesson(): TestLesson {
@@ -84,6 +106,68 @@ export function publishableLessonFixture({
     misconceptions: [{ id: "m1", statement: "哈希表永远 O(1)", correction: "冲突严重时会变慢。" }],
     transferTasks: [{ id: "t1", prompt: "迁移到缓存 key 设计", targetMentalModel: "用搜索空间缩小解释加速。" }],
     summary: ["哈希表用 key 缩小搜索空间。"]
+  } as TestLesson;
+}
+
+export function professorBoardLessonFixture({
+  id = "professor-board",
+  targetPageCount = 8,
+  title = "Agentic Workflow 教授板书"
+}: {
+  id?: string;
+  title?: string;
+  targetPageCount?: number;
+} = {}): TestLesson {
+  const base = publishableLessonFixture({ id, title, targetPageCount });
+  return {
+    ...base,
+    displayMode: "textbook_deck",
+    audience: "大学/研究生课程式中文学习者",
+    prerequisites: ["理解 LLM 输出不确定性", "理解 workflow 可以拆成状态和动作"],
+    learningObjectives: ["解释知识节点", "沿关键链路复述机制", "识别边界条件"],
+    pages: base.pages.map((pageItem, index) => ({
+      ...pageItem,
+      title: `${pageItem.title} · 知识板书`,
+      narrative: "本页以知识板书方式呈现命题、机制、证据和结论。",
+      sourceAnchorIds: [`source-001:page-${index + 1}`],
+      grounding: { kind: "source", note: "测试来源锚点" },
+      knowledgeBoard: {
+        boardKind: index === base.pages.length - 1 ? "synthesis_board" : "mechanism_board",
+        headline: "从来源命题重构知识链路",
+        coreProposition: "Agentic workflow 的质量来自显式状态、证据检查和失败恢复。",
+        leftColumn: [
+          {
+            label: "概念链",
+            emphasis: "mechanism",
+            items: ["任务压力", "控制结构", "中间状态", "失败恢复"]
+          },
+          {
+            label: "拆解",
+            emphasis: "definition",
+            items: ["把单次回答拆成可检查步骤", "把隐含推理变成显式记录"]
+          }
+        ],
+        rightColumn: [
+          {
+            label: "例子",
+            emphasis: "example",
+            items: ["资料采样", "章节映射", "单元生成", "质量审查"]
+          },
+          {
+            label: "边界",
+            emphasis: "boundary",
+            items: ["短任务不一定需要 workflow", "无状态记录的多 agent 只是 prompt 堆叠"]
+          }
+        ],
+        sourceTrace: [
+          {
+            anchorId: `source-001:page-${index + 1}`,
+            supports: "来源支持本页关于 workflow 拆解和显式状态的讲解。"
+          }
+        ],
+        bottomLine: "板书页要同时给出命题、机制、例子和边界。"
+      }
+    }))
   } as TestLesson;
 }
 
