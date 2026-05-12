@@ -1,0 +1,2108 @@
+{
+  "schemaVersion": 1,
+  "status": "preview_ready",
+  "outputMode": "preview",
+  "runId": "professor-agentic-design-depth-v2-20260511",
+  "coursePackId": "professor-agentic-design-depth-v2-20260511",
+  "courseTitle": "Agentic Design Patterns：教材式知识链路 Web Deck",
+  "lessonCount": 7,
+  "coursePackPath": "course-pack.json",
+  "lessonPaths": [
+    "lessons/professor-agentic-design-depth-v2-20260511-overview.json",
+    "lessons/professor-agentic-design-depth-v2-20260511-topic-01.json",
+    "lessons/professor-agentic-design-depth-v2-20260511-topic-02.json",
+    "lessons/professor-agentic-design-depth-v2-20260511-topic-03.json",
+    "lessons/professor-agentic-design-depth-v2-20260511-topic-04.json",
+    "lessons/professor-agentic-design-depth-v2-20260511-topic-05.json",
+    "lessons/professor-agentic-design-depth-v2-20260511-topic-06.json"
+  ],
+  "preview": {
+    "devCommand": "npm run dev",
+    "localUrl": "http://127.0.0.1:5173/#/preview/professor-agentic-design-depth-v2-20260511",
+    "instructions": [
+      "在项目根目录运行 npm run dev。",
+      "打开 http://127.0.0.1:5173/#/preview/professor-agentic-design-depth-v2-20260511，直接查看「Agentic Design Patterns：教材式知识链路 Web Deck」。",
+      "预览数据从 runs/<run-id>/preview/ 读取，不需要写入 src。"
+    ]
+  },
+  "qualityReport": {
+    "status": "passed",
+    "score": 100,
+    "summary": "课程质量通过，得分 100，可以进入学习预览。",
+    "reportPath": "/Users/dm/Documents/the learning agent/runs/professor-agentic-design-depth-v2-20260511/quality/course-quality-report.json",
+    "requiredFixCount": 0,
+    "optionalImprovementCount": 0,
+    "issueSummary": {
+      "course": 0,
+      "unit": 0,
+      "lesson": 0,
+      "page": 0,
+      "errors": 0,
+      "warnings": 0,
+      "byCategory": {}
+    },
+    "topIssues": [],
+    "checks": {
+      "sourceEvidence": "passed",
+      "chineseFirst": "passed",
+      "pageStructure": "passed",
+      "interactionQuality": "passed",
+      "assessmentCoverage": "passed",
+      "transferCoverage": "passed",
+      "academicDepth": "passed",
+      "professorLecture": "passed"
+    },
+    "lessonScores": [
+      {
+        "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+        "score": 100,
+        "status": "passed"
+      },
+      {
+        "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+        "score": 100,
+        "status": "passed"
+      },
+      {
+        "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+        "score": 100,
+        "status": "passed"
+      },
+      {
+        "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+        "score": 100,
+        "status": "passed"
+      },
+      {
+        "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+        "score": 100,
+        "status": "passed"
+      },
+      {
+        "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+        "score": 100,
+        "status": "passed"
+      },
+      {
+        "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+        "score": 100,
+        "status": "passed"
+      }
+    ]
+  },
+  "publishNotes": "教材式知识链路 Web Deck 已升级为知识板书结构：学生侧以标题、核心命题、双栏板书和本页结论为主，来源 trace 保留给质量检查和来源视图。",
+  "revisionHistory": [
+    {
+      "runId": "professor-agentic-design-depth-v2-20260511",
+      "revisionId": "knowledge-board-v8",
+      "scope": "style",
+      "summary": "升级为教授板书双栏结构：每页包含核心命题、左右栏知识板书、来源 trace 和本页结论。",
+      "changedLessonIds": [
+        "professor-agentic-design-depth-v2-20260511-overview",
+        "professor-agentic-design-depth-v2-20260511-topic-01",
+        "professor-agentic-design-depth-v2-20260511-topic-02",
+        "professor-agentic-design-depth-v2-20260511-topic-03",
+        "professor-agentic-design-depth-v2-20260511-topic-04",
+        "professor-agentic-design-depth-v2-20260511-topic-05",
+        "professor-agentic-design-depth-v2-20260511-topic-06"
+      ],
+      "changedPages": [],
+      "qualityStatus": "passed",
+      "createdAt": "2026-05-12T00:00:00.000Z"
+    },
+    {
+      "runId": "professor-agentic-design-depth-v2-20260511",
+      "revisionId": "textbook-source-terms-v7",
+      "scope": "source",
+      "summary": "为 Parallelization、Reflection、Planning 的概念页补充 agent / workflow / patterns 来源术语坐标。",
+      "changedLessonIds": [
+        "professor-agentic-design-depth-v2-20260511-topic-03",
+        "professor-agentic-design-depth-v2-20260511-topic-04",
+        "professor-agentic-design-depth-v2-20260511-topic-06"
+      ],
+      "changedPages": [
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p10",
+          "pageNumber": 10
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p10",
+          "pageNumber": 10
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p10",
+          "pageNumber": 10
+        }
+      ],
+      "qualityStatus": "passed",
+      "createdAt": "2026-05-12T00:13:51.184Z"
+    },
+    {
+      "runId": "professor-agentic-design-depth-v2-20260511",
+      "revisionId": "textbook-knowledge-chain-v6",
+      "scope": "style",
+      "summary": "改为教材式知识链路表达：标题、内容、知识节点、关键链路、例子和边界案例。",
+      "changedLessonIds": [
+        "professor-agentic-design-depth-v2-20260511-overview",
+        "professor-agentic-design-depth-v2-20260511-topic-01",
+        "professor-agentic-design-depth-v2-20260511-topic-02",
+        "professor-agentic-design-depth-v2-20260511-topic-03",
+        "professor-agentic-design-depth-v2-20260511-topic-04",
+        "professor-agentic-design-depth-v2-20260511-topic-05",
+        "professor-agentic-design-depth-v2-20260511-topic-06"
+      ],
+      "changedPages": [
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p2",
+          "pageNumber": 2
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p5",
+          "pageNumber": 5
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p6",
+          "pageNumber": 6
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p7",
+          "pageNumber": 7
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p8",
+          "pageNumber": 8
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p10",
+          "pageNumber": 10
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p2",
+          "pageNumber": 2
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p5",
+          "pageNumber": 5
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p6",
+          "pageNumber": 6
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p7",
+          "pageNumber": 7
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p8",
+          "pageNumber": 8
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p10",
+          "pageNumber": 10
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p2",
+          "pageNumber": 2
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p5",
+          "pageNumber": 5
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p6",
+          "pageNumber": 6
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p7",
+          "pageNumber": 7
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p8",
+          "pageNumber": 8
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p10",
+          "pageNumber": 10
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p2",
+          "pageNumber": 2
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p5",
+          "pageNumber": 5
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p6",
+          "pageNumber": 6
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p7",
+          "pageNumber": 7
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p8",
+          "pageNumber": 8
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p10",
+          "pageNumber": 10
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p2",
+          "pageNumber": 2
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p5",
+          "pageNumber": 5
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p6",
+          "pageNumber": 6
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p7",
+          "pageNumber": 7
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p8",
+          "pageNumber": 8
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p10",
+          "pageNumber": 10
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p2",
+          "pageNumber": 2
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p5",
+          "pageNumber": 5
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p6",
+          "pageNumber": 6
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p7",
+          "pageNumber": 7
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p8",
+          "pageNumber": 8
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p10",
+          "pageNumber": 10
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p2",
+          "pageNumber": 2
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p5",
+          "pageNumber": 5
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p6",
+          "pageNumber": 6
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p7",
+          "pageNumber": 7
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p8",
+          "pageNumber": 8
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p10",
+          "pageNumber": 10
+        }
+      ],
+      "qualityStatus": "warning",
+      "createdAt": "2026-05-12T00:12:48.213Z"
+    },
+    {
+      "runId": "professor-agentic-design-depth-v2-20260511",
+      "revisionId": "student-self-study-fit-v5",
+      "scope": "style",
+      "summary": "优化单屏学习密度：将第二个互动前移，迁移页聚焦练习和答案对照。",
+      "changedLessonIds": [
+        "professor-agentic-design-depth-v2-20260511-overview",
+        "professor-agentic-design-depth-v2-20260511-topic-01",
+        "professor-agentic-design-depth-v2-20260511-topic-02",
+        "professor-agentic-design-depth-v2-20260511-topic-03",
+        "professor-agentic-design-depth-v2-20260511-topic-04",
+        "professor-agentic-design-depth-v2-20260511-topic-05",
+        "professor-agentic-design-depth-v2-20260511-topic-06"
+      ],
+      "changedPages": [
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p9",
+          "pageNumber": 9
+        }
+      ],
+      "qualityStatus": "passed",
+      "createdAt": "2026-05-11T03:04:18.383Z"
+    },
+    {
+      "runId": "professor-agentic-design-depth-v2-20260511",
+      "revisionId": "student-self-study-clean-copy-v4",
+      "scope": "style",
+      "summary": "统一为学生自学表达，清理低密度提纲式措辞。",
+      "changedLessonIds": [
+        "professor-agentic-design-depth-v2-20260511-overview",
+        "professor-agentic-design-depth-v2-20260511-topic-01",
+        "professor-agentic-design-depth-v2-20260511-topic-02",
+        "professor-agentic-design-depth-v2-20260511-topic-03",
+        "professor-agentic-design-depth-v2-20260511-topic-04",
+        "professor-agentic-design-depth-v2-20260511-topic-05",
+        "professor-agentic-design-depth-v2-20260511-topic-06"
+      ],
+      "changedPages": [
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p2",
+          "pageNumber": 2
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p5",
+          "pageNumber": 5
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p6",
+          "pageNumber": 6
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p7",
+          "pageNumber": 7
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p8",
+          "pageNumber": 8
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p10",
+          "pageNumber": 10
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p2",
+          "pageNumber": 2
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p5",
+          "pageNumber": 5
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p6",
+          "pageNumber": 6
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p7",
+          "pageNumber": 7
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p8",
+          "pageNumber": 8
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p10",
+          "pageNumber": 10
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p2",
+          "pageNumber": 2
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p5",
+          "pageNumber": 5
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p6",
+          "pageNumber": 6
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p7",
+          "pageNumber": 7
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p8",
+          "pageNumber": 8
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p10",
+          "pageNumber": 10
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p2",
+          "pageNumber": 2
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p5",
+          "pageNumber": 5
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p6",
+          "pageNumber": 6
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p7",
+          "pageNumber": 7
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p8",
+          "pageNumber": 8
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p10",
+          "pageNumber": 10
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p2",
+          "pageNumber": 2
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p5",
+          "pageNumber": 5
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p6",
+          "pageNumber": 6
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p7",
+          "pageNumber": 7
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p8",
+          "pageNumber": 8
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p10",
+          "pageNumber": 10
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p2",
+          "pageNumber": 2
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p5",
+          "pageNumber": 5
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p6",
+          "pageNumber": 6
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p7",
+          "pageNumber": 7
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p8",
+          "pageNumber": 8
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p10",
+          "pageNumber": 10
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p2",
+          "pageNumber": 2
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p5",
+          "pageNumber": 5
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p6",
+          "pageNumber": 6
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p7",
+          "pageNumber": 7
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p8",
+          "pageNumber": 8
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p10",
+          "pageNumber": 10
+        }
+      ],
+      "qualityStatus": "passed",
+      "createdAt": "2026-05-11T02:58:54.699Z"
+    },
+    {
+      "runId": "professor-agentic-design-depth-v2-20260511",
+      "revisionId": "student-self-study-language-polish-v3",
+      "scope": "style",
+      "summary": "清理旧版讲义口吻，统一为学生自学表达。",
+      "changedLessonIds": [
+        "professor-agentic-design-depth-v2-20260511-overview",
+        "professor-agentic-design-depth-v2-20260511-topic-01",
+        "professor-agentic-design-depth-v2-20260511-topic-02",
+        "professor-agentic-design-depth-v2-20260511-topic-03",
+        "professor-agentic-design-depth-v2-20260511-topic-04",
+        "professor-agentic-design-depth-v2-20260511-topic-05",
+        "professor-agentic-design-depth-v2-20260511-topic-06"
+      ],
+      "changedPages": [
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p2",
+          "pageNumber": 2
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p5",
+          "pageNumber": 5
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p6",
+          "pageNumber": 6
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p7",
+          "pageNumber": 7
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p8",
+          "pageNumber": 8
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p10",
+          "pageNumber": 10
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p2",
+          "pageNumber": 2
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p5",
+          "pageNumber": 5
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p6",
+          "pageNumber": 6
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p7",
+          "pageNumber": 7
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p8",
+          "pageNumber": 8
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p10",
+          "pageNumber": 10
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p2",
+          "pageNumber": 2
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p5",
+          "pageNumber": 5
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p6",
+          "pageNumber": 6
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p7",
+          "pageNumber": 7
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p8",
+          "pageNumber": 8
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p10",
+          "pageNumber": 10
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p2",
+          "pageNumber": 2
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p5",
+          "pageNumber": 5
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p6",
+          "pageNumber": 6
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p7",
+          "pageNumber": 7
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p8",
+          "pageNumber": 8
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p10",
+          "pageNumber": 10
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p2",
+          "pageNumber": 2
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p5",
+          "pageNumber": 5
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p6",
+          "pageNumber": 6
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p7",
+          "pageNumber": 7
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p8",
+          "pageNumber": 8
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p10",
+          "pageNumber": 10
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p2",
+          "pageNumber": 2
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p5",
+          "pageNumber": 5
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p6",
+          "pageNumber": 6
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p7",
+          "pageNumber": 7
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p8",
+          "pageNumber": 8
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p10",
+          "pageNumber": 10
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p2",
+          "pageNumber": 2
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p5",
+          "pageNumber": 5
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p6",
+          "pageNumber": 6
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p7",
+          "pageNumber": 7
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p8",
+          "pageNumber": 8
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p10",
+          "pageNumber": 10
+        }
+      ],
+      "qualityStatus": "passed",
+      "createdAt": "2026-05-11T02:58:16.870Z"
+    },
+    {
+      "runId": "professor-agentic-design-depth-v2-20260511",
+      "revisionId": "student-self-study-source-synthesis-v2",
+      "scope": "source",
+      "summary": "补强 source synthesis，确保高密度自学页显式回连到 agent workflow / patterns 来源术语。",
+      "changedLessonIds": [
+        "professor-agentic-design-depth-v2-20260511-overview",
+        "professor-agentic-design-depth-v2-20260511-topic-01",
+        "professor-agentic-design-depth-v2-20260511-topic-02",
+        "professor-agentic-design-depth-v2-20260511-topic-03",
+        "professor-agentic-design-depth-v2-20260511-topic-04",
+        "professor-agentic-design-depth-v2-20260511-topic-05",
+        "professor-agentic-design-depth-v2-20260511-topic-06"
+      ],
+      "changedPages": [
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p2",
+          "pageNumber": 2
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p5",
+          "pageNumber": 5
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p6",
+          "pageNumber": 6
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p7",
+          "pageNumber": 7
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p8",
+          "pageNumber": 8
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p10",
+          "pageNumber": 10
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p2",
+          "pageNumber": 2
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p5",
+          "pageNumber": 5
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p6",
+          "pageNumber": 6
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p7",
+          "pageNumber": 7
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p8",
+          "pageNumber": 8
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p10",
+          "pageNumber": 10
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p2",
+          "pageNumber": 2
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p5",
+          "pageNumber": 5
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p6",
+          "pageNumber": 6
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p7",
+          "pageNumber": 7
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p8",
+          "pageNumber": 8
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p10",
+          "pageNumber": 10
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p2",
+          "pageNumber": 2
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p5",
+          "pageNumber": 5
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p6",
+          "pageNumber": 6
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p7",
+          "pageNumber": 7
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p8",
+          "pageNumber": 8
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p10",
+          "pageNumber": 10
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p2",
+          "pageNumber": 2
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p5",
+          "pageNumber": 5
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p6",
+          "pageNumber": 6
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p7",
+          "pageNumber": 7
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p8",
+          "pageNumber": 8
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p10",
+          "pageNumber": 10
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p2",
+          "pageNumber": 2
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p5",
+          "pageNumber": 5
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p6",
+          "pageNumber": 6
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p7",
+          "pageNumber": 7
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p8",
+          "pageNumber": 8
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p10",
+          "pageNumber": 10
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p2",
+          "pageNumber": 2
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p5",
+          "pageNumber": 5
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p6",
+          "pageNumber": 6
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p7",
+          "pageNumber": 7
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p8",
+          "pageNumber": 8
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p10",
+          "pageNumber": 10
+        }
+      ],
+      "qualityStatus": "passed",
+      "createdAt": "2026-05-11T02:57:46.644Z"
+    },
+    {
+      "runId": "professor-agentic-design-depth-v2-20260511",
+      "revisionId": "student-self-study-density-v1",
+      "scope": "course",
+      "summary": "将旧版低密度内容改为学生自学高密度 Web Deck。",
+      "changedLessonIds": [
+        "professor-agentic-design-depth-v2-20260511-overview",
+        "professor-agentic-design-depth-v2-20260511-topic-01",
+        "professor-agentic-design-depth-v2-20260511-topic-02",
+        "professor-agentic-design-depth-v2-20260511-topic-03",
+        "professor-agentic-design-depth-v2-20260511-topic-04",
+        "professor-agentic-design-depth-v2-20260511-topic-05",
+        "professor-agentic-design-depth-v2-20260511-topic-06"
+      ],
+      "changedPages": [
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p2",
+          "pageNumber": 2
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p5",
+          "pageNumber": 5
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p6",
+          "pageNumber": 6
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p7",
+          "pageNumber": 7
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p8",
+          "pageNumber": 8
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-overview",
+          "pageId": "p10",
+          "pageNumber": 10
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p2",
+          "pageNumber": 2
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p5",
+          "pageNumber": 5
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p6",
+          "pageNumber": 6
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p7",
+          "pageNumber": 7
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p8",
+          "pageNumber": 8
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-01",
+          "pageId": "p10",
+          "pageNumber": 10
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p2",
+          "pageNumber": 2
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p5",
+          "pageNumber": 5
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p6",
+          "pageNumber": 6
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p7",
+          "pageNumber": 7
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p8",
+          "pageNumber": 8
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-02",
+          "pageId": "p10",
+          "pageNumber": 10
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p2",
+          "pageNumber": 2
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p5",
+          "pageNumber": 5
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p6",
+          "pageNumber": 6
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p7",
+          "pageNumber": 7
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p8",
+          "pageNumber": 8
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-03",
+          "pageId": "p10",
+          "pageNumber": 10
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p2",
+          "pageNumber": 2
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p5",
+          "pageNumber": 5
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p6",
+          "pageNumber": 6
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p7",
+          "pageNumber": 7
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p8",
+          "pageNumber": 8
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-04",
+          "pageId": "p10",
+          "pageNumber": 10
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p2",
+          "pageNumber": 2
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p5",
+          "pageNumber": 5
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p6",
+          "pageNumber": 6
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p7",
+          "pageNumber": 7
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p8",
+          "pageNumber": 8
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-05",
+          "pageId": "p10",
+          "pageNumber": 10
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p1",
+          "pageNumber": 1
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p2",
+          "pageNumber": 2
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p3",
+          "pageNumber": 3
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p4",
+          "pageNumber": 4
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p5",
+          "pageNumber": 5
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p6",
+          "pageNumber": 6
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p7",
+          "pageNumber": 7
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p8",
+          "pageNumber": 8
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p9",
+          "pageNumber": 9
+        },
+        {
+          "lessonId": "professor-agentic-design-depth-v2-20260511-topic-06",
+          "pageId": "p10",
+          "pageNumber": 10
+        }
+      ],
+      "qualityStatus": "warning",
+      "createdAt": "2026-05-11T02:56:59.325Z"
+    }
+  ]
+}

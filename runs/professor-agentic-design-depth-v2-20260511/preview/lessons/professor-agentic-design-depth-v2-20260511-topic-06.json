@@ -1,0 +1,853 @@
+{
+  "id": "professor-agentic-design-depth-v2-20260511-topic-06",
+  "title": "知识链路：Planning",
+  "audience": "面向希望按大学/研究生课程方式掌握 Agentic Design Patterns 的中文学习者。",
+  "config": {
+    "targetPageCount": 10,
+    "minPageCount": 10,
+    "maxPageCount": 10
+  },
+  "sourceContext": {
+    "sourcePath": "/Users/dm/Documents/1.书籍资料/BOOKS/Agentic_Design_Patterns.pdf",
+    "sourceKind": "book",
+    "sourceAnchorIds": [
+      "source-001:chapter-6-planning",
+      "source-001:page-100",
+      "source-001:page-101",
+      "source-001:page-102",
+      "source-001:page-103",
+      "source-001:page-104",
+      "source-001:page-105",
+      "source-001:page-106",
+      "source-001:page-107",
+      "source-001:page-108",
+      "source-001:page-109",
+      "source-001:page-110",
+      "source-001:page-111",
+      "source-001:page-112",
+      "source-001:paragraph-page-100-1",
+      "source-001:paragraph-page-100-2",
+      "source-001:paragraph-page-100-3",
+      "source-001:paragraph-page-101-1",
+      "source-001:paragraph-page-101-2",
+      "source-001:paragraph-page-101-3",
+      "source-001:paragraph-page-101-4",
+      "source-001:paragraph-page-101-5",
+      "source-001:paragraph-page-102-1",
+      "source-001:paragraph-page-103-1"
+    ],
+    "unitId": "unit-topic-06",
+    "chapterRefs": [
+      "Chapter 6: Planning"
+    ],
+    "conceptIds": [
+      "Chapter 6: Planning"
+    ]
+  },
+  "prerequisites": [
+    "具备基本 LLM / workflow / API 调用概念。",
+    "能阅读技术资料，并愿意沿知识节点和关键链路理解材料。"
+  ],
+  "learningObjectives": [
+    "建立本单元的知识节点。",
+    "说清节点之间的关键链路。",
+    "识别适用边界和相邻场景。"
+  ],
+  "pages": [
+    {
+      "id": "p1",
+      "type": "problem_scene",
+      "title": "本讲定位：Planning 解决什么问题",
+      "learningGoal": "本讲定位：Planning 解决什么问题",
+      "narrative": "长程任务不是把下一步 prompt 写得更长，而是要先决定目标分解、依赖顺序、检查点和回退策略。 覆盖边界：本页只建立课程主线，不把所有实现细节一次讲完。 来源术语：本书把 agent、workflow、patterns 作为分析坐标；这里的结论都要回到这些坐标判断。",
+      "sourceAnchorIds": [
+        "source-001:chapter-6-planning",
+        "source-001:page-100",
+        "source-001:page-101",
+        "source-001:page-102",
+        "source-001:page-103",
+        "source-001:page-104"
+      ],
+      "grounding": {
+        "kind": "source",
+        "note": "由来源章节和 Codex 课程化重构共同支撑。"
+      },
+      "visualSpec": {
+        "kind": "architecture",
+        "description": "从问题压力进入课程主线。",
+        "keyElements": [
+          "本讲定位",
+          "核心问题",
+          "覆盖边界",
+          "agent",
+          "workflow",
+          "patterns"
+        ]
+      },
+      "knowledgeBoard": {
+        "boardKind": "synthesis_board",
+        "headline": "本讲定位：Planning 解决什么问题",
+        "coreProposition": "长程任务不是把下一步 prompt 写得更长，而是要先决定目标分解、依赖顺序、检查点和回退策略。",
+        "leftColumn": [
+          {
+            "label": "课程主线",
+            "emphasis": "mechanism",
+            "items": [
+              "识别本讲定位在本页中的作用",
+              "识别核心问题在本页中的作用",
+              "识别覆盖边界在本页中的作用"
+            ]
+          }
+        ],
+        "rightColumn": [
+          {
+            "label": "边界与读法",
+            "emphasis": "boundary",
+            "items": [
+              "覆盖边界：先建立课程主线，不一次展开所有实现细节",
+              "判断依据：任务压力越高，越需要可检查 workflow",
+              "阅读顺序：先看 Planning 的问题，再看机制和边界"
+            ]
+          }
+        ],
+        "sourceTrace": [
+          {
+            "anchorId": "source-001:chapter-6-planning",
+            "supports": "支撑「本讲定位：Planning 解决什么问题」的核心命题与来源章节定位。"
+          },
+          {
+            "anchorId": "source-001:page-100",
+            "supports": "用于校准本页的例子、边界或机制链，避免脱离原始资料。"
+          }
+        ],
+        "bottomLine": "Planning 的入口是问题压力，不是模式名称。"
+      }
+    },
+    {
+      "id": "p2",
+      "type": "structure_diagram",
+      "title": "先修要求与术语入口",
+      "learningGoal": "先修要求与术语入口",
+      "narrative": "先修要求：需要理解 LLM 输出不确定、workflow 可被拆成状态和动作、工具调用需要边界。术语入口包括 目标、子任务、依赖关系、检查点。",
+      "sourceAnchorIds": [
+        "source-001:page-105",
+        "source-001:page-106",
+        "source-001:page-107",
+        "source-001:page-108",
+        "source-001:page-109",
+        "source-001:page-110"
+      ],
+      "grounding": {
+        "kind": "source",
+        "note": "由来源章节和 Codex 课程化重构共同支撑。"
+      },
+      "visualSpec": {
+        "kind": "graph",
+        "description": "先修概念进入后续知识节点。",
+        "keyElements": [
+          "先修概念",
+          "正式术语",
+          "来源阅读映射"
+        ],
+        "states": [
+          "先修概念",
+          "正式术语",
+          "章节证据"
+        ]
+      },
+      "knowledgeBoard": {
+        "boardKind": "definition_board",
+        "headline": "先修要求与术语入口",
+        "coreProposition": "需要理解 LLM 输出不确定、workflow 可被拆成状态和动作、工具调用需要边界。",
+        "leftColumn": [
+          {
+            "label": "术语与先修",
+            "emphasis": "definition",
+            "items": [
+              "沿来源内容定位一个知识节点",
+              "需要理解 LLM 输出不确定、workflow 可被拆成状态和动作、工具调用需要边界",
+              "术语入口包括 目标、子任务、依赖关系、检查点"
+            ]
+          }
+        ],
+        "rightColumn": [
+          {
+            "label": "阅读入口",
+            "emphasis": "note",
+            "items": [
+              "缺少先修会让后续关键链路断裂",
+              "术语不是背诵项，而是读图和读来源的坐标",
+              "来源章节用于校准概念边界"
+            ]
+          }
+        ],
+        "sourceTrace": [
+          {
+            "anchorId": "source-001:page-105",
+            "supports": "支撑「先修要求与术语入口」的核心命题与来源章节定位。"
+          },
+          {
+            "anchorId": "source-001:page-106",
+            "supports": "用于校准本页的例子、边界或机制链，避免脱离原始资料。"
+          }
+        ],
+        "bottomLine": "先修和术语是后续链路的坐标系。"
+      }
+    },
+    {
+      "id": "p3",
+      "type": "structure_diagram",
+      "title": "知识节点：目标 / 子任务 / 依赖关系",
+      "learningGoal": "知识节点：目标 / 子任务 / 依赖关系",
+      "narrative": "知识节点：目标、子任务、依赖关系、检查点、回退策略。这些节点不是目录条目，而是理解 Planning 时反复出现的结构位置。",
+      "sourceAnchorIds": [
+        "source-001:page-111",
+        "source-001:page-112",
+        "source-001:paragraph-page-100-1",
+        "source-001:paragraph-page-100-2",
+        "source-001:paragraph-page-100-3",
+        "source-001:paragraph-page-101-1"
+      ],
+      "grounding": {
+        "kind": "source",
+        "note": "由来源章节和 Codex 课程化重构共同支撑。"
+      },
+      "visualSpec": {
+        "kind": "flow",
+        "description": "把章节内容压缩成可复用知识节点。",
+        "keyElements": [
+          "目标",
+          "子任务",
+          "依赖关系",
+          "检查点",
+          "回退策略"
+        ],
+        "states": [
+          "目标拆成可验证子任务",
+          "依赖决定执行顺序",
+          "检查点决定何时停下重估"
+        ]
+      },
+      "interactionSpec": {
+        "kind": "choice",
+        "learnerAction": "指出哪个节点决定后续路径",
+        "expectedObservation": "可以比较关键节点在不同条件下如何改变 workflow 路径。",
+        "cognitivePurpose": "训练学习者比较关键节点、判断机制路径，并识别边界条件。",
+        "options": [
+          {
+            "id": "boundary-aware",
+            "label": "保留边界条件",
+            "outcomeId": "boundary-aware",
+            "resultTitle": "判断更稳",
+            "resultTone": "success",
+            "explanation": "子任务 通常决定后续 workflow 的组织方式。"
+          }
+        ]
+      },
+      "knowledgeBoard": {
+        "boardKind": "synthesis_board",
+        "headline": "知识节点：目标 / 子任务 / 依赖关系",
+        "coreProposition": "目标、子任务、依赖关系、检查点、回退策略。",
+        "leftColumn": [
+          {
+            "label": "知识节点",
+            "emphasis": "mechanism",
+            "items": [
+              "目标拆成可验证子任务",
+              "依赖决定执行顺序",
+              "检查点决定何时停下重估"
+            ]
+          }
+        ],
+        "rightColumn": [
+          {
+            "label": "来源定位",
+            "emphasis": "boundary",
+            "items": [
+              "节点不是目录标题，而是后续推理的位置",
+              "每个节点都要服务机制解释或边界判断",
+              "不要把概念列表误当学习完成"
+            ]
+          }
+        ],
+        "sourceTrace": [
+          {
+            "anchorId": "source-001:page-111",
+            "supports": "支撑「知识节点：目标 / 子任务 / 依赖关系」的核心命题与来源章节定位。"
+          },
+          {
+            "anchorId": "source-001:page-112",
+            "supports": "用于校准本页的例子、边界或机制链，避免脱离原始资料。"
+          }
+        ],
+        "bottomLine": "知识节点必须连成可复用结构，不能停留在目录摘要。"
+      }
+    },
+    {
+      "id": "p4",
+      "type": "intuition_visual",
+      "title": "核心定义：把术语放进结构",
+      "learningGoal": "核心定义：把术语放进结构",
+      "narrative": "核心定义：Planning 是在执行前或执行中维护任务结构：列出子目标、资源、顺序、风险和完成标准，并随观察结果调整。 先有这个定义，后面的方法比较和边界案例才有共同坐标。 来源术语：本书把 agent、workflow、patterns 作为分析坐标；这里的结论都要回到这些坐标判断。",
+      "sourceAnchorIds": [
+        "source-001:paragraph-page-101-2",
+        "source-001:paragraph-page-101-3",
+        "source-001:paragraph-page-101-4",
+        "source-001:paragraph-page-101-5",
+        "source-001:paragraph-page-102-1",
+        "source-001:paragraph-page-103-1"
+      ],
+      "grounding": {
+        "kind": "source",
+        "note": "由来源章节和 Codex 课程化重构共同支撑。"
+      },
+      "visualSpec": {
+        "kind": "table",
+        "description": "定义、正例和反例的最小判别条件。",
+        "keyElements": [
+          "定义",
+          "正例",
+          "反例",
+          "判别条件",
+          "agent",
+          "workflow",
+          "patterns"
+        ]
+      },
+      "knowledgeBoard": {
+        "boardKind": "definition_board",
+        "headline": "核心定义：把术语放进结构",
+        "coreProposition": "Planning 是在执行前或执行中维护任务结构：列出子目标、资源、顺序、风险和完成标准，并随观察结果调整。",
+        "leftColumn": [
+          {
+            "label": "定义坐标",
+            "emphasis": "definition",
+            "items": [
+              "识别定义在本页中的作用",
+              "识别正例在本页中的作用",
+              "识别反例在本页中的作用"
+            ]
+          }
+        ],
+        "rightColumn": [
+          {
+            "label": "正例与反例",
+            "emphasis": "example",
+            "items": [
+              "正例：结构能约束状态、动作和评估",
+              "反例：只让回答更像答案不等于 pattern",
+              "定义的价值在于支撑后续比较"
+            ]
+          }
+        ],
+        "sourceTrace": [
+          {
+            "anchorId": "source-001:paragraph-page-101-2",
+            "supports": "支撑「核心定义：把术语放进结构」的核心命题与来源章节定位。"
+          },
+          {
+            "anchorId": "source-001:paragraph-page-101-3",
+            "supports": "用于校准本页的例子、边界或机制链，避免脱离原始资料。"
+          }
+        ],
+        "bottomLine": "定义的作用是建立可比较、可迁移、可反驳的坐标。"
+      }
+    },
+    {
+      "id": "p5",
+      "type": "interactive_model",
+      "title": "关键链路：从压力到控制结构",
+      "learningGoal": "关键链路：从压力到控制结构",
+      "narrative": "关键链路：目标拆成可验证子任务；依赖决定执行顺序；检查点决定何时停下重估；失败后按回退策略改路。这条链路解释了为什么 Planning 不是一个孤立技巧，而是一种控制复杂度的方式。",
+      "sourceAnchorIds": [
+        "source-001:chapter-6-planning",
+        "source-001:page-100",
+        "source-001:page-101",
+        "source-001:page-102",
+        "source-001:page-103",
+        "source-001:page-104"
+      ],
+      "grounding": {
+        "kind": "source",
+        "note": "由来源章节和 Codex 课程化重构共同支撑。"
+      },
+      "visualSpec": {
+        "kind": "animation",
+        "description": "关键链路按步骤展开。",
+        "keyElements": [
+          "目标",
+          "子任务",
+          "依赖关系",
+          "检查点",
+          "回退策略"
+        ],
+        "states": [
+          "目标拆成可验证子任务",
+          "依赖决定执行顺序",
+          "检查点决定何时停下重估",
+          "失败后按回退策略改路"
+        ]
+      },
+      "interactionSpec": {
+        "kind": "choice",
+        "learnerAction": "顺着关键链路判断下一步",
+        "expectedObservation": "可以比较关键节点在不同条件下如何改变 workflow 路径。",
+        "cognitivePurpose": "训练学习者比较关键节点、判断机制路径，并识别边界条件。",
+        "options": [
+          {
+            "id": "boundary-aware",
+            "label": "保留边界条件",
+            "outcomeId": "boundary-aware",
+            "resultTitle": "判断更稳",
+            "resultTone": "success",
+            "explanation": "关键链路必须说明触发条件，否则只是顺序列表。"
+          }
+        ]
+      },
+      "knowledgeBoard": {
+        "boardKind": "mechanism_board",
+        "headline": "关键链路：从压力到控制结构",
+        "coreProposition": "目标拆成可验证子任务；依赖决定执行顺序；检查点决定何时停下重估；失败后按回退策略改路。",
+        "leftColumn": [
+          {
+            "label": "机制链",
+            "emphasis": "mechanism",
+            "items": [
+              "目标拆成可验证子任务",
+              "依赖决定执行顺序",
+              "检查点决定何时停下重估"
+            ]
+          }
+        ],
+        "rightColumn": [
+          {
+            "label": "例子与边界",
+            "emphasis": "example",
+            "items": [
+              "长资料课程生成需要采样、映射、编写和质量审查",
+              "短任务或低风险任务不一定需要复杂 workflow",
+              "失败信号决定回退、重试或升级"
+            ]
+          }
+        ],
+        "sourceTrace": [
+          {
+            "anchorId": "source-001:chapter-6-planning",
+            "supports": "支撑「关键链路：从压力到控制结构」的核心命题与来源章节定位。"
+          },
+          {
+            "anchorId": "source-001:page-100",
+            "supports": "用于校准本页的例子、边界或机制链，避免脱离原始资料。"
+          }
+        ],
+        "bottomLine": "关键链路不是术语列表，而是从任务压力到控制结构的因果路径。"
+      }
+    },
+    {
+      "id": "p6",
+      "type": "code_walkthrough",
+      "title": "经典例题：一个最小 workflow",
+      "learningGoal": "经典例题：一个最小 workflow",
+      "narrative": "经典例题：把整本书生成课程时，先给总览课，再按核心 pattern 拆单元，并保留章节映射；这比逐章机械改写更适合建立课程主线。 例题的价值在于把抽象模式落到可检查步骤，而不是增加术语。",
+      "sourceAnchorIds": [
+        "source-001:page-105",
+        "source-001:page-106",
+        "source-001:page-107",
+        "source-001:page-108",
+        "source-001:page-109",
+        "source-001:page-110"
+      ],
+      "grounding": {
+        "kind": "source",
+        "note": "由来源章节和 Codex 课程化重构共同支撑。"
+      },
+      "visualSpec": {
+        "kind": "diagram",
+        "description": "例题把定义映射到可执行步骤。",
+        "keyElements": [
+          "输入",
+          "中间状态",
+          "检查点",
+          "输出"
+        ]
+      },
+      "code": {
+        "language": "text",
+        "value": "goal -> tasks -> dependencies -> checkpoints -> execute -> observe -> replan"
+      },
+      "knowledgeBoard": {
+        "boardKind": "example_board",
+        "headline": "经典例题：一个最小 workflow",
+        "coreProposition": "把整本书生成课程时，先给总览课，再按核心 pattern 拆单元，并保留章节映射；这比逐章机械改写更适合建立课程主线。",
+        "leftColumn": [
+          {
+            "label": "例题步骤",
+            "emphasis": "example",
+            "items": [
+              "识别输入在本页中的作用",
+              "识别中间状态在本页中的作用",
+              "识别检查点在本页中的作用"
+            ]
+          }
+        ],
+        "rightColumn": [
+          {
+            "label": "可复用模式",
+            "emphasis": "boundary",
+            "items": [
+              "例题显示模式如何落到具体产物",
+              "可复用部分是步骤契约和检查点",
+              "不可复用部分是具体材料和业务约束"
+            ]
+          }
+        ],
+        "sourceTrace": [
+          {
+            "anchorId": "source-001:page-105",
+            "supports": "支撑「经典例题：一个最小 workflow」的核心命题与来源章节定位。"
+          },
+          {
+            "anchorId": "source-001:page-106",
+            "supports": "用于校准本页的例子、边界或机制链，避免脱离原始资料。"
+          }
+        ],
+        "bottomLine": "例题的价值在于暴露可检查步骤，而不是增加术语数量。"
+      }
+    },
+    {
+      "id": "p7",
+      "type": "misconception_check",
+      "title": "方法比较：相邻模式如何区分",
+      "learningGoal": "方法比较：相邻模式如何区分",
+      "narrative": "方法比较：固定计划适合已知流程；动态计划适合开放任务；多 agent 计划还需要明确每个角色的输入输出和合并责任。 比较时先看依赖关系、风险和失败恢复，而不是只看模式名称。",
+      "sourceAnchorIds": [
+        "source-001:page-111",
+        "source-001:page-112",
+        "source-001:paragraph-page-100-1",
+        "source-001:paragraph-page-100-2",
+        "source-001:paragraph-page-100-3",
+        "source-001:paragraph-page-101-1"
+      ],
+      "grounding": {
+        "kind": "source",
+        "note": "由来源章节和 Codex 课程化重构共同支撑。"
+      },
+      "visualSpec": {
+        "kind": "table",
+        "description": "相邻方法和适用边界对照。",
+        "keyElements": [
+          "适合场景",
+          "主要收益",
+          "失效条件",
+          "成本"
+        ]
+      },
+      "assessmentSpec": {
+        "kind": "multiple_choice",
+        "prompt": "哪种判断最接近本页比较方法？",
+        "options": [
+          "根据依赖、风险和失败恢复选择模式",
+          "只记住术语名称"
+        ],
+        "correctAnswer": "根据依赖、风险和失败恢复选择模式"
+      },
+      "feedbackSpec": {
+        "correctFeedback": "正确。根据依赖、风险和失败恢复选择模式 能把术语放回知识链路中。",
+        "incorrectFeedback": "只记住术语名称不能说明它在 workflow 中解决什么问题。",
+        "misconceptionAddressed": "把模式名称当成理解本身。"
+      },
+      "knowledgeBoard": {
+        "boardKind": "comparison_board",
+        "headline": "方法比较：相邻模式如何区分",
+        "coreProposition": "固定计划适合已知流程；动态计划适合开放任务；多 agent 计划还需要明确每个角色的输入输出和合并责任。",
+        "leftColumn": [
+          {
+            "label": "比较维度",
+            "emphasis": "mechanism",
+            "items": [
+              "识别适合场景在本页中的作用",
+              "识别主要收益在本页中的作用",
+              "识别失效条件在本页中的作用"
+            ]
+          }
+        ],
+        "rightColumn": [
+          {
+            "label": "选择边界",
+            "emphasis": "boundary",
+            "items": [
+              "相邻模式容易被名称误导",
+              "选择方法时先问依赖是否顺序、是否可并行、是否要回退",
+              "高风险路径需要更明确的证据检查"
+            ]
+          }
+        ],
+        "sourceTrace": [
+          {
+            "anchorId": "source-001:page-111",
+            "supports": "支撑「方法比较：相邻模式如何区分」的核心命题与来源章节定位。"
+          },
+          {
+            "anchorId": "source-001:page-112",
+            "supports": "用于校准本页的例子、边界或机制链，避免脱离原始资料。"
+          }
+        ],
+        "bottomLine": "方法比较要回到依赖、风险、边界和失败恢复。"
+      }
+    },
+    {
+      "id": "p8",
+      "type": "quiz",
+      "title": "案例判断：把概念用于一个场景",
+      "learningGoal": "案例判断：把概念用于一个场景",
+      "narrative": "应用案例：如果一个团队把 Planning 用到真实系统，首先要检查输入、状态、证据和失败恢复是否都被显式化。没有这些结构，页面看起来完整也可能只是包装。",
+      "sourceAnchorIds": [
+        "source-001:paragraph-page-101-2",
+        "source-001:paragraph-page-101-3",
+        "source-001:paragraph-page-101-4",
+        "source-001:paragraph-page-101-5",
+        "source-001:paragraph-page-102-1",
+        "source-001:paragraph-page-103-1"
+      ],
+      "grounding": {
+        "kind": "source",
+        "note": "由来源章节和 Codex 课程化重构共同支撑。"
+      },
+      "visualSpec": {
+        "kind": "diagram",
+        "description": "案例判断把概念放回场景。",
+        "keyElements": [
+          "场景",
+          "判断依据",
+          "来源证据",
+          "边界条件"
+        ]
+      },
+      "assessmentSpec": {
+        "kind": "multiple_choice",
+        "prompt": "判断一个案例是否真正使用了该模式，应先看什么？",
+        "options": [
+          "输入、状态、证据和失败恢复是否显式化",
+          "只记住术语名称"
+        ],
+        "correctAnswer": "输入、状态、证据和失败恢复是否显式化"
+      },
+      "feedbackSpec": {
+        "correctFeedback": "正确。输入、状态、证据和失败恢复是否显式化 能把术语放回知识链路中。",
+        "incorrectFeedback": "只记住术语名称不能说明它在 workflow 中解决什么问题。",
+        "misconceptionAddressed": "把模式名称当成理解本身。"
+      },
+      "knowledgeBoard": {
+        "boardKind": "evidence_board",
+        "headline": "案例判断：把概念用于一个场景",
+        "coreProposition": "如果一个团队把 Planning 用到真实系统，首先要检查输入、状态、证据和失败恢复是否都被显式化。",
+        "leftColumn": [
+          {
+            "label": "证据判断",
+            "emphasis": "example",
+            "items": [
+              "识别场景在本页中的作用",
+              "识别判断依据在本页中的作用",
+              "识别来源证据在本页中的作用"
+            ]
+          }
+        ],
+        "rightColumn": [
+          {
+            "label": "来源校准",
+            "emphasis": "note",
+            "items": [
+              "案例必须能指出结构是否真的存在",
+              "没有显式状态时，完整页面可能只是包装",
+              "证据链决定结论能否发布"
+            ]
+          }
+        ],
+        "sourceTrace": [
+          {
+            "anchorId": "source-001:paragraph-page-101-2",
+            "supports": "支撑「案例判断：把概念用于一个场景」的核心命题与来源章节定位。"
+          },
+          {
+            "anchorId": "source-001:paragraph-page-101-3",
+            "supports": "用于校准本页的例子、边界或机制链，避免脱离原始资料。"
+          }
+        ],
+        "bottomLine": "案例判断必须检查结构是否真实存在，而不是只看产物外观。"
+      }
+    },
+    {
+      "id": "p9",
+      "type": "transfer_challenge",
+      "title": "边界案例：什么时候结论会断裂",
+      "learningGoal": "边界案例：什么时候结论会断裂",
+      "narrative": "边界案例：计划太粗会失控，计划太细会僵化；关键是每一步都能验证，而不是把所有细节一次性写死。 相邻场景：研究生课程设计中，planning 可把“全书总览、核心概念、方法比较、边界案例”组织成可持续学习路径。 这说明本章结论有适用条件，不能把模式名称直接外推成通用答案。",
+      "sourceAnchorIds": [
+        "source-001:chapter-6-planning",
+        "source-001:page-100",
+        "source-001:page-101",
+        "source-001:page-102",
+        "source-001:page-103",
+        "source-001:page-104"
+      ],
+      "grounding": {
+        "kind": "source",
+        "note": "由来源章节和 Codex 课程化重构共同支撑。"
+      },
+      "visualSpec": {
+        "kind": "timeline",
+        "description": "边界案例标出保留条件和断裂条件。",
+        "keyElements": [
+          "原场景",
+          "相邻场景",
+          "保留条件",
+          "断裂条件"
+        ]
+      },
+      "assessmentSpec": {
+        "kind": "multiple_choice",
+        "prompt": "边界案例最重要的判断是什么？",
+        "options": [
+          "哪些条件保留，哪些条件改变后结论断裂",
+          "只记住术语名称"
+        ],
+        "correctAnswer": "哪些条件保留，哪些条件改变后结论断裂"
+      },
+      "feedbackSpec": {
+        "correctFeedback": "正确。哪些条件保留，哪些条件改变后结论断裂 能把术语放回知识链路中。",
+        "incorrectFeedback": "只记住术语名称不能说明它在 workflow 中解决什么问题。",
+        "misconceptionAddressed": "把模式名称当成理解本身。"
+      },
+      "knowledgeBoard": {
+        "boardKind": "boundary_board",
+        "headline": "边界案例：什么时候结论会断裂",
+        "coreProposition": "计划太粗会失控，计划太细会僵化；关键是每一步都能验证，而不是把所有细节一次性写死。",
+        "leftColumn": [
+          {
+            "label": "断裂条件",
+            "emphasis": "boundary",
+            "items": [
+              "识别原场景在本页中的作用",
+              "识别相邻场景在本页中的作用",
+              "识别保留条件在本页中的作用"
+            ]
+          }
+        ],
+        "rightColumn": [
+          {
+            "label": "迁移判断",
+            "emphasis": "boundary",
+            "items": [
+              "短任务、低风险或无来源约束时，复杂流程可能是负担",
+              "没有状态记录和失败恢复时，多角色也可能只是 prompt 堆叠",
+              "迁移到论文、专利或博客时要重建条件"
+            ]
+          }
+        ],
+        "sourceTrace": [
+          {
+            "anchorId": "source-001:chapter-6-planning",
+            "supports": "支撑「边界案例：什么时候结论会断裂」的核心命题与来源章节定位。"
+          },
+          {
+            "anchorId": "source-001:page-100",
+            "supports": "用于校准本页的例子、边界或机制链，避免脱离原始资料。"
+          }
+        ],
+        "bottomLine": "能迁移的是结构，不能迁移的是未满足的条件。"
+      }
+    },
+    {
+      "id": "p10",
+      "type": "summary_card",
+      "title": "总结图：知识节点与关键链路",
+      "learningGoal": "总结图：知识节点与关键链路",
+      "narrative": "总结图：Planning 可以压缩成三句话：先定位问题压力；再找知识节点；最后沿关键链路检查边界条件。后续章节都可以按这个顺序阅读。 来源术语：本书把 agent、workflow、patterns 作为分析坐标；这里的结论都要回到这些坐标判断。",
+      "sourceAnchorIds": [
+        "source-001:page-105",
+        "source-001:page-106",
+        "source-001:page-107",
+        "source-001:page-108",
+        "source-001:page-109",
+        "source-001:page-110"
+      ],
+      "grounding": {
+        "kind": "source",
+        "note": "由来源章节和 Codex 课程化重构共同支撑。"
+      },
+      "visualSpec": {
+        "kind": "table",
+        "description": "本单元知识节点和关键链路压缩表。",
+        "keyElements": [
+          "本讲定位",
+          "知识节点",
+          "关键链路",
+          "边界案例",
+          "下一单元衔接",
+          "agent",
+          "workflow",
+          "patterns"
+        ]
+      },
+      "knowledgeBoard": {
+        "boardKind": "synthesis_board",
+        "headline": "总结图：知识节点与关键链路",
+        "coreProposition": "Planning 可以压缩成三句话：先定位问题压力；再找知识节点；最后沿关键链路检查边界条件。",
+        "leftColumn": [
+          {
+            "label": "结构回收",
+            "emphasis": "mechanism",
+            "items": [
+              "识别本讲定位在本页中的作用",
+              "识别知识节点在本页中的作用",
+              "识别关键链路在本页中的作用"
+            ]
+          }
+        ],
+        "rightColumn": [
+          {
+            "label": "带走结论",
+            "emphasis": "note",
+            "items": [
+              "Planning 的学习重点不是记住名称",
+              "durable 记忆来自节点、链路和边界的组合",
+              "下一轮阅读要沿同一结构检查来源"
+            ]
+          }
+        ],
+        "sourceTrace": [
+          {
+            "anchorId": "source-001:page-105",
+            "supports": "支撑「总结图：知识节点与关键链路」的核心命题与来源章节定位。"
+          },
+          {
+            "anchorId": "source-001:page-106",
+            "supports": "用于校准本页的例子、边界或机制链，避免脱离原始资料。"
+          }
+        ],
+        "bottomLine": "Planning 最终要被记成节点、链路、例子和边界。"
+      }
+    }
+  ],
+  "misconceptions": [
+    {
+      "id": "name-is-understanding",
+      "statement": "记住 Planning 的名称就等于理解。",
+      "correction": "真正理解需要说清它解决的问题、关键节点、链路和边界条件。"
+    }
+  ],
+  "transferTasks": [
+    {
+      "id": "adjacent-case",
+      "prompt": "把 Planning 的知识链路应用到一个相邻资料场景，标出保留条件和断裂条件。",
+      "targetMentalModel": "知识节点与关键链路先于模式名称。"
+    }
+  ],
+  "summary": [
+    "Planning 先从具体问题压力进入。",
+    "知识节点：目标、子任务、依赖关系、检查点。",
+    "关键链路：目标拆成可验证子任务；依赖决定执行顺序。",
+    "边界案例决定结论能否外推。"
+  ],
+  "displayMode": "textbook_deck"
+}
