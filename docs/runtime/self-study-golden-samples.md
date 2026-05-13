@@ -1,0 +1,60 @@
+# Self-Study Golden Samples
+
+This file records learner-accepted self-study Web Deck samples. Use them as the minimum bar for future book/topic authoring runs.
+
+## Accepted Samples
+
+### `self-study-agentic-design-overview-v3`
+
+- Preview route: `#/preview/self-study-agentic-design-overview-v3`
+- Scope: one 10-page overview unit for `Agentic Design Patterns`
+- Learner feedback: "有了明显提升，阅读下来有知识的获得感。"
+- Acceptance signal: the deck reads like a student-facing compressed textbook, not a teacher lecture deck or page template.
+
+Page title pattern:
+
+1. Agent 不是模型，而是带目标的执行回路
+2. 全书九章其实在回答同一个控制问题
+3. 中间产物是 Prompt Chaining 的真正控制点
+4. Routing 让输入先选路，而不是让一个提示处理所有事
+5. Parallelization 的价值是多视角覆盖，不只是跑得更快
+6. Reflection 有用的前提是评审标准足够具体
+7. Tool Use 把语言决定接到外部世界的可验证观察
+8. Planning 和 Memory 解决的是长任务里的状态连续性
+9. Multi-Agent 只有在交付物可合并时才值得使用
+10. 读完整本书前，先记住这条设计判断链
+
+### `self-study-agentic-design-prompt-chaining-v1`
+
+- Preview route: `#/preview/self-study-agentic-design-prompt-chaining-v1`
+- Scope: one 10-page focused topic unit for `Prompt Chaining`
+- Learner feedback: "可以，有获得感。"
+- Acceptance signal: the deck turns one chapter into a knowledge chain with concrete mechanisms, examples, boundaries, and source-grounded claims.
+
+Page title pattern:
+
+1. 复杂任务失败时，常见问题不是模型不聪明，而是任务没有被拆开
+2. Chain 成立的前提是后一步真的需要前一步的产物
+3. 中间产物要像接口，而不是像一段随意解释
+4. 结构化输出是 Prompt Chaining 的止损阀
+5. Prompt Chaining 常和并行处理拼在一起，而不是互相替代
+6. 工具调用让 Prompt Chain 从文本流程变成可执行流程
+7. 线性 chain 适合管道，但复杂 agent 往往需要图或状态机
+8. 选择 chain 前先问：这是依赖链，还是任务清单？
+9. 一个好的 Prompt Chain 要把验证点放在步骤之间
+10. 记住 Prompt Chaining 的设计判断：拆、传、验、再组合
+
+## Quality Contract
+
+Future self-study textbook authoring should preserve these properties:
+
+- Page titles are learner-facing propositions or questions, not authoring roles such as `先看失败`, `直观模型`, `结构与术语`, or `迁移总结`.
+- Every page adds one independent knowledge judgment; the same board structure cannot be repeated with only the topic name changed.
+- The page body explains mechanism, example/evidence, and boundary in student-facing language.
+- Source grounding is visible through `sourceAnchorIds` and `knowledgeBoard.sourceTrace`, but source anchors do not replace explanation.
+- A topic unit should read like a compressed textbook chapter for self-study, not speaker notes for a professor.
+
+## Regression Hooks
+
+- `evaluateSelfStudyTextbookRubric` rejects authoring scaffold language, repeated `knowledgeBoard` content, repeated page-role title patterns, and single page-role titles.
+- The accepted title patterns above are covered by `self-study-textbook-rubric.test.ts` so future rubric changes do not accidentally reject the current golden direction.

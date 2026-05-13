@@ -100,6 +100,48 @@ describe("evaluateSelfStudyTextbookRubric", () => {
     expect(result.pageResults[0]?.weakItems).toEqual(expect.arrayContaining(["authoring scaffold language"]));
   });
 
+  test("fails page-role titles even before they repeat across units", () => {
+    const lesson = selfStudyLesson();
+    lesson.pages[0]!.title = "Prompt Chaining：先看失败";
+
+    const result = evaluateSelfStudyTextbookRubric([lesson]);
+
+    expect(result.status).toBe("failed");
+    expect(result.pageResults[0]?.weakItems).toEqual(expect.arrayContaining(["page-role title"]));
+  });
+
+  test("passes accepted self-study golden sample title patterns", () => {
+    const overview = lessonWithTitles("overview-golden", [
+      "Agent 不是模型，而是带目标的执行回路",
+      "全书九章其实在回答同一个控制问题",
+      "中间产物是 Prompt Chaining 的真正控制点",
+      "Routing 让输入先选路，而不是让一个提示处理所有事",
+      "Parallelization 的价值是多视角覆盖，不只是跑得更快",
+      "Reflection 有用的前提是评审标准足够具体",
+      "Tool Use 把语言决定接到外部世界的可验证观察",
+      "Planning 和 Memory 解决的是长任务里的状态连续性",
+      "Multi-Agent 只有在交付物可合并时才值得使用",
+      "读完整本书前，先记住这条设计判断链"
+    ]);
+    const promptChaining = lessonWithTitles("prompt-chaining-golden", [
+      "复杂任务失败时，常见问题不是模型不聪明，而是任务没有被拆开",
+      "Chain 成立的前提是后一步真的需要前一步的产物",
+      "中间产物要像接口，而不是像一段随意解释",
+      "结构化输出是 Prompt Chaining 的止损阀",
+      "Prompt Chaining 常和并行处理拼在一起，而不是互相替代",
+      "工具调用让 Prompt Chain 从文本流程变成可执行流程",
+      "线性 chain 适合管道，但复杂 agent 往往需要图或状态机",
+      "选择 chain 前先问：这是依赖链，还是任务清单？",
+      "一个好的 Prompt Chain 要把验证点放在步骤之间",
+      "记住 Prompt Chaining 的设计判断：拆、传、验、再组合"
+    ]);
+
+    expect(evaluateSelfStudyTextbookRubric([overview, promptChaining])).toMatchObject({
+      status: "passed",
+      failedPageCount: 0
+    });
+  });
+
   test("fails repeated page-role title patterns across generated units", () => {
     const first = templatedLesson("prompt-chaining", "Prompt Chaining");
     const second = templatedLesson("routing", "Routing");
@@ -172,6 +214,48 @@ function selfStudyLesson(): {
       }
     ]
   };
+}
+
+function lessonWithTitles(id: string, titles: string[]): ReturnType<typeof selfStudyLesson> {
+  const lesson = selfStudyLesson();
+  lesson.id = id;
+  lesson.pages = titles.map((title, index) => {
+    const pageNumber = index + 1;
+    return {
+      ...selfStudyLesson().pages[0]!,
+      id: `p${pageNumber}`,
+      title,
+      narrative: `本页解释 ${title}，并说明它在自学链路中的具体判断价值。`,
+      sourceAnchorIds: [`book:p${pageNumber}`],
+      knowledgeBoard: {
+        ...selfStudyLesson().pages[0]!.knowledgeBoard,
+        headline: `${title} 应该怎样理解？`,
+        coreProposition: `${title}。这不是页面模板角色，而是学习者读完后应该带走的独立判断。第 ${pageNumber} 页说明该判断的机制、例子、证据和边界。`,
+        leftColumn: [
+          {
+            label: "机制说明",
+            items: [
+              `${title} 对应一个可解释的知识节点，而不是“先看失败”这类作者提示。`,
+              "学习者需要知道它解决什么问题、依赖什么前提、和前后概念如何连接。"
+            ]
+          }
+        ],
+        rightColumn: [
+          {
+            label: "例子与边界",
+            items: [
+              `例如把 ${title} 放进 agent workflow 设计时，要看它如何影响状态、证据或执行顺序。`,
+              "边界是：如果这一页只能替换成任意主题名，它就不是合格的自学页面。",
+              `来源证据 book:p${pageNumber} 支持这一页的独立判断。`
+            ]
+          }
+        ],
+        sourceTrace: [{ anchorId: `book:p${pageNumber}`, supports: `${title} 的来源证据。` }],
+        bottomLine: `${title} 是一个可带走的知识判断，不是模板化页面角色。`
+      }
+    };
+  });
+  return lesson;
 }
 
 function templatedLesson(id: string, topic: string): ReturnType<typeof selfStudyLesson> {

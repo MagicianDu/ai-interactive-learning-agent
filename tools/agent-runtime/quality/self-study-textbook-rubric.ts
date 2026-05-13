@@ -122,6 +122,9 @@ function evaluatePage(
   if (hasAuthoringScaffoldLanguage(page)) {
     boardIssues.push({ kind: "weak", item: "authoring scaffold language" });
   }
+  if (extractScaffoldTitleRole(page.title)) {
+    boardIssues.push({ kind: "weak", item: "page-role title" });
+  }
   if (hasRepeatedPageRoleTitle) {
     boardIssues.push({ kind: "weak", item: "repeated page-role title pattern" });
   }
