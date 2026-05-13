@@ -246,6 +246,55 @@ describe("content-quality-blueprint", () => {
     });
   });
 
+  test("builds student self-study textbook page blueprints", () => {
+    const blueprint = buildContentBlueprint({
+      audience: "研究生自学者",
+      difficultyLevel: "upper_undergraduate_or_graduate",
+      sourceKind: "book",
+      courseIntent: "student_self_study_textbook",
+      units: [plannedUnit({ targetPageCount: 10, focusConcepts: ["Agentic Design Patterns"] })]
+    });
+
+    expect(blueprint.courseIntent).toBe("student_self_study_textbook");
+    expect(blueprint.globalRules.join("\n")).toContain("学生自学 Web 教材");
+    expect(blueprint.globalRules.join("\n")).toContain("不要出现本讲定位");
+    expect(blueprint.globalRules.join("\n")).toContain("100 页只是长书默认建议");
+    expect(blueprint.units[0]?.pageBlueprints).toHaveLength(10);
+    expect(blueprint.units[0]?.pageBlueprints[0]).toMatchObject({
+      pageType: "problem_scene",
+      teachingMove: expect.stringContaining("学习问题"),
+      learnerAction: expect.stringContaining("自己读懂")
+    });
+    expect(blueprint.units[0]?.pageBlueprints[0]?.mustInclude).toEqual(
+      expect.arrayContaining(["knowledgeBoard", "learner-facing headline", "concrete explanation", "sourceTrace", "bottomLine"])
+    );
+    expect(blueprint.units[0]?.pageBlueprints.map((page) => page.lectureRole ?? "")).not.toContain("course_framing");
+    expect(blueprint.units[0]?.pageBlueprints.map((page) => page.pageType)).toEqual([
+      "problem_scene",
+      "intuition_visual",
+      "structure_diagram",
+      "process_animation",
+      "code_walkthrough",
+      "structure_diagram",
+      "misconception_check",
+      "summary_card",
+      "structure_diagram",
+      "summary_card"
+    ]);
+  });
+
+  test("keeps compact self-study blueprints at the requested page count", () => {
+    const blueprint = buildContentBlueprint({
+      audience: "研究生自学者",
+      sourceKind: "book",
+      courseIntent: "student_self_study_textbook",
+      units: [plannedUnit({ targetPageCount: 6, focusConcepts: ["Agentic Design Patterns"] })]
+    });
+
+    expect(blueprint.units[0]?.pageBlueprints).toHaveLength(6);
+    expect(blueprint.units[0]?.pageBlueprints.at(-1)).toMatchObject({ pageType: "summary_card" });
+  });
+
   test("extends professor lecture deck page blueprints to 12 pages when requested", () => {
     const blueprint = buildContentBlueprint({
       audience: "研究生",

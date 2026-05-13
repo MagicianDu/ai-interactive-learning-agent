@@ -70,21 +70,7 @@ function globalRules(input: BuildContentBlueprintInput): string[] {
   return [
     `所有 learner-facing 内容必须中文优先，围绕 ${input.audience} 的已有知识和阅读习惯设计。`,
     `教学难度层级为${levelLabel}：要有先修概念、正式术语、来源阅读映射、关键节点、关键链路、例子和边界条件，避免泛泛科普。`,
-    ...(input.courseIntent === "professor_lecture_deck"
-      ? [
-          "课程形态为教材式知识链路 Web Deck：像大学/研究生课程课件，标题清楚、内容高密度、图表服务理解。",
-          "每页只讲一个知识节点或一条关键链路；显性页面结构优先使用定义、公式/伪代码、图、例子、对比、边界和总结。",
-          "教授式页面必须优先产出 page.knowledgeBoard，字段包括 headline、coreProposition、leftColumn、rightColumn、sourceTrace、bottomLine；title/narrative 只保留兼容摘要。",
-          "knowledgeBoard 内容逻辑必须是 source proposition -> decomposition -> evidence -> reconstruction：先写原文命题，再拆解为结构化知识链，给出来源证据，最后重构为可迁移结论。",
-          "每个 knowledgeBoard 至少包含两个结构化 sections：leftColumn 与 rightColumn；section 可承载 example、mechanism、comparison、boundary，sourceTrace 必须记录来源支持关系。",
-          "不要生成 PPTX、Slides 或文件导出话术；最终产物仍是 Web Deck。",
-          "教授式 Web Deck 不强制 interactionSpec 或页内 assessment；如果保留内部 spec，学生侧也不应显性看到教学设计包装。"
-        ]
-      : [
-          "不要把资料改写成摘要；每页必须有一个学习动作、一个可见结构或一个可检查判断。",
-          "术语、公式、代码和定义必须放在直觉、视觉模型和 learner action 之后。",
-          "反馈必须解释为什么，指出错误假设、因果机制和可迁移规则。"
-        ]),
+    ...courseIntentGlobalRules(input.courseIntent),
     ...(requiresPaperResearchMoves(input.sourceKind, input.difficultyLevel)
       ? ["论文精读必须显式覆盖：研究问题、论文贡献、方法机制、实验/证据、局限/威胁、迁移判断。"]
       : []),
@@ -100,6 +86,35 @@ function globalRules(input: BuildContentBlueprintInput): string[] {
   ];
 }
 
+function courseIntentGlobalRules(courseIntent: CourseIntent | undefined): string[] {
+  if (courseIntent === "professor_lecture_deck") {
+    return [
+      "课程形态为教材式知识链路 Web Deck：像大学/研究生课程课件，标题清楚、内容高密度、图表服务理解。",
+      "每页只讲一个知识节点或一条关键链路；显性页面结构优先使用定义、公式/伪代码、图、例子、对比、边界和总结。",
+      "教授式页面必须优先产出 page.knowledgeBoard，字段包括 headline、coreProposition、leftColumn、rightColumn、sourceTrace、bottomLine；title/narrative 只保留兼容摘要。",
+      "knowledgeBoard 内容逻辑必须是 source proposition -> decomposition -> evidence -> reconstruction：先写原文命题，再拆解为结构化知识链，给出来源证据，最后重构为可迁移结论。",
+      "每个 knowledgeBoard 至少包含两个结构化 sections：leftColumn 与 rightColumn；section 可承载 example、mechanism、comparison、boundary，sourceTrace 必须记录来源支持关系。",
+      "不要生成 PPTX、Slides 或文件导出话术；最终产物仍是 Web Deck。",
+      "教授式 Web Deck 不强制 interactionSpec 或页内 assessment；如果保留内部 spec，学生侧也不应显性看到教学设计包装。"
+    ];
+  }
+  if (courseIntent === "student_self_study_textbook") {
+    return [
+      "课程形态为学生自学 Web 教材：每页必须直接讲清楚一个知识片段，而不是给老师提示该讲什么。",
+      "每页优先产出 page.knowledgeBoard；headline 是学习者问题或知识命题，coreProposition 是本页要讲清楚的答案。",
+      "leftColumn 放概念、机制、因果链、定义或推导；rightColumn 放例子、反例、来源证据或适用边界。",
+      "不要出现本讲定位、课堂讨论、教授讲义、课后作业、教学目标、教学设计、识别本页中的作用等教师视角话术。",
+      "如果内容放不下一屏，必须拆成多页；不要通过长段落或纵向滚动承载密度。",
+      "100 页只是长书默认建议，不是硬限制；用户指定页数优先。"
+    ];
+  }
+  return [
+    "不要把资料改写成摘要；每页必须有一个学习动作、一个可见结构或一个可检查判断。",
+    "术语、公式、代码和定义必须放在直觉、视觉模型和 learner action 之后。",
+    "反馈必须解释为什么，指出错误假设、因果机制和可迁移规则。"
+  ];
+}
+
 function buildUnitBlueprint(
   unit: PlannedCourseUnit,
   sourceKind: string,
@@ -110,7 +125,11 @@ function buildUnitBlueprint(
   const sourceRequirement = sourceRequirementForUnit(unit, sourceKind);
   const semanticHints = semanticHintsForUnit(unit, sourceSemantics);
   const templates =
-    courseIntent === "professor_lecture_deck" ? professorLectureTemplatesForPageCount(unit.targetPageCount) : templatesForPageCount(unit.targetPageCount);
+    courseIntent === "professor_lecture_deck"
+      ? professorLectureTemplatesForPageCount(unit.targetPageCount)
+      : courseIntent === "student_self_study_textbook"
+        ? selfStudyTemplatesForPageCount(unit.targetPageCount)
+        : templatesForPageCount(unit.targetPageCount);
   return {
     unitId: unit.unitId,
     lessonId: unit.lessonId,
@@ -283,6 +302,101 @@ function templatesForPageCount(targetPageCount: number): PageTemplate[] {
   ].slice(0, targetPageCount);
 }
 
+function selfStudyTemplatesForPageCount(targetPageCount: number): PageTemplate[] {
+  const templates: PageTemplate[] = [
+    selfStudyTemplate(
+      "problem_scene",
+      "把本单元最重要的学习问题讲清楚：学习者为什么需要自己读懂这一段内容。",
+      "根据页面给出的材料，先判断自己读懂这个问题需要抓住哪些关键条件。",
+      "问题场景图、最小上下文和需要解释的核心矛盾。",
+      "说明这个问题背后的知识缺口，以及后续页面会如何补齐。",
+      ["学习问题", "最小上下文", "为什么重要"]
+    ),
+    selfStudyTemplate(
+      "intuition_visual",
+      "用直观图或小例子建立第一层理解，避免一开始堆术语。",
+      "用自己的话复述这个直观模型，并指出它能解释什么、不能解释什么。",
+      "直观模型、正例和反例边界。",
+      "解释类比或直觉成立的条件，提醒哪些地方不能过度外推。",
+      ["直观模型", "正例", "反例或边界"]
+    ),
+    selfStudyTemplate(
+      "structure_diagram",
+      "拆出本页的概念结构：节点是什么，节点之间靠什么关系连接。",
+      "顺着结构图自己读懂每个节点在整条知识链里的位置。",
+      "概念图、层级图或依赖关系图。",
+      "说明每个结构节点的功能，以及缺失某节点会导致什么理解断裂。",
+      ["概念节点", "依赖关系", "结构功能"]
+    ),
+    selfStudyTemplate(
+      "process_animation",
+      "讲清楚关键机制如何一步步发生，不停留在静态定义。",
+      "沿着步骤解释每一步为什么会导向下一步。",
+      "时间线、状态迁移图或流程板书。",
+      "说明每一步的触发条件、结果和失败信号。",
+      ["机制步骤", "触发条件", "结果变化"]
+    ),
+    selfStudyTemplate(
+      "code_walkthrough",
+      "把来源中的公式、伪代码、架构片段或术语连接到前面的结构。",
+      "定位正式表达中对应的概念节点，并解释它为什么必要。",
+      "短公式/伪代码/术语表加高亮注释。",
+      "解释正式表达如何压缩前面的直观机制，避免只背符号。",
+      ["正式表达", "符号含义", "和前页结构的对应关系"]
+    ),
+    selfStudyTemplate(
+      "structure_diagram",
+      "比较两个容易混淆的概念、模式、条件或设计选择。",
+      "根据对比表判断什么时候该用哪个解释，什么时候不能用。",
+      "对比表、二维坐标或条件分叉图。",
+      "说明差异来自条件变化、目标变化还是假设变化。",
+      ["概念比较", "适用条件", "混淆边界"]
+    ),
+    selfStudyTemplate(
+      "misconception_check",
+      "指出一个读者很容易形成的错误理解，并用反例拆掉它。",
+      "判断这个说法错在哪里，再把它改写成有边界的正确说法。",
+      "错误说法、反例和修正后规则。",
+      "解释错误理解偷换了哪个条件，正确规则应如何限定。",
+      ["常见误解", "反例", "修正规则"]
+    ),
+    selfStudyTemplate(
+      "summary_card",
+      "压缩本单元的关键节点和关键链路，形成可复习的板书。",
+      "用一条短链路复述从问题到结论的结构。",
+      "一屏总结板书：问题、结构、机制、例子、边界。",
+      "说明这张总结如何帮助继续阅读下一单元。",
+      ["关键节点", "关键链路", "复习句"]
+    )
+  ];
+  const extensionTemplates: PageTemplate[] = [
+    selfStudyTemplate(
+      "structure_diagram",
+      "补充来源证据链：哪些原文片段支持本单元的核心结论。",
+      "把来源证据和前面的知识节点逐一对应起来。",
+      "来源片段到知识节点的映射表。",
+      "说明哪些结论有直接来源支持，哪些属于教学推理。",
+      ["来源证据链", "source-backed claim", "教学推理边界"]
+    ),
+    selfStudyTemplate(
+      "summary_card",
+      "补充一页自学回看：把本单元放回整本资料或整门课的上下文。",
+      "判断自己是否能用本单元结构继续读后续章节。",
+      "本单元到相邻章节/topic 的衔接图。",
+      "说明下一步阅读会复用哪些节点，哪些暂时不用展开。",
+      ["章节衔接", "继续阅读路径", "暂不展开内容"]
+    )
+  ];
+  if (targetPageCount < 8) {
+    const compact = [templates[0]!, templates[2]!, templates[3]!, templates[5]!, templates[6]!, templates[7]!];
+    return compact.slice(0, Math.max(1, targetPageCount));
+  }
+  if (targetPageCount === 8) {
+    return templates;
+  }
+  return [...templates, ...extensionTemplates].slice(0, targetPageCount);
+}
+
 function professorLectureTemplatesForPageCount(targetPageCount: number): PageTemplate[] {
   const templates: PageTemplate[] = [
     professorTemplate(
@@ -429,6 +543,26 @@ function professorTemplate(
 }
 
 const professorKnowledgeBoardMustInclude = ["knowledgeBoard", "coreProposition", "leftColumn", "rightColumn", "sourceTrace", "bottomLine"];
+
+function selfStudyTemplate(
+  pageType: string,
+  teachingMove: string,
+  learnerAction: string,
+  visualRequirement: string,
+  feedbackRequirement: string,
+  mustInclude: string[]
+): PageTemplate {
+  return {
+    pageType,
+    teachingMove,
+    learnerAction,
+    visualRequirement,
+    feedbackRequirement,
+    mustInclude: () => [...mustInclude, ...selfStudyKnowledgeBoardMustInclude]
+  };
+}
+
+const selfStudyKnowledgeBoardMustInclude = ["knowledgeBoard", "learner-facing headline", "concrete explanation", "sourceTrace", "bottomLine"];
 
 function sourceRequirementForUnit(unit: PlannedCourseUnit, sourceKind: string): string {
   if (sourceKind === "topic" || unit.sourceAnchorIds.length === 0) {

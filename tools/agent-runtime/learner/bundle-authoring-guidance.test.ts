@@ -51,6 +51,30 @@ describe("bundle authoring guidance", () => {
     expect(guidance).not.toContain("缺互动");
   });
 
+  test("guides student self-study textbook authoring", () => {
+    const guidance = buildBundleAuthoringGuidance({
+      topic: "Agent Workflow Patterns",
+      sourcePath: "/tmp/book.pdf",
+      sourceKind: "book",
+      audience: "研究生自学者",
+      difficultyLevel: "upper_undergraduate_or_graduate",
+      unitPages: 10,
+      targetTotalPages: 100,
+      totalPagesSpecified: false,
+      strategy: "overview_plus_topic",
+      language: "zh-CN",
+      courseIntent: "student_self_study_textbook"
+    });
+
+    expect(guidance).toContain("学生自学 Web 教材");
+    expect(guidance).toContain("每页直接讲内容");
+    expect(guidance).toContain("不要写本讲定位");
+    expect(guidance).toContain("knowledgeBoard");
+    expect(guidance).toContain("100 页只是长书默认建议");
+    expect(guidance).toContain("缺少自学教材结构");
+    expect(guidance).not.toContain("缺互动");
+  });
+
   test("project_ready points Codex to authoring context before publishing", async () => {
     const service = new LearnerProjectService(await import("node:fs/promises").then(({ mkdtemp }) => mkdtemp("/tmp/learner-guidance-")));
     const result = await service.createProject({
