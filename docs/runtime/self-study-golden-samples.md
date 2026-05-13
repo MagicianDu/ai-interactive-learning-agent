@@ -44,6 +44,26 @@ Page title pattern:
 9. 一个好的 Prompt Chain 要把验证点放在步骤之间
 10. 记住 Prompt Chaining 的设计判断：拆、传、验、再组合
 
+### `self-study-agentic-design-tool-use-v1`
+
+- Preview route: `#/preview/self-study-agentic-design-tool-use-v1`
+- Scope: one 10-page focused topic unit for `Tool Use / Function Calling`
+- Learner feedback: "内容可以。"
+- Acceptance signal: the deck explains Tool Use as an external-world action and observation loop, with clear boundaries between model proposal, runtime execution, and observation feedback.
+
+Page title pattern:
+
+1. LLM 只有接上工具，才从“会说”变成“能做”
+2. Function Calling 不是执行工具，而是生成可执行请求
+3. Tool Definition 是模型理解外部能力的接口说明
+4. Tool Use 的控制链路有六个状态：描述、决定、生成、执行、观察、再处理
+5. 工具结果必须回到模型上下文，否则行动不会进入推理
+6. 工具调用把风险从“回答错”扩展到“做错事”
+7. 不是所有外部能力都适合直接暴露给模型
+8. Tool Use 接外部世界，Chaining 管内部依赖
+9. 设计工具型 agent 时，先定义可观察的动作边界
+10. 记住 Tool Use 的判断：模型提议，系统执行，结果再进入模型
+
 ## Quality Contract
 
 Future self-study textbook authoring should preserve these properties:

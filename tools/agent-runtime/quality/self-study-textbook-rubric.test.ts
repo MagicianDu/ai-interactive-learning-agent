@@ -135,8 +135,20 @@ describe("evaluateSelfStudyTextbookRubric", () => {
       "一个好的 Prompt Chain 要把验证点放在步骤之间",
       "记住 Prompt Chaining 的设计判断：拆、传、验、再组合"
     ]);
+    const toolUse = lessonWithTitles("tool-use-golden", [
+      "LLM 只有接上工具，才从“会说”变成“能做”",
+      "Function Calling 不是执行工具，而是生成可执行请求",
+      "Tool Definition 是模型理解外部能力的接口说明",
+      "Tool Use 的控制链路有六个状态：描述、决定、生成、执行、观察、再处理",
+      "工具结果必须回到模型上下文，否则行动不会进入推理",
+      "工具调用把风险从“回答错”扩展到“做错事”",
+      "不是所有外部能力都适合直接暴露给模型",
+      "Tool Use 接外部世界，Chaining 管内部依赖",
+      "设计工具型 agent 时，先定义可观察的动作边界",
+      "记住 Tool Use 的判断：模型提议，系统执行，结果再进入模型"
+    ]);
 
-    expect(evaluateSelfStudyTextbookRubric([overview, promptChaining])).toMatchObject({
+    expect(evaluateSelfStudyTextbookRubric([overview, promptChaining, toolUse])).toMatchObject({
       status: "passed",
       failedPageCount: 0
     });
