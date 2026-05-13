@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
@@ -158,6 +158,34 @@ describe("CourseWorkspace", () => {
     expect(window.location.hash).toBe("#/preview/public-smoke/unit/unit-overview/page/2");
   });
 
+  test("reloads generated preview content when the hash changes to another preview run", async () => {
+    window.history.replaceState(null, "", "#/preview/public-smoke/unit/unit-overview/page/1");
+    vi.spyOn(globalThis, "fetch").mockImplementation(mockGeneratedPreviewFetch({
+      "public-smoke": {
+        courseTitle: "公开示例：课程包",
+        lessonTitle: "公开示例：总览课",
+        pageTitle: "第一页"
+      },
+      "second-smoke": {
+        courseTitle: "第二示例：课程包",
+        lessonTitle: "第二示例：总览课",
+        pageTitle: "第二示例第一页"
+      }
+    }));
+
+    render(<CourseWorkspace coursePacks={coursePackRegistry} lessons={lessonRegistry} />);
+
+    expect(await screen.findByText("第一页")).toBeInTheDocument();
+
+    window.location.hash = "#/preview/second-smoke/unit/unit-overview/page/1";
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
+
+    await waitFor(() => {
+      expect(screen.getByText("第二示例第一页")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("第一页")).not.toBeInTheDocument();
+  });
+
   test("updates the stable hash route when the learner changes page", async () => {
     const user = userEvent.setup();
     render(<CourseWorkspace coursePacks={coursePackRegistry} lessons={lessonRegistry} />);
@@ -260,6 +288,79 @@ function jsonResponse(value: unknown): Response {
     headers: { "content-type": "application/json" },
     status: 200
   });
+}
+
+function mockGeneratedPreviewFetch(
+  previews: Record<string, { courseTitle: string; lessonTitle: string; pageTitle: string }>
+): typeof fetch {
+  return async (input) => {
+    const url = String(input);
+    const match = /^\/__learning-preview\/(?<runId>[a-z0-9-]+)\/(?<assetPath>.+)$/u.exec(url);
+    if (!match?.groups) {
+      throw new Error(`unexpected fetch: ${url}`);
+    }
+    const preview = previews[match.groups.runId];
+    if (!preview) {
+      throw new Error(`unexpected preview run: ${match.groups.runId}`);
+    }
+
+    if (match.groups.assetPath === "manifest.json") {
+      return jsonResponse({
+        schemaVersion: 1,
+        runId: match.groups.runId,
+        coursePackId: match.groups.runId,
+        courseTitle: preview.courseTitle,
+        coursePackPath: "course-pack.json",
+        lessonPaths: [`lessons/${match.groups.runId}-overview.json`]
+      });
+    }
+
+    if (match.groups.assetPath === "course-pack.json") {
+      return jsonResponse({
+        id: match.groups.runId,
+        title: preview.courseTitle,
+        parentRunId: match.groups.runId,
+        sourceKind: "blog",
+        strategy: "overview_plus_topic",
+        units: [
+          {
+            unitId: "unit-overview",
+            title: preview.lessonTitle,
+            kind: "overview",
+            lessonId: `${match.groups.runId}-overview`,
+            targetPageCount: 1,
+            sourceAnchorIds: ["source-001:page-1"],
+            conceptIds: ["overview"]
+          }
+        ]
+      });
+    }
+
+    if (match.groups.assetPath === `lessons/${match.groups.runId}-overview.json`) {
+      return jsonResponse({
+        id: `${match.groups.runId}-overview`,
+        title: preview.lessonTitle,
+        audience: "中文学习者",
+        config: { targetPageCount: 1 },
+        prerequisites: ["能阅读中文技术材料"],
+        learningObjectives: ["建立总览心智模型"],
+        pages: [
+          {
+            id: "page-01",
+            type: "summary_card",
+            title: preview.pageTitle,
+            learningGoal: "压缩模型",
+            narrative: "用中文总结结构。"
+          }
+        ],
+        misconceptions: [],
+        transferTasks: [],
+        summary: ["问题、结构、迁移"]
+      });
+    }
+
+    throw new Error(`unexpected fetch: ${url}`);
+  };
 }
 
 class MemoryStorage implements Storage {

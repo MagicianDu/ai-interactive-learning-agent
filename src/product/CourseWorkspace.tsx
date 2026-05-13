@@ -22,10 +22,10 @@ type CourseWorkspaceProps = {
 };
 
 export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) {
-  const initialRoute = parseProductRoute(typeof window === "undefined" ? "" : window.location.hash);
+  const [currentRoute, setCurrentRoute] = useState(() => readCurrentProductRoute());
   const [generatedPreview, setGeneratedPreview] = useState<GeneratedPreviewLoadResult | undefined>(undefined);
   const [previewError, setPreviewError] = useState<string | undefined>(undefined);
-  const [previewLoading, setPreviewLoading] = useState(Boolean(initialRoute.previewRunId));
+  const [previewLoading, setPreviewLoading] = useState(Boolean(currentRoute.previewRunId));
   const workspaceLessons = useMemo(
     () => mergeLessons(lessons, generatedPreview?.lessonEntries ?? []),
     [generatedPreview?.lessonEntries, lessons]
@@ -35,12 +35,12 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
     [coursePacks, generatedPreview]
   );
   const defaultLesson = workspaceLessons[0];
-  const defaultCoursePack = pickDefaultCoursePack(workspaceCoursePacks, initialRoute.courseId ?? initialRoute.previewRunId);
-  const defaultUnit = pickDefaultUnit(defaultCoursePack?.coursePack, initialRoute.unitId);
+  const defaultCoursePack = pickDefaultCoursePack(workspaceCoursePacks, currentRoute.courseId ?? currentRoute.previewRunId);
+  const defaultUnit = pickDefaultUnit(defaultCoursePack?.coursePack, currentRoute.unitId);
   const defaultCoursePackLessonId = defaultUnit?.lessonId ?? defaultCoursePack?.coursePack.units.find((unit) => unit.lessonId)?.lessonId;
   const [selectedCoursePackId, setSelectedCoursePackId] = useState(defaultCoursePack?.id ?? "");
   const [selectedLessonId, setSelectedLessonId] = useState(defaultCoursePackLessonId ?? defaultLesson?.id ?? "");
-  const [selectedPageIndex, setSelectedPageIndex] = useState(initialRoute.pageIndex ?? 0);
+  const [selectedPageIndex, setSelectedPageIndex] = useState(currentRoute.pageIndex ?? 0);
   const [activeView, setActiveView] = useState<WorkspaceView>("deck");
   const [, setLearningProgress] = useState(() => loadLearningProgress());
   const selectedLesson = workspaceLessons.find((lesson) => lesson.id === selectedLessonId)?.lesson ?? defaultLesson?.lesson;
@@ -71,7 +71,17 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
   }, []);
 
   useEffect(() => {
-    const previewRunId = initialRoute.previewRunId;
+    const syncRoute = () => setCurrentRoute(readCurrentProductRoute());
+    window.addEventListener("hashchange", syncRoute);
+    window.addEventListener("popstate", syncRoute);
+    return () => {
+      window.removeEventListener("hashchange", syncRoute);
+      window.removeEventListener("popstate", syncRoute);
+    };
+  }, []);
+
+  useEffect(() => {
+    const previewRunId = currentRoute.previewRunId;
     if (!previewRunId) {
       return;
     }
@@ -86,13 +96,13 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
         setGeneratedPreview(preview);
         setPreviewError(undefined);
         const nextCoursePack = preview.coursePackEntry.coursePack;
-        const nextUnit = pickDefaultUnit(nextCoursePack, initialRoute.unitId) ?? nextCoursePack.units.find((unit) => unit.lessonId);
+        const nextUnit = pickDefaultUnit(nextCoursePack, currentRoute.unitId) ?? nextCoursePack.units.find((unit) => unit.lessonId);
         const nextLessonId = nextUnit?.lessonId ?? preview.lessonEntries[0]?.id;
         setSelectedCoursePackId(nextCoursePack.id);
         if (nextLessonId) {
           setSelectedLessonId(nextLessonId);
         }
-        setSelectedPageIndex(initialRoute.pageIndex ?? 0);
+        setSelectedPageIndex(currentRoute.pageIndex ?? 0);
         setActiveView("deck");
       })
       .catch((error: unknown) => {
@@ -110,7 +120,7 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
     return () => {
       cancelled = true;
     };
-  }, [initialRoute.pageIndex, initialRoute.previewRunId, initialRoute.unitId]);
+  }, [currentRoute.pageIndex, currentRoute.previewRunId, currentRoute.unitId]);
 
   const updateRoute = (courseId: string, lessonId: string, pageIndex: number) => {
     const coursePack = workspaceCoursePacks.find((entry) => entry.id === courseId)?.coursePack;
@@ -172,7 +182,7 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
     });
   }, [currentPage?.id, safePageIndex, selectedCoursePackId, selectedCoursePackUnit?.unitId, selectedLesson.id]);
 
-  if (previewLoading && initialRoute.previewRunId) {
+  if (previewLoading && currentRoute.previewRunId) {
     return (
       <div className="flex h-screen items-center justify-center overflow-hidden bg-slate-950 px-5 text-center text-white">
         <p className="max-w-md text-sm text-slate-300">正在读取本地生成的课程预览...</p>
@@ -250,6 +260,10 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
       </div>
     </div>
   );
+}
+
+function readCurrentProductRoute() {
+  return parseProductRoute(typeof window === "undefined" ? "" : window.location.hash);
 }
 
 type RenderWorkspaceViewInput = {
