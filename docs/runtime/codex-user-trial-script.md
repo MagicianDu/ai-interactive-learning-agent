@@ -24,7 +24,8 @@ Expected authoring behavior:
 
 ```text
 Codex should inspect prepare_learning_course.coursePlan and contentBlueprint.units[*].pageBlueprints before writing lessons.
-Each lesson page should follow the blueprint's pageType, learnerAction, visualRequirement, feedbackRequirement, and sourceRequirement.
+For normal mental-model or professor lecture decks, each lesson page should follow the blueprint's pageType, learnerAction, visualRequirement, feedbackRequirement, and sourceRequirement.
+For student self-study Web textbooks, `pageType=codex_designed` means Codex/Claude designs the actual page role and sequence from the source; do not copy a fixed page template across pages. Titles must be content propositions or real learner questions, not page-role labels, and scaffold phrases such as "本页围绕..." should not appear in learner-facing pages.
 If publish_learning_course returns publish.blueprint.* issues, Codex should revise the lesson directly instead of asking the learner to approve internal artifacts.
 For long books, get_authoring_context should surface content anchors instead of table-of-contents or dedication anchors; if the first anchors are front matter, revise the source sampling before authoring.
 Course posture must follow the learner's stated difficulty level. For upper-undergraduate / graduate requests, include prerequisites, formal terms, source reading anchors, classroom discussion prompts, and homework-style transfer tasks.

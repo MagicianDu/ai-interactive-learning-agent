@@ -241,7 +241,7 @@ For a long technical book compressed into a configurable Web textbook:
    - Explain when each applies.
    - Give a final map the learner can use after leaving the course.
 
-Default unit page sequence:
+Suggested unit coverage, not a fixed sequence:
 
 ```text
 1. problem question
@@ -256,8 +256,16 @@ Default unit page sequence:
 10. summary map
 ```
 
-The sequence is a guide, not a rigid template. A page can change role if the
-source demands it, but every page must directly teach content.
+This list is coverage guidance only. For `student_self_study_textbook`,
+Codex/Claude owns the actual page design: page roles, page types, ordering, and
+knowledge-board structure must be chosen from the source material. Runtime
+`contentBlueprint` should therefore use authoring slots such as
+`pageType=codex_designed` rather than forcing a fixed page sequence.
+Visible titles are part of the learning content. They must be content
+propositions or real learner questions, not page-role labels such as
+"直观模型", "机制链路", or "来源证据". The renderer and quality gate should treat
+authoring scaffold phrases such as "本页围绕..." or "本页从...入手" as a content
+quality failure.
 
 ## Authoring Flow
 
@@ -274,7 +282,9 @@ should do the following after `prepare_learning_course`:
 3. Allocate the requested total or per-unit page budget.
 4. Write pages as self-contained textbook fragments.
 5. Preserve `sourceAnchorIds` and `knowledgeBoard.sourceTrace`.
-6. Publish only after quality gates pass.
+6. Ensure every page has a distinct `knowledgeBoard`; repeated headline,
+   `coreProposition`, column content, or `bottomLine` is a quality failure.
+7. Publish only after quality gates pass.
 
 MCP remains the validator and publisher. Codex remains responsible for actual
 high-quality authoring.
@@ -315,6 +325,7 @@ The course should fail publication when:
 - `sourceTrace.anchorId` does not match page-level `sourceAnchorIds`
 - a page lacks at least one concrete example, counterexample, evidence note, or
   boundary
+- two or more pages in the same lesson repeat the same `knowledgeBoard` content
 - a page is likely to exceed one viewport
 - a long-source course compresses the source into too few pages without an
   explicit learner request

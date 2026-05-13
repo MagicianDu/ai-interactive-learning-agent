@@ -259,28 +259,30 @@ describe("content-quality-blueprint", () => {
     expect(blueprint.globalRules.join("\n")).toContain("学生自学 Web 教材");
     expect(blueprint.globalRules.join("\n")).toContain("不要出现本讲定位");
     expect(blueprint.globalRules.join("\n")).toContain("100 页只是长书默认建议");
+    expect(blueprint.globalRules.join("\n")).toContain("Codex/Claude 自主设计");
+    expect(blueprint.globalRules.join("\n")).toContain("不是固定模板");
+    expect(blueprint.globalRules.join("\n")).toContain("标题必须是内容命题");
+    expect(blueprint.globalRules.join("\n")).toContain("不要用页面角色当标题");
+    expect(blueprint.globalRules.join("\n")).toContain("不要写“本页围绕");
     expect(blueprint.units[0]?.pageBlueprints).toHaveLength(10);
     expect(blueprint.units[0]?.pageBlueprints[0]).toMatchObject({
-      pageType: "problem_scene",
-      teachingMove: expect.stringContaining("学习问题"),
-      learnerAction: expect.stringContaining("自己读懂")
+      pageType: "codex_designed",
+      teachingMove: expect.stringContaining("Codex"),
+      learnerAction: expect.stringContaining("唯一")
     });
     expect(blueprint.units[0]?.pageBlueprints[0]?.mustInclude).toEqual(
-      expect.arrayContaining(["knowledgeBoard", "learner-facing headline", "concrete explanation", "sourceTrace", "bottomLine"])
+      expect.arrayContaining([
+        "knowledgeBoard",
+        "learner-facing headline",
+        "concrete explanation",
+        "sourceTrace",
+        "bottomLine",
+        "unique page role"
+      ])
     );
     expect(blueprint.units[0]?.pageBlueprints.map((page) => page.lectureRole ?? "")).not.toContain("course_framing");
-    expect(blueprint.units[0]?.pageBlueprints.map((page) => page.pageType)).toEqual([
-      "problem_scene",
-      "intuition_visual",
-      "structure_diagram",
-      "process_animation",
-      "code_walkthrough",
-      "structure_diagram",
-      "misconception_check",
-      "summary_card",
-      "structure_diagram",
-      "summary_card"
-    ]);
+    expect(blueprint.units[0]?.pageBlueprints.map((page) => page.pageType)).toEqual(Array(10).fill("codex_designed"));
+    expect(new Set(blueprint.units[0]?.pageBlueprints.map((page) => page.teachingMove)).size).toBe(1);
   });
 
   test("keeps compact self-study blueprints at the requested page count", () => {
@@ -292,7 +294,7 @@ describe("content-quality-blueprint", () => {
     });
 
     expect(blueprint.units[0]?.pageBlueprints).toHaveLength(6);
-    expect(blueprint.units[0]?.pageBlueprints.at(-1)).toMatchObject({ pageType: "summary_card" });
+    expect(blueprint.units[0]?.pageBlueprints.at(-1)).toMatchObject({ pageType: "codex_designed" });
   });
 
   test("extends professor lecture deck page blueprints to 12 pages when requested", () => {

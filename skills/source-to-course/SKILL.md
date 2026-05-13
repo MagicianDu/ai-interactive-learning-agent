@@ -13,7 +13,7 @@ Use this skill to turn learner-supplied material into a course request that the 
 - Keep learner-facing course output中文优先 unless the learner explicitly asks otherwise.
 - Preserve `sourceAnchorIds` for books, papers, patents, blogs, notes, folders, and other source-backed materials.
 - Advanced authoring tools can record Source Graph V2 and Course Planning V2 artifacts for expert audit, but learner mode should only receive course shape, preview, and quality summary.
-- Codex should follow `contentBlueprint.units[*].pageBlueprints` before writing lessons: page type, teaching move, learner action, visual requirement, feedback requirement, and source requirement.
+- Codex should use `contentBlueprint.units[*].pageBlueprints` before writing lessons as constraints. For `student_self_study_textbook`, `pageType=codex_designed` means Codex/Claude must design each page role from the source instead of following a fixed template.
 - Codex should follow `docs/runtime/codex-authoring-protocol-v2.md` (Codex Authoring Protocol V2) and the returned `sourceSemantics`: every page needs a mental-model move, source synthesis, learner action or check, feedback mechanism, and `cognitivePurpose` when interactive.
 - 不要让学习者审批内部 artifacts such as source maps, concept maps, curriculum plans, or critic reports in the default learner flow.
 
@@ -42,6 +42,7 @@ Ask for course intent when the learner's goal is ambiguous:
 
 - `build_mental_model`: interactive Web Deck for mental model construction, self-study, learner actions, feedback, misconception checks, and transfer.
 - `professor_lecture_deck`: professor-style Web Deck that feels like university or graduate lecture notes, with course framing, prerequisites, concept maps, method taxonomy, worked examples, discussion prompts, homework, reading path, and lecture takeaways.
+- `student_self_study_textbook`: self-study Web textbook for learners who want to avoid reading a long source directly; Codex/Claude designs the page sequence and writes dense student-facing explanations, while MCP validates source grounding and non-repetition.
 
 If the learner says "教授 PPT", "lecture slides", "大学课程讲义", or similar, route to `professor_lecture_deck` but state that the output is still a Web Deck, not PPTX or Slides export.
 
@@ -87,7 +88,8 @@ When inspecting expert details, prefer the latest `source-graph`, `course-plan`,
 - For long sources, prefer an overview unit followed by focused units instead of compressing the entire source into one short lesson.
 - Use Course Planning V2 expectations from authoring context to preserve strategy reason, source mapping, expected interactions, expected assessments, and transfer expectations.
 - For long books, check `coursePlan.sourceCoveragePlan`, `estimatedTotalPages`, and `planningNotes` before authoring; do not compress all chapters into one short unit unless the learner explicitly asks for a summary-only course.
-- Use `contentBlueprint.units[*].pageBlueprints` as the page-by-page authoring checklist; do not collapse it into long prose.
+- Use `contentBlueprint.units[*].pageBlueprints` as the page-budget and quality checklist. In `student_self_study_textbook`, do not copy a fixed page template; design distinct page roles and ensure every page has a unique `knowledgeBoard`.
+- For `student_self_study_textbook`, page titles must be content propositions or real learner questions. Do not use page-role labels such as "直观模型", "机制链路", or "来源证据" as visible titles, and do not write scaffold phrases such as "本页围绕..." or "本页从...入手".
 - Do not ask the learner to approve internal artifacts such as source maps, concept maps, or curriculum plans.
 - Preserve chapter or section mappings when the learner asks for them.
 - Keep every unit's page count aligned with the requested `unitPages`.

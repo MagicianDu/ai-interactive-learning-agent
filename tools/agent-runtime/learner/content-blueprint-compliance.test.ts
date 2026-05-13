@@ -124,7 +124,7 @@ describe("validateContentBlueprintCompliance", () => {
     ).toBe("student_self_study_textbook");
   });
 
-  it("does not require interactive or assessment specs for student self-study textbook blueprints", () => {
+  it("does not require fixed page types, interactive specs, or assessment specs for student self-study textbook blueprints", () => {
     expect(
       validateContentBlueprintCompliance({
         courseIR: selfStudyCourseIR(),
@@ -212,16 +212,7 @@ function courseIR(pages = validPages(), sourceKind = "book"): CourseIR {
 
 function selfStudyBlueprint(): ContentBlueprint {
   const sourceRequirement = "source-backed 页面必须包含 page.sourceAnchorIds；没有直接依据的推理页设置 grounding.kind 为 inferred，类比页设置为 analogy。";
-  const pageTypes = [
-    "problem_scene",
-    "intuition_visual",
-    "structure_diagram",
-    "process_animation",
-    "code_walkthrough",
-    "structure_diagram",
-    "misconception_check",
-    "summary_card"
-  ];
+  const pageTypes = Array(8).fill("codex_designed") as string[];
   return {
     version: "content-blueprint/v1",
     courseIntent: "student_self_study_textbook",
@@ -252,7 +243,16 @@ function selfStudyBlueprint(): ContentBlueprint {
 }
 
 function selfStudyCourseIR(): CourseIR {
-  const pageTypes = selfStudyBlueprint().units[0]!.pageBlueprints.map((page) => page.pageType);
+  const pageTypes = [
+    "problem_scene",
+    "intuition_visual",
+    "structure_diagram",
+    "process_animation",
+    "code_walkthrough",
+    "misconception_check",
+    "transfer_challenge",
+    "summary_card"
+  ];
   return buildCourseIR({
     runId: "self-study-run",
     coursePack: {

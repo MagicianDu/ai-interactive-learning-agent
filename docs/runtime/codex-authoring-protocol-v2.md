@@ -17,6 +17,17 @@ The goal is not to summarize material into slides. The goal is to reconstruct th
 
 Every page must perform one explicit mental-model move.
 
+For `student_self_study_textbook`, `contentBlueprint.units[*].pageBlueprints[*].pageType`
+may be `codex_designed`. Treat that as an authoring slot, not a page
+template. Codex or Claude should choose the actual page type, knowledge role,
+and sequence from the source material. The hard constraints are page budget,
+source grounding, one-screen density, unique `knowledgeBoard` content, examples
+or boundaries, and student-facing language.
+Visible titles must be content propositions or real learner questions. Do not
+use page-role labels such as "直观模型", "机制链路", or "来源证据" as titles,
+and do not expose authoring scaffold phrases such as "本页围绕..." or
+"本页从...入手".
+
 For each page, Codex should check:
 
 - `learningGoal`: what the learner should understand or be able to do after this page.

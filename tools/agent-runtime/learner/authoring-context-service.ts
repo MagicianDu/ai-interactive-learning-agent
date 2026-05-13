@@ -449,8 +449,12 @@ function authoringRequirementsForIntent(brief: AuthoringContextResult["brief"]):
   if (brief.courseIntent === "student_self_study_textbook") {
     return [
       "学生自学 Web 教材必须由 Codex/Claude 直接写出可读内容，不要输出给老师的授课提示。",
+      "Codex/Claude 自主设计每页的知识角色和内容顺序；contentBlueprint 是页数、来源、覆盖范围和质量约束，不是固定页面模板。",
+      "标题必须是内容命题或学习者真正会问的问题；不要用页面角色当标题，例如“直观模型”“机制链路”“来源证据”。",
+      "不要写“本页围绕...讲一个可自学知识片段”“本页从...入手”等 authoring scaffold 句；这些是内部写作过程，不是学生要学的内容。",
       "每页必须包含 knowledgeBoard，且标题、coreProposition、左右栏和 bottomLine 都要是学生能直接读懂的解释。",
       "source-backed 页面必须保留 page.sourceAnchorIds 和 knowledgeBoard.sourceTrace。",
+      "同一 lesson 内每页必须推进不同知识节点或关键链路，禁止复制同一套 headline、coreProposition、左右栏或 bottomLine。",
       "禁止本讲定位、课堂讨论、教授讲义、课后作业、教学目标、教学设计等教师视角话术。",
       "默认页数只是建议；如果用户指定总页数或每单元页数，以用户指定为准。"
     ];
@@ -599,7 +603,7 @@ function buildCodexInstruction(brief: AuthoringContextResult["brief"], unitCount
     brief.courseIntent === "professor_lecture_deck"
       ? "保持 title/narrative 作为兼容字段，但正式内容必须进入 page.knowledgeBoard；knowledgeBoard 字段为 headline、coreProposition、leftColumn、rightColumn、sourceTrace、bottomLine。内容逻辑按原文命题 -> 拆解 -> 证据 -> 重构组织。左栏用于概念、机制、定义或推导；右栏用于例子、反例、来源证据或边界；sourceTrace 记录 anchorId/supports，学生视图默认隐藏。"
       : brief.courseIntent === "student_self_study_textbook"
-        ? "保持 title/narrative 作为兼容摘要，但正式内容必须进入 page.knowledgeBoard；knowledgeBoard 字段为 headline、coreProposition、leftColumn、rightColumn、sourceTrace、bottomLine。headline 写学习者问题或知识命题，leftColumn 放概念/机制/因果链/定义，rightColumn 放例子/反例/证据/边界，bottomLine 给学生可复习结论。"
+        ? "保持 title/narrative 作为兼容摘要，但正式内容必须进入 page.knowledgeBoard；knowledgeBoard 字段为 headline、coreProposition、leftColumn、rightColumn、sourceTrace、bottomLine。标题必须是内容命题或学习者真正会问的问题，不要用页面角色当标题；不要写“本页围绕...讲一个可自学知识片段”“本页从...入手”等 authoring scaffold 句。headline 写学习者问题或知识命题，leftColumn 放概念/机制/因果链/定义，rightColumn 放例子/反例/证据/边界，bottomLine 给学生可复习结论。由 Codex/Claude 自主决定每页 page.type 和知识角色，不要套固定页序。"
       : undefined,
     ...(requiresResearchReadingContract(brief)
       ? ["这是一套论文精读课；每个相关 lesson 必须显式覆盖：研究问题、论文贡献、方法机制、实验/证据、局限/威胁、迁移判断。"]
@@ -610,7 +614,9 @@ function buildCodexInstruction(brief: AuthoringContextResult["brief"], unitCount
     ...(brief.sourceKind === "blog"
       ? ["这是一套实践案例课；每个相关 lesson 必须显式覆盖：实际问题、作者方案、实现路径、caveat/失败模式、可操作检查、迁移边界。"]
       : []),
-    "写 lesson 前先逐项遵循 contentBlueprint.units[*].pageBlueprints：pageType、teachingMove、learnerAction、visualRequirement、feedbackRequirement、sourceRequirement。",
+    brief.courseIntent === "student_self_study_textbook"
+      ? "写 lesson 前先读取 contentBlueprint.units[*] 的页数、来源、semanticHints 和 mustInclude；pageBlueprint.pageType=codex_designed 不是固定模板，具体页面类型、知识角色和顺序由 Codex/Claude 按来源内容设计。"
+      : "写 lesson 前先逐项遵循 contentBlueprint.units[*].pageBlueprints：pageType、teachingMove、learnerAction、visualRequirement、feedbackRequirement、sourceRequirement。",
     `输出语言：${brief.language}。`,
     `课程策略：${brief.strategy}。`,
     `每个单元页数：${brief.unitPages}。`,

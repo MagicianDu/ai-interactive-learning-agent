@@ -75,7 +75,7 @@ function validateUnitPages(
       continue;
     }
 
-    if (page.type !== pageBlueprint.pageType) {
+    if (!allowsAuthorDesignedPageType(selfStudyTextbook, pageBlueprint) && page.type !== pageBlueprint.pageType) {
       issues.push(pageTypeMismatchIssue(coursePackId, unitBlueprint, lesson.lessonId, page, pageBlueprint));
     }
 
@@ -101,6 +101,10 @@ function validateUnitPages(
   }
 
   return issues;
+}
+
+function allowsAuthorDesignedPageType(selfStudyTextbook: boolean, pageBlueprint: PageContentBlueprint): boolean {
+  return selfStudyTextbook || pageBlueprint.pageType === "codex_designed";
 }
 
 function requiresSourceSupport(unitBlueprint: UnitContentBlueprint, pageBlueprint: PageContentBlueprint): boolean {

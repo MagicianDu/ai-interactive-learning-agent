@@ -380,15 +380,7 @@ describe("AuthoringContextService", () => {
     expect(context.coursePlan.pageBudgetReminder).toContain("默认约 100 页");
     expect(context.contentBlueprint.courseIntent).toBe("student_self_study_textbook");
     expect(context.qualityContract.courseIntent).toBe("student_self_study_textbook");
-    expect(context.qualityContract.requiredPageTypes).toEqual([
-      "problem_scene",
-      "intuition_visual",
-      "structure_diagram",
-      "process_animation",
-      "code_walkthrough",
-      "misconception_check",
-      "summary_card"
-    ]);
+    expect(context.qualityContract.requiredPageTypes).toEqual(["codex_designed"]);
     expect(context.qualityContract.requiredLearningActions).toEqual([
       "read_explanation",
       "trace_knowledge_link",
@@ -401,6 +393,11 @@ describe("AuthoringContextService", () => {
     expect(context.qualityContract.publishChecklist.join("\n")).toContain("一屏读完");
     expect(context.codexInstruction).toContain("学生自学 Web 教材");
     expect(context.codexInstruction).toContain("不要写本讲定位");
+    expect(context.codexInstruction).toContain("不是固定模板");
+    expect(context.codexInstruction).toContain("pageType=codex_designed");
+    expect(context.codexInstruction).toContain("标题必须是内容命题");
+    expect(context.codexInstruction).toContain("不要用页面角色当标题");
+    expect(context.codexInstruction).toContain("不要写“本页围绕");
   });
 
   test("matches professor required page types to the requested 8-page blueprint", async () => {

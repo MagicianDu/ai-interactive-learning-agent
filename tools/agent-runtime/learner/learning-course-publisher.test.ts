@@ -678,6 +678,7 @@ function selfStudyTextbookLessonFixture(id: string) {
     "summary_card"
   ].map((type, index) => {
     const pageNumber = index + 1;
+    const pageRole = ["问题入口", "直觉模型", "机制结构", "过程链路", "正式表达", "概念比较", "误区边界", "复习压缩"][index] ?? `知识节点 ${pageNumber}`;
     return {
       id: `p${pageNumber}`,
       type,
@@ -687,15 +688,15 @@ function selfStudyTextbookLessonFixture(id: string) {
       sourceAnchorIds: [`book:p${pageNumber}`],
       knowledgeBoard: {
         boardKind: type === "summary_card" ? "synthesis_board" : "mechanism_board",
-        headline: "为什么一个大提示不如可检查的 workflow？",
-        coreProposition: "Agent workflow 的核心价值不是把提示写长，而是把任务拆成多个可观察、可恢复、可调整的中间步骤。",
+        headline: `${pageRole}：workflow 自学要抓住什么？`,
+        coreProposition: `${pageRole}页要说明的不是同一句定义，而是 workflow 如何在这一层把任务变成可观察、可恢复、可调整的学习对象。`,
         leftColumn: [
           {
             label: "机制链",
             items: [
-              "定义：大任务先被拆成多个短步骤，每一步都有明确输入和输出。",
-              "证据链：中间输出让系统能发现偏差，而不是等最终答案失败后才知道。",
-              "失败恢复可以从具体步骤开始，而不是重跑整个任务。"
+              `定义：${pageRole}把大任务拆成一个可单独检查的知识节点。`,
+              `证据链：${pageRole}要求学习者看到中间状态如何暴露偏差。`,
+              `失败恢复：${pageRole}说明修正可以从具体步骤开始，而不是重跑整个任务。`
             ]
           }
         ],
@@ -703,14 +704,14 @@ function selfStudyTextbookLessonFixture(id: string) {
           {
             label: "例子与边界",
             items: [
-              "案例分析：例如资料学习流程可以拆成来源采样、章节映射、页面 authoring、质量审查。",
-              "适用条件和边界是：如果任务本身很短且没有中间状态，workflow 可能只是增加延迟。",
-              "来源证据支持 workflow pattern 通常围绕可组合步骤展开。"
+              `案例分析：${pageRole}可对应资料学习流程中的来源采样、章节映射或质量审查。`,
+              `适用条件和边界：${pageRole}只在需要中间状态和失败恢复时有价值。`,
+              `来源证据支持 workflow pattern 在${pageRole}这一层围绕可组合步骤展开。`
             ]
           }
         ],
         sourceTrace: [{ anchorId: `book:p${pageNumber}`, supports: "来源描述了 workflow pattern 通过拆分步骤组织 agent 行为。" }],
-        bottomLine: "自学时要记住：workflow 的作用是让复杂任务拥有可检查的中间状态。"
+        bottomLine: `自学时要记住：${pageRole}负责把 workflow 的一个独立知识节点讲清楚。`
       }
     };
   });

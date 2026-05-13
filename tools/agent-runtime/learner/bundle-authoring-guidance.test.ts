@@ -70,6 +70,9 @@ describe("bundle authoring guidance", () => {
     expect(guidance).toContain("每页直接讲内容");
     expect(guidance).toContain("不要写本讲定位");
     expect(guidance).toContain("knowledgeBoard");
+    expect(guidance).toContain("标题必须是内容命题");
+    expect(guidance).toContain("不要用页面角色当标题");
+    expect(guidance).toContain("不要写“本页围绕");
     expect(guidance).toContain("100 页只是长书默认建议");
     expect(guidance).toContain("缺少自学教材结构");
     expect(guidance).not.toContain("缺互动");

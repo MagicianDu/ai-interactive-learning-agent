@@ -42,10 +42,14 @@ function intentAuthoringRules(brief: LearnerBrief): string[] {
   if (brief.courseIntent === "student_self_study_textbook") {
     return [
       "3. 学生自学 Web 教材要求每页直接讲内容：标题是学习者问题或知识命题，正文是可自读的解释，不是给老师的授课提示。",
-      "4. 每页必须优先填写 knowledgeBoard：headline、coreProposition、leftColumn、rightColumn、sourceTrace、bottomLine；title/narrative 只做兼容摘要。",
-      "5. leftColumn 放概念、机制、因果链、定义或推导；rightColumn 放例子、反例、来源证据或适用边界；sourceTrace 必须标出来源支持关系。",
-      "6. 不要写本讲定位、课堂讨论、教授讲义、课后作业、教学目标、教学设计、识别本页中的作用等教师视角话术。",
-      "7. 页面必须一屏可读；如果一个知识片段放不下，就拆成下一页，不要用长段落或纵向滚动硬塞。",
+      "4. 标题必须是内容命题或学习者真正会问的问题；不要用页面角色当标题，例如“直观模型”“机制链路”“来源证据”。",
+      "5. 不要写“本页围绕...讲一个可自学知识片段”“本页从...入手”等 authoring scaffold 句；这些是内部写作过程，不是学生要学的内容。",
+      "6. Codex/Claude 自主设计每页的知识角色和顺序；不要按固定模板填充“学习问题/直观模型/结构板书”等页面。",
+      "7. 每页必须优先填写 knowledgeBoard：headline、coreProposition、leftColumn、rightColumn、sourceTrace、bottomLine；title/narrative 只做兼容摘要。",
+      "8. leftColumn 放概念、机制、因果链、定义或推导；rightColumn 放例子、反例、来源证据或适用边界；sourceTrace 必须标出来源支持关系。",
+      "9. 同一 lesson 内每页必须推进不同知识节点或关键链路，禁止复制同一套 headline、coreProposition、左右栏或 bottomLine。",
+      "10. 不要写本讲定位、课堂讨论、教授讲义、课后作业、教学目标、教学设计、识别本页中的作用等教师视角话术。",
+      "11. 页面必须一屏可读；如果一个知识片段放不下，就拆成下一页，不要用长段落或纵向滚动硬塞。",
       pageBudgetInstruction(brief)
     ];
   }
@@ -60,10 +64,10 @@ function intentAuthoringRules(brief: LearnerBrief): string[] {
 function pageBudgetInstruction(brief: LearnerBrief): string {
   if (brief.targetTotalPages) {
     return brief.totalPagesSpecified
-      ? `8. 当前用户指定总页数约 ${brief.targetTotalPages} 页，按该预算拆分；不要擅自恢复为默认页数。`
-      : `8. 100 页只是长书默认建议；当前总页预算约 ${brief.targetTotalPages} 页，如内容不足或过密，按一屏可读原则微调。`;
+      ? `12. 当前用户指定总页数约 ${brief.targetTotalPages} 页，按该预算拆分；不要擅自恢复为默认页数。`
+      : `12. 100 页只是长书默认建议；当前总页预算约 ${brief.targetTotalPages} 页，如内容不足或过密，按一屏可读原则微调。`;
   }
-  return "8. 100 页只是长书默认建议；未给总页数时按每单元页数规划，内容太多就拆单元。";
+  return "12. 100 页只是长书默认建议；未给总页数时按每单元页数规划，内容太多就拆单元。";
 }
 
 function publishSelfCheck(brief: LearnerBrief): string {
