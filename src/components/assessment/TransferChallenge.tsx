@@ -19,13 +19,13 @@ export function TransferChallenge({ assessmentSpec, feedbackSpec }: TransferChal
     "好的答案会先说明工作负载，再判断查询是否能选择性地使用索引，最后权衡读性能收益、写入维护成本和存储成本。";
 
   return (
-    <div className="grid gap-5 rounded-lg border border-line bg-white p-5">
+    <div className="grid gap-3 rounded-lg border border-line bg-white p-4">
       <div>
         <p className="text-sm font-semibold uppercase tracking-wide text-accent">
           迁移挑战
         </p>
-        <h3 className="mt-2 text-xl font-semibold text-ink">{assessmentSpec.prompt}</h3>
-        <p className="mt-3 text-sm leading-6 text-slate-600">
+        <h3 className="mt-1.5 text-lg font-semibold leading-6 text-ink">{assessmentSpec.prompt}</h3>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
           先写下你的推理，再和参考答案对照。
         </p>
       </div>
@@ -35,7 +35,7 @@ export function TransferChallenge({ assessmentSpec, feedbackSpec }: TransferChal
           你的解释
         </label>
         <textarea
-          className="min-h-32 rounded-lg border border-line bg-white px-4 py-3 text-sm leading-6 text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
+          className="min-h-20 rounded-lg border border-line bg-white px-4 py-3 text-sm leading-6 text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
           id={responseId}
           onChange={(event) => setResponse(event.target.value)}
           placeholder="说明访问路径发生了什么变化、为什么有帮助或没帮助，以及你会检查哪些成本。"
@@ -45,7 +45,7 @@ export function TransferChallenge({ assessmentSpec, feedbackSpec }: TransferChal
 
       <div>
         <button
-          className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-800 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600"
+          className="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-teal-800 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600"
           disabled={!hasAttempt}
           onClick={() => {
             if (hasAttempt) {

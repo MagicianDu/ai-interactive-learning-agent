@@ -152,9 +152,9 @@ describe("CourseWorkspace", () => {
     expect(screen.getAllByText(/第 2 \//).length).toBeGreaterThan(0);
     expect(screen.getByText("质量：passed · 96")).toBeInTheDocument();
     expect(screen.getByText("发布：revision-002: 补充来源依据和学习反馈。")).toBeInTheDocument();
-    expect(screen.getByText("修订历史")).toBeInTheDocument();
-    expect(screen.getByText("revision-002")).toBeInTheDocument();
-    expect(screen.getByText("第 2 页补充来源依据。")).toBeInTheDocument();
+    expect(screen.queryByText("修订历史")).not.toBeInTheDocument();
+    expect(screen.queryByText("revision-002")).not.toBeInTheDocument();
+    expect(screen.queryByText("第 2 页补充来源依据。")).not.toBeInTheDocument();
     expect(window.location.hash).toBe("#/preview/public-smoke/unit/unit-overview/page/2");
   });
 
@@ -204,29 +204,26 @@ describe("CourseWorkspace", () => {
     expect(screen.getByText("单元来源映射")).toBeInTheDocument();
   });
 
-  test("preserves local progress and records learner page feedback briefs", async () => {
+  test("hides sidebar learning telemetry while preserving local page visits", async () => {
     const user = userEvent.setup();
     render(<CourseWorkspace coursePacks={coursePackRegistry} lessons={lessonRegistry} />);
 
-    expect(screen.getByText("完成进度")).toBeInTheDocument();
+    expect(screen.queryByText("完成进度")).not.toBeInTheDocument();
+    expect(screen.queryByText(/答题记录/u)).not.toBeInTheDocument();
+    expect(screen.queryByText("本页反馈")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "太抽象" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/来源锚点 \d+/u)).not.toBeInTheDocument();
+
     await user.click(screen.getByRole("button", { name: "下一页" }));
-    await user.click(screen.getByRole("button", { name: "太抽象" }));
 
     const progress = JSON.parse(window.localStorage.getItem(learningProgressStorageKey) ?? "{}") as {
       completedPages?: string[];
-      feedbackBriefs?: Array<{ scope: string; pageId: string; feedback: string; recommendedTool: string }>;
     };
 
     expect(progress.completedPages?.length).toBeGreaterThanOrEqual(2);
-    expect(progress.feedbackBriefs?.[0]).toMatchObject({
-      scope: "page",
-      recommendedTool: "learning_agent.revise_learning_course"
-    });
-    expect(progress.feedbackBriefs?.[0]?.feedback).toContain("太抽象");
-    expect(screen.getByText(/已记录：第 2 页，太抽象/u)).toBeInTheDocument();
   });
 
-  test("shows learner-readable revision history in the sidebar", () => {
+  test("keeps revision history out of the learner sidebar", () => {
     window.localStorage.setItem(
       learningProgressStorageKey,
       JSON.stringify({
@@ -250,10 +247,10 @@ describe("CourseWorkspace", () => {
 
     render(<CourseWorkspace coursePacks={coursePackRegistry} lessons={lessonRegistry} />);
 
-    expect(screen.getByText("修订历史")).toBeInTheDocument();
-    expect(screen.getByText("revision-001")).toBeInTheDocument();
-    expect(screen.getByText("第 3 页增加了工程例子。")).toBeInTheDocument();
-    expect(screen.getByText("质量：passed")).toBeInTheDocument();
+    expect(screen.queryByText("修订历史")).not.toBeInTheDocument();
+    expect(screen.queryByText("revision-001")).not.toBeInTheDocument();
+    expect(screen.queryByText("第 3 页增加了工程例子。")).not.toBeInTheDocument();
+    expect(screen.queryByText("质量：passed")).not.toBeInTheDocument();
   });
 
 });

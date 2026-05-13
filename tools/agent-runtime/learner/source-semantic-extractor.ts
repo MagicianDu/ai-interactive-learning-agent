@@ -52,8 +52,8 @@ export function extractSourceSemantics(input: { sourceKind: string; anchors: Sou
     limitationHints,
     misconceptions: [...sourceMisconceptions(input.anchors), ...misconceptionsForKind(sourceKind, sourceAnchorIds)],
     teachingAngles: teachingAnglesForKind(sourceKind)
-      .concat(evidenceHints.length > 0 ? ["把来源证据链转成课堂讨论题。"] : [])
-      .concat(limitationHints.length > 0 ? ["用来源局限或反例设计误区检查。"] : []),
+      .concat(evidenceHints.length > 0 ? ["把来源证据链转成案例判断和判断依据。"] : [])
+      .concat(limitationHints.length > 0 ? ["用来源局限或反例设计边界案例。"] : []),
     sourceSpecificTeachingMoves: sourceSpecificTeachingMoves(keyTerms, evidenceHints, limitationHints)
   };
 }
@@ -323,10 +323,10 @@ function sourceSpecificTeachingMoves(
 ): string[] {
   const moves = keyTerms.slice(0, 4).map((term) => `围绕来源术语 ${term.term} 设计预测、比较或解释任务。`);
   if (evidenceHints.length > 0) {
-    moves.push("把来源中的 evidence / evaluation 片段改写成课堂讨论题。");
+    moves.push("把来源中的 evidence / evaluation 片段改写成案例判断和判断依据。");
   }
   if (limitationHints.length > 0) {
-    moves.push("把来源中的 limitation / boundary 片段改写成误区检查和迁移边界。");
+    moves.push("把来源中的 limitation / boundary 片段改写成边界案例和适用条件。");
   }
   return moves;
 }

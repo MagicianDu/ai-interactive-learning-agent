@@ -6,10 +6,10 @@ export type ProfessorLectureMoveId =
   | "prerequisites"
   | "concept_framework"
   | "definitions"
+  | "key_link"
   | "worked_example"
   | "comparison"
-  | "discussion_prompt"
-  | "homework_or_reading"
+  | "boundary_case"
   | "lecture_takeaway";
 
 export type ProfessorLectureRubricMoveResult = {
@@ -39,8 +39,8 @@ const professorLectureMoves: ProfessorLectureMove[] = [
   {
     id: "course_framing",
     label: "course framing",
-    description: "Frame the lecture with positioning, core question, or learning boundary.",
-    markers: ["课程框架", "本讲定位", "核心问题", "学习边界", "lecture frame", "framing"]
+    description: "Frame the unit with lecture positioning, core question, and coverage boundary.",
+    markers: ["本讲定位", "课程框架", "核心问题", "覆盖边界", "learning boundary"]
   },
   {
     id: "prerequisites",
@@ -52,13 +52,19 @@ const professorLectureMoves: ProfessorLectureMove[] = [
     id: "concept_framework",
     label: "concept framework",
     description: "Map the lecture's conceptual framework, taxonomy, theory structure, or method family.",
-    markers: ["概念地图", "概念框架", "方法谱系", "理论结构", "concept framework", "concept map", "taxonomy"]
+    markers: ["知识节点", "概念地图", "概念框架", "方法谱系", "理论结构", "concept framework", "concept map", "taxonomy"]
   },
   {
     id: "definitions",
     label: "definitions",
     description: "Introduce key definitions, terms, or formal terminology as explicit lecture content.",
     markers: ["关键定义", "定义", "术语", "正式术语", "definition", "definitions", "terminology"]
+  },
+  {
+    id: "key_link",
+    label: "key link",
+    description: "Explain the key links among concepts, mechanisms, states, or steps.",
+    markers: ["关键链路", "因果角色", "状态变化", "推导链", "机制模型", "key link"]
   },
   {
     id: "worked_example",
@@ -73,22 +79,16 @@ const professorLectureMoves: ProfessorLectureMove[] = [
     markers: ["方法比较", "比较", "权衡", "适用边界", "反例", "comparison", "tradeoff"]
   },
   {
-    id: "discussion_prompt",
-    label: "discussion prompt",
-    description: "Prompt seminar-style critique, discussion, or reference points.",
-    markers: ["课堂讨论题", "课堂讨论", "批判", "参考要点", "discussion prompt", "seminar"]
-  },
-  {
-    id: "homework_or_reading",
-    label: "homework or reading",
-    description: "Assign reading, homework, a problem set, or post-class work.",
-    markers: ["课后作业", "阅读路径", "problem set", "homework", "reading"]
+    id: "boundary_case",
+    label: "boundary case",
+    description: "Use boundary cases, counterexamples, or adjacent scenarios to limit claims.",
+    markers: ["边界案例", "边界条件", "相邻场景", "反例", "保留条件", "断裂条件", "boundary case"]
   },
   {
     id: "lecture_takeaway",
-    label: "lecture takeaway",
-    description: "Close with takeaways, review checklist, or next-lecture connection.",
-    markers: ["takeaway", "复习清单", "下一讲", "总结要点", "takeaways"]
+    label: "summary map",
+    description: "Close with a summary map, key takeaways, or next-unit connection.",
+    markers: ["总结图", "总结要点", "下一讲", "下一单元", "summary map", "takeaway", "takeaways"]
   }
 ];
 

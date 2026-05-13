@@ -15,8 +15,8 @@ describe("VisualRenderer", () => {
 
     render(<VisualRenderer title="可能性空间" visualSpec={visualSpec} />);
 
-    expect(screen.getByText("关键结构")).toBeInTheDocument();
-    expect(screen.getByText("状态变化")).toBeInTheDocument();
+    expect(screen.getByText("关键节点")).toBeInTheDocument();
+    expect(screen.getByText("关键链路")).toBeInTheDocument();
     expect(screen.getByText("初始可能性")).toBeInTheDocument();
     expect(screen.getByText("选择目标范围")).toBeInTheDocument();
   });

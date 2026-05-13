@@ -87,8 +87,8 @@ function buildTrialLesson(input: CodexAuthoredTrialInput, unit: TrialUnitBluepri
     prerequisites: [
       "能阅读基础技术材料",
       `先修概念：${focus}相关的基本系统设计术语和问题抽象方法`,
-      `正式术语：问题定义、机制模型、证据链、局限边界、迁移应用`,
-      "愿意用预测、比较和迁移任务检验理解"
+      `正式术语：问题定义、知识节点、关键链路、证据链、局限边界、迁移应用`,
+      "愿意用预测、比较和边界案例检验理解"
     ],
     learningObjectives: learningObjectivesForLesson(input.sourceKind, focus),
     pages: unit.pageBlueprints.map((pageBlueprint, index) => buildPage(input, unit, pageBlueprint, index)),
@@ -132,7 +132,7 @@ function learningObjectivesForLesson(sourceKind: string, focus: string): string[
       `用 caveat/失败模式形成可操作检查和迁移边界`
     ];
   }
-  return [`建立${focus}的课程级心智模型`, `用${focus}完成预测、误区检查和迁移应用`];
+  return [`建立${focus}的知识节点`, `说清${focus}的关键链路和边界条件`];
 }
 
 function summaryForLesson(sourceKind: string, focus: string): string[] {
@@ -158,9 +158,9 @@ function summaryForLesson(sourceKind: string, focus: string): string[] {
     ];
   }
   return [
-    `${focus}要从问题定义进入，并回扣先修概念和正式术语。`,
-    "机制模型必须连接证据链、局限边界、反例和适用条件。",
-    "课堂讨论负责检验边界，课后作业负责完成迁移应用。"
+    `${focus}要从问题定义进入，并回扣先修概念、正式术语和知识节点。`,
+    "关键链路必须连接证据链、局限边界、反例和适用条件。",
+    "案例判断负责落地关键链路，边界案例负责限制结论外推。"
   ];
 }
 
@@ -391,7 +391,7 @@ function narrativeForPage(unit: TrialUnitBlueprint, pageBlueprint: TrialPageBlue
   }
   const academicFrame = "先修概念和正式术语用来定位问题；证据链与局限边界用来判断结论强度。";
   const templates: Record<string, string> = {
-    problem_scene: `先看一个失败场景：如果只会复述${focus}，遇到边界条件时就无法判断方案是否适用。${context}${academicFrame}课堂讨论从“问题为什么存在”开始。`,
+    problem_scene: `先看一个失败场景：如果只会复述${focus}，遇到边界条件时就无法判断方案是否适用。${context}${academicFrame}先从“问题为什么存在”开始。`,
     intuition_visual: `${focus}先用一个可观察模型进入：让学习者预测下一步，再比较预测和来源证据。${context}类比只负责建立直觉，局限边界必须单独标出。`,
     structure_diagram: `把${focus}拆成问题、机制、证据和反例四个节点。${context}学习者需要指出哪条边决定结论可靠性，而不是只记住术语。`,
     process_animation: `沿时间顺序追踪${focus}的变化：输入、内部状态、证据反馈和输出判断依次出现。${context}每一步都要说明触发条件。`,
@@ -399,7 +399,7 @@ function narrativeForPage(unit: TrialUnitBlueprint, pageBlueprint: TrialPageBlue
     code_walkthrough: `正式表达只放短片段：用变量、公式或伪代码标出${focus}中的结构位置。${context}重点是把直觉模型映射到可检查表示。`,
     quiz: `这个检查题要求学习者用${focus}判断一个新例子。${context}正确答案必须同时说明机制、证据链、局限边界和反例。`,
     misconception_check: `常见误区是把${focus}当成可复述结论。${context}反例会显示：缺少边界条件时，同一句话在新场景可能失效。`,
-    transfer_challenge: `迁移任务换一个表层场景，但保留相同结构。${context}课后作业要求写出哪些结构可迁移，哪些假设不能迁移。`,
+    transfer_challenge: `相邻场景换一个表层对象，但保留相同结构。${context}页面要求写出哪些结构可以沿用，哪些假设不能沿用。`,
     summary_card: `最后把${focus}压缩成一张记忆卡：问题、机制、证据、边界、迁移各一句。${context}复习时先复述模型，再检查反例。`
   };
   return `${templates[pageBlueprint.pageType] ?? templates.problem_scene}${mustInclude ? ` 你要抓住：${mustInclude}。` : ""}`;

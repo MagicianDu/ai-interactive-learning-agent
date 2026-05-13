@@ -8,13 +8,9 @@ import { LearningProductRenderer } from "../renderers/LearningProductRenderer";
 import { WebDeckRenderer } from "../renderers/WebDeckRenderer";
 import { fetchGeneratedPreview, type GeneratedPreviewLoadResult } from "./generated-preview";
 import {
-  addFeedbackBrief,
-  completedPageCountForCourse,
-  createPageFeedbackRevisionBrief,
   loadLearningProgress,
   recordPageVisit,
-  saveLearningProgress,
-  type PageFeedbackOption
+  saveLearningProgress
 } from "./learning-progress";
 import { LearningSidebar, type WorkspaceView } from "./LearningSidebar";
 import { ProjectLibrary } from "./ProjectLibrary";
@@ -46,7 +42,7 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
   const [selectedLessonId, setSelectedLessonId] = useState(defaultCoursePackLessonId ?? defaultLesson?.id ?? "");
   const [selectedPageIndex, setSelectedPageIndex] = useState(initialRoute.pageIndex ?? 0);
   const [activeView, setActiveView] = useState<WorkspaceView>("deck");
-  const [learningProgress, setLearningProgress] = useState(() => loadLearningProgress());
+  const [, setLearningProgress] = useState(() => loadLearningProgress());
   const selectedLesson = workspaceLessons.find((lesson) => lesson.id === selectedLessonId)?.lesson ?? defaultLesson?.lesson;
   const selectedCoursePack = workspaceCoursePacks.find((entry) => entry.id === selectedCoursePackId)?.coursePack;
   const selectedCoursePackUnits =
@@ -157,24 +153,7 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
     sourceAnchorIds: currentPage?.sourceAnchorIds ?? []
   };
   const selectedCoursePackUnit = selectedCoursePack?.units.find((unit) => unit.lessonId === selectedLesson?.id);
-  const totalCoursePages = countCoursePages(selectedCoursePack, workspaceLessons);
   const selectedGeneratedPreview = generatedPreview?.coursePackEntry.id === selectedCoursePackId ? generatedPreview : undefined;
-  const latestFeedback = learningProgress.feedbackBriefs.find(
-    (brief) =>
-      brief.courseId === selectedCoursePackId &&
-      brief.lessonId === selectedLesson?.id &&
-      brief.pageId === (currentPage?.id ?? "")
-  );
-  const selectedRevisionRunIds = new Set(
-    [selectedCoursePackId, selectedCoursePack?.parentRunId, generatedPreview?.previewRunId].filter((id): id is string => Boolean(id))
-  );
-  const selectedRevisionLessonIds = new Set(selectedCoursePack?.units.map((unit) => unit.lessonId).filter((id): id is string => Boolean(id)) ?? []);
-  const allRevisionHistory = mergeRevisionHistory(selectedGeneratedPreview?.revisionHistory ?? [], learningProgress.revisionHistory);
-  const courseRevisionHistory = allRevisionHistory.filter(
-    (item) =>
-      selectedRevisionRunIds.has(item.runId) || item.changedLessonIds.some((lessonId) => selectedRevisionLessonIds.has(lessonId))
-  );
-  const visibleRevisionHistory = courseRevisionHistory.length > 0 ? courseRevisionHistory : allRevisionHistory;
 
   useEffect(() => {
     if (!selectedCoursePackId || !selectedLesson?.id || !currentPage?.id) {
@@ -192,25 +171,6 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
       return next;
     });
   }, [currentPage?.id, safePageIndex, selectedCoursePackId, selectedCoursePackUnit?.unitId, selectedLesson.id]);
-
-  const submitPageFeedback = (option: PageFeedbackOption) => {
-    if (!currentPage?.id || !selectedCoursePackId || !selectedLesson) {
-      return;
-    }
-    const brief = createPageFeedbackRevisionBrief({
-      courseId: selectedCoursePackId,
-      unitId: selectedCoursePackUnit?.unitId,
-      lessonId: selectedLesson.id,
-      pageId: currentPage.id,
-      pageNumber: safePageIndex + 1,
-      option
-    });
-    setLearningProgress((previous) => {
-      const next = addFeedbackBrief(previous, brief);
-      saveLearningProgress(next);
-      return next;
-    });
-  };
 
   if (previewLoading && initialRoute.previewRunId) {
     return (
@@ -246,19 +206,10 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
           <LearningSidebar
             activeView={activeView}
             coursePacks={workspaceCoursePacks}
-            currentPage={currentPageContext}
-            latestFeedback={latestFeedback}
             lessonChoices={lessonChoices}
-            onSubmitFeedback={submitPageFeedback}
             onSelectCourse={selectCoursePack}
             onSelectLesson={selectLesson}
             onSelectView={setActiveView}
-            progress={{
-              completedPages: completedPageCountForCourse(learningProgress, selectedCoursePackId),
-              totalPages: totalCoursePages,
-              quizAttempts: learningProgress.quizAttempts.filter((attempt) => attempt.courseId === selectedCoursePackId).length
-            }}
-            revisionHistory={visibleRevisionHistory}
             selectedCoursePackId={selectedCoursePackId}
             selectedLessonId={selectedLessonId}
             title={selectedCoursePack?.title ?? selectedLesson.title}
@@ -568,29 +519,4 @@ function mergeLessons(base: LessonRegistryEntry[], generated: LessonRegistryEntr
   }
   const generatedIds = new Set(generated.map((entry) => entry.id));
   return [...generated, ...base.filter((entry) => !generatedIds.has(entry.id))];
-}
-
-function mergeRevisionHistory<T extends { runId: string; revisionId: string }>(primary: T[], secondary: T[]): T[] {
-  const seen = new Set<string>();
-  return [...primary, ...secondary].filter((item) => {
-    const key = `${item.runId}:${item.revisionId}`;
-    if (seen.has(key)) {
-      return false;
-    }
-    seen.add(key);
-    return true;
-  });
-}
-
-function countCoursePages(
-  coursePack: CoursePackRegistryEntry["coursePack"] | undefined,
-  lessons: LessonRegistryEntry[]
-): number {
-  if (!coursePack) {
-    return lessons[0]?.lesson.pages.length ?? 0;
-  }
-  return coursePack.units.reduce((sum, unit) => {
-    const lesson = lessons.find((entry) => entry.id === unit.lessonId)?.lesson;
-    return sum + (lesson?.pages.length ?? 0);
-  }, 0);
 }

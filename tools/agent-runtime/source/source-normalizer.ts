@@ -22,6 +22,13 @@ type PdfTextPage = {
   text: string;
 };
 
+type PdfChapterHeading = {
+  title: string;
+  page: number;
+  anchorId: string;
+  source: "page-heading" | "toc";
+};
+
 export type NormalizedSources = {
   structure: SourceStructureNode[];
   anchors: SourceAnchor[];
@@ -141,6 +148,19 @@ async function normalizeFileSource(source: SourceRecord): Promise<NormalizedSour
 
 function normalizePdfSource(source: SourceRecord, pages: PdfTextPage[]): NormalizedSourceDocument {
   const anchors: SourceAnchor[] = [];
+  const anchorPages = new Map<string, number>();
+  const chapterHeadings: PdfChapterHeading[] = [];
+  const chapterKeys = new Set<string>();
+
+  const addAnchor = (anchor: SourceAnchor, pageNumber?: number) => {
+    if (anchors.some((existing) => existing.anchorId === anchor.anchorId)) {
+      return;
+    }
+    anchors.push(anchor);
+    if (typeof pageNumber === "number") {
+      anchorPages.set(anchor.anchorId, pageNumber);
+    }
+  };
 
   for (const page of pages) {
     const cleanedPageText = normalizeExtractedText(page.text);
@@ -148,30 +168,65 @@ function normalizePdfSource(source: SourceRecord, pages: PdfTextPage[]): Normali
       continue;
     }
 
-    anchors.push(
+    for (const title of detectPdfPageChapterHeadings(cleanedPageText)) {
+      const headingAnchor = createSourceAnchor({
+        sourceId: source.id,
+        label: title,
+        locator: { kind: "heading", headingPath: [title] },
+        quote: cleanedPageText.slice(0, 240),
+        notes: `Detected PDF chapter heading on page ${page.page}.`
+      });
+      addAnchor(headingAnchor, page.page);
+      const key = chapterKey(title);
+      if (!chapterKeys.has(key)) {
+        chapterHeadings.push({ title, page: page.page, anchorId: headingAnchor.anchorId, source: "page-heading" });
+        chapterKeys.add(key);
+      }
+    }
+
+    addAnchor(
       createSourceAnchor({
         sourceId: source.id,
         label: `Page ${page.page}`,
         locator: { kind: "page", page: page.page },
         quote: cleanedPageText.slice(0, 240),
         notes: "Extracted from PDF text."
-      })
+      }),
+      page.page
     );
 
     splitPdfParagraphs(cleanedPageText).forEach((paragraph, index) => {
-      anchors.push(
+      addAnchor(
         createSourceAnchor({
           sourceId: source.id,
           label: `Page ${page.page} Paragraph ${index + 1}`,
           locator: { kind: "paragraph", paragraphId: `page-${page.page}-${index + 1}` },
           quote: paragraph.slice(0, 240),
           notes: `Extracted from PDF page ${page.page}.`
-        })
+        }),
+        page.page
       );
     });
   }
 
-  return buildDocument(source, anchors, [], []);
+  for (const entry of detectPdfTocChapterEntries(pages)) {
+    const key = chapterKey(entry.title);
+    if (chapterKeys.has(key)) {
+      continue;
+    }
+    const headingAnchor = createSourceAnchor({
+      sourceId: source.id,
+      label: entry.title,
+      locator: { kind: "heading", headingPath: [entry.title] },
+      quote: entry.title,
+      notes: `Detected PDF table-of-contents entry on page ${entry.page}.`
+    });
+    addAnchor(headingAnchor, entry.page);
+    chapterHeadings.push({ title: entry.title, page: entry.page, anchorId: headingAnchor.anchorId, source: "toc" });
+    chapterKeys.add(key);
+  }
+
+  return chapterHeadings.length > 0 ? buildPdfDocument(source, anchors, chapterHeadings, anchorPages) : buildDocument(source, anchors, [], []);
 }
 
 async function extractPdfTextPages(filePath: string): Promise<PdfTextPage[]> {
@@ -296,6 +351,164 @@ function shouldMergePdfParagraphFragment(previous: string, current: string): boo
   const previousLooksOpen = !/[.!?。！？]$/u.test(previous) && previous.length < 320;
   const currentLooksLikeFragment = current.length < 48 || /^[a-z,;:)\]}]/u.test(current);
   return previousLooksOpen || currentLooksLikeFragment;
+}
+
+function detectPdfPageChapterHeadings(text: string): string[] {
+  const lines = text
+    .split(/\n+/u)
+    .map((line) => line.replace(/\s+/gu, " ").trim())
+    .filter(Boolean)
+    .slice(0, 4);
+  const headings: string[] = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = mergeWrappedChapterHeadingLine(lines[index] ?? "", lines[index + 1] ?? "");
+    const title = normalizeChapterTitle(/^(?:\d+\.\s*)?(Chapter\s+\d+\s*:\s*[^,;\n]{2,120})/iu.exec(line)?.[1] ?? "");
+    if (title) {
+      headings.push(title);
+      break;
+    }
+  }
+  return headings;
+}
+
+function mergeWrappedChapterHeadingLine(currentLine: string, nextLine: string): string {
+  if (!/^(?:\d+\.\s*)?Chapter\s+\d+\s*:/iu.test(currentLine)) {
+    return currentLine;
+  }
+  const trimmedNextLine = nextLine.trim();
+  const currentEndsWithConnector = /\b(?:and|or|of|for|to|with|in|on|the)\s*$/iu.test(currentLine);
+  const nextLooksLikeTitleFragment =
+    trimmedNextLine.length > 0 && trimmedNextLine.length <= 60 && !/[.!?。！？]$/u.test(trimmedNextLine) && trimmedNextLine.split(/\s+/u).length <= 6;
+  return currentEndsWithConnector && nextLooksLikeTitleFragment ? `${currentLine} ${trimmedNextLine}` : currentLine;
+}
+
+function detectPdfTocChapterEntries(pages: PdfTextPage[]): Array<{ title: string; page: number }> {
+  const entries: Array<{ title: string; page: number }> = [];
+  const seen = new Set<string>();
+  for (const page of pages) {
+    const text = normalizeExtractedText(page.text);
+    if (!/\b(?:table\s+of\s+contents|contents)\b/iu.test(text.slice(0, 1200))) {
+      continue;
+    }
+    const matches = text.matchAll(/(?:^|\s)(?:\d+\.\s*)?(Chapter\s+\d+\s*:\s*[^,\n]{2,120})/giu);
+    for (const match of matches) {
+      const title = normalizeChapterTitle(match[1] ?? "");
+      if (!title || seen.has(title)) {
+        continue;
+      }
+      entries.push({ title, page: page.page });
+      seen.add(title);
+    }
+  }
+  return entries;
+}
+
+function normalizeChapterTitle(value: string): string {
+  const title = value
+    .replace(/\s*\(code\)\s*/giu, "")
+    .replace(/\s*\[[^\]]+\]\s*/gu, "")
+    .replace(/\s+\d+\s+pages?.*$/iu, "")
+    .replace(/\s+/gu, " ")
+    .trim()
+    .replace(/[.,;:，；：]+$/u, "")
+    .trim();
+  const overview = /^(Chapter\s+\d+\s*:\s*)(.+?)\s+Pattern\s+Overview\b.*$/iu.exec(title);
+  if (overview?.[1] && overview[2]) {
+    return `${overview[1]}${dedupeRepeatedTitleStem(overview[2])}`.trim();
+  }
+  return dedupeRepeatedChapterTitle(title);
+}
+
+function dedupeRepeatedChapterTitle(title: string): string {
+  const match = /^(Chapter\s+\d+\s*:\s*)(.+)$/iu.exec(title);
+  if (!match?.[1] || !match[2]) {
+    return title;
+  }
+  return `${match[1]}${dedupeRepeatedTitleStem(match[2])}`.trim();
+}
+
+function dedupeRepeatedTitleStem(value: string): string {
+  const trimmed = value.trim();
+  const parentheticalWithRepeatedSuffix = /^(.+\([^)]*\))\s+(.+)$/u.exec(trimmed);
+  if (parentheticalWithRepeatedSuffix?.[1] && parentheticalWithRepeatedSuffix[2]) {
+    const titleWithoutParenthetical = parentheticalWithRepeatedSuffix[1].replace(/\s*\([^)]*\)\s*$/u, "").trim();
+    const repeatedSuffix = parentheticalWithRepeatedSuffix[2].trim();
+    if (sameTitleWords(titleWithoutParenthetical, repeatedSuffix)) {
+      return parentheticalWithRepeatedSuffix[1].trim();
+    }
+  }
+  const words = trimmed.split(/\s+/u).filter(Boolean);
+  if (words.length >= 2 && words.length % 2 === 0) {
+    const mid = words.length / 2;
+    if (sameTitleWords(words.slice(0, mid).join(" "), words.slice(mid).join(" "))) {
+      return words.slice(0, mid).join(" ");
+    }
+  }
+  return trimmed;
+}
+
+function sameTitleWords(left: string, right: string): boolean {
+  return left.replace(/[^\p{L}\p{N}]+/gu, " ").trim().toLowerCase() === right.replace(/[^\p{L}\p{N}]+/gu, " ").trim().toLowerCase();
+}
+
+function chapterKey(title: string): string {
+  const chapterNumber = /chapter\s+(?<chapter>\d+)/iu.exec(title)?.groups?.chapter;
+  return chapterNumber ? `chapter-${chapterNumber}` : title.toLowerCase();
+}
+
+function buildPdfDocument(
+  source: SourceRecord,
+  anchors: SourceAnchor[],
+  chapterHeadings: PdfChapterHeading[],
+  anchorPages: Map<string, number>
+): NormalizedSourceDocument {
+  const sortedChapters = [...chapterHeadings].sort((left, right) => left.page - right.page || left.title.localeCompare(right.title));
+  const chapterNodes: SourceStructureNode[] = sortedChapters.map((chapter, index) => {
+    const nextChapter = sortedChapters[index + 1];
+    const chapterAnchorIds = anchors
+      .filter((anchor) => {
+        if (anchor.anchorId === chapter.anchorId) {
+          return true;
+        }
+        const page = anchorPages.get(anchor.anchorId);
+        if (typeof page !== "number" || chapter.source === "toc") {
+          return false;
+        }
+        return page >= chapter.page && (!nextChapter || page < nextChapter.page);
+      })
+      .map((anchor) => anchor.anchorId);
+    return {
+      id: `${source.id}:chapter-node-${slugify(chapter.title)}`,
+      sourceId: source.id,
+      type: "chapter",
+      title: chapter.title,
+      anchorIds: chapterAnchorIds.length > 0 ? chapterAnchorIds : [chapter.anchorId],
+      children: []
+    };
+  });
+  const rootNode: SourceStructureNode = {
+    id: `${source.id}:root`,
+    sourceId: source.id,
+    type: "document",
+    title: source.title,
+    anchorIds: anchors.map((anchor) => anchor.anchorId),
+    children: chapterNodes.map((node) => node.id)
+  };
+  const anchorNodes: SourceStructureNode[] = anchors.map((anchor) => ({
+    id: anchor.anchorId,
+    sourceId: source.id,
+    type: nodeTypeForAnchor(anchor),
+    title: anchor.label,
+    anchorIds: [anchor.anchorId],
+    children: []
+  }));
+
+  return {
+    source,
+    nodes: [rootNode, ...chapterNodes, ...anchorNodes],
+    anchors,
+    extractionWarnings: []
+  };
 }
 
 function isReadableExtractedText(value: string): boolean {

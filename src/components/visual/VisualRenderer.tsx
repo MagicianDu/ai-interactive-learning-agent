@@ -14,9 +14,9 @@ type VisualRendererProps = {
 export function VisualRenderer({ title, visualSpec }: VisualRendererProps) {
   if (!visualSpec) {
     return (
-      <DiagramFrame title={title} description="先聚焦这一页的问题">
+      <DiagramFrame title={title} description="内容页">
         <p className="text-sm leading-6 text-slate-500">
-          先用这页的问题建立方向，再通过后续页面的结构图、互动或检查题验证理解。
+          这一页以文字说明为主；后续页面会补充结构图、过程图或例子。
         </p>
       </DiagramFrame>
     );
@@ -39,7 +39,7 @@ export function VisualRenderer({ title, visualSpec }: VisualRendererProps) {
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(14rem,0.9fr)]">
             <section className="rounded-lg border border-slate-200 bg-slate-50 p-4">
               <p className="text-xs font-extrabold uppercase tracking-wide text-slate-500">
-                关键结构
+                关键节点
               </p>
               <ul className="mt-3 grid gap-2 sm:grid-cols-2">
                 {visualSpec.keyElements.map((element, index) => (
@@ -59,7 +59,7 @@ export function VisualRenderer({ title, visualSpec }: VisualRendererProps) {
             {visualSpec.states?.length ? (
               <section className="rounded-lg border border-blue-200 bg-blue-50/60 p-4">
                 <p className="text-xs font-extrabold uppercase tracking-wide text-accent">
-                  状态变化
+                  关键链路
                 </p>
                 <ol className="mt-3 grid gap-2">
                   {visualSpec.states.map((state, index) => (
@@ -78,10 +78,10 @@ export function VisualRenderer({ title, visualSpec }: VisualRendererProps) {
             ) : (
               <section className="rounded-lg border border-blue-200 bg-blue-50/60 p-4">
                 <p className="text-xs font-extrabold uppercase tracking-wide text-accent">
-                  学习提示
+                  阅读线索
                 </p>
                 <p className="mt-3 text-sm font-semibold leading-6 text-slate-700">
-                  先看清这些元素之间的关系，再回到页面问题判断它们如何帮助你缩小不确定性。
+                  先看清这些元素之间的关系，再回到页面主题判断它们如何构成知识链路。
                 </p>
               </section>
             )}

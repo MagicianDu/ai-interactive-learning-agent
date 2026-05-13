@@ -52,6 +52,32 @@ describe("sampleAuthoringAnchors", () => {
     expect(sampled[0]?.anchorId).toBe("source-001:page-30");
     expect(sampled).toHaveLength(2);
   });
+
+  it("balances long book samples across chapter groups before filling by global score", () => {
+    const anchors = [
+      anchor("source-001:intro-1", "Intro 1", "Agentic patterns framework overview tool memory planning reflection."),
+      anchor("source-001:intro-2", "Intro 2", "Agent systems architecture workflow tool use memory planning reflection."),
+      anchor("source-001:c1", "Chapter 1: Prompt Chaining", "Prompt chaining breaks a complex task into sequential LLM steps."),
+      anchor("source-001:c2", "Chapter 2: Routing", "Routing sends each request to the most suitable model or workflow."),
+      anchor("source-001:c3", "Chapter 3: Parallelization", "Parallelization runs independent sub-tasks concurrently and merges results.")
+    ];
+
+    const sampled = sampleAuthoringAnchors({
+      anchors,
+      sourceKind: "book",
+      maxAnchors: 3,
+      selectedTopics: [],
+      selectedChapters: [],
+      topic: "Agentic Design Patterns",
+      chapterAnchorGroups: [
+        { title: "Chapter 1: Prompt Chaining", anchorIds: ["source-001:c1"] },
+        { title: "Chapter 2: Routing", anchorIds: ["source-001:c2"] },
+        { title: "Chapter 3: Parallelization", anchorIds: ["source-001:c3"] }
+      ]
+    });
+
+    expect(sampled.map((item) => item.anchorId)).toEqual(["source-001:c1", "source-001:c2", "source-001:c3"]);
+  });
 });
 
 function anchor(anchorId: string, label: string, quote: string): SourceAnchor {

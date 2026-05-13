@@ -276,6 +276,103 @@ describe("source normalizer", () => {
     );
   });
 
+  test("extracts PDF table-of-contents chapter entries into chapter source nodes", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-pdf-toc-source-"));
+    const filePath = path.join(root, "book-with-toc.pdf");
+    await writeFile(
+      filePath,
+      minimalPdfWithText(
+        [
+          "Table of Contents",
+          "1. Chapter 1: Prompt Chaining (code), 12 pages",
+          "2. Chapter 2: Routing (code), 13 pages",
+          "3. Chapter 3: Parallelization (code), 15 pages",
+          "5. Chapter 5: Tool Use (Function Calling) Tool Use Pattern Overview, 20 pages"
+        ].join("\n")
+      ),
+      "binary"
+    );
+
+    const normalized = await normalizeSourceRecord({
+      id: "source-001",
+      type: "file",
+      kind: "book",
+      title: "Agentic Design Patterns",
+      uri: filePath,
+      value: filePath,
+      language: "zh-CN"
+    });
+
+    expect(normalized.nodes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "chapter",
+          title: "Chapter 1: Prompt Chaining",
+          anchorIds: expect.arrayContaining(["source-001:chapter-1-prompt-chaining"])
+        }),
+        expect.objectContaining({
+          type: "chapter",
+          title: "Chapter 2: Routing",
+          anchorIds: expect.arrayContaining(["source-001:chapter-2-routing"])
+        }),
+        expect.objectContaining({
+          type: "chapter",
+          title: "Chapter 3: Parallelization",
+          anchorIds: expect.arrayContaining(["source-001:chapter-3-parallelization"])
+        }),
+        expect.objectContaining({
+          type: "chapter",
+          title: "Chapter 5: Tool Use (Function Calling)",
+          anchorIds: expect.arrayContaining(["source-001:chapter-5-tool-use-function-calling"])
+        })
+      ])
+    );
+    expect(normalized.anchors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          anchorId: "source-001:chapter-1-prompt-chaining",
+          label: "Chapter 1: Prompt Chaining",
+          locator: { kind: "heading", headingPath: ["Chapter 1: Prompt Chaining"] }
+        }),
+        expect.objectContaining({
+          anchorId: "source-001:chapter-5-tool-use-function-calling",
+          label: "Chapter 5: Tool Use (Function Calling)",
+          locator: { kind: "heading", headingPath: ["Chapter 5: Tool Use (Function Calling)"] }
+        })
+      ])
+    );
+  });
+
+  test("repairs wrapped PDF chapter headings before building chapter nodes", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-pdf-wrapped-heading-"));
+    const filePath = path.join(root, "wrapped-heading.pdf");
+    await writeFile(
+      filePath,
+      minimalPdfWithText(["Chapter 12: Exception Handling and", "Recovery", "Agents must detect, handle, and recover from failures."].join("\n")),
+      "binary"
+    );
+
+    const normalized = await normalizeSourceRecord({
+      id: "source-001",
+      type: "file",
+      kind: "book",
+      title: "Agentic Design Patterns",
+      uri: filePath,
+      value: filePath,
+      language: "zh-CN"
+    });
+
+    expect(normalized.nodes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "chapter",
+          title: "Chapter 12: Exception Handling and Recovery",
+          anchorIds: expect.arrayContaining(["source-001:chapter-12-exception-handling-and-recovery"])
+        })
+      ])
+    );
+  });
+
   test("extracts readable text from compressed PDF streams through the Python extractor", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "learning-agent-compressed-pdf-source-"));
     const filePath = path.join(root, "compressed-book.pdf");

@@ -23,7 +23,7 @@ describe("DeckPage", () => {
     expect(screen.queryByText("source-001:page-1")).not.toBeInTheDocument();
   });
 
-  test("renders a richer teaching brief without clamping core lesson text", () => {
+  test("renders a concise textbook-style page body without clamping core text", () => {
     const richPage: LessonPage = {
       ...page,
       visualSpec: {
@@ -37,8 +37,8 @@ describe("DeckPage", () => {
     render(<DeckPage page={richPage} pageNumber={1} totalPages={8} />);
 
     expect(screen.getByText(richPage.narrative)).not.toHaveClass("line-clamp-3");
-    expect(screen.getByText("本页要抓住")).toBeInTheDocument();
-    expect(screen.getByText("理解来源依据，并能说出本页的关键结构。")).toBeInTheDocument();
+    expect(screen.queryByText("本页要抓住")).not.toBeInTheDocument();
+    expect(screen.queryByText("理解来源依据，并能说出本页的关键结构。")).not.toBeInTheDocument();
     expect(screen.queryByText("来源证据")).not.toBeInTheDocument();
     expect(screen.queryByText("形成可迁移模型")).not.toBeInTheDocument();
   });

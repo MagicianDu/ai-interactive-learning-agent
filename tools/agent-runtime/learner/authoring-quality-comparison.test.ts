@@ -34,7 +34,7 @@ describe("AuthoringQualityComparisonService", () => {
       draft: {
         quality: { status: "passed", score: 78 },
         metrics: {
-          academicMarkerCount: 0,
+          academicMarkerCount: 1,
           sourceAnchoredPageRatio: 0
         }
       },
@@ -325,7 +325,7 @@ function buildLesson(options: { lessonId: string; academic: boolean; pageSourceA
     },
     prerequisites: options.academic ? ["先修概念：控制回路、状态建模、策略评估"] : ["能阅读基础技术材料"],
     learningObjectives: options.academic
-      ? ["使用正式术语解释机制链", "围绕证据链和局限边界展开课堂讨论", `完成课后作业式迁移。${sourceKindSummary}`]
+      ? ["使用正式术语解释关键链路", "围绕证据链和局限边界完成案例判断", `完成边界案例。${sourceKindSummary}`]
       : ["理解资料大意"],
     pages: [
       page("p1", "problem_scene", "问题场景", options.pageSourceAnchors ? anchorIds : [], options),
@@ -335,7 +335,7 @@ function buildLesson(options: { lessonId: string; academic: boolean; pageSourceA
       page("p5", "transfer_challenge", "迁移任务", options.pageSourceAnchors ? anchorIds : [], options)
     ],
     transferTasks: options.academic
-      ? [{ id: "t1", prompt: "设计一个课后作业：把控制型智能体迁移到新的工程故障排查场景。", targetMentalModel: "先修概念到正式术语再到迁移。" }]
+      ? [{ id: "t1", prompt: "完成一个边界案例：把控制型智能体应用到新的工程故障排查场景。", targetMentalModel: "先修概念到正式术语再到边界。" }]
       : []
   };
 }
@@ -348,8 +348,8 @@ function page(
   options: { academic: boolean; genericPages?: boolean; sourceSpecific?: boolean }
 ): Record<string, unknown> {
   const academicNarrative = options.sourceSpecific
-    ? "先修概念、正式术语、课堂讨论、课后作业、研究问题、证据链、局限边界。tool feedback、reflection loop、evaluation boundary 共同构成来源机制。"
-    : "先修概念、正式术语、课堂讨论、课后作业、研究问题、证据链、局限边界。";
+    ? "先修概念、正式术语、知识节点、关键链路、案例判断、边界案例、研究问题、证据链、局限边界。tool feedback、reflection loop、evaluation boundary 共同构成来源机制。"
+    : "先修概念、正式术语、知识节点、关键链路、案例判断、边界案例、研究问题、证据链、局限边界。";
   return {
     id,
     type,
@@ -357,7 +357,7 @@ function page(
     learningGoal: options.academic ? "用大学高年级/研究生课程方式深化理解" : "理解概要",
     narrative: options.genericPages ? "本页介绍核心概念，帮助学习者理解资料大意和整体内容。" : options.academic ? academicNarrative : "这是一个快速摘要页面。",
     sourceAnchorIds,
-    ...(type === "structure_diagram" ? { visualSpec: { kind: "diagram", description: "结构图", keyElements: ["机制链"] } } : {}),
+    ...(type === "structure_diagram" ? { visualSpec: { kind: "diagram", description: "结构图", keyElements: ["关键链路"] } } : {}),
     ...(type === "interactive_model"
       ? {
           interactionSpec: {

@@ -69,13 +69,15 @@ const safeRunIdPattern = /^[a-z][a-z0-9-]{0,63}$/u;
 const academicMarkers = [
   "先修概念",
   "正式术语",
-  "课堂讨论",
-  "课后作业",
+  "知识节点",
+  "关键链路",
+  "案例判断",
+  "边界案例",
   "研究问题",
   "证据链",
   "局限边界",
   "方法假设",
-  "批判性讨论"
+  "批判性分析"
 ];
 
 export class AuthoringQualityComparisonService {
@@ -303,7 +305,7 @@ function buildRemainingGaps(authored: RunQualitySnapshot, draft: RunQualitySnaps
     gaps.push({
       id: "academic-depth",
       title: "学术课程深度仍不足",
-      evidence: "课程中缺少先修概念、正式术语、课堂讨论、课后作业、证据链或局限边界等高阶学习标记。"
+      evidence: "课程中缺少先修概念、正式术语、知识节点、关键链路、案例判断、边界案例、证据链或局限边界等高阶课程标记。"
     });
   }
   if (authored.metrics.sourceAnchoredPageRatio < 0.8) {
@@ -394,8 +396,8 @@ function revisionInstructionForGap(gap: ComparisonFinding): Omit<ComparisonRevis
       };
     case "academic-depth":
       return {
-        instruction: "把课程提升到声明难度：补先修概念、正式术语、证据链、局限边界、课堂讨论和课后作业式迁移。",
-        expectedEvidence: "页面文本能明确看到研究问题、方法假设、证据/局限和作业式 transfer，而不是泛泛解释。"
+        instruction: "把课程提升到声明难度：补先修概念、正式术语、知识节点、关键链路、证据链、局限边界和边界案例。",
+        expectedEvidence: "页面文本能明确看到研究问题、方法假设、机制推导、证据/局限、案例判断和边界条件，而不是泛泛解释。"
       };
     case "source-grounding":
       return {

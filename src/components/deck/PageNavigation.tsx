@@ -14,7 +14,7 @@ export function PageNavigation({
   onForward
 }: PageNavigationProps) {
   const buttonClass =
-    "inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-semibold shadow-sm transition focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-45 sm:px-4 lg:min-h-12 lg:px-5 lg:py-2 lg:text-base";
+    "inline-flex min-h-9 items-center gap-2 rounded-lg border px-2.5 py-1.5 text-sm font-semibold shadow-sm transition focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-45 sm:min-h-10 sm:px-4 lg:min-h-12 lg:px-5 lg:py-2 lg:text-base";
 
   return (
     <nav aria-label="课程翻页" className="flex items-center justify-end gap-2 lg:gap-3">
@@ -25,7 +25,7 @@ export function PageNavigation({
         type="button"
       >
         <ArrowLeft aria-hidden="true" className="size-4" />
-        <span>上一页</span>
+        <span className="hidden sm:inline">上一页</span>
       </button>
       <button
         className={`${buttonClass} border-accent bg-accent text-white hover:bg-blue-700 disabled:border-line disabled:bg-slate-200 disabled:text-slate-500`}
@@ -33,7 +33,7 @@ export function PageNavigation({
         onClick={onForward}
         type="button"
       >
-        <span>下一页</span>
+        <span className="hidden sm:inline">下一页</span>
         <ArrowRight aria-hidden="true" className="size-4" />
       </button>
     </nav>

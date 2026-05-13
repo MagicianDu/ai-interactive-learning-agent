@@ -6,8 +6,8 @@ export type AcademicDepthMoveId =
   | "formal_abstraction"
   | "evidence_chain"
   | "assumption_boundary"
-  | "critique_discussion"
-  | "homework_transfer";
+  | "case_analysis"
+  | "boundary_application";
 
 export type AcademicDepthRubricContext = {
   difficultyLevel?: string;
@@ -64,16 +64,16 @@ const academicDepthMoves: AcademicDepthMove[] = [
     markers: ["假设", "适用条件", "适用边界", "局限", "边界条件", "failure mode", "limitation"]
   },
   {
-    id: "critique_discussion",
-    label: "critique and discussion",
-    description: "Ask learners to critique, compare, discuss, or reason through counterexamples.",
-    markers: ["批判", "课堂讨论", "反例", "权衡", "critique", "discussion"]
+    id: "case_analysis",
+    label: "case analysis",
+    description: "Use examples, comparisons, or case analysis to make the abstraction operational.",
+    markers: ["案例分析", "经典例题", "应用案例", "反例", "权衡", "case analysis", "worked example"]
   },
   {
-    id: "homework_transfer",
-    label: "homework transfer",
-    description: "End with homework-style transfer that applies the same model in a new setting.",
-    markers: ["课后作业", "迁移", "transfer", "homework"]
+    id: "boundary_application",
+    label: "boundary application",
+    description: "Name adjacent applications, boundary cases, or conditions under which the claim changes.",
+    markers: ["边界案例", "相邻场景", "保留条件", "断裂条件", "迁移边界", "适用条件", "transfer boundary"]
   }
 ];
 
@@ -133,7 +133,7 @@ function evaluateMove(
   if (move.id === "evidence_chain" && lessons.some(hasSourceAnchors)) {
     evidence.push("sourceAnchorIds");
   }
-  if (move.id === "homework_transfer" && lessons.some(hasTransferTask)) {
+  if (move.id === "boundary_application" && lessons.some(hasTransferTask)) {
     evidence.push("transferTasks");
   }
 

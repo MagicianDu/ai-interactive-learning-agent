@@ -97,7 +97,7 @@ describe("CodexAuthoredTrialService", () => {
 
     const lessonTexts = await Promise.all(result.lessonPaths.map((lessonPath) => readFile(lessonPath, "utf8")));
     const joinedLessons = lessonTexts.join("\n");
-    for (const marker of ["先修概念", "正式术语", "课堂讨论", "课后作业", "证据链", "局限边界"]) {
+    for (const marker of ["先修概念", "正式术语", "知识节点", "关键链路", "证据链", "局限边界"]) {
       expect(joinedLessons).toContain(marker);
     }
     expect(joinedLessons).not.toContain("本页围绕");
