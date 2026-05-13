@@ -121,4 +121,39 @@ describe("PrepareLearningCourseService", () => {
     expect(result.contentBlueprint.globalRules.join("\n")).toContain("教材式知识链路 Web Deck");
     expect(result.next.recommendedTool).toBe("learning_agent.publish_learning_course");
   });
+
+  test("prepares student self-study textbook authoring context in one call", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "prepare-self-study-"));
+    const sourcePath = path.join(root, "agentic-source.md");
+    await writeFile(
+      sourcePath,
+      "# Agentic Design Patterns\nPlanning, tool use, reflection, and evaluation form workflow patterns.\n",
+      "utf8"
+    );
+    const service = new PrepareLearningCourseService(root);
+
+    const result = await service.prepare({
+      request:
+        `请用 "${sourcePath}" 做成学生自学 Web 教材。我不想读完整本书，默认页数即可，面向研究生自学者，每个单元 10 页。`,
+      runId: "prepare-self-study",
+      sourcePath,
+      sourceKind: "book",
+      audience: "研究生自学者",
+      difficultyLevel: "upper_undergraduate_or_graduate",
+      unitPages: 10,
+      courseIntent: "student_self_study_textbook"
+    });
+
+    expect(result.status).toBe("authoring_context_ready");
+    if (result.status !== "authoring_context_ready") {
+      throw new Error("expected authoring_context_ready");
+    }
+    expect(result.brief.courseIntent).toBe("student_self_study_textbook");
+    expect(result.coursePlan.targetTotalPages).toBe(100);
+    expect(result.coursePlan.pageBudgetReminder).toContain("默认约 100 页");
+    expect(result.contentBlueprint.courseIntent).toBe("student_self_study_textbook");
+    expect(result.qualityContract.publishChecklist.join("\n")).toContain("不要出现本讲定位");
+    expect(result.codexInstruction).toContain("学生自学 Web 教材");
+    expect(result.next.recommendedTool).toBe("learning_agent.publish_learning_course");
+  });
 });

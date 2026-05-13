@@ -39,7 +39,7 @@ export function validateContentBlueprintCompliance(input: ValidateContentBluepri
       continue;
     }
 
-    issues.push(...validateUnitPages(input.courseIR.coursePackId, unitBlueprint, lesson));
+    issues.push(...validateUnitPages(input.courseIR.coursePackId, unitBlueprint, lesson, input.contentBlueprint.courseIntent));
   }
 
   return issues;
@@ -58,9 +58,15 @@ export function extractContentBlueprint(value: unknown): ContentBlueprint | unde
   return { ...blueprint, courseIntent: defaultCourseIntent };
 }
 
-function validateUnitPages(coursePackId: string, unitBlueprint: UnitContentBlueprint, lesson: CourseIRLesson): PublishValidationIssue[] {
+function validateUnitPages(
+  coursePackId: string,
+  unitBlueprint: UnitContentBlueprint,
+  lesson: CourseIRLesson,
+  courseIntent: ContentBlueprint["courseIntent"]
+): PublishValidationIssue[] {
   const issues: PublishValidationIssue[] = [];
   const sortedBlueprints = [...unitBlueprint.pageBlueprints].sort((first, second) => first.pageNumber - second.pageNumber);
+  const selfStudyTextbook = courseIntent === "student_self_study_textbook";
 
   for (const pageBlueprint of sortedBlueprints) {
     const page = lesson.pages[pageBlueprint.pageNumber - 1];
@@ -77,15 +83,15 @@ function validateUnitPages(coursePackId: string, unitBlueprint: UnitContentBluep
       issues.push(sourceSupportMissingIssue(coursePackId, unitBlueprint, lesson.lessonId, page));
     }
 
-    if (visualRequiredPageTypes.has(pageBlueprint.pageType) && !page.hasVisual) {
+    if (!selfStudyTextbook && visualRequiredPageTypes.has(pageBlueprint.pageType) && !page.hasVisual) {
       issues.push(visualMissingIssue(coursePackId, unitBlueprint, lesson.lessonId, page, pageBlueprint));
     }
 
-    if (interactionRequiredPageTypes.has(pageBlueprint.pageType) && !page.hasInteraction) {
+    if (!selfStudyTextbook && interactionRequiredPageTypes.has(pageBlueprint.pageType) && !page.hasInteraction) {
       issues.push(learnerActionMissingIssue(coursePackId, unitBlueprint, lesson.lessonId, page, pageBlueprint, "interactionSpec"));
     }
 
-    if (assessmentRequiredPageTypes.has(pageBlueprint.pageType)) {
+    if (!selfStudyTextbook && assessmentRequiredPageTypes.has(pageBlueprint.pageType)) {
       if (!page.hasAssessment) {
         issues.push(learnerActionMissingIssue(coursePackId, unitBlueprint, lesson.lessonId, page, pageBlueprint, "assessmentSpec"));
       } else if (!page.hasFeedback) {

@@ -115,6 +115,23 @@ describe("validateContentBlueprintCompliance", () => {
       })
     ).toBeUndefined();
   });
+
+  it("extracts student self-study textbook content blueprints", () => {
+    expect(
+      extractContentBlueprint({
+        contentBlueprint: { ...blueprint(), courseIntent: "student_self_study_textbook" }
+      })?.courseIntent
+    ).toBe("student_self_study_textbook");
+  });
+
+  it("does not require interactive or assessment specs for student self-study textbook blueprints", () => {
+    expect(
+      validateContentBlueprintCompliance({
+        courseIR: selfStudyCourseIR(),
+        contentBlueprint: selfStudyBlueprint()
+      })
+    ).toEqual([]);
+  });
 });
 
 function blueprint(
@@ -188,6 +205,106 @@ function courseIR(pages = validPages(), sourceKind = "book"): CourseIR {
         misconceptions: [{ id: "m1", statement: "哈希表永远 O(1)", correction: "冲突会改变成本。" }],
         transferTasks: [{ id: "t1", prompt: "迁移到缓存 key 设计" }],
         summary: ["哈希表通过 key 缩小候选范围。"]
+      }
+    ]
+  });
+}
+
+function selfStudyBlueprint(): ContentBlueprint {
+  const sourceRequirement = "source-backed 页面必须包含 page.sourceAnchorIds；没有直接依据的推理页设置 grounding.kind 为 inferred，类比页设置为 analogy。";
+  const pageTypes = [
+    "problem_scene",
+    "intuition_visual",
+    "structure_diagram",
+    "process_animation",
+    "code_walkthrough",
+    "structure_diagram",
+    "misconception_check",
+    "summary_card"
+  ];
+  return {
+    version: "content-blueprint/v1",
+    courseIntent: "student_self_study_textbook",
+    globalRules: ["学生自学 Web 教材"],
+    units: [
+      {
+        unitId: "unit-overview",
+        lessonId: "self-study-lesson",
+        title: "Agent workflow 自学课",
+        targetPageCount: 8,
+        unitKind: "overview",
+        focusConcepts: ["workflow"],
+        sourceAnchorIds: ["source-001:p1"],
+        sourceRequirement,
+        pageBlueprints: pageTypes.map((pageType, index) => ({
+          pageNumber: index + 1,
+          pageType,
+          teachingMove: "直接讲清一个知识片段。",
+          learnerAction: "阅读解释并追踪知识链路。",
+          visualRequirement: "knowledgeBoard 承载板书结构。",
+          feedbackRequirement: "bottomLine 给出可复习结论。",
+          sourceRequirement,
+          mustInclude: ["knowledgeBoard", "sourceTrace", "bottomLine"]
+        }))
+      }
+    ]
+  };
+}
+
+function selfStudyCourseIR(): CourseIR {
+  const pageTypes = selfStudyBlueprint().units[0]!.pageBlueprints.map((page) => page.pageType);
+  return buildCourseIR({
+    runId: "self-study-run",
+    coursePack: {
+      id: "self-study-course",
+      title: "Agent workflow 自学课",
+      parentRunId: "self-study-run",
+      language: "zh-CN",
+      sourceKind: "book",
+      strategy: "overview_plus_topic",
+      units: [
+        {
+          unitId: "unit-overview",
+          title: "Agent workflow 自学课",
+          kind: "overview",
+          lessonId: "self-study-lesson",
+          targetPageCount: 8,
+          sourceAnchorIds: ["source-001:p1"],
+          conceptIds: ["workflow"]
+        }
+      ]
+    },
+    lessons: [
+      {
+        id: "self-study-lesson",
+        title: "Agent workflow 自学课",
+        audience: "研究生自学者",
+        config: { targetPageCount: 8 },
+        sourceContext: {
+          unitId: "unit-overview",
+          sourceAnchorIds: ["source-001:p1"]
+        },
+        prerequisites: ["先修：理解 LLM 调用"],
+        learningObjectives: ["理解 workflow 的中间状态。"],
+        pages: pageTypes.map((type, index) => ({
+          id: `p${index + 1}`,
+          type,
+          title: `第 ${index + 1} 页`,
+          learningGoal: "理解 workflow 的中间状态。",
+          narrative: "这是一段中文自学教材内容。",
+          sourceAnchorIds: ["source-001:p1"],
+          knowledgeBoard: {
+            headline: "为什么 workflow 需要中间状态？",
+            coreProposition: "workflow 让复杂任务变成可检查、可恢复的步骤。",
+            leftColumn: [{ label: "机制链", items: ["拆步骤", "看中间状态"] }],
+            rightColumn: [{ label: "例子与边界", items: ["例如来源采样", "边界是短任务不一定需要"] }],
+            sourceTrace: [{ anchorId: "source-001:p1", supports: "来源支持 workflow 拆分步骤。" }],
+            bottomLine: "记住中间状态。"
+          }
+        })),
+        misconceptions: [{ id: "m1", statement: "workflow 只是长提示。", correction: "关键是中间状态。" }],
+        transferTasks: [],
+        summary: ["workflow 让任务有中间状态。"]
       }
     ]
   });

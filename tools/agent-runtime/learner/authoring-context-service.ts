@@ -294,9 +294,7 @@ export class AuthoringContextService {
         language: "zh-CN",
         requirements: [
           "请由 Codex 创作 coursePack 和 lessons，不要让 MCP deterministic generator 代写正式内容。",
-          brief.courseIntent === "professor_lecture_deck"
-            ? "每个 professor_lecture_deck 页面必须优先写 page.knowledgeBoard：headline、coreProposition、leftColumn、rightColumn、sourceTrace、bottomLine；内容逻辑为原文命题 -> 拆解 -> 证据 -> 重构，左栏放概念/机制/定义/推导，右栏放例子/反例/来源证据/边界。"
-            : "每个 lesson 必须中文优先，并包含问题、视觉模型、学习动作、反馈、误区检查和迁移任务。",
+          ...authoringRequirementsForIntent(brief),
           "每个 source-backed 页面必须包含 page.sourceAnchorIds，或显式标注 grounding.kind 为 inferred/analogy。",
           "教学页面应一页一学习目标；如果内容过多，请拆页而不是堆长段落。",
           "完成后调用 learning_agent.publish_learning_course，并用 learning_agent.get_learning_preview 返回网页。"
@@ -373,7 +371,7 @@ function buildQualityContract(brief: AuthoringContextResult["brief"], contentBlu
     },
     supportedStrategies: ["overview_plus_topic", "chapter_guided", "topic_guided", "task_guided", "hybrid"],
     requiredPageTypes:
-      brief.courseIntent === "professor_lecture_deck"
+      brief.courseIntent === "professor_lecture_deck" || brief.courseIntent === "student_self_study_textbook"
         ? requiredPageTypesFromBlueprint(contentBlueprint)
         : [
             "problem_scene",
@@ -388,6 +386,8 @@ function buildQualityContract(brief: AuthoringContextResult["brief"], contentBlu
     requiredLearningActions:
       brief.courseIntent === "professor_lecture_deck"
         ? ["map_knowledge_nodes", "explain_key_links", "define_terms", "work_example", "compare_boundaries", "summarize_structure"]
+        : brief.courseIntent === "student_self_study_textbook"
+          ? ["read_explanation", "trace_knowledge_link", "compare_boundary", "summarize_bottom_line"]
         : ["predict", "manipulate", "compare", "explain", "debug", "transfer"],
     pageRules: [
       `页面应符合${levelLabel}的教材课件密度：有问题、概念、来源依据、关键链路、例子或边界，而不是只有解释性段落。`,
@@ -419,6 +419,16 @@ function buildQualityContract(brief: AuthoringContextResult["brief"], contentBlu
             "如果保留 interactionSpec 或 assessmentSpec，必须服务内容理解；在 textbook_deck 显示模式下不要显性渲染为教学设计模块。",
             "学生侧页面应像教材课件：标题、正文、图/表/代码/例子，避免暴露教学设计话术。"
           ]
+        : brief.courseIntent === "student_self_study_textbook"
+          ? [
+              "coursePack.units 引用的 lessonId 必须存在。",
+              `每个 lesson 的 prerequisites、learningObjectives、pages、summary 要体现${levelLabel}定位。`,
+              "每页必须包含 knowledgeBoard，且 headline、coreProposition、leftColumn、rightColumn、sourceTrace、bottomLine 都要是学生能直接读懂的解释。",
+              "source-backed 页面必须保留 page.sourceAnchorIds 和 knowledgeBoard.sourceTrace。",
+              "确认每页能一屏读完；如果内容过长，拆成多页。",
+              "确认每页至少有例子、反例、证据或边界之一。",
+              "不要出现本讲定位、课堂讨论、教授讲义、课后作业、教学目标、教学设计等教师视角模板词。"
+            ]
         : [
             "coursePack.units 引用的 lessonId 必须存在。",
             `每个 lesson 的 prerequisites、learningObjectives、pages、summary 要体现${levelLabel}定位。`,
@@ -428,6 +438,24 @@ function buildQualityContract(brief: AuthoringContextResult["brief"], contentBlu
             "每个 assessment 页面必须有 feedbackSpec。"
           ]
   };
+}
+
+function authoringRequirementsForIntent(brief: AuthoringContextResult["brief"]): string[] {
+  if (brief.courseIntent === "professor_lecture_deck") {
+    return [
+      "每个 professor_lecture_deck 页面必须优先写 page.knowledgeBoard：headline、coreProposition、leftColumn、rightColumn、sourceTrace、bottomLine；内容逻辑为原文命题 -> 拆解 -> 证据 -> 重构，左栏放概念/机制/定义/推导，右栏放例子/反例/来源证据/边界。"
+    ];
+  }
+  if (brief.courseIntent === "student_self_study_textbook") {
+    return [
+      "学生自学 Web 教材必须由 Codex/Claude 直接写出可读内容，不要输出给老师的授课提示。",
+      "每页必须包含 knowledgeBoard，且标题、coreProposition、左右栏和 bottomLine 都要是学生能直接读懂的解释。",
+      "source-backed 页面必须保留 page.sourceAnchorIds 和 knowledgeBoard.sourceTrace。",
+      "禁止本讲定位、课堂讨论、教授讲义、课后作业、教学目标、教学设计等教师视角话术。",
+      "默认页数只是建议；如果用户指定总页数或每单元页数，以用户指定为准。"
+    ];
+  }
+  return ["每个 lesson 必须中文优先，并包含问题、视觉模型、学习动作、反馈、误区检查和迁移任务。"];
 }
 
 function requiredPageTypesFromBlueprint(contentBlueprint: ContentBlueprint): string[] {
@@ -565,9 +593,13 @@ function buildCodexInstruction(brief: AuthoringContextResult["brief"], unitCount
     `教学难度层级：${difficultyLabel(brief.difficultyLevel)}（${brief.difficultyLevel}）；不要写成泛泛科普、博客摘要或产品介绍。`,
     brief.courseIntent === "professor_lecture_deck"
       ? "请写成教材式知识链路 Web Deck：像大学/研究生课程课件，重点是概念密度、知识节点、关键链路、方法谱系、经典例题、边界条件和总结图；不是教师备课提纲；不要生成 PPTX 或 Slides；不要把教学设计词显性写到页面上。"
-      : "请写成互动学习 Web Deck：问题、视觉模型、学习动作、反馈、误区检查和迁移任务是重点。",
+      : brief.courseIntent === "student_self_study_textbook"
+        ? "请写成学生自学 Web 教材：每页直接讲清一个知识片段，标题和正文都面向学生自读；不要写本讲定位、课堂讨论、教授讲义、课后作业、教学目标或教学设计。"
+        : "请写成互动学习 Web Deck：问题、视觉模型、学习动作、反馈、误区检查和迁移任务是重点。",
     brief.courseIntent === "professor_lecture_deck"
       ? "保持 title/narrative 作为兼容字段，但正式内容必须进入 page.knowledgeBoard；knowledgeBoard 字段为 headline、coreProposition、leftColumn、rightColumn、sourceTrace、bottomLine。内容逻辑按原文命题 -> 拆解 -> 证据 -> 重构组织。左栏用于概念、机制、定义或推导；右栏用于例子、反例、来源证据或边界；sourceTrace 记录 anchorId/supports，学生视图默认隐藏。"
+      : brief.courseIntent === "student_self_study_textbook"
+        ? "保持 title/narrative 作为兼容摘要，但正式内容必须进入 page.knowledgeBoard；knowledgeBoard 字段为 headline、coreProposition、leftColumn、rightColumn、sourceTrace、bottomLine。headline 写学习者问题或知识命题，leftColumn 放概念/机制/因果链/定义，rightColumn 放例子/反例/证据/边界，bottomLine 给学生可复习结论。"
       : undefined,
     ...(requiresResearchReadingContract(brief)
       ? ["这是一套论文精读课；每个相关 lesson 必须显式覆盖：研究问题、论文贡献、方法机制、实验/证据、局限/威胁、迁移判断。"]
