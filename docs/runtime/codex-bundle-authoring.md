@@ -41,6 +41,10 @@ Respect the learner brief fields:
 
 If `selectedChapters` or `selectedTopics` is present, treat it as a user constraint, not a suggestion.
 
+For `courseIntent=student_self_study_textbook`, selected topics define the course scope. A request for overview plus three topics with `unitPages=10` should become one bundle with four units and about 40 pages. The default 100-page self-study budget applies to open-ended whole-book expansion only; do not redistribute selected topics into that budget unless the learner explicitly requested a total page count.
+
+When authoring self-study textbook bundles, read `docs/runtime/self-study-golden-samples.md` before writing pages. It records accepted title density, non-repetition rules, and the expected student-facing compressed textbook tone.
+
 ## Lesson Requirements
 
 Each lesson must be Chinese-first and include:

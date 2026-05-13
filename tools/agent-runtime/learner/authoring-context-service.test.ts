@@ -478,6 +478,60 @@ describe("AuthoringContextService", () => {
     expect(context.codexInstruction).toContain("这是用户指定值");
   });
 
+  test("productizes self-study overview plus selected topic units as one authoring bundle", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "authoring-context-self-study-topics-"));
+    const sourcePath = path.join(root, "agentic-book.md");
+    await writeFile(
+      sourcePath,
+      [
+        "# Agentic Design Patterns",
+        "Agentic workflows use prompt chaining, tool use, reflection, and planning as reusable patterns.",
+        "# Prompt Chaining",
+        "Prompt chaining decomposes a complex task into sequential steps with inspectable intermediate outputs.",
+        "# Tool Use",
+        "Tool use connects model decisions to external APIs and observable results.",
+        "# Reflection",
+        "Reflection asks a model or critic to evaluate outputs against explicit criteria."
+      ].join("\n\n"),
+      "utf8"
+    );
+    await new LearnerProjectService(root).createProject({
+      request:
+        `请用 "${sourcePath}" 做成学生自学 Web 教材，面向有 AI 工程基础的中文学习者，教学难度为大学高年级/研究生课程，每个单元 10 页。先给总览课，再按核心 topics: Prompt Chaining、Tool Use、Reflection 拆课。`,
+      runId: "self-study-overview-topics",
+      sourcePath,
+      sourceKind: "book",
+      audience: "有 AI 工程基础的中文学习者",
+      difficultyLevel: "upper_undergraduate_or_graduate",
+      courseIntent: "student_self_study_textbook",
+      unitPages: 10,
+      strategy: "overview_plus_topic",
+      selectedTopics: ["Prompt Chaining", "Tool Use", "Reflection"]
+    });
+
+    const context = await new AuthoringContextService(root).getContext({ runId: "self-study-overview-topics", maxAnchors: 8 });
+
+    expect(context.brief).toMatchObject({
+      courseIntent: "student_self_study_textbook",
+      unitPages: 10,
+      targetTotalPages: 100,
+      totalPagesSpecified: false,
+      selectedTopics: ["Prompt Chaining", "Tool Use", "Reflection"]
+    });
+    expect(context.coursePlan.estimatedTotalPages).toBe(40);
+    expect(context.coursePlan.recommendedUnits.map((unit) => [unit.kind, unit.title, unit.targetPageCount])).toEqual([
+      ["overview", "agentic-book：总览课", 10],
+      ["topic", "agentic-book：Prompt Chaining", 10],
+      ["topic", "agentic-book：Tool Use", 10],
+      ["topic", "agentic-book：Reflection", 10]
+    ]);
+    expect(context.contentBlueprint.units).toHaveLength(4);
+    expect(context.contentBlueprint.units.every((unit) => unit.targetPageCount === 10 && unit.pageBlueprints.length === 10)).toBe(true);
+    expect(context.codexInstruction).toContain("docs/runtime/self-study-golden-samples.md");
+    expect(context.codexInstruction).toContain("一次性创作完整 coursePack.units");
+    expect(context.codexInstruction).toContain("总览课 + 3 个 selected topic 单元");
+  });
+
   test("matches professor required page types to the requested 7-page blueprint", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "authoring-context-professor-7-"));
     const sourcePath = path.join(root, "lecture-book.md");

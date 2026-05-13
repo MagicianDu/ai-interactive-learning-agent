@@ -16,6 +16,7 @@ Use this skill when the user asks Codex to generate, preview, revise, export, or
 - `--unit-pages` means pages per learning unit, not total pages for the whole source.
 - Learner-facing operation should hide internal artifacts unless the user explicitly asks for expert review.
 - Use expert/operator mode only for debugging, auditing, or artifact-level generation.
+- In `student_self_study_textbook`, selected topics should be planned as one complete course: overview unit plus one focused unit per selected topic. Do not run one temporary preview per topic unless explicitly debugging.
 
 ## Product Contract
 
@@ -43,6 +44,7 @@ Map learner intent into project inputs:
 - "章节 + topic 混合": `strategy=hybrid`
 - Page count like "每章10页" or "每个 topic 12 页": `unitPages=10` or `unitPages=12`
 - "自学 / 不想读完整本书 / Web 教材 / 压缩成若干页": `courseIntent=student_self_study_textbook`
+- "总览 + 多个核心 topic / topics: A、B、C": `strategy=overview_plus_topic`, `selectedTopics=["A","B","C"]`, and one final `coursePack.units` bundle containing overview plus all selected topic units.
 
 Clarify only learner-visible choices when missing:
 
@@ -67,7 +69,7 @@ Use this flow for normal Codex/Claude-style natural language operation. It shoul
 
 If this returns `clarification_required`, ask only those learner-visible questions and call `learning_agent.prepare_learning_course` again.
 
-2. Use Codex Authoring Protocol V2 with the returned `sourceSemantics`, `coursePlan.strategyReason`, `coursePlan.estimatedTotalPages`, `coursePlan.sourceCoveragePlan`, `coursePlan.acceptanceExpectations`, `coursePlan.recommendedUnits[*].expectedInteractions/expectedAssessments/transferExpectation`, and `contentBlueprint.units[*].pageBlueprints` as authoring constraints. For `student_self_study_textbook`, `pageType=codex_designed` means Codex/Claude should design each page role from the source and must not copy a fixed template. Titles must be content propositions or real learner questions, not page-role labels such as "直观模型" or "机制链路"; avoid scaffold phrases such as "本页围绕..." and "本页从...入手". For long books, `unitPages` is per unit and `estimatedTotalPages` is the approximate whole-course page budget. Do not paste source graph, course-plan, or content-blueprint artifacts to the learner unless they ask for expert details.
+2. Use Codex Authoring Protocol V2 with the returned `sourceSemantics`, `coursePlan.strategyReason`, `coursePlan.estimatedTotalPages`, `coursePlan.sourceCoveragePlan`, `coursePlan.acceptanceExpectations`, `coursePlan.recommendedUnits[*].expectedInteractions/expectedAssessments/transferExpectation`, and `contentBlueprint.units[*].pageBlueprints` as authoring constraints. For `student_self_study_textbook`, `pageType=codex_designed` means Codex/Claude should design each page role from the source and must not copy a fixed template. Titles must be content propositions or real learner questions, not page-role labels such as "直观模型" or "机制链路"; avoid scaffold phrases such as "本页围绕..." and "本页从...入手". Read `docs/runtime/self-study-golden-samples.md` as the minimum quality bar. For long books, `unitPages` is per unit and `estimatedTotalPages` is the approximate whole-course page budget. If selected topics are present, author all recommended units in one `coursePack.units` bundle instead of generating one topic preview at a time. Do not paste source graph, course-plan, or content-blueprint artifacts to the learner unless they ask for expert details.
 
 3. Codex authors `coursePack` and `lessons`, then publishes:
 

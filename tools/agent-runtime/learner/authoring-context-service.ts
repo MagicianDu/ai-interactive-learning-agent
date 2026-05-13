@@ -207,6 +207,7 @@ export class AuthoringContextService {
       unitPageCount: config.coursePack?.unitPageCount ?? config.pageCount.target,
       courseIntent: project.brief?.courseIntent ?? defaultCourseIntent,
       targetTotalPages: project.brief?.targetTotalPages ?? config.coursePack?.targetTotalPages,
+      totalPagesSpecified: project.brief?.totalPagesSpecified,
       selectedTopics: config.coursePack?.selectedTopics ?? [],
       selectedChapters: config.coursePack?.selectedChapters ?? [],
       concepts,
@@ -585,6 +586,9 @@ function pageBudgetReminder(brief: AuthoringContextResult["brief"]): string | un
     return undefined;
   }
   if (brief.totalPagesSpecified === false) {
+    if (brief.selectedTopics.length > 0 || brief.selectedChapters.length > 0) {
+      return `默认约 ${brief.targetTotalPages} 页适用于全书展开；当前已指定范围，按每个单元 ${brief.unitPages} 页规划。`;
+    }
     return `默认约 ${brief.targetTotalPages} 页；学习者可以用自然语言调整总页数或每单元页数。`;
   }
   return `学习者指定总页数约 ${brief.targetTotalPages} 页。`;
@@ -617,11 +621,17 @@ function buildCodexInstruction(brief: AuthoringContextResult["brief"], unitCount
     brief.courseIntent === "student_self_study_textbook"
       ? "写 lesson 前先读取 contentBlueprint.units[*] 的页数、来源、semanticHints 和 mustInclude；pageBlueprint.pageType=codex_designed 不是固定模板，具体页面类型、知识角色和顺序由 Codex/Claude 按来源内容设计。"
       : "写 lesson 前先逐项遵循 contentBlueprint.units[*].pageBlueprints：pageType、teachingMove、learnerAction、visualRequirement、feedbackRequirement、sourceRequirement。",
+    brief.courseIntent === "student_self_study_textbook"
+      ? "参考 docs/runtime/self-study-golden-samples.md 的已验收样本：标题必须有知识命题密度，页面之间不能重复同一套板书。"
+      : undefined,
     `输出语言：${brief.language}。`,
     `课程策略：${brief.strategy}。`,
     `每个单元页数：${brief.unitPages}。`,
     brief.courseIntent === "student_self_study_textbook" && brief.targetTotalPages
       ? `总页数预算：约 ${brief.targetTotalPages} 页。${brief.totalPagesSpecified === false ? "这是默认建议值，用户可以继续改短或改长。" : "这是用户指定值，优先遵守。"}`
+      : undefined,
+    brief.courseIntent === "student_self_study_textbook" && brief.selectedTopics.length > 0
+      ? `本次应一次性创作完整 coursePack.units：总览课 + ${brief.selectedTopics.length} 个 selected topic 单元；不要为每个 topic 建临时 run 或逐个样本验证。`
       : undefined,
     `建议单元数：${unitCount}。`,
     brief.courseIntent === "professor_lecture_deck"

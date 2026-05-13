@@ -43,6 +43,40 @@ describe("planCourseUnits", () => {
     expect(plan.units[2]?.focusConcepts).toEqual(["实验设计"]);
   });
 
+  it("treats default self-study total pages as guidance when selected topics define the course scope", () => {
+    const plan = planCourseUnits({
+      runId: "self-study-selected-topics",
+      topic: "Agentic Design Patterns",
+      sourceKind: "book",
+      strategy: "overview_plus_topic",
+      courseIntent: "student_self_study_textbook",
+      unitPageCount: 10,
+      targetTotalPages: 100,
+      totalPagesSpecified: false,
+      selectedTopics: ["Prompt Chaining", "Tool Use", "Reflection"],
+      selectedChapters: [],
+      concepts: ["全局地图", "Prompt Chaining", "Tool Use", "Reflection"],
+      sourceAnchorIds: Array.from({ length: 12 }, (_, index) => `book:p${index + 1}`),
+      sourceNodeIds: ["book:root"]
+    });
+
+    expect(plan.units.map((unit) => unit.title)).toEqual([
+      "Agentic Design Patterns：总览课",
+      "Agentic Design Patterns：Prompt Chaining",
+      "Agentic Design Patterns：Tool Use",
+      "Agentic Design Patterns：Reflection"
+    ]);
+    expect(plan.units.map((unit) => unit.targetPageCount)).toEqual([10, 10, 10, 10]);
+    expect(plan.estimatedTotalPages).toBe(40);
+    expect(plan.sourceCoveragePlan).toMatchObject({
+      coverageMode: "selected_topics",
+      focusedUnitCount: 3,
+      totalUnitCount: 4,
+      totalPageBudget: 40
+    });
+    expect(plan.planningNotes.join("\n")).toContain("默认总页数");
+  });
+
   it.each([
     ["chapter_guided", "chapter", "unit-chapter-01"],
     ["task_guided", "task", "unit-task-01"],

@@ -36,6 +36,8 @@ Use this skill to turn learner-supplied material into a course request that the 
 
 Track selected chapters, selected topics, audience, teaching difficulty level, language, and `unitPages` as learner-visible choices. `unitPages` means pages per unit. For long books, preserve the difference between per-unit pages and total course pages: a five-chapter request at 10 pages per chapter should become one overview unit plus five chapter units, approximately 60 pages total.
 
+For `student_self_study_textbook`, selected topics define the course scope. If the learner asks for "总览 + Prompt Chaining、Tool Use、Reflection" with `unitPages=10`, prepare one course pack with `unit-overview` plus three topic units, about 40 pages total. Do not create one temporary run per topic, and do not redistribute those selected units into the default 100-page whole-book budget unless the learner explicitly requested a total page count.
+
 Ask at most three learner-answerable clarification questions. If the learner did not state teaching difficulty, ask them to choose one of: 入门衔接, 本科核心课程, 大学高年级/研究生课程, 研究论文精读/前沿讨论. If the learner did not state `unitPages`, ask for pages per unit, such as 6, 8, 10, or 12. Never ask a learner to approve source maps, concept maps, curriculum plans, or critic reports in the default flow.
 
 Ask for course intent when the learner's goal is ambiguous:
@@ -90,6 +92,7 @@ When inspecting expert details, prefer the latest `source-graph`, `course-plan`,
 - For long books, check `coursePlan.sourceCoveragePlan`, `estimatedTotalPages`, and `planningNotes` before authoring; do not compress all chapters into one short unit unless the learner explicitly asks for a summary-only course.
 - Use `contentBlueprint.units[*].pageBlueprints` as the page-budget and quality checklist. In `student_self_study_textbook`, do not copy a fixed page template; design distinct page roles and ensure every page has a unique `knowledgeBoard`.
 - For `student_self_study_textbook`, page titles must be content propositions or real learner questions. Do not use page-role labels such as "直观模型", "机制链路", or "来源证据" as visible titles, and do not write scaffold phrases such as "本页围绕..." or "本页从...入手".
+- For `student_self_study_textbook` overview-plus-topic courses, read `docs/runtime/self-study-golden-samples.md` and author all planned units in one `coursePack.units` bundle before publishing.
 - Do not ask the learner to approve internal artifacts such as source maps, concept maps, or curriculum plans.
 - Preserve chapter or section mappings when the learner asks for them.
 - Keep every unit's page count aligned with the requested `unitPages`.

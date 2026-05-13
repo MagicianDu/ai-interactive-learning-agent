@@ -181,6 +181,9 @@ function pageBudgetGuidance(brief: LearnerBrief): string | undefined {
     return undefined;
   }
   if (brief.totalPagesSpecified === false) {
+    if ((brief.selectedTopics?.length ?? 0) > 0 || (brief.selectedChapters?.length ?? 0) > 0) {
+      return `页数策略：默认约 ${brief.targetTotalPages} 页适用于全书展开；当前已指定范围，先按每个单元 ${brief.unitPages} 页规划。`;
+    }
     return `页数策略：我会先按默认约 ${brief.targetTotalPages} 页的一屏式 Web 教材规划；如果你希望更短或更长，可以直接说总页数或每个单元页数。`;
   }
   return `页数策略：总页数约 ${brief.targetTotalPages} 页，每个单元约 ${brief.unitPages} 页。`;

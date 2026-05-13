@@ -74,6 +74,16 @@ Future self-study textbook authoring should preserve these properties:
 - Source grounding is visible through `sourceAnchorIds` and `knowledgeBoard.sourceTrace`, but source anchors do not replace explanation.
 - A topic unit should read like a compressed textbook chapter for self-study, not speaker notes for a professor.
 
+## Productized Overview Plus Topics Flow
+
+When a learner asks for a long source as `student_self_study_textbook` with selected core topics:
+
+- Produce one course pack, not one temporary run per topic.
+- `coursePack.units` should contain `unit-overview` plus one topic unit for every selected topic.
+- `unitPages` is the page budget for each unit. A request like `unitPages=10` and three topics should plan about 40 pages: 10 overview pages plus 10 pages for each topic.
+- The default 100-page self-study reminder is for open-ended whole-book expansion. If the learner already selected topics or chapters and did not explicitly request a total page count, do not redistribute those selected units into 100 pages.
+- Codex/Claude should author every planned unit in one bundle and then call `learning_agent.publish_learning_course` once for the complete course.
+
 ## Regression Hooks
 
 - `evaluateSelfStudyTextbookRubric` rejects authoring scaffold language, repeated `knowledgeBoard` content, repeated page-role title patterns, and single page-role titles.

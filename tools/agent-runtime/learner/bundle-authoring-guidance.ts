@@ -50,8 +50,10 @@ function intentAuthoringRules(brief: LearnerBrief): string[] {
       "9. 同一 lesson 内每页必须推进不同知识节点或关键链路，禁止复制同一套 headline、coreProposition、左右栏或 bottomLine。",
       "10. 不要写本讲定位、课堂讨论、教授讲义、课后作业、教学目标、教学设计、识别本页中的作用等教师视角话术。",
       "11. 页面必须一屏可读；如果一个知识片段放不下，就拆成下一页，不要用长段落或纵向滚动硬塞。",
+      "12. 参考 docs/runtime/self-study-golden-samples.md 的已验收样本；标题要有知识命题密度，页面之间不能重复同一套板书。",
+      overviewPlusSelectedTopicsInstruction(brief),
       pageBudgetInstruction(brief)
-    ];
+    ].filter((line): line is string => typeof line === "string");
   }
   return [
     "3. 每个 lesson 至少包含 3 个 visualSpec、2 个 meaningful interactionSpec、2 个 assessmentSpec，并且 assessment 页面必须有 feedbackSpec。",
@@ -63,11 +65,21 @@ function intentAuthoringRules(brief: LearnerBrief): string[] {
 
 function pageBudgetInstruction(brief: LearnerBrief): string {
   if (brief.targetTotalPages) {
+    if (!brief.totalPagesSpecified && ((brief.selectedTopics?.length ?? 0) > 0 || (brief.selectedChapters?.length ?? 0) > 0)) {
+      return `14. 默认 ${brief.targetTotalPages} 页只是全书展开建议；当前已限定章节或 topics，按每个单元 ${brief.unitPages} 页规划，不要把已选单元拉伸到默认总页数。`;
+    }
     return brief.totalPagesSpecified
-      ? `12. 当前用户指定总页数约 ${brief.targetTotalPages} 页，按该预算拆分；不要擅自恢复为默认页数。`
-      : `12. 100 页只是长书默认建议；当前总页预算约 ${brief.targetTotalPages} 页，如内容不足或过密，按一屏可读原则微调。`;
+      ? `14. 当前用户指定总页数约 ${brief.targetTotalPages} 页，按该预算拆分；不要擅自恢复为默认页数。`
+      : `14. 100 页只是长书默认建议；当前总页预算约 ${brief.targetTotalPages} 页，如内容不足或过密，按一屏可读原则微调。`;
   }
-  return "12. 100 页只是长书默认建议；未给总页数时按每单元页数规划，内容太多就拆单元。";
+  return "14. 100 页只是长书默认建议；未给总页数时按每单元页数规划，内容太多就拆单元。";
+}
+
+function overviewPlusSelectedTopicsInstruction(brief: LearnerBrief): string | undefined {
+  if (brief.strategy !== "overview_plus_topic" || (brief.selectedTopics?.length ?? 0) === 0) {
+    return undefined;
+  }
+  return `13. 本次必须一次性生成完整 coursePack.units：unit-overview 加 ${brief.selectedTopics?.length ?? 0} 个 selected topic units；不要为每个 topic 建临时 run。`;
 }
 
 function publishSelfCheck(brief: LearnerBrief): string {

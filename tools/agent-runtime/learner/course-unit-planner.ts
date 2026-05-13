@@ -41,6 +41,7 @@ export type CourseUnitPlanInput = {
   sourceChapters?: SourceChapterPlanHint[];
   courseIntent?: CourseIntent;
   targetTotalPages?: number;
+  totalPagesSpecified?: boolean;
 };
 
 export type CourseUnitPlan = {
@@ -85,7 +86,8 @@ export function planCourseUnits(input: CourseUnitPlanInput): CourseUnitPlan {
   const focusPlan = buildFocusPlan(input, strategy);
   const focused = focusPlan.focusItems;
   const focusedKind = unitKind(strategy);
-  const pageCounts = pageCountsForUnits(focused.length + 1, input.unitPageCount, input.targetTotalPages);
+  const appliedTargetTotalPages = appliedTargetTotalPagesForPlan(input, focusPlan.coverageMode);
+  const pageCounts = pageCountsForUnits(focused.length + 1, input.unitPageCount, appliedTargetTotalPages);
   const commonCoverage = {
     minSourceAnchorCount: input.sourceAnchorIds.length > 0 ? 1 : 0,
     preserveChapterRefs: shouldPreserveChapterRefs(strategy, input.selectedChapters)
@@ -141,11 +143,27 @@ export function planCourseUnits(input: CourseUnitPlanInput): CourseUnitPlan {
     strategy,
     strategyReason: strategyReason(input.strategy, strategy, input.sourceKind),
     estimatedTotalPages,
-    planningNotes: planningNotes(sourceCoveragePlan, input.unitPageCount, input.targetTotalPages),
+    planningNotes: planningNotes(sourceCoveragePlan, input.unitPageCount, input.targetTotalPages, appliedTargetTotalPages, input.totalPagesSpecified),
     sourceCoveragePlan,
     acceptanceExpectations: acceptanceExpectations(strategy, commonCoverage.preserveChapterRefs),
     units
   };
+}
+
+function appliedTargetTotalPagesForPlan(
+  input: CourseUnitPlanInput,
+  coverageMode: CourseSourceCoveragePlan["coverageMode"]
+): number | undefined {
+  if (!input.targetTotalPages) {
+    return undefined;
+  }
+  if (input.totalPagesSpecified === true) {
+    return input.targetTotalPages;
+  }
+  if (input.totalPagesSpecified === false && (coverageMode === "selected_topics" || coverageMode === "selected_chapters")) {
+    return undefined;
+  }
+  return input.targetTotalPages;
 }
 
 function buildFocusPlan(
@@ -246,12 +264,21 @@ function coverageRecommendation(
   return "先给总览课，再按核心概念拆课；如资料很长，可继续补充章节或 topic 范围扩展单元数。";
 }
 
-function planningNotes(sourceCoveragePlan: CourseSourceCoveragePlan, unitPageCount: number, targetTotalPages: number | undefined): string[] {
+function planningNotes(
+  sourceCoveragePlan: CourseSourceCoveragePlan,
+  unitPageCount: number,
+  targetTotalPages: number | undefined,
+  appliedTargetTotalPages: number | undefined,
+  totalPagesSpecified: boolean | undefined
+): string[] {
+  const pageBudgetNote = appliedTargetTotalPages
+    ? `目标总页数约 ${appliedTargetTotalPages} 页；当前计划 ${sourceCoveragePlan.totalUnitCount} 个单元，总页数约 ${sourceCoveragePlan.totalPageBudget} 页。`
+    : targetTotalPages && totalPagesSpecified === false
+      ? `默认总页数约 ${targetTotalPages} 页仅作为全书展开提醒；当前已限定范围，按每个单元 ${unitPageCount} 页规划 ${sourceCoveragePlan.totalUnitCount} 个单元，总页数约 ${sourceCoveragePlan.totalPageBudget} 页。`
+      : `每个单元 ${unitPageCount} 页；当前计划 ${sourceCoveragePlan.totalUnitCount} 个单元，总页数约 ${sourceCoveragePlan.totalPageBudget} 页。`;
   return [
     sourceCoveragePlan.recommendation,
-    targetTotalPages
-      ? `目标总页数约 ${targetTotalPages} 页；当前计划 ${sourceCoveragePlan.totalUnitCount} 个单元，总页数约 ${sourceCoveragePlan.totalPageBudget} 页。`
-      : `每个单元 ${unitPageCount} 页；当前计划 ${sourceCoveragePlan.totalUnitCount} 个单元，总页数约 ${sourceCoveragePlan.totalPageBudget} 页。`,
+    pageBudgetNote,
     sourceCoveragePlan.coverageMode === "selected_chapters"
       ? "章节单元必须保留章节边界；Codex 可以在每章内部再按核心 topic 安排页面。"
       : "非章节模式仍需在页面或单元级保留来源锚点映射。"

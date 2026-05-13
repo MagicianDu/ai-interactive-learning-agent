@@ -78,6 +78,29 @@ describe("bundle authoring guidance", () => {
     expect(guidance).not.toContain("缺互动");
   });
 
+  test("guides selected self-study topics as one complete course bundle", () => {
+    const guidance = buildBundleAuthoringGuidance({
+      topic: "Agent Workflow Patterns",
+      sourcePath: "/tmp/book.pdf",
+      sourceKind: "book",
+      audience: "研究生自学者",
+      difficultyLevel: "upper_undergraduate_or_graduate",
+      unitPages: 10,
+      targetTotalPages: 100,
+      totalPagesSpecified: false,
+      strategy: "overview_plus_topic",
+      selectedTopics: ["Prompt Chaining", "Tool Use", "Reflection"],
+      language: "zh-CN",
+      courseIntent: "student_self_study_textbook"
+    });
+
+    expect(guidance).toContain("docs/runtime/self-study-golden-samples.md");
+    expect(guidance).toContain("一次性生成完整 coursePack.units");
+    expect(guidance).toContain("3 个 selected topic units");
+    expect(guidance).toContain("不要为每个 topic 建临时 run");
+    expect(guidance).toContain("不要把已选单元拉伸到默认总页数");
+  });
+
   test("project_ready points Codex to authoring context before publishing", async () => {
     const service = new LearnerProjectService(await import("node:fs/promises").then(({ mkdtemp }) => mkdtemp("/tmp/learner-guidance-")));
     const result = await service.createProject({

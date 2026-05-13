@@ -260,6 +260,8 @@ Optional fields:
 - `selectedChapters`: chapter or section labels requested by the user.
 - `selectedTopics`: topic labels requested by the user.
 
+For `student_self_study_textbook`, explicit `selectedTopics` or `selectedChapters` narrow the course scope. In that scoped case, `unitPageCount` remains the per-unit budget and the default whole-book `targetTotalPages` should not be used to stretch the selected units unless the user explicitly supplied `targetTotalPages`.
+
 ### `selectedUnit`
 
 When a course pack has an approved `curriculum-plan`, the operator can select one learning unit for downstream generation. `selectedUnit` stores that unit in `run.config.json` so `source-ingest`, `learning-architecture`, `lesson-assembly`, and critique roles operate on one unit instead of compressing the whole source.
