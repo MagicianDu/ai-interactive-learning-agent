@@ -1,6 +1,6 @@
 # Knowledge Board Web Deck Design Spec
 
-Date: 2026-05-12
+Date: 2026-05-13
 
 ## Goal
 
@@ -20,6 +20,13 @@ Use the combined `5 + 3` direction:
 1. Page layout model: professor board two-column structure.
 2. Content reasoning model: source proposition -> decomposition -> evidence ->
    reconstruction.
+
+For the current page layout slice, lock the middle section to a visual-text
+split:
+
+1. left side: one image slot as the visual anchor
+2. right side: compact board text for mechanism, example, and boundary
+3. bottom: one-line summary that always remains visible
 
 In practice:
 
@@ -94,15 +101,21 @@ Default desktop layout:
 Title
 Core proposition
 
-Left column                         Right column
-- concept chain                     - example / counterexample
-- mechanism steps                   - source-backed note
-- definition / variables            - boundary / caveat
+Visual panel (left, fixed height)    Structured board text (right)
+- source image or generated image    - mechanism
+- diagram or illustration            - example
+- no cropping, no tall overflow      - boundary / caveat
 
 Bottom line
 ```
 
-Mobile or narrow layout can stack the two columns while preserving page order.
+The visual panel must not consume vertical space beyond the readable budget.
+If the page risks overflow, reduce image height before compressing text. The
+text column stays short and scannable, using compact sections rather than long
+paragraphs.
+
+Mobile or narrow layout can stack the visual panel above the text while
+preserving the same order and summary line.
 
 The board should stay within one browser viewport. If content overflows, the
 authoring or validation layer should split the board into multiple pages rather
@@ -152,7 +165,7 @@ Each board page must include:
 
 - one precise title
 - one core proposition
-- at least two structured sections
+- at least three compact structured sections in the text column
 - at least one source-backed claim or explicitly inferred claim
 - at least one concrete example, counterexample, mechanism step, or comparison
 - one bottom-line conclusion
@@ -164,6 +177,7 @@ Avoid:
 - empty diagram placeholders
 - generic summaries that could apply to any source
 - ungrounded claims when source material is available
+- dense text blocks that force the image to shrink below legibility
 
 ## Renderer Impact
 
@@ -221,12 +235,13 @@ Professor board quality should fail publication when:
 
 ## Open Decisions
 
-- Whether `knowledgeBoard` should become part of the public TypeScript lesson
-  schema immediately or remain authoring metadata for one slice.
-- Whether source traces should be visible as small footnotes in advanced mode or
-  only in the source view.
-- Whether board density should be measured with simple character limits first
-  or browser-based viewport checks from the start.
+Resolved for this slice:
+
+- `knowledgeBoard` remains part of the public TypeScript lesson schema.
+- Source traces stay hidden in the learner view and visible only in the source
+  view.
+- Board density uses simple structural limits first, with viewport checks on the
+  seed preview as a secondary gate.
 
 Default recommendation for the next implementation slice:
 
