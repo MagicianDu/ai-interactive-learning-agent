@@ -19,6 +19,11 @@ import {
   evaluateProfessorLectureRubric,
   type ProfessorLectureRubricResult
 } from "./professor-lecture-rubric.js";
+import {
+  evaluateSelfStudyTextbookRubric,
+  type SelfStudyTextbookPageResult,
+  type SelfStudyTextbookRubricResult
+} from "./self-study-textbook-rubric.js";
 import { validateSourceGrounding } from "./source-grounding-validator.js";
 import { analyzeSourceEvidence, type SourceEvidenceSummary, type SourceEvidenceStatus } from "./source-evidence-analyzer.js";
 import { isRecord, type QualityIssue } from "./validation-result.js";
@@ -35,6 +40,7 @@ export type CourseQualityIssueCategory =
   | "learner_level_mismatch"
   | "page_structure"
   | "lecture_structure"
+  | "self_study_structure"
   | "assessment"
   | "interaction"
   | "transfer";
@@ -96,6 +102,7 @@ export type CourseQualityReport = {
     transferCoverage: CourseQualityStatus;
     academicDepth: CourseQualityStatus;
     professorLecture: CourseQualityStatus;
+    selfStudyTextbook: CourseQualityStatus;
   };
   issues: CourseQualityIssue[];
   issueSummary: CourseQualityIssueSummary;
@@ -105,6 +112,7 @@ export type CourseQualityReport = {
   depthRubric?: AcademicDepthRubricResult;
   professorLectureRubric?: ProfessorLectureRubricResult;
   knowledgeBoardRubric?: KnowledgeBoardRubricResult;
+  selfStudyTextbookRubric?: SelfStudyTextbookRubricResult;
 };
 
 export type CompactCourseQualityReport = {
@@ -136,11 +144,14 @@ export type BuildCourseQualityReportInput = {
 
 export function buildCourseQualityReport(input: BuildCourseQualityReportInput): CourseQualityReport {
   const professorMode = input.authoringContext?.courseIntent === "professor_lecture_deck";
+  const selfStudyMode = input.authoringContext?.courseIntent === "student_self_study_textbook";
   const rawLessonIssueGroups = input.lessons.map((lesson) => collectLessonIssues(lesson, input.sourceGroundingConfig));
-  const lessonIssueGroups = professorMode
+  const lessonIssueGroups = professorMode || selfStudyMode
     ? rawLessonIssueGroups.map((group) => ({
         ...group,
-        issues: group.issues.filter((issue) => !isProfessorModeSuppressedIssue(issue))
+        issues: group.issues.filter((issue) =>
+          professorMode ? !isProfessorModeSuppressedIssue(issue) : !isSelfStudyModeSuppressedIssue(issue)
+        )
       }))
     : rawLessonIssueGroups;
   const sourceEvidence =
@@ -149,17 +160,20 @@ export function buildCourseQualityReport(input: BuildCourseQualityReportInput): 
   const depthRubric = evaluateAcademicDepthRubric(input.lessons, input.authoringContext);
   const professorLectureRubric = professorMode ? evaluateProfessorLectureRubric(input.lessons) : undefined;
   const knowledgeBoardRubric = professorMode ? evaluateKnowledgeBoardRubric(input.lessons) : undefined;
+  const selfStudyTextbookRubric = selfStudyMode ? evaluateSelfStudyTextbookRubric(input.lessons) : undefined;
   const heuristicIssues = input.lessons.flatMap((lesson) => collectPageHeuristicIssues(lesson, input.authoringContext));
   const professorLectureIssues = professorMode
     ? input.lessons.flatMap((lesson) => professorLectureRubricToIssues(evaluateProfessorLectureRubric([lesson]), lessonIdOf(lesson)))
     : [];
   const knowledgeBoardIssues = knowledgeBoardRubric ? knowledgeBoardRubricToIssues(knowledgeBoardRubric) : [];
+  const selfStudyTextbookIssues = selfStudyTextbookRubric ? selfStudyTextbookRubricToIssues(selfStudyTextbookRubric) : [];
   const issues = sortCourseQualityIssues([
     ...lessonIssueGroups.flatMap((group) => group.issues.map((issue) => toCourseQualityIssue(issue, group.lessonId))),
     ...(sourceEvidenceIssue ? [toCourseQualityIssue(sourceEvidenceIssue)] : []),
     ...heuristicIssues,
     ...professorLectureIssues,
-    ...knowledgeBoardIssues
+    ...knowledgeBoardIssues,
+    ...selfStudyTextbookIssues
   ]);
   const issueSummary = summarizeCourseQualityIssues(issues);
   const requiredFixes = issues.filter((issue) => issue.severity === "error").map(formatCourseQualityIssue);
@@ -175,7 +189,8 @@ export function buildCourseQualityReport(input: BuildCourseQualityReportInput): 
     assessmentCoverage: statusFromIssues(lessonIssueGroups.flatMap((group) => group.issues.filter(isAssessmentIssue))),
     transferCoverage: statusFromIssues(lessonIssueGroups.flatMap((group) => group.issues.filter((issue) => issue.rule === "transfer-challenge"))),
     academicDepth: depthRubric ? depthRubricStatusMap[depthRubric.status] : "passed",
-    professorLecture: statusFromCourseQualityIssues([...professorLectureIssues, ...knowledgeBoardIssues])
+    professorLecture: statusFromCourseQualityIssues([...professorLectureIssues, ...knowledgeBoardIssues]),
+    selfStudyTextbook: statusFromCourseQualityIssues(selfStudyTextbookIssues)
   };
   const lessonScores = lessonIssueGroups.map((group, index) => {
     const critic = input.criticReports?.[index];
@@ -211,7 +226,8 @@ export function buildCourseQualityReport(input: BuildCourseQualityReportInput): 
     ...(sourceEvidence ? { sourceEvidence } : {}),
     ...(depthRubric ? { depthRubric } : {}),
     ...(professorLectureRubric ? { professorLectureRubric } : {}),
-    ...(knowledgeBoardRubric ? { knowledgeBoardRubric } : {})
+    ...(knowledgeBoardRubric ? { knowledgeBoardRubric } : {}),
+    ...(selfStudyTextbookRubric ? { selfStudyTextbookRubric } : {})
   };
 }
 
@@ -335,6 +351,10 @@ function isProfessorModeSuppressedIssue(issue: QualityIssue): boolean {
   return issue.rule === "interaction-count";
 }
 
+function isSelfStudyModeSuppressedIssue(issue: QualityIssue): boolean {
+  return ["required-page-type", "visual-count", "interaction-count", "assessment-count", "transfer-challenge"].includes(issue.rule);
+}
+
 function isAssessmentIssue(issue: QualityIssue): boolean {
   return issue.rule === "assessment-count" || issue.rule === "assessment-feedback" || issue.path.includes("misconception");
 }
@@ -397,6 +417,42 @@ function knowledgeBoardIssueReason(page: KnowledgeBoardPageResult): string {
   const missing = page.missingItems.length > 0 ? `missing ${page.missingItems.join(", ")}` : "";
   const weak = page.weakItems.length > 0 ? `weak ${page.weakItems.join(", ")}` : "";
   return ["professor lecture page has an incomplete knowledgeBoard", missing, weak].filter(Boolean).join(": ");
+}
+
+function selfStudyTextbookRubricToIssues(rubric: SelfStudyTextbookRubricResult): CourseQualityIssue[] {
+  return rubric.pageResults
+    .filter((page) => page.status === "failed")
+    .map((page) => {
+      const primaryItem = primarySelfStudyIssueItem(page);
+      return {
+        issueId: page.missingItems.length > 0 ? "quality.self-study-textbook.missing-board" : "quality.self-study-textbook.weak-page",
+        scope: "page",
+        severity: "error",
+        category: "self_study_structure",
+        reason: selfStudyTextbookIssueReason(page),
+        requiredFix:
+          primaryItem === "teacher-facing language"
+            ? "Rewrite the page as student-facing textbook content; remove teacher-facing phrases such as 本讲定位, 教学目标, or 识别本页中的作用."
+            : "Repair page.knowledgeBoard so it gives a direct explanation with examples, evidence or boundaries, sourceTrace, and a concise bottomLine.",
+        rule: "self-study-textbook",
+        path: `pages.${page.pageId}.${primaryItem}`,
+        lessonId: page.lessonId,
+        pageId: page.pageId
+      } satisfies CourseQualityIssue;
+    });
+}
+
+function primarySelfStudyIssueItem(page: SelfStudyTextbookPageResult): string {
+  if (page.missingItems.includes("knowledgeBoard")) {
+    return "knowledgeBoard";
+  }
+  return page.missingItems[0] ?? page.weakItems[0] ?? "self-study-textbook";
+}
+
+function selfStudyTextbookIssueReason(page: SelfStudyTextbookPageResult): string {
+  const missing = page.missingItems.length > 0 ? `missing ${page.missingItems.join(", ")}` : "";
+  const weak = page.weakItems.length > 0 ? `weak ${page.weakItems.join(", ")}` : "";
+  return ["student self-study textbook page is not publishable", missing, weak].filter(Boolean).join(": ");
 }
 
 function collectPageHeuristicIssues(lesson: unknown, authoringContext: CourseQualityAuthoringContext | undefined): CourseQualityIssue[] {

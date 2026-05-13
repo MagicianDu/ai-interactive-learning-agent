@@ -505,6 +505,93 @@ describe("LearningCoursePublisher", () => {
     );
   });
 
+  test("publishes student self-study textbooks without requiring quiz or interaction pages", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-course-publisher-self-study-"));
+    const publisher = new LearningCoursePublisher(root);
+    await new LearnerProjectService(root).createProject({
+      request: "请生成学生自学 Web 教材，主题是 Agent workflow，面向研究生自学者，默认总页数即可。",
+      runId: "self-study-course",
+      sourceKind: "topic",
+      audience: "研究生自学者",
+      difficultyLevel: "upper_undergraduate_or_graduate",
+      unitPages: 8,
+      courseIntent: "student_self_study_textbook"
+    });
+
+    const result = await publisher.publish({
+      runId: "self-study-course",
+      lessons: [selfStudyTextbookLessonFixture("self-study-overview")],
+      coursePack: coursePackFixture("self-study-course", "self-study-overview")
+    });
+
+    expect(result).toMatchObject({
+      status: "preview_ready",
+      qualityReport: {
+        status: "passed",
+        checks: {
+          interactionQuality: "passed",
+          assessmentCoverage: "passed",
+          transferCoverage: "passed",
+          selfStudyTextbook: "passed"
+        }
+      }
+    });
+  });
+
+  test("returns revision_required when student self-study textbooks contain teacher-facing board language", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-course-publisher-self-study-bad-"));
+    const publisher = new LearningCoursePublisher(root);
+    await new LearnerProjectService(root).createProject({
+      request: "请生成学生自学 Web 教材，主题是 Agent workflow，面向研究生自学者。",
+      runId: "self-study-bad-course",
+      sourceKind: "topic",
+      audience: "研究生自学者",
+      difficultyLevel: "upper_undergraduate_or_graduate",
+      unitPages: 8,
+      courseIntent: "student_self_study_textbook"
+    });
+    const lesson = selfStudyTextbookLessonFixture("self-study-bad-overview");
+    lesson.pages[0] = {
+      ...lesson.pages[0],
+      knowledgeBoard: {
+        ...lesson.pages[0]!.knowledgeBoard,
+        headline: "本讲定位：识别本页中的作用"
+      }
+    };
+
+    const result = await publisher.publish({
+      runId: "self-study-bad-course",
+      lessons: [lesson],
+      coursePack: coursePackFixture("self-study-bad-course", "self-study-bad-overview")
+    });
+
+    expect(result).toMatchObject({
+      status: "revision_required",
+      runId: "self-study-bad-course",
+      qualityReport: {
+        status: "failed",
+        checks: {
+          selfStudyTextbook: "failed"
+        }
+      }
+    });
+    if (result.status !== "revision_required") {
+      throw new Error("expected revision_required");
+    }
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          lessonId: "self-study-bad-overview",
+          rule: "self-study-textbook",
+          message: expect.stringContaining("teacher-facing language")
+        })
+      ])
+    );
+    await expect(readFile(path.join(root, "runs", "self-study-bad-course", "quality", "course-quality-report.json"), "utf8")).resolves.toContain(
+      "quality.self-study-textbook.weak-page"
+    );
+  });
+
   test("rejects unsafe lesson and course pack ids before writing files", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "learning-course-publisher-"));
     const publisher = new LearningCoursePublisher(root);
@@ -576,6 +663,69 @@ function contentBlueprintFixture(): Record<string, unknown> {
         }))
       }
     ]
+  };
+}
+
+function selfStudyTextbookLessonFixture(id: string) {
+  const pages = [
+    "problem_scene",
+    "intuition_visual",
+    "structure_diagram",
+    "process_animation",
+    "code_walkthrough",
+    "structure_diagram",
+    "misconception_check",
+    "summary_card"
+  ].map((type, index) => {
+    const pageNumber = index + 1;
+    return {
+      id: `p${pageNumber}`,
+      type,
+      title: `Agent workflow 自学页 ${pageNumber}`,
+      learningGoal: "理解 workflow 把复杂任务拆成可检查步骤。",
+      narrative: "本页用中文解释 workflow 的定义、证据链、假设、案例分析和可检查中间状态。",
+      sourceAnchorIds: [`book:p${pageNumber}`],
+      knowledgeBoard: {
+        boardKind: type === "summary_card" ? "synthesis_board" : "mechanism_board",
+        headline: "为什么一个大提示不如可检查的 workflow？",
+        coreProposition: "Agent workflow 的核心价值不是把提示写长，而是把任务拆成多个可观察、可恢复、可调整的中间步骤。",
+        leftColumn: [
+          {
+            label: "机制链",
+            items: [
+              "定义：大任务先被拆成多个短步骤，每一步都有明确输入和输出。",
+              "证据链：中间输出让系统能发现偏差，而不是等最终答案失败后才知道。",
+              "失败恢复可以从具体步骤开始，而不是重跑整个任务。"
+            ]
+          }
+        ],
+        rightColumn: [
+          {
+            label: "例子与边界",
+            items: [
+              "案例分析：例如资料学习流程可以拆成来源采样、章节映射、页面 authoring、质量审查。",
+              "适用条件和边界是：如果任务本身很短且没有中间状态，workflow 可能只是增加延迟。",
+              "来源证据支持 workflow pattern 通常围绕可组合步骤展开。"
+            ]
+          }
+        ],
+        sourceTrace: [{ anchorId: `book:p${pageNumber}`, supports: "来源描述了 workflow pattern 通过拆分步骤组织 agent 行为。" }],
+        bottomLine: "自学时要记住：workflow 的作用是让复杂任务拥有可检查的中间状态。"
+      }
+    };
+  });
+
+  return {
+    id,
+    title: "Agent workflow 自学 Web 教材",
+    audience: "研究生自学者",
+    config: { targetPageCount: 8, minPageCount: 6, maxPageCount: 12 },
+    prerequisites: ["先修：理解基本 LLM 调用"],
+    learningObjectives: ["理解 workflow 把复杂任务拆成可检查步骤。"],
+    pages,
+    misconceptions: [{ id: "m1", statement: "workflow 只是长提示。", correction: "workflow 的关键是中间状态和恢复路径。" }],
+    transferTasks: [],
+    summary: ["workflow 让复杂任务拥有可检查的中间状态，并要注意迁移边界。"]
   };
 }
 

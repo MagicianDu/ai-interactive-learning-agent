@@ -772,4 +772,129 @@ describe("course-quality-report", () => {
       )
     ).toBe(false);
   });
+
+  test("passes student self-study textbooks without interactive-course shell requirements", () => {
+    const lesson = selfStudyTextbookLessonFixture("quality-self-study-rich");
+
+    const report = buildCourseQualityReport({
+      runId: "quality-self-study-rich",
+      coursePackId: "quality-self-study-rich",
+      lessons: [lesson],
+      authoringContext: {
+        courseIntent: "student_self_study_textbook"
+      }
+    });
+
+    expect(report.status).toBe("passed");
+    expect(report.checks.interactionQuality).toBe("passed");
+    expect(report.checks.assessmentCoverage).toBe("passed");
+    expect(report.checks.transferCoverage).toBe("passed");
+    expect(report.checks.selfStudyTextbook).toBe("passed");
+    expect(report.selfStudyTextbookRubric).toMatchObject({
+      status: "passed",
+      failedPageCount: 0
+    });
+  });
+
+  test("fails student self-study textbooks with teacher-facing board language", () => {
+    const lesson = selfStudyTextbookLessonFixture("quality-self-study-teacher-language");
+    lesson.pages[0] = {
+      ...lesson.pages[0],
+      knowledgeBoard: {
+        ...lesson.pages[0]!.knowledgeBoard,
+        headline: "本讲定位：识别本页中的作用"
+      }
+    };
+
+    const report = buildCourseQualityReport({
+      runId: "quality-self-study-teacher-language",
+      coursePackId: "quality-self-study-teacher-language",
+      lessons: [lesson],
+      authoringContext: {
+        courseIntent: "student_self_study_textbook"
+      }
+    });
+
+    expect(report.status).toBe("failed");
+    expect(report.checks.selfStudyTextbook).toBe("failed");
+    expect(report.selfStudyTextbookRubric).toMatchObject({
+      status: "failed",
+      failedPageCount: 1
+    });
+    expect(report.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          issueId: "quality.self-study-textbook.weak-page",
+          severity: "error",
+          category: "self_study_structure",
+          lessonId: "quality-self-study-teacher-language",
+          pageId: "p1",
+          rule: "self-study-textbook"
+        })
+      ])
+    );
+  });
 });
+
+function selfStudyTextbookLessonFixture(id: string) {
+  const pages = [
+    "problem_scene",
+    "intuition_visual",
+    "structure_diagram",
+    "process_animation",
+    "code_walkthrough",
+    "structure_diagram",
+    "misconception_check",
+    "summary_card"
+  ].map((type, index) => {
+    const pageNumber = index + 1;
+    return {
+      id: `p${pageNumber}`,
+      type,
+      title: `Agent workflow 自学页 ${pageNumber}`,
+      learningGoal: "理解 workflow 把复杂任务拆成可检查步骤。",
+      narrative: "本页用中文解释 workflow 的定义、证据链、假设、案例分析和可检查中间状态。",
+      sourceAnchorIds: [`book:p${pageNumber}`],
+      knowledgeBoard: {
+        boardKind: type === "summary_card" ? "synthesis_board" : "mechanism_board",
+        headline: "为什么一个大提示不如可检查的 workflow？",
+        coreProposition: "Agent workflow 的核心价值不是把提示写长，而是把任务拆成多个可观察、可恢复、可调整的中间步骤。",
+        leftColumn: [
+          {
+            label: "机制链",
+            items: [
+              "定义：大任务先被拆成多个短步骤，每一步都有明确输入和输出。",
+              "证据链：中间输出让系统能发现偏差，而不是等最终答案失败后才知道。",
+              "失败恢复可以从具体步骤开始，而不是重跑整个任务。"
+            ]
+          }
+        ],
+        rightColumn: [
+          {
+            label: "例子与边界",
+            items: [
+              "案例分析：例如资料学习流程可以拆成来源采样、章节映射、页面 authoring、质量审查。",
+              "适用条件和边界是：如果任务本身很短且没有中间状态，workflow 可能只是增加延迟。",
+              "来源证据支持 workflow pattern 通常围绕可组合步骤展开。"
+            ]
+          }
+        ],
+        sourceTrace: [{ anchorId: `book:p${pageNumber}`, supports: "来源描述了 workflow pattern 通过拆分步骤组织 agent 行为。" }],
+        bottomLine: "自学时要记住：workflow 的作用是让复杂任务拥有可检查的中间状态。"
+      }
+    };
+  });
+
+  return {
+    id,
+    title: "Agent workflow 自学 Web 教材",
+    audience: "研究生自学者",
+    config: { targetPageCount: 8, minPageCount: 6, maxPageCount: 12 },
+    prerequisites: ["先修：理解基本 LLM 调用"],
+    learningObjectives: ["理解 workflow 把复杂任务拆成可检查步骤。"],
+    pages,
+    misconceptions: [{ id: "m1", statement: "workflow 只是长提示。", correction: "workflow 的关键是中间状态和恢复路径。" }],
+    transferTasks: [],
+    summary: ["workflow 让复杂任务拥有可检查的中间状态，并要注意迁移边界。"]
+  };
+}

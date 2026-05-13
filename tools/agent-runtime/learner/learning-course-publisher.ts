@@ -5,6 +5,7 @@ import { ArtifactStore } from "../artifact-store.js";
 import { AgentRuntimeError } from "../errors.js";
 import { validateChineseFirstLesson } from "../quality/chinese-first-validator.js";
 import { evaluateKnowledgeBoardRubric } from "../quality/knowledge-board-rubric.js";
+import { evaluateSelfStudyTextbookRubric } from "../quality/self-study-textbook-rubric.js";
 import {
   buildCourseQualityReport,
   toCompactCourseQualityReport,
@@ -622,17 +623,24 @@ function collectBlockingIssues(
   authoringContext: CourseQualityAuthoringContext | undefined
 ): Array<{ lessonId: string; issue: QualityIssue }> {
   const professorMode = authoringContext?.courseIntent === "professor_lecture_deck";
+  const selfStudyMode = authoringContext?.courseIntent === "student_self_study_textbook";
   return lessons.flatMap((lesson) =>
     [
       ...validateLessonQuality(lesson).issues,
       ...validateChineseFirstLesson(lesson).issues,
       ...(sourceGroundingConfig ? validateSourceGrounding(lesson, sourceGroundingConfig).issues : []),
-      ...(professorMode ? knowledgeBoardBlockingIssues(lesson) : [])
+      ...(professorMode ? knowledgeBoardBlockingIssues(lesson) : []),
+      ...(selfStudyMode ? selfStudyTextbookBlockingIssues(lesson) : [])
     ]
       .filter((issue) => issue.severity === "error")
       .filter((issue) => !(professorMode && issue.rule === "interaction-count"))
+      .filter((issue) => !(selfStudyMode && isSelfStudyModeSuppressedBlockingIssue(issue)))
       .map((issue) => ({ lessonId: lesson.id, issue }))
   );
+}
+
+function isSelfStudyModeSuppressedBlockingIssue(issue: QualityIssue): boolean {
+  return ["required-page-type", "visual-count", "interaction-count", "assessment-count", "transfer-challenge"].includes(issue.rule);
 }
 
 function knowledgeBoardBlockingIssues(lesson: LessonLike): QualityIssue[] {
@@ -655,6 +663,17 @@ function knowledgeBoardBlockingIssues(lesson: LessonLike): QualityIssue[] {
         severity: "error"
       };
     });
+}
+
+function selfStudyTextbookBlockingIssues(lesson: LessonLike): QualityIssue[] {
+  return evaluateSelfStudyTextbookRubric([lesson]).pageResults
+    .filter((page) => page.status === "failed")
+    .map((page) => ({
+      rule: "self-study-textbook",
+      path: `pages.${page.pageId}`,
+      message: [...page.missingItems, ...page.weakItems].join(", "),
+      severity: "error"
+    }));
 }
 
 function publishValidationIssueToBlockingIssue(issue: PublishValidationIssue): { lessonId: string; issue: QualityIssue } {
