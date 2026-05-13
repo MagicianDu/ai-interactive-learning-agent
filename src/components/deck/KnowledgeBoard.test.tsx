@@ -49,9 +49,11 @@ describe("KnowledgeBoard", () => {
     const visualRegion = screen.getByLabelText("知识板书视觉区");
     const textRail = screen.getByLabelText("知识板书正文区");
 
+    expect(visualRegion.compareDocumentPosition(textRail) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(within(visualRegion).getByRole("img", { name: "Weyl 图示" })).toHaveAttribute("src", "https://example.com/weyl.png");
-    expect(screen.queryByText("知识表格")).not.toBeInTheDocument();
-    expect(screen.queryByText("知识图示")).not.toBeInTheDocument();
+    expect(within(visualRegion).queryAllByRole("img")).toHaveLength(1);
+    expect(within(visualRegion).queryByRole("table")).not.toBeInTheDocument();
+    expect(visualRegion.querySelector("svg")).toBeNull();
     expect(textRail).toHaveTextContent("机制板书");
     expect(textRail).toHaveTextContent("从来源命题到机制链");
     expect(textRail).toHaveTextContent("可靠的 agent workflow 需要显式状态和失败恢复。");
@@ -81,8 +83,12 @@ describe("KnowledgeBoard", () => {
       />
     );
 
-    expect(screen.getByLabelText("知识板书视觉区")).toBeInTheDocument();
-    expect(screen.getByLabelText("知识板书正文区")).toBeInTheDocument();
+    const visualRegion = screen.getByLabelText("知识板书视觉区");
+    const textRail = screen.getByLabelText("知识板书正文区");
+
+    expect(visualRegion.compareDocumentPosition(textRail) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByTestId("knowledge-board")).toContainElement(visualRegion);
+    expect(screen.getByTestId("knowledge-board")).toContainElement(textRail);
     expect(screen.getByText("本页结论：知识板书必须把命题、机制、证据和边界放在一屏内。")).toBeInTheDocument();
   });
 
@@ -100,9 +106,12 @@ describe("KnowledgeBoard", () => {
       />
     );
 
-    expect(screen.getByRole("img", { name: "Weyl 图示" })).toHaveAttribute("src", "https://example.com/weyl.png");
-    expect(screen.queryByText("知识表格")).not.toBeInTheDocument();
-    expect(screen.queryByText("知识图示")).not.toBeInTheDocument();
+    const visualRegion = screen.getByLabelText("知识板书视觉区");
+
+    expect(within(visualRegion).getByRole("img", { name: "Weyl 图示" })).toHaveAttribute("src", "https://example.com/weyl.png");
+    expect(within(visualRegion).queryByRole("table")).not.toBeInTheDocument();
+    expect(visualRegion.querySelector("svg")).toBeNull();
+    expect(within(visualRegion).queryByText(/知识表格|知识图示/)).not.toBeInTheDocument();
   });
 
   test("keeps the bottom summary as the final block", () => {

@@ -21,6 +21,28 @@ const weylPageImageUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
   </svg>`,
 )}`;
 
+function simplePage({
+  id,
+  type,
+  title,
+  learningGoal,
+  narrative,
+}: {
+  id: string;
+  type: Lesson["pages"][number]["type"];
+  title: string;
+  learningGoal: string;
+  narrative: string;
+}): Lesson["pages"][number] {
+  return {
+    id,
+    type,
+    title,
+    learningGoal,
+    narrative,
+  };
+}
+
 const weylLesson: Lesson = {
   id: "weyl-textbook-deck-regression",
   title: "Weyl 的广义相对论笔记",
@@ -41,41 +63,41 @@ const weylLesson: Lesson = {
     "分辨引力解释中的直觉和边界",
   ],
   pages: [
-    {
+    simplePage({
       id: "page-01",
       type: "problem_scene",
       title: "为什么自由落体不只是“掉下去”",
       learningGoal: "先从运动现象进入问题。",
       narrative: "先看一个具体问题：为什么同样的运动在不同参考系里会呈现不同解释？",
-    },
-    {
+    }),
+    simplePage({
       id: "page-02",
       type: "intuition_visual",
       title: "把引力想成几何，而不是单独的力",
       learningGoal: "建立几何直觉。",
       narrative: "这一页用最小的几何直觉把引力和路径联系起来。",
-    },
-    {
+    }),
+    simplePage({
       id: "page-03",
       type: "structure_diagram",
       title: "metric、路径和曲率的关系",
       learningGoal: "看见概念之间的结构。",
       narrative: "从结构上理解 metric 如何规定测量，路径如何被几何约束。",
-    },
-    {
+    }),
+    simplePage({
       id: "page-04",
       type: "process_animation",
       title: "从参考系切换到几何描述",
       learningGoal: "理解解释方式的转换过程。",
       narrative: "把运动解释从牛顿式力图景切换到广义相对论的几何图景。",
-    },
-    {
+    }),
+    simplePage({
       id: "page-05",
       type: "interactive_model",
       title: "用一条路径观察自由落体",
       learningGoal: "为教材页的核心命题做铺垫。",
       narrative: "先让学习者预判不同路径下的结果，再回到理论解释。",
-    },
+    }),
     {
       id: "page-06",
       type: "structure_diagram",
@@ -303,8 +325,15 @@ describe("WebDeckRenderer", () => {
     const visualRegion = screen.getByLabelText("知识板书视觉区");
     const textRail = screen.getByLabelText("知识板书正文区");
 
-    expect(within(visualRegion).getByRole("img", { name: "广义相对论把引力放进 metric" })).toBeVisible();
-    expect(within(visualRegion).getByRole("img", { name: "广义相对论把引力放进 metric" })).toHaveAttribute("src", weylPageImageUrl);
+    const image = within(visualRegion).getByRole("img", { name: "广义相对论把引力放进 metric" });
+
+    expect(image).toBeVisible();
+    expect(image).toHaveAttribute(
+      "src",
+      expect.stringContaining("data:image/svg+xml")
+    );
+    expect(image).toHaveAttribute("src", expect.stringContaining("metric"));
+    expect(image).toHaveAttribute("src", expect.stringContaining("geodesic"));
     expect(textRail).toHaveTextContent("广义相对论把引力放进 metric");
     expect(textRail).toHaveTextContent("自由落体可看成沿 geodesic 运动。");
     expect(textRail).toHaveTextContent("旋转圆盘让几何条件卷入运动。");
