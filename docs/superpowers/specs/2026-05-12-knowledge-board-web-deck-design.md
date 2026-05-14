@@ -102,9 +102,9 @@ Title
 Core proposition
 
 Visual panel (left, fixed height)    Structured board text (right)
-- source image or generated image    - mechanism
-- diagram or illustration            - example
-- no cropping, no tall overflow      - boundary / caveat
+- imagegen teaching illustration     - mechanism
+- visual explanation only            - example
+- short labels allowed               - boundary / caveat
 
 Bottom line
 ```
@@ -113,6 +113,25 @@ The visual panel must not consume vertical space beyond the readable budget.
 If the page risks overflow, reduce image height before compressing text. The
 text column stays short and scannable, using compact sections rather than long
 paragraphs.
+
+All generated learning scenarios use the same visual asset pipeline:
+
+```text
+Codex content design
+  -> imagegen teaching illustration generation
+  -> saved preview image asset
+  -> page.visualSpec.imageUrl consumed by the Web Deck renderer
+```
+
+The renderer and publisher must not create programmatic SVG placeholders for
+normal learner-facing visuals. A page image is an AI-generated teaching
+illustration, not a duplicate text card. It must not include the page title,
+bottom-line sentence, long prose, tables, page-card text, or UI-like right-side
+text boxes. Short labels, direction words, axis markers, and local annotations are
+allowed when they make the visual easier to understand. If a source image is
+useful, it can be used as a reference for Codex/imagegen, but the final asset
+must be marked as imagegen-generated and must not be represented as an original
+source image.
 
 Mobile or narrow layout can stack the visual panel above the text while
 preserving the same order and summary line.

@@ -296,7 +296,7 @@ function selfStudyCourseIR(): CourseIR {
           knowledgeBoard: {
             headline: "为什么 workflow 需要中间状态？",
             coreProposition: "workflow 让复杂任务变成可检查、可恢复的步骤。",
-            leftColumn: [{ label: "机制链", items: ["拆步骤", "看中间状态"] }],
+            leftColumn: [{ label: "可检查步骤", items: ["拆步骤", "看中间状态"] }],
             rightColumn: [{ label: "例子与边界", items: ["例如来源采样", "边界是短任务不一定需要"] }],
             sourceTrace: [{ anchorId: "source-001:p1", supports: "来源支持 workflow 拆分步骤。" }],
             bottomLine: "记住中间状态。"

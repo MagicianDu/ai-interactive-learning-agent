@@ -52,6 +52,11 @@ export type VisualSpec = {
   description: string;
   keyElements: string[];
   states?: string[];
+  imageUrl?: string;
+  imageAlt?: string;
+  imageCaption?: string;
+  imageProvider?: "imagegen";
+  imagePrompt?: string;
   component?:
     | "table_scan"
     | "book_index"

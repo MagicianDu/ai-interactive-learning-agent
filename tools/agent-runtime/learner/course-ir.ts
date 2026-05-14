@@ -52,6 +52,7 @@ export type CourseIRLesson = {
   lessonId: string;
   unitId?: string;
   title: string;
+  displayMode?: string;
   audience?: string;
   pageCount: number;
   targetPageCount?: number;
@@ -71,6 +72,9 @@ export type CourseIRPage = {
   hasInteraction: boolean;
   hasAssessment: boolean;
   hasFeedback: boolean;
+  visualImageUrl?: string;
+  visualImageProvider?: string;
+  visualImagePrompt?: string;
   narrativeLength: number;
 };
 
@@ -150,6 +154,7 @@ function normalizeLesson(value: unknown): CourseIRLesson {
     targetPageCount: isRecord(record.config) && typeof record.config.targetPageCount === "number" ? record.config.targetPageCount : undefined,
     sourceAnchorIds: stringArrayOrEmpty(sourceContext.sourceAnchorIds),
     pages,
+    ...(stringOrUndefined(record.displayMode) ? { displayMode: stringOrUndefined(record.displayMode) } : {}),
     ...(typeof revision?.revisionId === "string" ? { revisionId: revision.revisionId } : {})
   };
 }
@@ -196,6 +201,7 @@ function normalizePage(value: unknown): CourseIRPage {
   const page = isRecord(value) ? value : {};
   const grounding = isRecord(page.grounding) ? page.grounding : undefined;
   const sourceAnchorIds = stringArrayOrEmpty(page.sourceAnchorIds);
+  const visualSpec = isRecord(page.visualSpec) ? page.visualSpec : undefined;
   return {
     pageId: stringOr(page.id, "unknown-page"),
     type: stringOr(page.type, "unknown"),
@@ -203,10 +209,13 @@ function normalizePage(value: unknown): CourseIRPage {
     learningGoal: stringOrUndefined(page.learningGoal),
     sourceAnchorIds,
     sourceSupport: sourceSupportKind(sourceAnchorIds, grounding),
-    hasVisual: isRecord(page.visualSpec),
+    hasVisual: visualSpec !== undefined,
     hasInteraction: isRecord(page.interactionSpec),
     hasAssessment: isRecord(page.assessmentSpec),
     hasFeedback: isRecord(page.feedbackSpec),
+    ...(visualSpec ? { visualImageUrl: stringOrUndefined(visualSpec.imageUrl) } : {}),
+    ...(visualSpec ? { visualImageProvider: stringOrUndefined(visualSpec.imageProvider) } : {}),
+    ...(visualSpec ? { visualImagePrompt: stringOrUndefined(visualSpec.imagePrompt) } : {}),
     narrativeLength: typeof page.narrative === "string" ? page.narrative.length : 0
   };
 }

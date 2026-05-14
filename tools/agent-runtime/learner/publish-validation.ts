@@ -75,13 +75,22 @@ function validateUnit(unit: CourseIRUnit, lessonIds: Set<string>, coursePackId: 
 
 function validateLessons(courseIR: CourseIR, sourceBacked: boolean): PublishValidationIssue[] {
   return courseIR.lessons.flatMap((lesson) =>
-    lesson.pages.flatMap((page) => validatePage({ page, lessonId: lesson.lessonId, coursePackId: courseIR.coursePackId, sourceBacked }))
+    lesson.pages.flatMap((page) =>
+      validatePage({
+        page,
+        lessonId: lesson.lessonId,
+        lessonDisplayMode: lesson.displayMode,
+        coursePackId: courseIR.coursePackId,
+        sourceBacked
+      })
+    )
   );
 }
 
 function validatePage(input: {
   page: CourseIRPage;
   lessonId: string;
+  lessonDisplayMode?: string;
   coursePackId: string;
   sourceBacked: boolean;
 }): PublishValidationIssue[] {
@@ -125,5 +134,133 @@ function validatePage(input: {
     });
   }
 
+  if (requiresImagegenImage(input.lessonDisplayMode) && !input.page.hasVisual) {
+    issues.push({
+      issueId: "publish.page.imagegen-image-missing",
+      scope: "page",
+      severity: "error",
+      coursePackId: input.coursePackId,
+      lessonId: input.lessonId,
+      pageId: input.page.pageId,
+      reason: "Every textbook deck page must include a learner-facing imagegen teaching illustration.",
+      requiredFix:
+        "Add page.visualSpec with visualSpec.imageUrl, imageAlt, imageProvider: \"imagegen\", and an imagePrompt that focuses on the knowledge point."
+    });
+  }
+
+  if (input.page.hasVisual) {
+    issues.push(
+      ...validateImagegenTeachingAsset({
+        page: input.page,
+        coursePackId: input.coursePackId,
+        lessonId: input.lessonId
+      })
+    );
+  }
+
   return issues;
+}
+
+function requiresImagegenImage(lessonDisplayMode: string | undefined): boolean {
+  return lessonDisplayMode === "textbook_deck";
+}
+
+function validateImagegenTeachingAsset(input: {
+  page: CourseIRPage;
+  coursePackId: string;
+  lessonId: string;
+}): PublishValidationIssue[] {
+  const issues: PublishValidationIssue[] = [];
+  const imageUrl = input.page.visualImageUrl?.trim() ?? "";
+  const imagePrompt = input.page.visualImagePrompt?.trim() ?? "";
+  const hasImagegenAsset =
+    imageUrl.length > 0 &&
+    !imageUrl.toLowerCase().endsWith(".svg") &&
+    input.page.visualImageProvider === "imagegen" &&
+    imagePrompt.length > 0;
+
+  if (!hasImagegenAsset) {
+    issues.push({
+      issueId: "publish.page.imagegen-asset-missing",
+      scope: "page",
+      severity: "error",
+      coursePackId: input.coursePackId,
+      lessonId: input.lessonId,
+      pageId: input.page.pageId,
+      reason: "Every visual page must use a Codex-designed, imagegen-generated teaching illustration before publishing.",
+      requiredFix:
+        "Generate a teaching image with imagegen, save it as a preview-consumable PNG/WebP asset, and set visualSpec.imageUrl, imageAlt, imageProvider: \"imagegen\", and imagePrompt. Do not rely on SVG placeholders."
+    });
+    return issues;
+  }
+
+  const promptIssue = validateImagePromptSafety(imagePrompt);
+  if (promptIssue) {
+    issues.push({
+      issueId: promptIssue.issueId,
+      scope: "page",
+      severity: "error",
+      coursePackId: input.coursePackId,
+      lessonId: input.lessonId,
+      pageId: input.page.pageId,
+      reason: promptIssue.reason,
+      requiredFix: promptIssue.requiredFix
+    });
+  }
+
+  return issues;
+}
+
+type ImagePromptSafetyIssue = {
+  issueId: "publish.page.imagegen-prompt-unsafe" | "publish.page.imagegen-prompt-guard-missing";
+  reason: string;
+  requiredFix: string;
+};
+
+const negationPattern = /(不要|不能|不得|禁止|避免|不包含|不要包含|不使用|不得包含|无)\s*/iu;
+const unsafeAllowPattern =
+  /(可以|允许|可包含|包含|使用|加入|呈现|展示|生成|渲染)[^。；;,.，、]{0,18}(大段文字|长段落|长篇文字|段落解释|表格|table|UI\s*文本框|UI\s*面板|用户界面|文本框|text\s*panel|text\s*box|bullet\s*list|项目符号)/iu;
+
+const requiredImagePromptGuards: Array<{ label: string; pattern: RegExp }> = [
+  { label: "长段落或大段文字", pattern: /(长段落|大段文字|长篇文字|long\s*prose|paragraph)/iu },
+  { label: "表格", pattern: /(表格|table)/iu },
+  { label: "UI 文本框或面板", pattern: /(UI\s*文本框|UI\s*面板|用户界面|文本框|text\s*panel|text\s*box)/iu }
+];
+
+function validateImagePromptSafety(prompt: string): ImagePromptSafetyIssue | undefined {
+  if (allowsUnsafeImageArtifact(prompt)) {
+    return {
+      issueId: "publish.page.imagegen-prompt-unsafe",
+      reason: "The imagegen prompt permits text-heavy artifacts such as long prose, tables, or UI text panels.",
+      requiredFix:
+        "Revise visualSpec.imagePrompt so it explains the knowledge point with imagery and short labels only; do not allow long prose, tables, UI panels, page-title duplication, or card-text duplication."
+    };
+  }
+
+  const missingGuards = requiredImagePromptGuards
+    .filter((guard) => !hasNegatedPromptGuard(prompt, guard.pattern))
+    .map((guard) => guard.label);
+
+  if (missingGuards.length > 0) {
+    return {
+      issueId: "publish.page.imagegen-prompt-guard-missing",
+      reason: `The imagegen prompt does not explicitly guard against: ${missingGuards.join("、")}.`,
+      requiredFix:
+        "在 visualSpec.imagePrompt 中明确写入：不要包含长段落文字、表格或 UI 文本框；图片应以知识点讲解为主，只保留必要短标签。"
+    };
+  }
+
+  return undefined;
+}
+
+function hasNegatedPromptGuard(prompt: string, topicPattern: RegExp): boolean {
+  return prompt
+    .split(/[。；;.!！?？\n]/u)
+    .some((clause) => negationPattern.test(clause) && topicPattern.test(clause));
+}
+
+function allowsUnsafeImageArtifact(prompt: string): boolean {
+  return prompt
+    .split(/[。；;.!！?？\n]/u)
+    .some((clause) => unsafeAllowPattern.test(clause) && !negationPattern.test(clause));
 }

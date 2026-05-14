@@ -9,7 +9,7 @@ const board: KnowledgeBoardData = {
   coreProposition: "可靠的 agent workflow 需要显式状态和失败恢复。",
   leftColumn: [
     {
-      label: "机制链",
+      label: "可检查步骤",
       emphasis: "mechanism",
       items: ["任务压力进入 workflow", "中间状态被记录", "失败信号触发恢复"],
     },
@@ -50,13 +50,15 @@ describe("KnowledgeBoard", () => {
     const textRail = screen.getByLabelText("知识板书正文区");
 
     expect(visualRegion.compareDocumentPosition(textRail) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(textRail).toHaveClass("h-full");
+    expect(textRail).toHaveClass("flex");
     expect(within(visualRegion).getByRole("img", { name: "Weyl 图示" })).toHaveAttribute("src", "https://example.com/weyl.png");
     expect(within(visualRegion).queryAllByRole("img")).toHaveLength(1);
     expect(within(visualRegion).queryByRole("table")).not.toBeInTheDocument();
     expect(visualRegion.querySelector("svg")).toBeNull();
-    expect(textRail).toHaveTextContent("机制板书");
-    expect(textRail).toHaveTextContent("从来源命题到机制链");
-    expect(textRail).toHaveTextContent("可靠的 agent workflow 需要显式状态和失败恢复。");
+    expect(textRail).not.toHaveTextContent("机制板书");
+    expect(textRail).not.toHaveTextContent("从来源命题到机制链");
+    expect(textRail).not.toHaveTextContent("可靠的 agent workflow 需要显式状态和失败恢复。");
     expect(textRail).toHaveTextContent("任务压力进入 workflow");
     expect(textRail).toHaveTextContent("中间状态被记录");
     expect(textRail).toHaveTextContent("失败信号触发恢复");

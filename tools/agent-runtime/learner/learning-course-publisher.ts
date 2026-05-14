@@ -25,6 +25,7 @@ import { extractContentBlueprint } from "./content-blueprint-compliance.js";
 import type { ContentBlueprint } from "./content-quality-blueprint.js";
 import { normalizeCourseIntent } from "./course-intent.js";
 import { buildCourseIR, type CourseIR } from "./course-ir.js";
+import { materializePreviewImageAssets } from "./preview-image-assets.js";
 import { validatePublishBundle, type PublishValidationIssue, type PublishValidationResult } from "./publish-validation.js";
 
 type LessonLike = Record<string, unknown> & {
@@ -172,7 +173,8 @@ export class LearningCoursePublisher {
 
   async publish(input: PublishLearningCourseInput): Promise<PublishLearningCourseResult> {
     assertSafeId("runId", input.runId);
-    const lessons = input.lessons.map(normalizeLesson);
+    const outputMode = input.outputMode ?? "preview";
+    let lessons = input.lessons.map(normalizeLesson);
     if (lessons.length === 0) {
       throw new AgentRuntimeError("lessons must be a non-empty array", "INVALID_LESSON");
     }
@@ -180,6 +182,9 @@ export class LearningCoursePublisher {
     const sourceGroundingConfig = await this.resolveSourceGroundingConfig(input.runId);
     const sourceEvidence = sourceGroundingConfig ? analyzeSourceEvidence(lessons, sourceGroundingConfig) : undefined;
     const authoringContext = await this.resolveQualityAuthoringContext(input.runId);
+    if (outputMode !== "source") {
+      lessons = await materializePreviewImageAssets(this.workspaceRoot, input.runId, lessons);
+    }
     const courseQualityReport = buildCourseQualityReport({
       runId: input.runId,
       coursePackId: coursePack.id,
@@ -244,7 +249,6 @@ export class LearningCoursePublisher {
       };
     }
 
-    const outputMode = input.outputMode ?? "preview";
     const preview = buildPreviewInfo(input.runId, coursePack);
     const publishedPaths =
       outputMode === "source" ? await this.writeSourceBundle(lessons, coursePack) : await this.writePreviewBundle(input.runId, lessons, coursePack);
@@ -630,7 +634,8 @@ function collectBlockingIssues(
       ...validateChineseFirstLesson(lesson).issues,
       ...(sourceGroundingConfig ? validateSourceGrounding(lesson, sourceGroundingConfig).issues : []),
       ...(professorMode ? knowledgeBoardBlockingIssues(lesson) : []),
-      ...(selfStudyMode ? selfStudyTextbookBlockingIssues(lesson) : [])
+      ...(selfStudyMode ? selfStudyTextbookBlockingIssues(lesson) : []),
+      ...(selfStudyMode ? selfStudyVisualBlockingIssues(lesson) : [])
     ]
       .filter((issue) => issue.severity === "error")
       .filter((issue) => !(professorMode && issue.rule === "interaction-count"))
@@ -674,6 +679,38 @@ function selfStudyTextbookBlockingIssues(lesson: LessonLike): QualityIssue[] {
       message: [...page.missingItems, ...page.weakItems].join(", "),
       severity: "error"
     }));
+}
+
+function selfStudyVisualBlockingIssues(lesson: LessonLike): QualityIssue[] {
+  return lesson.pages.flatMap((page) => {
+    const pageId = isNonEmptyString(page.id) ? page.id : "unknown";
+    if (!isRecord(page.visualSpec)) {
+      return [
+        {
+          rule: "page-visual-required",
+          path: `pages.${pageId}.visualSpec`,
+          message: "student self-study textbook pages must include visualSpec.imageUrl so the middle section can render an image",
+          severity: "error"
+        } satisfies QualityIssue
+      ];
+    }
+
+    const visualSpec = page.visualSpec;
+    const hasImage = isNonEmptyString(visualSpec.imageUrl);
+
+    if (hasImage) {
+      return [];
+    }
+
+    return [
+      {
+        rule: "page-visual-required",
+        path: `pages.${pageId}.visualSpec`,
+        message: "visualSpec exists but is not renderable as an image",
+        severity: "error"
+      } satisfies QualityIssue
+    ];
+  });
 }
 
 function publishValidationIssueToBlockingIssue(issue: PublishValidationIssue): { lessonId: string; issue: QualityIssue } {

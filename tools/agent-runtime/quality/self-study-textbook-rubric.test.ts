@@ -30,6 +30,17 @@ describe("evaluateSelfStudyTextbookRubric", () => {
     expect(result.pageResults[0]?.weakItems).toEqual(expect.arrayContaining(["example/evidence/boundary"]));
   });
 
+  test("fails generic board section labels that expose the authoring template", () => {
+    const lesson = selfStudyLesson();
+    lesson.pages[0]!.knowledgeBoard.leftColumn[0]!.label = "机制链";
+    lesson.pages[0]!.knowledgeBoard.rightColumn[0]!.label = "例子 / 证据";
+
+    const result = evaluateSelfStudyTextbookRubric([lesson]);
+
+    expect(result.status).toBe("failed");
+    expect(result.pageResults[0]?.weakItems).toEqual(expect.arrayContaining(["template section labels"]));
+  });
+
   test("fails repeated knowledge board content inside the same lesson", () => {
     const lesson = selfStudyLesson();
     const firstPage = lesson.pages[0]!;
@@ -202,7 +213,7 @@ function selfStudyLesson(): {
           coreProposition: "Agent workflow 的核心价值不是把提示写长，而是把任务拆成多个可观察、可恢复、可调整的中间步骤。",
           leftColumn: [
             {
-              label: "机制链",
+              label: "可检查步骤",
               items: [
                 "大任务先被拆成多个短步骤，每一步都有明确输入和输出。",
                 "中间输出让系统能发现偏差，而不是等最终答案失败后才知道。",

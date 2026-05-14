@@ -64,6 +64,29 @@ Page title pattern:
 9. 设计工具型 agent 时，先定义可观察的动作边界
 10. 记住 Tool Use 的判断：模型提议，系统执行，结果再进入模型
 
+### `self-study-weyl-space-time-matter-v1` Overview Layout Revision
+
+- Preview route: `#/preview/self-study-weyl-space-time-matter-v1/unit/unit-overview/page/4`
+- Scope: one 8-page overview unit for Hermann Weyl's `Space, Time, Matter`
+- Learner feedback after image/text revision: "这个版本不错。"
+- Acceptance signal: the middle page area uses imagegen-generated teaching
+  images plus dense student-facing explanation. The page reads like a compact
+  self-study textbook board, not a professor slide template.
+
+Observed layout lessons:
+
+- The image should explain the core knowledge relation visually; it may use
+  short labels, but it must not duplicate the page title, bottom line, or right
+  text rail.
+- The right text rail should fill its allocated space on wide screens and read
+  as explanation notes, not as a stack of repeated cards.
+- Section labels must be content-specific mini-headings. Good examples from the
+  accepted Weyl page are `局部尺规`, `比较相邻向量`, `曲面几何证据`, and
+  `局部欧氏不等于全局欧氏`.
+- Avoid generic board labels such as `机制链`, `正式术语`, `例子 / 证据`, and
+  `边界案例`; they expose the authoring template and weaken the relationship
+  between heading and content.
+
 ## Quality Contract
 
 Future self-study textbook authoring should preserve these properties:
@@ -71,6 +94,10 @@ Future self-study textbook authoring should preserve these properties:
 - Page titles are learner-facing propositions or questions, not authoring roles such as `先看失败`, `直观模型`, `结构与术语`, or `迁移总结`.
 - Every page adds one independent knowledge judgment; the same board structure cannot be repeated with only the topic name changed.
 - The page body explains mechanism, example/evidence, and boundary in student-facing language.
+- Knowledge-board section labels are semantic mini-headings tied to that page's
+  knowledge point, not reusable template labels such as `机制链` or `正式术语`.
+- Image/text pages should use imagegen teaching illustrations and a right rail
+  of content-specific notes that fills the available space on wide screens.
 - Source grounding is visible through `sourceAnchorIds` and `knowledgeBoard.sourceTrace`, but source anchors do not replace explanation.
 - A topic unit should read like a compressed textbook chapter for self-study, not speaker notes for a professor.
 
@@ -87,4 +114,6 @@ When a learner asks for a long source as `student_self_study_textbook` with sele
 ## Regression Hooks
 
 - `evaluateSelfStudyTextbookRubric` rejects authoring scaffold language, repeated `knowledgeBoard` content, repeated page-role title patterns, and single page-role titles.
+- `evaluateSelfStudyTextbookRubric` rejects generic knowledge-board section
+  labels that expose the authoring template.
 - The accepted title patterns above are covered by `self-study-textbook-rubric.test.ts` so future rubric changes do not accidentally reject the current golden direction.

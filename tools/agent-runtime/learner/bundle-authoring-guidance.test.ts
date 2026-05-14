@@ -19,6 +19,8 @@ describe("bundle authoring guidance", () => {
 
     expect(guidance).toContain("中文");
     expect(guidance).toContain("sourceContext.sourceAnchorIds");
+    expect(guidance).toContain("imagegen");
+    expect(guidance).toContain("教学插图");
     expect(guidance).toContain("interactionSpec");
     expect(guidance).toContain("feedbackSpec");
     expect(guidance).toContain("transferTasks");
@@ -42,6 +44,10 @@ describe("bundle authoring guidance", () => {
     expect(guidance).toContain("知识节点");
     expect(guidance).toContain("关键链路");
     expect(guidance).toContain("knowledgeBoard");
+    expect(guidance).toContain("imagegen");
+    expect(guidance).toContain("允许短标签");
+    expect(guidance).toContain("不要把页面标题、底部总结、长段落、表格、UI 文本框或页面卡片原文画进图片");
+    expect(guidance).toContain("不要包含长段落文字、表格或 UI 文本框");
     expect(guidance).toContain("source proposition");
     expect(guidance).toContain("leftColumn");
     expect(guidance).toContain("rightColumn");
@@ -70,6 +76,12 @@ describe("bundle authoring guidance", () => {
     expect(guidance).toContain("每页直接讲内容");
     expect(guidance).toContain("不要写本讲定位");
     expect(guidance).toContain("knowledgeBoard");
+    expect(guidance).toContain("imagegen");
+    expect(guidance).toContain("教学插图");
+    expect(guidance).toContain("允许短标签");
+    expect(guidance).toContain("不是固定模板栏");
+    expect(guidance).toContain("section label 必须是本页内容小标题");
+    expect(guidance).toContain("不要使用“机制链”“正式术语”“例子 / 证据”“边界案例”");
     expect(guidance).toContain("标题必须是内容命题");
     expect(guidance).toContain("不要用页面角色当标题");
     expect(guidance).toContain("不要写“本页围绕");

@@ -8,6 +8,7 @@ export type LearningAgentToolName =
   | "learning_agent.get_authoring_context"
   | "learning_agent.generate_grounded_course"
   | "learning_agent.publish_learning_course"
+  | "learning_agent.calibrate_learning_course"
   | "learning_agent.compare_authoring_quality"
   | "learning_agent.create_quality_revision"
   | "learning_agent.get_learning_preview"
@@ -130,6 +131,21 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
     inputSchema: objectSchema(
       { runId: stringSchema, coursePack: looseObjectSchema, lessons: arraySchema, publishNotes: stringSchema, outputMode: stringSchema },
       ["runId", "coursePack", "lessons"]
+    )
+  },
+  {
+    name: "learning_agent.calibrate_learning_course",
+    description:
+      "Learner-facing quality tool. Read the current preview quality report and create a Codex-ready calibration revision brief for structure, source, or learner quality without asking learners to approve artifacts.",
+    inputSchema: objectSchema(
+      {
+        runId: stringSchema,
+        maxRounds: numberSchema,
+        minScore: numberSchema,
+        failOnWarnings: booleanSchema,
+        focus: stringArraySchema
+      },
+      ["runId"]
     )
   },
   {
@@ -300,6 +316,7 @@ const learnerToolNames = [
   "learning_agent.list_learning_projects",
   "learning_agent.archive_learning_project",
   "learning_agent.publish_learning_course",
+  "learning_agent.calibrate_learning_course",
   "learning_agent.get_learning_preview",
   "learning_agent.revise_learning_course",
   "learning_agent.apply_learning_revision",

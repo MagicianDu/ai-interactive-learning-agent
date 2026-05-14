@@ -506,6 +506,9 @@ function toSchemaVisualSpec(visualSpec: unknown): Record<string, unknown> {
     description: item.description,
     keyElements: item.keyElements,
     states: item.states,
+    imageUrl: item.imageUrl,
+    imageAlt: item.imageAlt,
+    imageCaption: item.imageCaption,
     component: item.component
   });
 }

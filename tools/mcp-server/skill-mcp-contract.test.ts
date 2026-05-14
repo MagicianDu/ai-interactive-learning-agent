@@ -9,6 +9,7 @@ const skillsRoot = path.join(process.cwd(), "skills");
 const learnerDefaultTools = [
   "learning_agent.prepare_learning_course",
   "learning_agent.publish_learning_course",
+  "learning_agent.calibrate_learning_course",
   "learning_agent.get_learning_preview"
 ];
 const advancedAuthoringTools = [

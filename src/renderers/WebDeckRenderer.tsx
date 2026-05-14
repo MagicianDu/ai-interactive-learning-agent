@@ -51,7 +51,7 @@ export function WebDeckRenderer({ initialPageIndex, lesson, onPageChange }: WebD
             totalPages={lesson.pages.length}
           >
             {hasKnowledgeBoard && page.knowledgeBoard ? (
-              <KnowledgeBoard board={page.knowledgeBoard} />
+              <KnowledgeBoard board={page.knowledgeBoard} visualSpec={page.visualSpec} />
             ) : (
               <div
                 className={

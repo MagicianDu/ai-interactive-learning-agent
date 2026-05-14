@@ -216,7 +216,8 @@ function buildPage(input: CodexAuthoredTrialInput, unit: TrialUnitBlueprint, pag
     visualSpec: {
       kind: visualKind(pageType),
       description: visualDescriptionForPage(focus, pageBlueprint),
-      keyElements: ["问题定义", "机制模型", "来源证据", "反例", "迁移应用"]
+      keyElements: ["问题定义", "机制模型", "来源证据", "反例", "迁移应用"],
+      ...imagegenTeachingAsset(unit.lessonId, `p${pageBlueprint.pageNumber}`, focus, pageBlueprint)
     },
     ...(needsInteraction(pageType)
       ? {
@@ -261,6 +262,20 @@ function buildPage(input: CodexAuthoredTrialInput, unit: TrialUnitBlueprint, pag
           }
         }
       : {})
+  };
+}
+
+function imagegenTeachingAsset(
+  lessonId: string,
+  pageId: string,
+  focus: string,
+  pageBlueprint: TrialPageBlueprint
+): Record<string, string> {
+  return {
+    imageUrl: `https://generated.invalid/teaching-images/${encodeURIComponent(lessonId)}-${encodeURIComponent(pageId)}.png`,
+    imageAlt: `${focus}的教学插图`,
+    imageProvider: "imagegen",
+    imagePrompt: `生成一张中文 Web Deck 教学插图，用视觉方式解释“${focus}”。只表达该页教学动作：${pageBlueprint.teachingMove}。可以使用短标签、方向词或局部标注帮助理解；不要包含页面标题、底部总结、长段落文字、表格、页面卡片原文或 UI 文本框。`
   };
 }
 

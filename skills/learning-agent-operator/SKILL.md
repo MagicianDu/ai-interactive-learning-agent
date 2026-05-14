@@ -69,7 +69,7 @@ Use this flow for normal Codex/Claude-style natural language operation. It shoul
 
 If this returns `clarification_required`, ask only those learner-visible questions and call `learning_agent.prepare_learning_course` again.
 
-2. Use Codex Authoring Protocol V2 with the returned `sourceSemantics`, `coursePlan.strategyReason`, `coursePlan.estimatedTotalPages`, `coursePlan.sourceCoveragePlan`, `coursePlan.acceptanceExpectations`, `coursePlan.recommendedUnits[*].expectedInteractions/expectedAssessments/transferExpectation`, and `contentBlueprint.units[*].pageBlueprints` as authoring constraints. For `student_self_study_textbook`, `pageType=codex_designed` means Codex/Claude should design each page role from the source and must not copy a fixed template. Titles must be content propositions or real learner questions, not page-role labels such as "直观模型" or "机制链路"; avoid scaffold phrases such as "本页围绕..." and "本页从...入手". Read `docs/runtime/self-study-golden-samples.md` as the minimum quality bar. For long books, `unitPages` is per unit and `estimatedTotalPages` is the approximate whole-course page budget. If selected topics are present, author all recommended units in one `coursePack.units` bundle instead of generating one topic preview at a time. Do not paste source graph, course-plan, or content-blueprint artifacts to the learner unless they ask for expert details.
+2. Use Codex Authoring Protocol V2 with the returned `sourceSemantics`, `coursePlan.strategyReason`, `coursePlan.estimatedTotalPages`, `coursePlan.sourceCoveragePlan`, `coursePlan.acceptanceExpectations`, `coursePlan.recommendedUnits[*].expectedInteractions/expectedAssessments/transferExpectation`, and `contentBlueprint.units[*].pageBlueprints` as authoring constraints. For `student_self_study_textbook`, `pageType=codex_designed` means Codex/Claude should design each page role from the source and must not copy a fixed template. Titles must be content propositions or real learner questions, not page-role labels such as "直观模型" or "机制链路"; avoid scaffold phrases such as "本页围绕..." and "本页从...入手". Every learner-facing page should include an imagegen-generated teaching image; `visualSpec.imagePrompt` must explicitly forbid long prose, tables, and UI text boxes, and the image should explain the knowledge point visually rather than duplicate the right-side text. `knowledgeBoard` section labels must be content-specific mini-headings, not reusable template labels such as "机制链", "正式术语", "例子 / 证据", or "边界案例". Read `docs/runtime/self-study-golden-samples.md` as the minimum quality bar. For long books, `unitPages` is per unit and `estimatedTotalPages` is the approximate whole-course page budget. If selected topics are present, author all recommended units in one `coursePack.units` bundle instead of generating one topic preview at a time. Do not paste source graph, course-plan, or content-blueprint artifacts to the learner unless they ask for expert details.
 
 3. Codex authors `coursePack` and `lessons`, then publishes:
 
@@ -79,13 +79,21 @@ If this returns `clarification_required`, ask only those learner-visible questio
 
 Default publishing writes clean preview JSON under `runs/<run-id>/preview/` and returns a compact `qualityReport`. Do not pass `outputMode=source` unless maintaining repository fixtures.
 
-4. Open a learner-visible preview:
+4. When quality is failed or source/structure/learner warnings remain, create a calibration brief for Codex and revise before preview:
+
+```json
+{"method":"tools/call","params":{"name":"learning_agent.calibrate_learning_course","arguments":{"runId":"<run-id>"}}}
+```
+
+If this returns `revision_required`, Codex should revise only the targeted pages or units, call `learning_agent.publish_learning_course` again, and repeat until calibration completes or stops. Do not ask the learner to approve the calibration artifact.
+
+5. Open a learner-visible preview:
 
 ```json
 {"method":"tools/call","params":{"name":"learning_agent.get_learning_preview","arguments":{"runId":"<run-id>"}}}
 ```
 
-5. When the learner gives feedback, revise and preview again:
+6. When the learner gives feedback, revise and preview again:
 
 ```json
 {"method":"tools/call","params":{"name":"learning_agent.revise_learning_course","arguments":{"runId":"<run-id>","feedback":"<learner feedback>"}}}
@@ -95,7 +103,7 @@ Default publishing writes clean preview JSON under `runs/<run-id>/preview/` and 
 
 Use `apply_learning_revision.changedPages` and `qualityAfter`, then confirm `get_learning_preview.preview.revisionHistory` includes the new revision. This is the durable preview-based acceptance point: if the learner refreshes `#/preview/<run-id>`, the sidebar should still show the same learner-readable revision history.
 
-6. Export only after the visible preview matches the learner's request:
+7. Export only after the visible preview matches the learner's request:
 
 ```json
 {"method":"tools/call","params":{"name":"learning_agent.export_learning_course","arguments":{"runId":"<run-id>"}}}
@@ -115,6 +123,8 @@ After publish, preview, revision, or export, respond with only learner-actionabl
 - Optional authored-vs-draft comparison only when the user explicitly asks for advanced authoring comparison
 - For revisions: latest `revisionHistory` summary, changed page numbers, `qualityAfter.status`, and preview URL
 - One suggested next action: open preview, give feedback, revise, or export
+
+Visual asset rule: before calling `learning_agent.publish_learning_course`, Codex must generate every learner-facing visual through imagegen and provide `visualSpec.imageUrl`, `imageAlt`, `imageProvider: "imagegen"`, and `imagePrompt`. Do not ask MCP to invent SVG placeholders. The image should explain the middle visual idea only. Short labels are allowed when they improve comprehension, but the image must not duplicate the page title, bottom-line sentence, page-card text, long prose, tables, or UI text boxes.
 
 Do not paste large source maps, concept maps, curriculum plans, full critic reports, or raw nested JSON unless the user explicitly asks for expert/operator details.
 

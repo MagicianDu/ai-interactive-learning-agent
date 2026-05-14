@@ -862,7 +862,7 @@ function selfStudyTextbookLessonFixture(id: string) {
         coreProposition: `${pageRole}页要说明的不是同一句定义，而是 workflow 如何在这一层把任务变成可观察、可恢复、可调整的学习对象。`,
         leftColumn: [
           {
-            label: "机制链",
+            label: `${pageRole}如何拆步骤`,
             items: [
               `定义：${pageRole}把大任务拆成一个可单独检查的知识节点。`,
               `证据链：${pageRole}要求学习者看到中间状态如何暴露偏差。`,

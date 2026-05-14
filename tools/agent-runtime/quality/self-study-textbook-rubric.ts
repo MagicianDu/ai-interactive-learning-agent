@@ -69,6 +69,16 @@ const authoringScaffoldPatterns = [
 
 const exampleEvidenceBoundaryPattern = /例子|例如|反例|证据|来源|边界|不适用|失败|局限|case|example|evidence|boundary/i;
 
+const genericBoardSectionLabels = new Set([
+  "机制链",
+  "正式术语",
+  "例子 / 证据",
+  "例子/证据",
+  "边界案例",
+  "知识点",
+  "说明"
+]);
+
 export function evaluateSelfStudyTextbookRubric(lessons: unknown[]): SelfStudyTextbookRubricResult {
   const pageRecords = lessons.flatMap(collectLessonPageRecords);
   const repeatedPageRoleTitleIds = findRepeatedPageRoleTitleIds(pageRecords);
@@ -223,6 +233,9 @@ function evaluateKnowledgeBoard(value: unknown): BoardIssue[] {
   if (!exampleEvidenceBoundaryPattern.test(rightColumnText)) {
     issues.push({ kind: "weak", item: "example/evidence/boundary" });
   }
+  if (hasGenericSectionLabels(value)) {
+    issues.push({ kind: "weak", item: "template section labels" });
+  }
   if (boardText.trim().length < 160) {
     issues.push({ kind: "weak", item: "concrete explanation" });
   }
@@ -230,6 +243,25 @@ function evaluateKnowledgeBoard(value: unknown): BoardIssue[] {
     issues.push({ kind: "weak", item: "one-screen density" });
   }
   return issues;
+}
+
+function hasGenericSectionLabels(board: Record<string, unknown>): boolean {
+  const labels = [...sectionLabels(board.leftColumn), ...sectionLabels(board.rightColumn)];
+  return labels.some((label) => genericBoardSectionLabels.has(normalizeSectionLabel(label)));
+}
+
+function sectionLabels(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value
+    .filter(isRecord)
+    .map((section) => (typeof section.label === "string" ? section.label.trim() : ""))
+    .filter((label) => label.length > 0);
+}
+
+function normalizeSectionLabel(label: string): string {
+  return label.normalize("NFKC").replace(/\s+/gu, " ").trim();
 }
 
 function boardSignature(value: unknown): string | undefined {

@@ -6,6 +6,7 @@ import { describe, expect, test } from "vitest";
 
 import { ArtifactStore } from "../artifact-store.js";
 import { professorBoardLessonFixture, publishableLessonFixture } from "../quality/test-fixtures.js";
+import { isRecord } from "../quality/validation-result.js";
 import { LearnerProjectService } from "./learner-project-service.js";
 import { LearningCoursePublisher } from "./learning-course-publisher.js";
 
@@ -61,6 +62,13 @@ describe("LearningCoursePublisher", () => {
     expect(result.lessonPaths).toEqual([path.join(root, "runs", "hash-course", "preview", "lessons", "hash-table-overview.json")]);
     await expect(readFile(result.coursePackPath, "utf8")).resolves.toContain("\"id\": \"hash-course\"");
     await expect(readFile(result.lessonPaths[0] as string, "utf8")).resolves.toContain("\"id\": \"hash-table-overview\"");
+    await expect(readFile(result.lessonPaths[0] as string, "utf8")).resolves.toContain(
+      "https://generated.invalid/teaching-images/p1.png"
+    );
+    await expect(readFile(result.lessonPaths[0] as string, "utf8")).resolves.not.toContain(".svg");
+    await expect(readFile(path.join(root, "runs", "hash-course", "preview", "images", "hash-table-overview", "p1.svg"), "utf8")).rejects.toMatchObject({
+      code: "ENOENT"
+    });
     await expect(readFile(path.join(root, "runs", "hash-course", "preview", "manifest.json"), "utf8")).resolves.toContain(
       "\"coursePackPath\": \"course-pack.json\""
     );
@@ -83,6 +91,47 @@ describe("LearningCoursePublisher", () => {
       code: "ENOENT"
     });
     await expect(readFile(path.join(root, "src", "course-packs", "hash-course", "coursePack.ts"), "utf8")).rejects.toMatchObject({
+      code: "ENOENT"
+    });
+  });
+
+  test("returns revision_required when a visual page lacks an imagegen teaching asset", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-course-publisher-imagegen-"));
+    const lesson = publishableLessonFixture({ id: "missing-imagegen", title: "缺少图片生成资产", targetPageCount: 8 });
+    const pages = lesson.pages.map((page) => {
+      if (!isRecord(page.visualSpec)) {
+        return page;
+      }
+      return {
+        ...page,
+        visualSpec: {
+          kind: page.visualSpec.kind,
+          description: page.visualSpec.description,
+          keyElements: page.visualSpec.keyElements
+        }
+      };
+    });
+    const publisher = new LearningCoursePublisher(root);
+
+    const result = await publisher.publish({
+      runId: "missing-imagegen-course",
+      lessons: [{ ...lesson, pages }],
+      coursePack: coursePackFixture("missing-imagegen-course", "missing-imagegen")
+    });
+
+    expect(result.status).toBe("revision_required");
+    if (result.status !== "revision_required") {
+      throw new Error("expected revision_required");
+    }
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule: "publish.page.imagegen-asset-missing",
+          message: expect.stringContaining("imagegen")
+        })
+      ])
+    );
+    await expect(readFile(path.join(root, "runs", "missing-imagegen-course", "preview", "images", "missing-imagegen", "p1.svg"), "utf8")).rejects.toMatchObject({
       code: "ENOENT"
     });
   });
@@ -538,6 +587,47 @@ describe("LearningCoursePublisher", () => {
     });
   });
 
+  test("returns revision_required when a student self-study textbook page misses visualSpec", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-course-publisher-self-study-visual-"));
+    const publisher = new LearningCoursePublisher(root);
+    await new LearnerProjectService(root).createProject({
+      request: "请生成学生自学 Web 教材，主题是 Agent workflow，面向研究生自学者，默认总页数即可。",
+      runId: "self-study-visual-course",
+      sourceKind: "topic",
+      audience: "研究生自学者",
+      difficultyLevel: "upper_undergraduate_or_graduate",
+      unitPages: 8,
+      courseIntent: "student_self_study_textbook"
+    });
+    const lesson = selfStudyTextbookLessonFixture("self-study-visual-overview");
+    const pageWithoutVisual = { ...(lesson.pages[2] as Record<string, unknown>) };
+    delete pageWithoutVisual.visualSpec;
+    lesson.pages[2] = pageWithoutVisual as (typeof lesson.pages)[number];
+
+    const result = await publisher.publish({
+      runId: "self-study-visual-course",
+      lessons: [lesson],
+      coursePack: coursePackFixture("self-study-visual-course", "self-study-visual-overview")
+    });
+
+    expect(result).toMatchObject({
+      status: "revision_required",
+      runId: "self-study-visual-course"
+    });
+    if (result.status !== "revision_required") {
+      throw new Error("expected revision_required");
+    }
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          lessonId: "self-study-visual-overview",
+          rule: "page-visual-required",
+          message: expect.stringContaining("visualSpec")
+        })
+      ])
+    );
+  });
+
   test("returns revision_required when student self-study textbooks contain teacher-facing board language", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "learning-course-publisher-self-study-bad-"));
     const publisher = new LearningCoursePublisher(root);
@@ -685,6 +775,13 @@ function selfStudyTextbookLessonFixture(id: string) {
       title: `Agent workflow 自学页 ${pageNumber}`,
       learningGoal: "理解 workflow 把复杂任务拆成可检查步骤。",
       narrative: "本页用中文解释 workflow 的定义、证据链、假设、案例分析和可检查中间状态。",
+      visualSpec: {
+        kind: type === "process_animation" ? "animation" : type === "code_walkthrough" ? "table" : "diagram",
+        description: `${pageRole}对应的核心图示或结构表。`,
+        keyElements: ["概念节点", "机制步骤", "证据锚点", "适用边界"],
+        states: ["提出问题", "展开机制", "对照证据", "形成可迁移结论"],
+        ...imagegenAsset(`self-study-${pageNumber}`)
+      },
       sourceAnchorIds: [`book:p${pageNumber}`],
       knowledgeBoard: {
         boardKind: type === "summary_card" ? "synthesis_board" : "mechanism_board",
@@ -692,7 +789,7 @@ function selfStudyTextbookLessonFixture(id: string) {
         coreProposition: `${pageRole}页要说明的不是同一句定义，而是 workflow 如何在这一层把任务变成可观察、可恢复、可调整的学习对象。`,
         leftColumn: [
           {
-            label: "机制链",
+            label: `${pageRole}如何拆步骤`,
             items: [
               `定义：${pageRole}把大任务拆成一个可单独检查的知识节点。`,
               `证据链：${pageRole}要求学习者看到中间状态如何暴露偏差。`,
@@ -765,7 +862,8 @@ function lessonPage(
           visualSpec: {
             kind: "diagram",
             description: "中文结构图",
-            keyElements: ["键", "桶", "候选范围"]
+            keyElements: ["键", "桶", "候选范围"],
+            ...imagegenAsset(id)
           }
         }
       : {}),
@@ -803,5 +901,14 @@ function lessonPage(
           }
         }
       : {})
+  };
+}
+
+function imagegenAsset(id: string): Record<string, string> {
+  return {
+    imageUrl: `https://generated.invalid/teaching-images/${id}.png`,
+    imageAlt: `${id} 中文教学插图`,
+    imageProvider: "imagegen",
+    imagePrompt: `生成一张中文 Web Deck 教学插图，只表达 ${id} 的核心机制，可以使用短标签帮助理解；不要包含页面标题、底部总结、页面卡片原文、长段落文字、表格或 UI 文本框。`
   };
 }

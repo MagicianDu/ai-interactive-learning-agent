@@ -117,7 +117,7 @@ const weylLesson: Lesson = {
         coreProposition: "自由落体可看成沿 geodesic 运动。",
         leftColumn: [
           {
-            label: "机制链",
+            label: "自由落体路径",
             emphasis: "mechanism",
             items: [
               "inertial force 与 gravitational field 需要统一解释。",
@@ -334,8 +334,8 @@ describe("WebDeckRenderer", () => {
     );
     expect(image).toHaveAttribute("src", expect.stringContaining("metric"));
     expect(image).toHaveAttribute("src", expect.stringContaining("geodesic"));
-    expect(textRail).toHaveTextContent("广义相对论把引力放进 metric");
-    expect(textRail).toHaveTextContent("自由落体可看成沿 geodesic 运动。");
+    expect(textRail).not.toHaveTextContent("广义相对论把引力放进 metric");
+    expect(textRail).not.toHaveTextContent("自由落体可看成沿 geodesic 运动。");
     expect(textRail).toHaveTextContent("旋转圆盘让几何条件卷入运动。");
     expect(textRail).toHaveTextContent("把引力只当 Newtonian force 会看不到 metric。");
     expect(screen.getByText("本页结论：引力不是单独的力项，而是几何结构的一部分。")).toBeInTheDocument();
@@ -359,7 +359,7 @@ describe("WebDeckRenderer", () => {
             coreProposition: "可靠的 agent workflow 需要显式状态和失败恢复。",
             leftColumn: [
               {
-                label: "机制链",
+                label: "可检查步骤",
                 emphasis: "mechanism",
                 items: ["任务压力进入 workflow", "中间状态被记录", "失败信号触发恢复"],
               },
@@ -399,9 +399,9 @@ describe("WebDeckRenderer", () => {
     expect(screen.getByRole("img", { name: "生成图片" })).toHaveAttribute("src", "https://example.com/generated.png");
     expect(screen.queryByText("知识图示")).not.toBeInTheDocument();
     expect(screen.queryByText("知识表格")).not.toBeInTheDocument();
-    expect(screen.getAllByText("从来源命题到机制链")).toHaveLength(1);
-    expect(screen.getAllByText("可靠的 agent workflow 需要显式状态和失败恢复。")).toHaveLength(1);
-    expect(screen.getByText("机制链")).toBeInTheDocument();
+    expect(screen.queryByText("从来源命题到机制链")).not.toBeInTheDocument();
+    expect(screen.queryByText("可靠的 agent workflow 需要显式状态和失败恢复。")).not.toBeInTheDocument();
+    expect(screen.getByText("可检查步骤")).toBeInTheDocument();
     expect(screen.getByText("任务压力进入 workflow")).toBeInTheDocument();
     expect(screen.getByText("例子与边界")).toBeInTheDocument();
     expect(screen.getByText("本页结论：知识板书必须把命题、机制、证据和边界放在一屏内。")).toBeInTheDocument();

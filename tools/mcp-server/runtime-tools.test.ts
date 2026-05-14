@@ -514,6 +514,28 @@ describe("LearningAgentRuntimeTools", () => {
     ).resolves.toContain("替换泛化页面");
   });
 
+  test("creates calibration revision briefs through tool handlers", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
+    const tools = new LearningAgentRuntimeTools(root);
+    await writeCalibrationFixture(root, "mcp-calibration");
+
+    const result = await tools.callTool("learning_agent.calibrate_learning_course", {
+      runId: "mcp-calibration"
+    });
+
+    expect(result).toMatchObject({
+      status: "revision_required",
+      runId: "mcp-calibration",
+      round: 1,
+      calibrationKind: "source",
+      revisionBriefPath: expect.stringContaining("round-001-source.json"),
+      codexInstruction: expect.stringContaining("lesson-a/page-03")
+    });
+    await expect(
+      readFile(path.join(root, "runs", "mcp-calibration", "quality", "calibration", "round-001-source.json"), "utf8")
+    ).resolves.toContain("quality.page.source-synthesis-weak");
+  });
+
   test("exports a preview-ready learning course through tool handlers", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
     const tools = new LearningAgentRuntimeTools(root);
@@ -696,6 +718,62 @@ describe("LearningAgentRuntimeTools", () => {
   });
 });
 
+async function writeCalibrationFixture(root: string, runId: string): Promise<void> {
+  const runDir = path.join(root, "runs", runId);
+  await mkdir(path.join(runDir, "quality"), { recursive: true });
+  await writeFile(
+    path.join(runDir, "learning-preview.json"),
+    `${JSON.stringify(
+      {
+        preview: { localUrl: `http://127.0.0.1:5173/#/preview/${runId}` },
+        coursePackPath: "preview/course-pack.json",
+        lessonPaths: ["preview/lessons/lesson-a.json"]
+      },
+      null,
+      2
+    )}\n`,
+    "utf8"
+  );
+  await writeFile(
+    path.join(runDir, "quality", "course-quality-report.json"),
+    `${JSON.stringify(
+      {
+        status: "warning",
+        score: 85,
+        requiredFixCount: 0,
+        optionalImprovementCount: 1,
+        issues: [
+          {
+            issueId: "quality.page.source-synthesis-weak",
+            scope: "page",
+            severity: "warning",
+            category: "source_evidence",
+            reason: "page has source anchors but does not synthesize source-specific terms",
+            requiredFix: "Use the source anchor to teach a specific source term.",
+            lessonId: "lesson-a",
+            pageId: "page-03"
+          }
+        ],
+        topIssues: [
+          {
+            issueId: "quality.page.source-synthesis-weak",
+            scope: "page",
+            severity: "warning",
+            category: "source_evidence",
+            reason: "page has source anchors but does not synthesize source-specific terms",
+            requiredFix: "Use the source anchor to teach a specific source term.",
+            lessonId: "lesson-a",
+            pageId: "page-03"
+          }
+        ]
+      },
+      null,
+      2
+    )}\n`,
+    "utf8"
+  );
+}
+
 function buildQualityLesson(): Record<string, unknown> {
   return {
     id: "hash-table",
@@ -729,7 +807,18 @@ function page(id: string, type: string, kind: "visual" | "interaction" | "assess
     narrative: "中文内容"
   };
   if (kind === "visual") {
-    return { ...base, visualSpec: { kind: "diagram", description: "中文图示", keyElements: ["元素一"] } };
+    return {
+      ...base,
+      visualSpec: {
+        kind: "diagram",
+        description: "中文图示",
+        keyElements: ["元素一"],
+        imageUrl: `https://generated.invalid/teaching-images/${id}.png`,
+        imageAlt: `${id} 中文教学插图`,
+        imageProvider: "imagegen",
+        imagePrompt: `生成一张中文教学插图，只表达 ${id} 页的核心机制，可以使用短标签帮助理解；不要包含页面标题、底部总结、页面卡片原文、长段落文字、表格或 UI 文本框。`
+      }
+    };
   }
   if (kind === "interaction") {
     return {

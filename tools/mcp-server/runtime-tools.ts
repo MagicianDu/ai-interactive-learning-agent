@@ -8,6 +8,7 @@ import {
   AuthoringQualityComparisonService,
   AuthoringContextService,
   BetaStatusService,
+  CalibrationService,
   CodexManualAdapter,
   CoursePackService,
   createRunConfigFromArgs,
@@ -69,6 +70,8 @@ export class LearningAgentRuntimeTools {
         return this.generateGroundedCourse(input);
       case "learning_agent.publish_learning_course":
         return this.publishLearningCourse(input);
+      case "learning_agent.calibrate_learning_course":
+        return this.calibrateLearningCourse(input);
       case "learning_agent.compare_authoring_quality":
         return this.compareAuthoringQuality(input);
       case "learning_agent.create_quality_revision":
@@ -197,6 +200,17 @@ export class LearningAgentRuntimeTools {
       coursePack: options.coursePack,
       publishNotes: optionalString(options.publishNotes),
       outputMode: optionalOutputMode(options.outputMode)
+    });
+  }
+
+  private async calibrateLearningCourse(input: unknown): Promise<unknown> {
+    const options = expectRecord(input);
+    return new CalibrationService(this.workspaceRoot).calibrate({
+      runId: requiredString(options, "runId"),
+      maxRounds: optionalNumber(options.maxRounds),
+      minScore: optionalNumber(options.minScore),
+      failOnWarnings: optionalBoolean(options.failOnWarnings),
+      focus: optionalCalibrationFocus(options.focus)
     });
   }
 
@@ -507,6 +521,7 @@ function isLearningAgentToolName(name: string): name is LearningAgentToolName {
     "learning_agent.get_authoring_context",
     "learning_agent.generate_grounded_course",
     "learning_agent.publish_learning_course",
+    "learning_agent.calibrate_learning_course",
     "learning_agent.compare_authoring_quality",
     "learning_agent.create_quality_revision",
     "learning_agent.get_learning_preview",
@@ -603,6 +618,16 @@ function optionalStringArray(value: unknown): string[] | undefined {
     return undefined;
   }
   const normalized = value.map((item) => (typeof item === "string" ? item.trim() : "")).filter((item) => item.length > 0);
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+function optionalCalibrationFocus(value: unknown): Array<"structure" | "source" | "learner"> | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  const normalized = value.filter((item): item is "structure" | "source" | "learner" =>
+    item === "structure" || item === "source" || item === "learner"
+  );
   return normalized.length > 0 ? normalized : undefined;
 }
 

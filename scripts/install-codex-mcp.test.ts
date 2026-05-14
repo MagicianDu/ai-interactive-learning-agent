@@ -7,6 +7,7 @@ const learnerTools = [
   "learning_agent.list_learning_projects",
   "learning_agent.archive_learning_project",
   "learning_agent.publish_learning_course",
+  "learning_agent.calibrate_learning_course",
   "learning_agent.get_learning_preview",
   "learning_agent.revise_learning_course",
   "learning_agent.apply_learning_revision",

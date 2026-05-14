@@ -48,6 +48,17 @@ const validLesson = {
   summary: ["总结"]
 };
 
+const validImagegenVisualSpec = {
+  kind: "diagram",
+  description: "用图解释核心关系。",
+  keyElements: ["知识节点", "因果关系"],
+  imageUrl: "https://generated.invalid/teaching-images/page-01.png",
+  imageAlt: "中文教学插图",
+  imageProvider: "imagegen",
+  imagePrompt:
+    "生成一张中文 Web Deck 教学插图，只表达本页核心知识点，可以使用短标签帮助理解；不要包含页面标题、底部总结、页面卡片原文、长段落文字、表格或 UI 文本框。"
+};
+
 const validCoursePack = {
   id: "valid-course",
   title: "有效课程包",
@@ -155,6 +166,112 @@ describe("validatePublishBundle", () => {
           issueId: "publish.page.assessment-feedback-missing",
           pageId: "page-02",
           reason: expect.stringContaining("assessment")
+        })
+      ])
+    );
+  });
+
+  it("fails when a textbook deck page has no imagegen teaching image", () => {
+    const lesson = {
+      ...validLesson,
+      displayMode: "textbook_deck",
+      pages: [
+        {
+          ...validLesson.pages[0],
+          visualSpec: undefined
+        },
+        {
+          ...validLesson.pages[1],
+          visualSpec: validImagegenVisualSpec
+        }
+      ]
+    };
+
+    expect(validate({ lessons: [lesson] }).issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          issueId: "publish.page.imagegen-image-missing",
+          lessonId: "valid-lesson",
+          pageId: "page-01",
+          requiredFix: expect.stringContaining("visualSpec.imageUrl")
+        })
+      ])
+    );
+  });
+
+  it("fails when a visual page still points at an SVG placeholder", () => {
+    const lesson = {
+      ...validLesson,
+      pages: [
+        {
+          ...validLesson.pages[0],
+          visualSpec: {
+            ...validImagegenVisualSpec,
+            imageUrl: "/__learning-preview/run/images/page-01.svg"
+          }
+        },
+        validLesson.pages[1]
+      ]
+    };
+
+    expect(validate({ lessons: [lesson] }).issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          issueId: "publish.page.imagegen-asset-missing",
+          pageId: "page-01",
+          reason: expect.stringContaining("imagegen")
+        })
+      ])
+    );
+  });
+
+  it("fails when an imagegen prompt permits long prose, tables, or UI text panels", () => {
+    const lesson = {
+      ...validLesson,
+      pages: [
+        {
+          ...validLesson.pages[0],
+          visualSpec: {
+            ...validImagegenVisualSpec,
+            imagePrompt: "生成一张中文教学插图，可以包含表格、UI 文本框和大段文字解释。"
+          }
+        },
+        validLesson.pages[1]
+      ]
+    };
+
+    expect(validate({ lessons: [lesson] }).issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          issueId: "publish.page.imagegen-prompt-unsafe",
+          pageId: "page-01",
+          requiredFix: expect.stringContaining("do not allow")
+        })
+      ])
+    );
+  });
+
+  it("fails when an imagegen prompt lacks explicit guards against text-heavy artifacts", () => {
+    const lesson = {
+      ...validLesson,
+      pages: [
+        {
+          ...validLesson.pages[0],
+          visualSpec: {
+            ...validImagegenVisualSpec,
+            imagePrompt: "生成一张中文教学插图，只表达核心知识点，可以使用短标签帮助理解。"
+          }
+        },
+        validLesson.pages[1]
+      ]
+    };
+
+    expect(validate({ lessons: [lesson] }).issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          issueId: "publish.page.imagegen-prompt-guard-missing",
+          pageId: "page-01",
+          requiredFix: expect.stringContaining("明确写入")
         })
       ])
     );

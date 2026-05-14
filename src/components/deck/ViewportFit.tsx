@@ -64,7 +64,6 @@ export function ViewportFit({ children }: ViewportFitProps) {
 
     const observer = new ResizeObserver(scheduleMeasure);
     observer.observe(container);
-    observer.observe(content);
     window.addEventListener("resize", scheduleMeasure);
 
     return () => {
@@ -74,7 +73,7 @@ export function ViewportFit({ children }: ViewportFitProps) {
         window.cancelAnimationFrame(frame);
       }
     };
-  }, []);
+  }, [children]);
 
   return (
     <div

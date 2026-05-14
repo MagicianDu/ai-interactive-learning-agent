@@ -537,7 +537,8 @@ function page(
           visualSpec: {
             kind: "diagram",
             description: difficulty.visualDescription,
-            keyElements: ["来源依据", "核心机制", "学习动作", "反馈", "迁移", ...difficulty.visualKeyElements]
+            keyElements: ["来源依据", "核心机制", "学习动作", "反馈", "迁移", ...difficulty.visualKeyElements],
+            ...imagegenTeachingAsset(id, title, difficulty.visualDescription)
           }
         }
       : {}),
@@ -551,6 +552,15 @@ function page(
           }
         }
       : {})
+  };
+}
+
+function imagegenTeachingAsset(pageId: string, title: string, visualDescription: string): Record<string, string> {
+  return {
+    imageUrl: `https://generated.invalid/teaching-images/${encodeURIComponent(pageId)}.png`,
+    imageAlt: `${title}的教学插图`,
+    imageProvider: "imagegen",
+    imagePrompt: `生成一张中文 Web Deck 教学插图，主题是“${title}”。画面只表达：${visualDescription}。可以使用短标签、方向词或局部标注帮助理解；不要包含页面标题、底部总结、长段落文字、表格、页面卡片原文或 UI 文本框。`
   };
 }
 
