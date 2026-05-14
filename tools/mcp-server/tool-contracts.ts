@@ -9,6 +9,10 @@ export type LearningAgentToolName =
   | "learning_agent.generate_grounded_course"
   | "learning_agent.publish_learning_course"
   | "learning_agent.calibrate_learning_course"
+  | "learning_agent.prepare_content_review"
+  | "learning_agent.create_imagegen_manifest"
+  | "learning_agent.record_imagegen_asset"
+  | "learning_agent.validate_imagegen_assets"
   | "learning_agent.compare_authoring_quality"
   | "learning_agent.create_quality_revision"
   | "learning_agent.get_learning_preview"
@@ -147,6 +151,33 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
       },
       ["runId"]
     )
+  },
+  {
+    name: "learning_agent.prepare_content_review",
+    description:
+      "Learner-facing quality tool. Create the next Codex-facing content review brief for a published learning course, so Codex can critique and revise content before final imagegen publishing.",
+    inputSchema: objectSchema({ runId: stringSchema, maxRounds: numberSchema, minScore: numberSchema }, ["runId"])
+  },
+  {
+    name: "learning_agent.create_imagegen_manifest",
+    description:
+      "Learner-facing asset tool. Create a page-level imagegen prompt manifest with preview target paths for a published course run.",
+    inputSchema: objectSchema({ runId: stringSchema }, ["runId"])
+  },
+  {
+    name: "learning_agent.record_imagegen_asset",
+    description:
+      "Learner-facing asset tool. Record one imagegen output file into the preview assets folder and update the corresponding lesson visualSpec.",
+    inputSchema: objectSchema(
+      { runId: stringSchema, lessonId: stringSchema, pageId: stringSchema, sourceImagePath: stringSchema },
+      ["runId", "lessonId", "pageId", "sourceImagePath"]
+    )
+  },
+  {
+    name: "learning_agent.validate_imagegen_assets",
+    description:
+      "Learner-facing asset tool. Validate that the current preview uses imagegen PNG/WebP assets and safe prompts rather than missing files, SVG placeholders, or text-heavy image prompts.",
+    inputSchema: objectSchema({ runId: stringSchema }, ["runId"])
   },
   {
     name: "learning_agent.compare_authoring_quality",
@@ -317,6 +348,10 @@ const learnerToolNames = [
   "learning_agent.archive_learning_project",
   "learning_agent.publish_learning_course",
   "learning_agent.calibrate_learning_course",
+  "learning_agent.prepare_content_review",
+  "learning_agent.create_imagegen_manifest",
+  "learning_agent.record_imagegen_asset",
+  "learning_agent.validate_imagegen_assets",
   "learning_agent.get_learning_preview",
   "learning_agent.revise_learning_course",
   "learning_agent.apply_learning_revision",

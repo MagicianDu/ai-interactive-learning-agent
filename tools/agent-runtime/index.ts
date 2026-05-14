@@ -2,6 +2,20 @@ export const agentRuntimeVersion = "0.1.0";
 
 export { CodexAuthoredTrialService } from "./learner/codex-authored-trial.js";
 export { CalibrationService } from "./learner/calibration-service.js";
+export { ContentReviewService } from "./learner/content-review-service.js";
+export type { PrepareContentReviewInput, PrepareContentReviewResult } from "./learner/content-review-service.js";
+export { ImagegenAssetBatchService } from "./learner/imagegen-asset-batch-service.js";
+export type {
+  CreateImagegenManifestInput,
+  CreateImagegenManifestResult,
+  ImagegenAssetValidationIssue,
+  ImagegenManifest,
+  ImagegenManifestItem,
+  RecordImagegenAssetInput,
+  RecordImagegenAssetResult,
+  ValidateImagegenAssetsInput,
+  ValidateImagegenAssetsResult
+} from "./learner/imagegen-asset-batch-service.js";
 export { AuthoringQualityComparisonService } from "./learner/authoring-quality-comparison.js";
 export { AuthoringContextService } from "./learner/authoring-context-service.js";
 export { GroundedCourseService } from "./learner/grounded-course-service.js";

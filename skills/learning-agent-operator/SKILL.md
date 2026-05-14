@@ -79,7 +79,25 @@ If this returns `clarification_required`, ask only those learner-visible questio
 
 Default publishing writes clean preview JSON under `runs/<run-id>/preview/` and returns a compact `qualityReport`. Do not pass `outputMode=source` unless maintaining repository fixtures.
 
-4. When quality is failed or source/structure/learner warnings remain, create a calibration brief for Codex and revise before preview:
+4. For source-backed `student_self_study_textbook`, run up to three content-review rounds before final imagegen publishing:
+
+```json
+{"method":"tools/call","params":{"name":"learning_agent.prepare_content_review","arguments":{"runId":"<run-id>","maxRounds":3}}}
+```
+
+If this returns `revision_required`, Codex should read the review brief, act as `content-review-agent`, critique the course, revise the `coursePack` and `lessons`, then call `learning_agent.publish_learning_course` again. The third-round revised bundle is the one that proceeds to imagegen batch validation. Do not ask the learner to approve review artifacts.
+
+5. Create, record, and validate imagegen assets:
+
+```json
+{"method":"tools/call","params":{"name":"learning_agent.create_imagegen_manifest","arguments":{"runId":"<run-id>"}}}
+{"method":"tools/call","params":{"name":"learning_agent.record_imagegen_asset","arguments":{"runId":"<run-id>","lessonId":"<lesson-id>","pageId":"<page-id>","sourceImagePath":"<generated-png-or-webp-path>"}}}
+{"method":"tools/call","params":{"name":"learning_agent.validate_imagegen_assets","arguments":{"runId":"<run-id>"}}}
+```
+
+Codex should loop through the manifest, call imagegen for each item, record every generated PNG/WebP, and fix any validation failures before showing the learner the final preview.
+
+6. When quality is failed or source/structure/learner warnings remain, create a calibration brief for Codex and revise before preview:
 
 ```json
 {"method":"tools/call","params":{"name":"learning_agent.calibrate_learning_course","arguments":{"runId":"<run-id>"}}}
@@ -87,13 +105,13 @@ Default publishing writes clean preview JSON under `runs/<run-id>/preview/` and 
 
 If this returns `revision_required`, Codex should revise only the targeted pages or units, call `learning_agent.publish_learning_course` again, and repeat until calibration completes or stops. Do not ask the learner to approve the calibration artifact.
 
-5. Open a learner-visible preview:
+7. Open a learner-visible preview:
 
 ```json
 {"method":"tools/call","params":{"name":"learning_agent.get_learning_preview","arguments":{"runId":"<run-id>"}}}
 ```
 
-6. When the learner gives feedback, revise and preview again:
+8. When the learner gives feedback, revise and preview again:
 
 ```json
 {"method":"tools/call","params":{"name":"learning_agent.revise_learning_course","arguments":{"runId":"<run-id>","feedback":"<learner feedback>"}}}
@@ -103,7 +121,7 @@ If this returns `revision_required`, Codex should revise only the targeted pages
 
 Use `apply_learning_revision.changedPages` and `qualityAfter`, then confirm `get_learning_preview.preview.revisionHistory` includes the new revision. This is the durable preview-based acceptance point: if the learner refreshes `#/preview/<run-id>`, the sidebar should still show the same learner-readable revision history.
 
-7. Export only after the visible preview matches the learner's request:
+9. Export only after the visible preview matches the learner's request:
 
 ```json
 {"method":"tools/call","params":{"name":"learning_agent.export_learning_course","arguments":{"runId":"<run-id>"}}}
@@ -124,7 +142,9 @@ After publish, preview, revision, or export, respond with only learner-actionabl
 - For revisions: latest `revisionHistory` summary, changed page numbers, `qualityAfter.status`, and preview URL
 - One suggested next action: open preview, give feedback, revise, or export
 
-Visual asset rule: before calling `learning_agent.publish_learning_course`, Codex must generate every learner-facing visual through imagegen and provide `visualSpec.imageUrl`, `imageAlt`, `imageProvider: "imagegen"`, and `imagePrompt`. Do not ask MCP to invent SVG placeholders. The image should explain the middle visual idea only. Short labels are allowed when they improve comprehension, but the image must not duplicate the page title, bottom-line sentence, page-card text, long prose, tables, or UI text boxes.
+Visual asset rule: before treating a learner-facing preview as final, Codex must generate every learner-facing visual through imagegen and provide `visualSpec.imageUrl`, `imageAlt`, `imageProvider: "imagegen"`, and `imagePrompt`. Do not ask MCP to invent SVG placeholders. The image should explain the middle visual idea only. Short labels are allowed when they improve comprehension, but the image must not duplicate the page title, bottom-line sentence, page-card text, long prose, tables, or UI text boxes.
+
+For the productized batch flow, Codex may publish with preview target image URLs from the manifest, then must call `learning_agent.record_imagegen_asset` and `learning_agent.validate_imagegen_assets` before treating the preview as final.
 
 Do not paste large source maps, concept maps, curriculum plans, full critic reports, or raw nested JSON unless the user explicitly asks for expert/operator details.
 

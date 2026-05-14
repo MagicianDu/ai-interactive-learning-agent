@@ -10,8 +10,10 @@ import {
   BetaStatusService,
   CalibrationService,
   CodexManualAdapter,
+  ContentReviewService,
   CoursePackService,
   createRunConfigFromArgs,
+  ImagegenAssetBatchService,
   LessonPromotionService,
   LearningCoursePublisher,
   GroundedCourseService,
@@ -72,6 +74,14 @@ export class LearningAgentRuntimeTools {
         return this.publishLearningCourse(input);
       case "learning_agent.calibrate_learning_course":
         return this.calibrateLearningCourse(input);
+      case "learning_agent.prepare_content_review":
+        return this.prepareContentReview(input);
+      case "learning_agent.create_imagegen_manifest":
+        return this.createImagegenManifest(input);
+      case "learning_agent.record_imagegen_asset":
+        return this.recordImagegenAsset(input);
+      case "learning_agent.validate_imagegen_assets":
+        return this.validateImagegenAssets(input);
       case "learning_agent.compare_authoring_quality":
         return this.compareAuthoringQuality(input);
       case "learning_agent.create_quality_revision":
@@ -211,6 +221,39 @@ export class LearningAgentRuntimeTools {
       minScore: optionalNumber(options.minScore),
       failOnWarnings: optionalBoolean(options.failOnWarnings),
       focus: optionalCalibrationFocus(options.focus)
+    });
+  }
+
+  private async prepareContentReview(input: unknown): Promise<unknown> {
+    const options = expectRecord(input);
+    return new ContentReviewService(this.workspaceRoot).prepareReview({
+      runId: requiredString(options, "runId"),
+      maxRounds: optionalNumber(options.maxRounds),
+      minScore: optionalNumber(options.minScore)
+    });
+  }
+
+  private async createImagegenManifest(input: unknown): Promise<unknown> {
+    const options = expectRecord(input);
+    return new ImagegenAssetBatchService(this.workspaceRoot).createManifest({
+      runId: requiredString(options, "runId")
+    });
+  }
+
+  private async recordImagegenAsset(input: unknown): Promise<unknown> {
+    const options = expectRecord(input);
+    return new ImagegenAssetBatchService(this.workspaceRoot).recordAsset({
+      runId: requiredString(options, "runId"),
+      lessonId: requiredString(options, "lessonId"),
+      pageId: requiredString(options, "pageId"),
+      sourceImagePath: requiredString(options, "sourceImagePath")
+    });
+  }
+
+  private async validateImagegenAssets(input: unknown): Promise<unknown> {
+    const options = expectRecord(input);
+    return new ImagegenAssetBatchService(this.workspaceRoot).validateAssets({
+      runId: requiredString(options, "runId")
     });
   }
 
@@ -522,6 +565,10 @@ function isLearningAgentToolName(name: string): name is LearningAgentToolName {
     "learning_agent.generate_grounded_course",
     "learning_agent.publish_learning_course",
     "learning_agent.calibrate_learning_course",
+    "learning_agent.prepare_content_review",
+    "learning_agent.create_imagegen_manifest",
+    "learning_agent.record_imagegen_asset",
+    "learning_agent.validate_imagegen_assets",
     "learning_agent.compare_authoring_quality",
     "learning_agent.create_quality_revision",
     "learning_agent.get_learning_preview",

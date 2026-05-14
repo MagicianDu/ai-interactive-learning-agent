@@ -66,3 +66,23 @@ MCP validates and publishes. Codex designs content, calls imagegen, saves the
 asset, and supplies `visualSpec.imageUrl`. The MCP publisher must not silently
 invent placeholder visuals because that hides missing authoring work from the
 learner-facing preview.
+
+## Batch Workflow
+
+For source-backed self-study courses, run imagegen as a batch after the final
+Codex content-review round:
+
+1. `learning_agent.create_imagegen_manifest` writes
+   `runs/<run-id>/quality/imagegen/imagegen-prompt-manifest.json`.
+2. Codex reads each manifest item, calls imagegen, and saves the resulting
+   PNG/WebP file locally.
+3. `learning_agent.record_imagegen_asset` copies the generated file into
+   `runs/<run-id>/preview/images/<lesson-id>/` and rewrites the page
+   `visualSpec`.
+4. `learning_agent.validate_imagegen_assets` blocks missing files, SVG
+   references, missing `imageProvider: "imagegen"`, unsafe prompts, and prompts
+   without explicit guards against long prose, tables, and UI text boxes.
+
+This workflow is semi-automatic by design: Codex still makes the visual design
+decision and calls imagegen, while MCP keeps paths, manifests, and validation
+deterministic.

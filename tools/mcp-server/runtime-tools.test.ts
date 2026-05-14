@@ -20,6 +20,10 @@ describe("LearningAgentRuntimeTools", () => {
         "learning_agent.get_authoring_context",
         "learning_agent.generate_grounded_course",
         "learning_agent.publish_learning_course",
+        "learning_agent.prepare_content_review",
+        "learning_agent.create_imagegen_manifest",
+        "learning_agent.record_imagegen_asset",
+        "learning_agent.validate_imagegen_assets",
         "learning_agent.compare_authoring_quality",
         "learning_agent.create_quality_revision",
         "learning_agent.get_learning_preview",
@@ -536,6 +540,58 @@ describe("LearningAgentRuntimeTools", () => {
     ).resolves.toContain("quality.page.source-synthesis-weak");
   });
 
+  test("prepare_content_review returns a Codex reviewer instruction", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
+    const tools = new LearningAgentRuntimeTools(root);
+    await writeContentReviewFixture(root, "mcp-content-review");
+
+    const result = await tools.callTool("learning_agent.prepare_content_review", {
+      runId: "mcp-content-review",
+      maxRounds: 3
+    });
+
+    expect(result).toMatchObject({
+      status: "revision_required",
+      runId: "mcp-content-review",
+      round: 1,
+      maxRounds: 3,
+      codexInstruction: expect.stringContaining("内容审核")
+    });
+  });
+
+  test("imagegen batch tools create manifest, record assets, and validate preview images", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
+    const tools = new LearningAgentRuntimeTools(root);
+    await writeImagegenFixture(root, "mcp-imagegen");
+    const generatedPath = path.join(root, "generated.png");
+    await writeFile(generatedPath, Buffer.from([137, 80, 78, 71]));
+
+    const manifestResult = await tools.callTool("learning_agent.create_imagegen_manifest", { runId: "mcp-imagegen" });
+    const recordResult = await tools.callTool("learning_agent.record_imagegen_asset", {
+      runId: "mcp-imagegen",
+      lessonId: "lesson-a",
+      pageId: "page-01",
+      sourceImagePath: generatedPath
+    });
+    const validationResult = await tools.callTool("learning_agent.validate_imagegen_assets", { runId: "mcp-imagegen" });
+
+    expect(manifestResult).toMatchObject({
+      status: "manifest_ready",
+      runId: "mcp-imagegen",
+      requiredImageCount: 1
+    });
+    expect(recordResult).toMatchObject({
+      status: "asset_recorded",
+      imageUrl: "/__learning-preview/mcp-imagegen/images/lesson-a/page-01-imagegen-v1.png"
+    });
+    expect(validationResult).toMatchObject({
+      status: "passed",
+      runId: "mcp-imagegen",
+      checkedPageCount: 1,
+      issues: []
+    });
+  });
+
   test("exports a preview-ready learning course through tool handlers", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
     const tools = new LearningAgentRuntimeTools(root);
@@ -764,6 +820,90 @@ async function writeCalibrationFixture(root: string, runId: string): Promise<voi
             requiredFix: "Use the source anchor to teach a specific source term.",
             lessonId: "lesson-a",
             pageId: "page-03"
+          }
+        ]
+      },
+      null,
+      2
+    )}\n`,
+    "utf8"
+  );
+}
+
+async function writeContentReviewFixture(root: string, runId: string): Promise<void> {
+  const previewDir = path.join(root, "runs", runId, "preview");
+  const qualityDir = path.join(root, "runs", runId, "quality");
+  await mkdir(path.join(previewDir, "lessons"), { recursive: true });
+  await mkdir(qualityDir, { recursive: true });
+  await writeFile(
+    path.join(previewDir, "course-pack.json"),
+    `${JSON.stringify(
+      {
+        id: runId,
+        title: "内容审核课程",
+        units: [{ unitId: "unit-overview", lessonId: "lesson-a", targetPageCount: 2 }]
+      },
+      null,
+      2
+    )}\n`,
+    "utf8"
+  );
+  await writeFile(
+    path.join(previewDir, "lessons", "lesson-a.json"),
+    `${JSON.stringify(
+      {
+        id: "lesson-a",
+        title: "总览",
+        displayMode: "textbook_deck",
+        pages: [{ id: "page-01", title: "具体知识判断", narrative: "中文内容", sourceAnchorIds: ["book:p1"] }]
+      },
+      null,
+      2
+    )}\n`,
+    "utf8"
+  );
+  await writeFile(
+    path.join(qualityDir, "course-quality-report.json"),
+    `${JSON.stringify({ status: "warning", score: 85, topIssues: [] }, null, 2)}\n`,
+    "utf8"
+  );
+}
+
+async function writeImagegenFixture(root: string, runId: string): Promise<void> {
+  const previewDir = path.join(root, "runs", runId, "preview");
+  await mkdir(path.join(previewDir, "lessons"), { recursive: true });
+  await writeFile(
+    path.join(previewDir, "course-pack.json"),
+    `${JSON.stringify(
+      {
+        id: runId,
+        title: "图片工具课程",
+        units: [{ unitId: "unit-overview", lessonId: "lesson-a", targetPageCount: 1 }]
+      },
+      null,
+      2
+    )}\n`,
+    "utf8"
+  );
+  await writeFile(
+    path.join(previewDir, "lessons", "lesson-a.json"),
+    `${JSON.stringify(
+      {
+        id: "lesson-a",
+        title: "总览",
+        displayMode: "textbook_deck",
+        pages: [
+          {
+            id: "page-01",
+            title: "测量让几何关系可比较",
+            narrative: "中文内容",
+            visualSpec: {
+              imageAlt: "测量、坐标与几何关系的教学插图"
+            },
+            knowledgeBoard: {
+              coreProposition: "测量把几何关系变成可比较的对象。",
+              bottomLine: "坐标是表达工具，不是物理对象。"
+            }
           }
         ]
       },

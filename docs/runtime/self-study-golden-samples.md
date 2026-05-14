@@ -110,6 +110,12 @@ When a learner asks for a long source as `student_self_study_textbook` with sele
 - `unitPages` is the page budget for each unit. A request like `unitPages=10` and three topics should plan about 40 pages: 10 overview pages plus 10 pages for each topic.
 - The default 100-page self-study reminder is for open-ended whole-book expansion. If the learner already selected topics or chapters and did not explicitly request a total page count, do not redistribute those selected units into 100 pages.
 - Codex/Claude should author every planned unit in one bundle and then call `learning_agent.publish_learning_course` once for the complete course.
+- Source-backed self-study bundles should then enter the three-round content
+  review loop from `docs/runtime/content-review-loop.md`; the third-round
+  revised bundle is the content baseline for imagegen assets.
+- After content review, generate an imagegen prompt manifest, record every
+  PNG/WebP asset, and validate with `learning_agent.validate_imagegen_assets`
+  before treating the preview as learner-ready.
 
 ## Regression Hooks
 
