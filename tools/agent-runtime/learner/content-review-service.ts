@@ -55,6 +55,10 @@ export type ContentReviewMetrics = {
   lowDensityPageCount: number;
   sourceAnchoredPageCount: number;
   sourceTracePageCount: number;
+  genericSourceTraceSupportCount: number;
+  staleVisualPromptCount: number;
+  titleDuplicatedInImagePromptCount: number;
+  mechanismDepthWeakPageCount: number;
 };
 
 export type ContentReviewMetricDelta = ContentReviewMetrics & {
@@ -115,6 +119,14 @@ const GENERIC_PAGE_TITLES = new Set([
   "机制板书"
 ]);
 const LOW_DENSITY_CHAR_THRESHOLD = 120;
+const MECHANISM_DEPTH_MIN_ITEM_COUNT = 4;
+const GENERIC_SOURCE_TRACE_SUPPORT_PATTERNS = [
+  /支撑本页核心命题/u,
+  /给出来源证据或边界/u,
+  /来源支持这个命题/u,
+  /支撑这个命题/u,
+  /给出证据/u
+];
 
 export class ContentReviewService {
   constructor(private readonly workspaceRoot = process.cwd()) {}
@@ -254,7 +266,11 @@ export class ContentReviewService {
       genericTitleCount: 0,
       lowDensityPageCount: 0,
       sourceAnchoredPageCount: 0,
-      sourceTracePageCount: 0
+      sourceTracePageCount: 0,
+      genericSourceTraceSupportCount: 0,
+      staleVisualPromptCount: 0,
+      titleDuplicatedInImagePromptCount: 0,
+      mechanismDepthWeakPageCount: 0
     };
 
     for (const lesson of lessons) {
@@ -282,6 +298,16 @@ export class ContentReviewService {
         const knowledgeBoard = isRecord(page.knowledgeBoard) ? page.knowledgeBoard : undefined;
         if (knowledgeBoard && Array.isArray(knowledgeBoard.sourceTrace) && knowledgeBoard.sourceTrace.length > 0) {
           metrics.sourceTracePageCount += 1;
+          metrics.genericSourceTraceSupportCount += countGenericSourceTraceSupports(knowledgeBoard.sourceTrace);
+        }
+        if (hasStaleVisualPrompt(page)) {
+          metrics.staleVisualPromptCount += 1;
+        }
+        if (titleDuplicatedInImagePrompt(page)) {
+          metrics.titleDuplicatedInImagePromptCount += 1;
+        }
+        if (mechanismDepthWeak(page)) {
+          metrics.mechanismDepthWeakPageCount += 1;
         }
       }
     }
@@ -534,6 +560,53 @@ function contentDensityChars(page: Record<string, unknown>): number {
   return values.join("").replace(/\s/gu, "").length;
 }
 
+function countGenericSourceTraceSupports(sourceTrace: unknown[]): number {
+  return sourceTrace.filter((entry) => {
+    if (!isRecord(entry) || typeof entry.supports !== "string") {
+      return false;
+    }
+    const supports = entry.supports;
+    return GENERIC_SOURCE_TRACE_SUPPORT_PATTERNS.some((pattern) => pattern.test(supports));
+  }).length;
+}
+
+function hasStaleVisualPrompt(page: Record<string, unknown>): boolean {
+  const visualSpec = isRecord(page.visualSpec) ? page.visualSpec : undefined;
+  const prompt = typeof visualSpec?.imagePrompt === "string" ? visualSpec.imagePrompt.trim() : "";
+  if (!prompt) {
+    return true;
+  }
+  const title = typeof page.title === "string" ? page.title.trim() : "";
+  return title.length > 0 && (prompt.includes(`只表达“${title}”`) || prompt.includes(`核心知识关系：${title}`));
+}
+
+function titleDuplicatedInImagePrompt(page: Record<string, unknown>): boolean {
+  const visualSpec = isRecord(page.visualSpec) ? page.visualSpec : undefined;
+  const prompt = typeof visualSpec?.imagePrompt === "string" ? visualSpec.imagePrompt.trim() : "";
+  const title = typeof page.title === "string" ? page.title.trim() : "";
+  return prompt.length > 0 && title.length > 0 && prompt.includes(title);
+}
+
+function mechanismDepthWeak(page: Record<string, unknown>): boolean {
+  const knowledgeBoard = isRecord(page.knowledgeBoard) ? page.knowledgeBoard : undefined;
+  if (!knowledgeBoard) {
+    return true;
+  }
+  return countBoardItems(knowledgeBoard.leftColumn) + countBoardItems(knowledgeBoard.rightColumn) < MECHANISM_DEPTH_MIN_ITEM_COUNT;
+}
+
+function countBoardItems(value: unknown): number {
+  if (!Array.isArray(value)) {
+    return 0;
+  }
+  return value.reduce((count, section) => {
+    if (!isRecord(section) || !Array.isArray(section.items)) {
+      return count;
+    }
+    return count + section.items.filter((item) => typeof item === "string" && item.trim().length > 0).length;
+  }, 0);
+}
+
 function collectColumnText(value: unknown, target: string[]): void {
   if (!Array.isArray(value)) {
     return;
@@ -580,6 +653,10 @@ function diffMetrics(
     lowDensityPageCount: current.lowDensityPageCount - previous.lowDensityPageCount,
     sourceAnchoredPageCount: current.sourceAnchoredPageCount - previous.sourceAnchoredPageCount,
     sourceTracePageCount: current.sourceTracePageCount - previous.sourceTracePageCount,
+    genericSourceTraceSupportCount: current.genericSourceTraceSupportCount - previous.genericSourceTraceSupportCount,
+    staleVisualPromptCount: current.staleVisualPromptCount - previous.staleVisualPromptCount,
+    titleDuplicatedInImagePromptCount: current.titleDuplicatedInImagePromptCount - previous.titleDuplicatedInImagePromptCount,
+    mechanismDepthWeakPageCount: current.mechanismDepthWeakPageCount - previous.mechanismDepthWeakPageCount,
     issueCount: currentIssueCount - previousIssueCount
   };
 }
@@ -605,7 +682,11 @@ function isContentReviewMetrics(value: unknown): value is ContentReviewMetrics {
     typeof value.genericTitleCount === "number" &&
     typeof value.lowDensityPageCount === "number" &&
     typeof value.sourceAnchoredPageCount === "number" &&
-    typeof value.sourceTracePageCount === "number"
+    typeof value.sourceTracePageCount === "number" &&
+    typeof value.genericSourceTraceSupportCount === "number" &&
+    typeof value.staleVisualPromptCount === "number" &&
+    typeof value.titleDuplicatedInImagePromptCount === "number" &&
+    typeof value.mechanismDepthWeakPageCount === "number"
   );
 }
 

@@ -108,7 +108,11 @@ describe("ContentReviewService", () => {
         missingImagegenAssetCount: 1,
         lowDensityPageCount: 1,
         sourceAnchoredPageCount: 1,
-        sourceTracePageCount: 1
+        sourceTracePageCount: 1,
+        genericSourceTraceSupportCount: 1,
+        staleVisualPromptCount: 1,
+        titleDuplicatedInImagePromptCount: 0,
+        mechanismDepthWeakPageCount: 1
       },
       delta: null
     });
@@ -164,13 +168,63 @@ describe("ContentReviewService", () => {
       metrics: {
         templateLabelCount: 0,
         missingImagegenAssetCount: 0,
-        lowDensityPageCount: 0
+        lowDensityPageCount: 0,
+        genericSourceTraceSupportCount: 0,
+        staleVisualPromptCount: 0,
+        titleDuplicatedInImagePromptCount: 0,
+        mechanismDepthWeakPageCount: 0
       },
       delta: {
         templateLabelCount: -1,
         missingImagegenAssetCount: -1,
         lowDensityPageCount: -1,
+        genericSourceTraceSupportCount: -1,
+        staleVisualPromptCount: -1,
+        titleDuplicatedInImagePromptCount: 0,
+        mechanismDepthWeakPageCount: -1,
         issueCount: -1
+      }
+    });
+  });
+
+  test("measures semantic review gaps beyond structural compliance", async () => {
+    const root = await fixtureRoot("semantic-gaps");
+    await writeSemanticGapLesson(root, "semantic-gaps");
+
+    const result = await new ContentReviewService(root).recordReviewReport({
+      runId: "semantic-gaps",
+      round: 1,
+      reviewerVerdict: "revise",
+      summary: "结构合规，但来源支撑、图片提示和机制深度仍弱。",
+      issues: [
+        {
+          severity: "major",
+          category: "source_fidelity",
+          finding: "sourceTrace 仍是泛化支撑句。",
+          recommendation: "改成页面命题对应的具体来源说明。"
+        }
+      ]
+    });
+
+    expect(result.metrics).toMatchObject({
+      pageCount: 3,
+      templateLabelCount: 0,
+      missingImagegenAssetCount: 0,
+      genericTitleCount: 0,
+      lowDensityPageCount: 0,
+      genericSourceTraceSupportCount: 1,
+      staleVisualPromptCount: 1,
+      titleDuplicatedInImagePromptCount: 1,
+      mechanismDepthWeakPageCount: 1
+    });
+
+    const report = JSON.parse(await readFile(result.reportPath, "utf8")) as Record<string, unknown>;
+    expect(report).toMatchObject({
+      metrics: {
+        genericSourceTraceSupportCount: 1,
+        staleVisualPromptCount: 1,
+        titleDuplicatedInImagePromptCount: 1,
+        mechanismDepthWeakPageCount: 1
       }
     });
   });
@@ -309,7 +363,7 @@ async function writeDenseImagegenLesson(root: string, runId: string): Promise<vo
                   items: ["例子说明概念如何落地", "边界说明同一判断何时失效", "来源锚点支撑这两个判断"]
                 }
               ],
-              sourceTrace: [{ anchorId: "book:p1", supports: "来源支持这个命题。" }],
+              sourceTrace: [{ anchorId: "book:p1", supports: "来源给出了判断条件、变量变化和失效边界。" }],
               bottomLine: "真正要记住的不是术语，而是这个判断在什么条件下成立、什么条件下会失效。"
             }
           }
@@ -320,4 +374,81 @@ async function writeDenseImagegenLesson(root: string, runId: string): Promise<vo
     )}\n`,
     "utf8"
   );
+}
+
+async function writeSemanticGapLesson(root: string, runId: string): Promise<void> {
+  await mkdir(path.join(root, "runs", runId, "preview", "images", "lesson-a"), { recursive: true });
+  for (const pageId of ["page-01", "page-02", "page-03"]) {
+    await writeFile(path.join(root, "runs", runId, "preview", "images", "lesson-a", `${pageId}-imagegen-v1.png`), "png", "utf8");
+  }
+  await writeFile(
+    path.join(root, "runs", runId, "preview", "lessons", "lesson-a.json"),
+    `${JSON.stringify(
+      {
+        id: "lesson-a",
+        title: "语义指标样本",
+        displayMode: "textbook_deck",
+        pages: [
+          semanticPage({
+            id: "page-01",
+            title: "来源支撑必须具体",
+            imagePrompt: "生成教学插图，表现来源锚点如何支撑页面命题。不要长段文字，不要表格，不要 UI 文本框。",
+            sourceSupports: "支撑本页核心命题",
+            leftItems: ["来源段落给出条件 A", "条件 A 改变时结论 B 改变"],
+            rightItems: ["例子说明 A 到 B", "边界说明 C 时不成立"]
+          }),
+          semanticPage({
+            id: "page-02",
+            title: "图片提示不能过期",
+            imagePrompt: "生成一张中文 Web Deck 教学插图，只表达“图片提示不能过期”这一页的核心知识关系：图片提示不能过期。不要长段文字，不要表格，不要 UI 文本框。",
+            sourceSupports: "来源指出图片提示要跟机制链同步。",
+            leftItems: ["机制从输入走向判断", "判断再走向边界"],
+            rightItems: ["例子是 prompt 只重复标题", "边界是图像没有解释机制"]
+          }),
+          semanticPage({
+            id: "page-03",
+            title: "机制深度不足",
+            imagePrompt: "生成教学插图，画面中心表现：输入条件 -> 输出判断 -> 失效边界。不要长段文字，不要表格，不要 UI 文本框。",
+            sourceSupports: "来源说明机制链需要讲出条件和边界。",
+            leftItems: ["一个机制"],
+            rightItems: ["一个例子"]
+          })
+        ]
+      },
+      null,
+      2
+    )}\n`,
+    "utf8"
+  );
+}
+
+function semanticPage(input: {
+  id: string;
+  title: string;
+  imagePrompt: string;
+  sourceSupports: string;
+  leftItems: string[];
+  rightItems: string[];
+}): Record<string, unknown> {
+  return {
+    id: input.id,
+    title: input.title,
+    narrative: "这页有足够长度的中文解释，用来避免被低密度指标误判，同时保留语义质量缺口。",
+    sourceAnchorIds: ["book:p1"],
+    visualSpec: {
+      imageUrl: `/__learning-preview/semantic-gaps/images/lesson-a/${input.id}-imagegen-v1.png`,
+      imageProvider: "imagegen",
+      imageAlt: "教学插图",
+      imagePrompt: input.imagePrompt
+    },
+    knowledgeBoard: {
+      headline: input.title,
+      coreProposition:
+        "这页用于验证结构合规不等于语义合格：来源支撑要具体，图片提示要跟机制同步，机制链要包含条件、变化、结果和边界。",
+      leftColumn: [{ label: "条件如何改变判断", items: input.leftItems }],
+      rightColumn: [{ label: "例子和边界如何校准", items: input.rightItems }],
+      sourceTrace: [{ anchorId: "book:p1", supports: input.sourceSupports }],
+      bottomLine: "真正的质量门禁要能抓住语义泛化、图文不同步和机制深度不足。"
+    }
+  };
 }

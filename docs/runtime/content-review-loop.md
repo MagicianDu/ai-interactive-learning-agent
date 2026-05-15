@@ -1,22 +1,25 @@
-# Content Review Loop
+# Content Review 闭环
 
-Default source-backed self-study courses use Codex as a content reviewer before final imagegen publishing. MCP creates review briefs and records state; Codex reads the brief, critiques the course, revises the bundle, and republishes.
+默认的 source-backed 自学教材课程在最终 imagegen 发布前，要让 Codex 做内容审核。
+MCP 负责生成 review brief、记录 report/state、计算指标；Codex 负责读 brief、
+挑刺、修订课程包并重新发布。
 
-## Default Flow
+## 默认流程
 
-1. Publish the draft course with `learning_agent.publish_learning_course`.
-2. Call `learning_agent.prepare_content_review` with `maxRounds=3`.
-3. Codex acts as `content-review-agent`: critique first, revise second.
-4. Republish the revised `coursePack` and `lessons`.
-5. Call `learning_agent.record_content_review_report` for that round.
-6. Repeat until the third round completes or `prepare_content_review` returns `review_complete`.
-7. Use the third-round revised bundle for imagegen batch generation and final preview.
+1. 用 `learning_agent.publish_learning_course` 发布初稿课程。
+2. 调用 `learning_agent.prepare_content_review`，通常设置 `maxRounds=3`。
+3. Codex 作为 `content-review-agent`：先挑刺，再改稿。
+4. 重新发布修订后的 `coursePack` 和 `lessons`。
+5. 调用 `learning_agent.record_content_review_report` 记录本轮报告。
+6. 重复直到第三轮完成，或 `prepare_content_review` 返回 `review_complete`。
+7. 使用第三轮修订后的课程包进入 imagegen 批处理和最终预览。
 
-Learners should not approve review artifacts. They should see the preview URL, course shape, compact quality summary, and remaining high-level risks only.
+学习者不需要审批 review artifacts。默认只给学习者看预览地址、课程形态、
+紧凑质量摘要和高层风险。
 
 ## Review Report
 
-After each revision round, Codex must record a compact reviewer report:
+每轮修订后，Codex 必须记录一份紧凑审核报告：
 
 ```json
 {
@@ -43,44 +46,67 @@ After each revision round, Codex must record a compact reviewer report:
 }
 ```
 
-MCP records:
+MCP 会记录：
 
-- `round-###-content-review-report.json`: reviewer verdict, issues, measured metrics, and delta.
-- `content-review-state.json`: latest round, latest verdict, latest metrics, latest delta, and final verdict after round 3.
+- `round-###-content-review-report.json`：reviewer verdict、issues、度量指标和 delta。
+- `content-review-state.json`：最新轮次、最新 verdict、最新指标、最新 delta，以及第三轮后的 final verdict。
 
-Useful metrics include template label count, missing imagegen asset count, generic title count, low-density page count, source-anchored page count, and source-trace page count. The metric delta is the practical signal that review is improving content instead of only adding process.
+指标包括：
 
-## Review Focus
+- `templateLabelCount`：模板化栏目标题数量。
+- `missingImagegenAssetCount`：缺失 imagegen 图片资产的页面数量。
+- `genericTitleCount`：泛化页面标题数量。
+- `lowDensityPageCount`：低知识密度页面数量。
+- `sourceAnchoredPageCount`：有 `sourceAnchorIds` 的页面数量。
+- `sourceTracePageCount`：有 `knowledgeBoard.sourceTrace` 的页面数量。
+- `genericSourceTraceSupportCount`：泛化 `sourceTrace.supports` 数量。
+- `staleVisualPromptCount`：缺失或仍使用标题式旧模板的图片 prompt 数量。
+- `titleDuplicatedInImagePromptCount`：图片 prompt 直接包含页面标题的数量。
+- `mechanismDepthWeakPageCount`：机制板书左右栏内容项不足的页面数量。
 
-Round 1 checks structure and knowledge chain:
+delta 是判断 review 是否真的提升内容质量的主要信号，而不是只增加流程感。
 
-- planned units and page budgets are preserved
-- page titles are content propositions, not template roles
-- overview and topic units have different jobs
-- pages form a coherent student-readable sequence
+## 语义指标规则
 
-Round 2 checks source fidelity and density:
+这些语义指标故意保持保守，先拦截明确坏味道：
 
-- source-backed pages use concrete source terms, examples, limits, or relations
-- `sourceAnchorIds` and `knowledgeBoard.sourceTrace` support the actual claim
-- the page does not collapse the source into generic summary language
+- `genericSourceTraceSupportCount`：统计 `支撑本页核心命题`、`给出来源证据或边界`、`来源支持这个命题` 等泛化来源支撑句。
+- `staleVisualPromptCount`：统计缺失 image prompt，或仍使用 `只表达“<title>”`、`核心知识关系：<title>` 这类标题式旧模板的页面。
+- `titleDuplicatedInImagePromptCount`：统计 image prompt 直接包含页面标题的页面。
+- `mechanismDepthWeakPageCount`：统计左右栏具体内容项少于 4 条的页面；这类页面通常不足以支撑学生自学所需的条件、机制、例子和边界。
 
-Round 3 checks learner readability and image/text fit:
+## 三轮审核重点
 
-- every page teaches one concrete knowledge judgment
-- right-side notes are dense but readable
-- section labels are content-specific mini-headings
-- image prompts describe the middle visual idea and forbid long prose, tables, and UI panels
+第一轮检查结构和知识链路：
 
-## Imagegen Batch After Review
+- 保留 planned units 和 page budgets。
+- 页面标题是内容命题，而不是模板角色。
+- 总览课和 topic 单元各自有明确职责。
+- 页面顺序对学生自学是连贯的。
 
-After the final review round:
+第二轮检查来源具体性和知识密度：
 
-1. Call `learning_agent.create_imagegen_manifest`.
-2. Codex reads `runs/<run-id>/quality/imagegen/imagegen-prompt-manifest.json`.
-3. Codex calls imagegen for each manifest item.
-4. Call `learning_agent.record_imagegen_asset` for every generated PNG/WebP.
-5. Call `learning_agent.validate_imagegen_assets`.
-6. If validation fails, regenerate or record the affected page images and validate again.
+- source-backed 页面使用来源中的具体术语、例子、限制或关系。
+- `sourceAnchorIds` 和 `knowledgeBoard.sourceTrace` 支撑实际页面主张。
+- 页面没有把来源内容压扁成泛化摘要。
 
-The final preview should contain imagegen PNG/WebP assets only. SVG placeholders, missing files, unsafe prompts, or prompts that allow long prose, tables, or UI panels block acceptance.
+第三轮检查学生可读性和图文匹配：
+
+- 每页教会一个具体知识判断。
+- 右侧文字密度足够，但仍可读。
+- 栏目标题是内容专属小标题。
+- image prompt 描述中间视觉区应该画出的机制，并禁止长段落、表格和 UI 面板。
+
+## Review 后的 Imagegen 批处理
+
+最终 review 轮次完成后：
+
+1. 调用 `learning_agent.create_imagegen_manifest`。
+2. Codex 读取 `runs/<run-id>/quality/imagegen/imagegen-prompt-manifest.json`。
+3. Codex 对每个 manifest item 调用 imagegen。
+4. 对每个生成的 PNG/WebP 调用 `learning_agent.record_imagegen_asset`。
+5. 调用 `learning_agent.validate_imagegen_assets`。
+6. 如果校验失败，重新生成或重新记录受影响页面图片，再次校验。
+
+最终预览只能包含 imagegen PNG/WebP 资产。SVG 占位、缺失文件、不安全 prompt，
+或允许长段落、表格、UI 面板的 prompt 都会阻塞验收。

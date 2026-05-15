@@ -72,11 +72,13 @@ http://127.0.0.1:5173/#/preview/self-study-weyl-review-validation-20260515
     "genericTitleCount": 0,
     "lowDensityPageCount": 0,
     "sourceAnchoredPageCount": 40,
-    "sourceTracePageCount": 40
+    "sourceTracePageCount": 40,
+    "genericSourceTraceSupportCount": 0,
+    "staleVisualPromptCount": 0,
+    "titleDuplicatedInImagePromptCount": 0,
+    "mechanismDepthWeakPageCount": 0
   },
-  "latestDelta": {
-    "issueCount": -3
-  }
+  "latestDelta": null
 }
 ```
 
@@ -99,18 +101,25 @@ http://127.0.0.1:5173/#/preview/self-study-weyl-review-validation-20260515
 - 抽查页均加载 1 张非破损图片
 - 抽查页在 1440x900 视口下无页面级上下滚动
 
-## 暴露出的产品 Gap
+## 已落地的指标改进
 
-新的 report/state 流程已经能工作，但当前指标仍偏结构合规。
-第一轮暴露了一个重要语义缺口：泛化的 `sourceTrace.supports`
-可以通过所有现有指标。
+本次真实验证暴露的四个候选指标已经进入
+`ContentReviewService` 的自动度量：
 
-下一步建议把这些指标自动化：
+- `genericSourceTraceSupportCount`：自动统计泛化的 `sourceTrace.supports`
+- `staleVisualPromptCount`：自动统计缺失或仍使用标题式旧模板的图片 prompt
+- `titleDuplicatedInImagePromptCount`：自动统计直接包含页面标题的图片 prompt
+- `mechanismDepthWeakPageCount`：自动统计左右栏内容项不足的弱机制页
 
-- `genericSourceTraceSupportCount`
-- `staleVisualPromptCount`
-- `titleDuplicatedInImagePromptCount`
-- `mechanismDepthWeakPageCount`
+这些指标能把“来源支撑泛化、图文不同步、图片 prompt 重复标题、
+机制链过薄”从人工 review 经验固化为可回归的质量信号。
 
-这样后续 review 不只依赖 Codex 人工判断，也能自动拦截来源支撑泛化、
-图文不同步、图片 prompt 重复标题、关键机制讲不清等问题。
+## 后续产品 Gap
+
+当前机制深度指标仍是轻量启发式，只能抓住“内容项明显不足”的页面。
+更成熟的版本应该继续增加语义层检查：
+
+- 页面是否真的讲出条件、变化、结果、边界四段链路
+- sourceTrace 是否能和具体来源片段做文本级对应
+- 图片 prompt 是否覆盖本页核心机制而不是只覆盖栏目标签
+- 第二轮/第三轮是否真的提升了学生阅读获得感
