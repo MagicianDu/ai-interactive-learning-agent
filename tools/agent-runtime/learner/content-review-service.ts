@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { AgentRuntimeError } from "../errors.js";
@@ -27,7 +27,94 @@ export type PrepareContentReviewResult =
       stopReason: string;
     };
 
+export type ContentReviewVerdict = "pass" | "revise" | "block";
+export type ContentReviewIssueSeverity = "critical" | "major" | "minor";
+export type ContentReviewIssueCategory =
+  | "density"
+  | "source_fidelity"
+  | "structure"
+  | "image_text_fit"
+  | "template_language"
+  | "learner_readability";
+
+export type ContentReviewIssue = {
+  lessonId?: string;
+  pageId?: string;
+  severity: ContentReviewIssueSeverity;
+  category: ContentReviewIssueCategory;
+  finding: string;
+  recommendation: string;
+};
+
+export type ContentReviewMetrics = {
+  lessonCount: number;
+  pageCount: number;
+  templateLabelCount: number;
+  missingImagegenAssetCount: number;
+  genericTitleCount: number;
+  lowDensityPageCount: number;
+  sourceAnchoredPageCount: number;
+  sourceTracePageCount: number;
+};
+
+export type ContentReviewMetricDelta = ContentReviewMetrics & {
+  issueCount: number;
+};
+
+export type RecordContentReviewReportInput = {
+  runId: string;
+  round: number;
+  reviewerVerdict?: ContentReviewVerdict;
+  summary: string;
+  issues: ContentReviewIssue[];
+};
+
+export type RecordContentReviewReportResult = {
+  status: "review_report_recorded";
+  runId: string;
+  round: number;
+  reviewerVerdict: ContentReviewVerdict;
+  reportPath: string;
+  statePath: string;
+  metrics: ContentReviewMetrics;
+  delta: ContentReviewMetricDelta | null;
+  finalVerdict?: ContentReviewVerdict;
+};
+
 const RUN_ID_PATTERN = /^[a-z][a-z0-9-]{0,63}$/u;
+const REVIEW_VERDICTS = new Set<ContentReviewVerdict>(["pass", "revise", "block"]);
+const ISSUE_SEVERITIES = new Set<ContentReviewIssueSeverity>(["critical", "major", "minor"]);
+const ISSUE_CATEGORIES = new Set<ContentReviewIssueCategory>([
+  "density",
+  "source_fidelity",
+  "structure",
+  "image_text_fit",
+  "template_language",
+  "learner_readability"
+]);
+const TEMPLATE_LABELS = new Set([
+  "机制链",
+  "机制板书",
+  "正式术语",
+  "例子 / 证据",
+  "例子/证据",
+  "边界案例",
+  "来源证据",
+  "术语落地",
+  "边界",
+  "机制链路"
+]);
+const GENERIC_PAGE_TITLES = new Set([
+  "直观模型",
+  "机制链路",
+  "来源证据",
+  "迁移总结",
+  "先看失败",
+  "结构与术语",
+  "正式术语",
+  "机制板书"
+]);
+const LOW_DENSITY_CHAR_THRESHOLD = 120;
 
 export class ContentReviewService {
   constructor(private readonly workspaceRoot = process.cwd()) {}
@@ -70,8 +157,15 @@ export class ContentReviewService {
       reviewerOutputContract: {
         critiqueFirst: true,
         reviseSecond: true,
+        recordReportTool: "learning_agent.record_content_review_report",
         finalRoundPublishesCleanBundle: round === maxRounds,
         preserveCoursePackUnits: true
+      },
+      reviewReportContract: {
+        tool: "learning_agent.record_content_review_report",
+        requiredFields: ["runId", "round", "reviewerVerdict", "summary", "issues"],
+        issueCategories: Array.from(ISSUE_CATEGORIES),
+        issueSeverities: Array.from(ISSUE_SEVERITIES)
       },
       coursePack,
       lessons,
@@ -85,6 +179,43 @@ export class ContentReviewService {
       maxRounds,
       reviewBriefPath,
       codexInstruction: buildCodexInstruction(round, maxRounds, reviewBriefPath)
+    };
+  }
+
+  async recordReviewReport(input: RecordContentReviewReportInput): Promise<RecordContentReviewReportResult> {
+    assertSafeRunId(input.runId);
+    const round = normalizeRound(input.round);
+    const issues = normalizeIssues(input.issues);
+    const reviewerVerdict = normalizeVerdict(input.reviewerVerdict, issues.length);
+    const summary = normalizeRequiredText(input.summary, "summary");
+    const metrics = await this.collectMetrics(input.runId);
+    const previousReport = await this.readPreviousReport(input.runId, round);
+    const delta = previousReport ? diffMetrics(metrics, previousReport.metrics, issues.length, previousReport.issueCount) : null;
+    const report = {
+      runId: input.runId,
+      round,
+      reviewerVerdict,
+      summary,
+      issueCount: issues.length,
+      issues,
+      metrics,
+      delta,
+      recordedAt: new Date().toISOString(),
+      recommendedNextAction: recommendedNextAction(round, reviewerVerdict)
+    };
+    const reportPath = await this.writeReport(input.runId, round, report);
+    const statePath = await this.writeState(input.runId, round, reviewerVerdict, metrics, delta, reportPath);
+
+    return {
+      status: "review_report_recorded",
+      runId: input.runId,
+      round,
+      reviewerVerdict,
+      reportPath,
+      statePath,
+      metrics,
+      delta,
+      ...(round >= 3 ? { finalVerdict: reviewerVerdict } : {})
     };
   }
 
@@ -112,12 +243,126 @@ export class ContentReviewService {
     return entries.filter((entry) => /^round-[0-9]{3}-content-review\.json$/u.test(entry)).length;
   }
 
+  private async collectMetrics(runId: string): Promise<ContentReviewMetrics> {
+    const lessonPaths = await this.listLessonPaths(runId);
+    const lessons = await Promise.all(lessonPaths.map((lessonPath) => this.readPreviewJson(runId, `lessons/${lessonPath}`)));
+    const metrics: ContentReviewMetrics = {
+      lessonCount: lessons.length,
+      pageCount: 0,
+      templateLabelCount: 0,
+      missingImagegenAssetCount: 0,
+      genericTitleCount: 0,
+      lowDensityPageCount: 0,
+      sourceAnchoredPageCount: 0,
+      sourceTracePageCount: 0
+    };
+
+    for (const lesson of lessons) {
+      if (!isRecord(lesson) || !Array.isArray(lesson.pages)) {
+        continue;
+      }
+      for (const page of lesson.pages) {
+        if (!isRecord(page)) {
+          continue;
+        }
+        metrics.pageCount += 1;
+        metrics.templateLabelCount += countTemplateLabels(page);
+        if (await isMissingImagegenAsset(this.previewRoot(runId), runId, page)) {
+          metrics.missingImagegenAssetCount += 1;
+        }
+        if (isGenericTitle(page.title)) {
+          metrics.genericTitleCount += 1;
+        }
+        if (contentDensityChars(page) < LOW_DENSITY_CHAR_THRESHOLD) {
+          metrics.lowDensityPageCount += 1;
+        }
+        if (Array.isArray(page.sourceAnchorIds) && page.sourceAnchorIds.length > 0) {
+          metrics.sourceAnchoredPageCount += 1;
+        }
+        const knowledgeBoard = isRecord(page.knowledgeBoard) ? page.knowledgeBoard : undefined;
+        if (knowledgeBoard && Array.isArray(knowledgeBoard.sourceTrace) && knowledgeBoard.sourceTrace.length > 0) {
+          metrics.sourceTracePageCount += 1;
+        }
+      }
+    }
+
+    return metrics;
+  }
+
+  private async readPreviousReport(
+    runId: string,
+    round: number
+  ): Promise<{ metrics: ContentReviewMetrics; issueCount: number } | null> {
+    if (round <= 1) {
+      return null;
+    }
+    const previousPath = this.reportPath(runId, round - 1);
+    const report = await readJsonIfExists(previousPath);
+    if (!isRecord(report) || !isContentReviewMetrics(report.metrics)) {
+      return null;
+    }
+    return {
+      metrics: report.metrics,
+      issueCount: typeof report.issueCount === "number" ? report.issueCount : 0
+    };
+  }
+
   private async writeBrief(runId: string, round: number, brief: Record<string, unknown>): Promise<string> {
     const dir = this.reviewDir(runId);
     await mkdir(dir, { recursive: true });
     const filePath = path.join(dir, `round-${String(round).padStart(3, "0")}-content-review.json`);
     await writeFile(filePath, `${JSON.stringify(brief, null, 2)}\n`, "utf8");
     return filePath;
+  }
+
+  private async writeReport(runId: string, round: number, report: Record<string, unknown>): Promise<string> {
+    const dir = this.reviewDir(runId);
+    await mkdir(dir, { recursive: true });
+    const filePath = this.reportPath(runId, round);
+    await writeFile(filePath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
+    return filePath;
+  }
+
+  private async writeState(
+    runId: string,
+    round: number,
+    reviewerVerdict: ContentReviewVerdict,
+    metrics: ContentReviewMetrics,
+    delta: ContentReviewMetricDelta | null,
+    reportPath: string
+  ): Promise<string> {
+    const dir = this.reviewDir(runId);
+    await mkdir(dir, { recursive: true });
+    const reportPaths = await this.listReportPaths(runId, reportPath);
+    const state = {
+      runId,
+      latestRound: round,
+      latestVerdict: reviewerVerdict,
+      ...(round >= 3 ? { finalVerdict: reviewerVerdict } : {}),
+      latestMetrics: metrics,
+      latestDelta: delta,
+      reportPaths
+    };
+    const statePath = path.join(dir, "content-review-state.json");
+    await writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`, "utf8");
+    return statePath;
+  }
+
+  private async listReportPaths(runId: string, currentReportPath: string): Promise<string[]> {
+    const entries = await readdir(this.reviewDir(runId)).catch((error: unknown) => {
+      if (isFileNotFound(error)) {
+        return [];
+      }
+      throw error;
+    });
+    const existing = entries
+      .filter((entry) => /^round-[0-9]{3}-content-review-report\.json$/u.test(entry))
+      .map((entry) => path.join(this.reviewDir(runId), entry));
+    return Array.from(new Set([...existing, currentReportPath])).sort();
+  }
+
+  private reportPath(runId: string, round: number): string {
+    return path.join(this.reviewDir(runId), `round-${String(round).padStart(3, "0")}-content-review-report.json`);
   }
 
   private runRoot(runId: string): string {
@@ -140,6 +385,7 @@ function buildCodexInstruction(round: number, maxRounds: number, reviewBriefPath
     "你现在扮演 content-review-agent，先给 Codex 挑刺，再输出修订后的 coursePack/lessons。",
     "重点检查：知识密度、来源具体性、图文匹配、模板化标题、学生是否能自学。",
     "不要改 coursePack.units、unit page counts、sourceAnchorIds，除非当前来源锚点明显错误。",
+    "修订和重新 publish 后，调用 learning_agent.record_content_review_report 记录 reviewerVerdict、问题列表、指标和 delta。",
     round === maxRounds ? "这是第 3 轮：只产出可发布版本，去掉审核批注和过程性语言。" : "修订后调用 learning_agent.publish_learning_course，再进入下一轮审核。"
   ].join("\n");
 }
@@ -168,6 +414,59 @@ function normalizeMaxRounds(value: number | undefined): number {
   return value;
 }
 
+function normalizeRound(value: number): number {
+  if (!Number.isInteger(value) || value < 1 || value > 5) {
+    throw new AgentRuntimeError("round must be an integer between 1 and 5", "INVALID_RUN_CONFIG");
+  }
+  return value;
+}
+
+function normalizeVerdict(value: ContentReviewVerdict | undefined, issueCount: number): ContentReviewVerdict {
+  if (value === undefined) {
+    return issueCount > 0 ? "revise" : "pass";
+  }
+  if (!REVIEW_VERDICTS.has(value)) {
+    throw new AgentRuntimeError("reviewerVerdict must be pass, revise, or block", "INVALID_RUN_CONFIG");
+  }
+  return value;
+}
+
+function normalizeIssues(value: ContentReviewIssue[]): ContentReviewIssue[] {
+  if (!Array.isArray(value)) {
+    throw new AgentRuntimeError("issues must be an array", "INVALID_RUN_CONFIG");
+  }
+  return value.map((issue, index) => normalizeIssue(issue, index));
+}
+
+function normalizeIssue(issue: ContentReviewIssue, index: number): ContentReviewIssue {
+  if (!isRecord(issue)) {
+    throw new AgentRuntimeError(`issues[${index}] must be an object`, "INVALID_RUN_CONFIG");
+  }
+  const severity = issue.severity;
+  const category = issue.category;
+  if (typeof severity !== "string" || !ISSUE_SEVERITIES.has(severity as ContentReviewIssueSeverity)) {
+    throw new AgentRuntimeError(`issues[${index}].severity is invalid`, "INVALID_RUN_CONFIG");
+  }
+  if (typeof category !== "string" || !ISSUE_CATEGORIES.has(category as ContentReviewIssueCategory)) {
+    throw new AgentRuntimeError(`issues[${index}].category is invalid`, "INVALID_RUN_CONFIG");
+  }
+  return {
+    ...(typeof issue.lessonId === "string" && issue.lessonId.trim() ? { lessonId: issue.lessonId.trim() } : {}),
+    ...(typeof issue.pageId === "string" && issue.pageId.trim() ? { pageId: issue.pageId.trim() } : {}),
+    severity: severity as ContentReviewIssueSeverity,
+    category: category as ContentReviewIssueCategory,
+    finding: normalizeRequiredText(issue.finding, `issues[${index}].finding`),
+    recommendation: normalizeRequiredText(issue.recommendation, `issues[${index}].recommendation`)
+  };
+}
+
+function normalizeRequiredText(value: unknown, key: string): string {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new AgentRuntimeError(`${key} is required`, "INVALID_RUN_CONFIG");
+  }
+  return value.trim();
+}
+
 function assertSafeRunId(runId: string): void {
   if (!RUN_ID_PATTERN.test(runId)) {
     throw new AgentRuntimeError("runId must match /^[a-z][a-z0-9-]{0,63}$/", "INVALID_RUN_CONFIG");
@@ -176,4 +475,158 @@ function assertSafeRunId(runId: string): void {
 
 function isFileNotFound(error: unknown): boolean {
   return typeof error === "object" && error !== null && "code" in error && error.code === "ENOENT";
+}
+
+function countTemplateLabels(page: Record<string, unknown>): number {
+  const knowledgeBoard = isRecord(page.knowledgeBoard) ? page.knowledgeBoard : undefined;
+  if (!knowledgeBoard) {
+    return 0;
+  }
+  let count = 0;
+  for (const columnName of ["leftColumn", "rightColumn"]) {
+    const column = knowledgeBoard[columnName];
+    if (!Array.isArray(column)) {
+      continue;
+    }
+    for (const section of column) {
+      if (isRecord(section) && typeof section.label === "string" && TEMPLATE_LABELS.has(section.label.trim())) {
+        count += 1;
+      }
+    }
+  }
+  return count;
+}
+
+async function isMissingImagegenAsset(previewRoot: string, runId: string, page: Record<string, unknown>): Promise<boolean> {
+  const visualSpec = isRecord(page.visualSpec) ? page.visualSpec : undefined;
+  const imageUrl = typeof visualSpec?.imageUrl === "string" ? visualSpec.imageUrl : "";
+  const provider = typeof visualSpec?.imageProvider === "string" ? visualSpec.imageProvider : "";
+  if (!imageUrl || provider !== "imagegen" || imageUrl.endsWith(".svg")) {
+    return true;
+  }
+
+  const previewPrefix = `/__learning-preview/${runId}/`;
+  if (!imageUrl.startsWith(previewPrefix)) {
+    return false;
+  }
+  const relativePath = imageUrl.slice(previewPrefix.length);
+  return !(await fileExists(path.join(previewRoot, relativePath)));
+}
+
+function isGenericTitle(value: unknown): boolean {
+  if (typeof value !== "string") {
+    return false;
+  }
+  const normalized = value.trim();
+  return GENERIC_PAGE_TITLES.has(normalized) || /^第\s*[0-9一二三四五六七八九十]+\s*[页講讲]/u.test(normalized);
+}
+
+function contentDensityChars(page: Record<string, unknown>): number {
+  const knowledgeBoard = isRecord(page.knowledgeBoard) ? page.knowledgeBoard : undefined;
+  const values: string[] = [];
+  if (knowledgeBoard) {
+    collectText(knowledgeBoard.coreProposition, values);
+    collectText(knowledgeBoard.bottomLine, values);
+    collectColumnText(knowledgeBoard.leftColumn, values);
+    collectColumnText(knowledgeBoard.rightColumn, values);
+  }
+  collectText(page.narrative, values);
+  return values.join("").replace(/\s/gu, "").length;
+}
+
+function collectColumnText(value: unknown, target: string[]): void {
+  if (!Array.isArray(value)) {
+    return;
+  }
+  for (const section of value) {
+    if (!isRecord(section)) {
+      continue;
+    }
+    collectText(section.label, target);
+    collectText(section.items, target);
+  }
+}
+
+function collectText(value: unknown, target: string[]): void {
+  if (typeof value === "string") {
+    target.push(value);
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      collectText(item, target);
+    }
+    return;
+  }
+  if (isRecord(value)) {
+    for (const nested of Object.values(value)) {
+      collectText(nested, target);
+    }
+  }
+}
+
+function diffMetrics(
+  current: ContentReviewMetrics,
+  previous: ContentReviewMetrics,
+  currentIssueCount: number,
+  previousIssueCount: number
+): ContentReviewMetricDelta {
+  return {
+    lessonCount: current.lessonCount - previous.lessonCount,
+    pageCount: current.pageCount - previous.pageCount,
+    templateLabelCount: current.templateLabelCount - previous.templateLabelCount,
+    missingImagegenAssetCount: current.missingImagegenAssetCount - previous.missingImagegenAssetCount,
+    genericTitleCount: current.genericTitleCount - previous.genericTitleCount,
+    lowDensityPageCount: current.lowDensityPageCount - previous.lowDensityPageCount,
+    sourceAnchoredPageCount: current.sourceAnchoredPageCount - previous.sourceAnchoredPageCount,
+    sourceTracePageCount: current.sourceTracePageCount - previous.sourceTracePageCount,
+    issueCount: currentIssueCount - previousIssueCount
+  };
+}
+
+async function readJsonIfExists(filePath: string): Promise<unknown> {
+  try {
+    return JSON.parse(await readFile(filePath, "utf8")) as unknown;
+  } catch (error) {
+    if (isFileNotFound(error)) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+function isContentReviewMetrics(value: unknown): value is ContentReviewMetrics {
+  return (
+    isRecord(value) &&
+    typeof value.lessonCount === "number" &&
+    typeof value.pageCount === "number" &&
+    typeof value.templateLabelCount === "number" &&
+    typeof value.missingImagegenAssetCount === "number" &&
+    typeof value.genericTitleCount === "number" &&
+    typeof value.lowDensityPageCount === "number" &&
+    typeof value.sourceAnchoredPageCount === "number" &&
+    typeof value.sourceTracePageCount === "number"
+  );
+}
+
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await access(filePath);
+    return true;
+  } catch (error) {
+    if (isFileNotFound(error)) {
+      return false;
+    }
+    throw error;
+  }
+}
+
+function recommendedNextAction(round: number, reviewerVerdict: ContentReviewVerdict): string {
+  if (reviewerVerdict === "block") {
+    return "revise the blocked pages before publishing or imagegen";
+  }
+  if (round >= 3) {
+    return reviewerVerdict === "pass" ? "proceed to imagegen batch validation" : "use Codex judgment before imagegen; unresolved issues remain";
+  }
+  return reviewerVerdict === "pass" ? "prepare the next review round if maxRounds has not been reached" : "revise and republish, then prepare the next review round";
 }

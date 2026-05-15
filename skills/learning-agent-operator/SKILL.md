@@ -83,9 +83,10 @@ Default publishing writes clean preview JSON under `runs/<run-id>/preview/` and 
 
 ```json
 {"method":"tools/call","params":{"name":"learning_agent.prepare_content_review","arguments":{"runId":"<run-id>","maxRounds":3}}}
+{"method":"tools/call","params":{"name":"learning_agent.record_content_review_report","arguments":{"runId":"<run-id>","round":1,"reviewerVerdict":"revise","summary":"<compact reviewer summary>","issues":[]}}}
 ```
 
-If this returns `revision_required`, Codex should read the review brief, act as `content-review-agent`, critique the course, revise the `coursePack` and `lessons`, then call `learning_agent.publish_learning_course` again. The third-round revised bundle is the one that proceeds to imagegen batch validation. Do not ask the learner to approve review artifacts.
+If `prepare_content_review` returns `revision_required`, Codex should read the review brief, act as `content-review-agent`, critique the course, revise the `coursePack` and `lessons`, then call `learning_agent.publish_learning_course` again. After each republish, call `record_content_review_report` with concrete issues and a reviewer verdict. MCP records measured metrics and round-to-round deltas; Codex should use those deltas to verify that template labels, missing imagegen assets, generic titles, and low-density pages are decreasing. The third-round revised bundle is the one that proceeds to imagegen batch validation. Do not ask the learner to approve review artifacts.
 
 5. Create, record, and validate imagegen assets:
 

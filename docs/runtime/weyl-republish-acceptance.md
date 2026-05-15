@@ -29,6 +29,18 @@ http://127.0.0.1:5173/#/preview/self-study-weyl-space-time-matter-v2
   - `runs/self-study-weyl-space-time-matter-v2/quality/content-review/round-001-content-review.json`
   - `runs/self-study-weyl-space-time-matter-v2/quality/content-review/round-002-content-review.json`
   - `runs/self-study-weyl-space-time-matter-v2/quality/content-review/round-003-content-review.json`
+  - `runs/self-study-weyl-space-time-matter-v2/quality/content-review/round-003-content-review-report.json`
+  - `runs/self-study-weyl-space-time-matter-v2/quality/content-review/content-review-state.json`
+- Content-review measured baseline:
+  - `lessonCount`: 5
+  - `pageCount`: 40
+  - `templateLabelCount`: 0
+  - `missingImagegenAssetCount`: 0
+  - `genericTitleCount`: 0
+  - `lowDensityPageCount`: 0
+  - `sourceAnchoredPageCount`: 40
+  - `sourceTracePageCount`: 40
+  - `finalVerdict`: `pass`
 - Imagegen manifest:
   - `runs/self-study-weyl-space-time-matter-v2/quality/imagegen/imagegen-prompt-manifest.json`
 - Imagegen assets:

@@ -28,6 +28,7 @@ import {
   RunStore
 } from "../agent-runtime/index.js";
 import type { ArtifactVersion } from "../agent-runtime/artifact-store.js";
+import type { ContentReviewIssue, ContentReviewVerdict } from "../agent-runtime/index.js";
 import { courseIntentValues, normalizeCourseIntent, type CourseIntent } from "../agent-runtime/learner/course-intent.js";
 import { ProjectRegistry } from "../agent-runtime/learner/project-registry.js";
 import { TargetedRevisionService } from "../agent-runtime/learner/targeted-revision-service.js";
@@ -76,6 +77,8 @@ export class LearningAgentRuntimeTools {
         return this.calibrateLearningCourse(input);
       case "learning_agent.prepare_content_review":
         return this.prepareContentReview(input);
+      case "learning_agent.record_content_review_report":
+        return this.recordContentReviewReport(input);
       case "learning_agent.create_imagegen_manifest":
         return this.createImagegenManifest(input);
       case "learning_agent.record_imagegen_asset":
@@ -230,6 +233,17 @@ export class LearningAgentRuntimeTools {
       runId: requiredString(options, "runId"),
       maxRounds: optionalNumber(options.maxRounds),
       minScore: optionalNumber(options.minScore)
+    });
+  }
+
+  private async recordContentReviewReport(input: unknown): Promise<unknown> {
+    const options = expectRecord(input);
+    return new ContentReviewService(this.workspaceRoot).recordReviewReport({
+      runId: requiredString(options, "runId"),
+      round: requiredNumber(options, "round"),
+      reviewerVerdict: optionalReviewVerdict(options.reviewerVerdict),
+      summary: requiredString(options, "summary"),
+      issues: requiredReviewIssues(options, "issues")
     });
   }
 
@@ -566,6 +580,7 @@ function isLearningAgentToolName(name: string): name is LearningAgentToolName {
     "learning_agent.publish_learning_course",
     "learning_agent.calibrate_learning_course",
     "learning_agent.prepare_content_review",
+    "learning_agent.record_content_review_report",
     "learning_agent.create_imagegen_manifest",
     "learning_agent.record_imagegen_asset",
     "learning_agent.validate_imagegen_assets",
@@ -620,6 +635,23 @@ function requiredArray(input: Record<string, unknown>, key: string): unknown[] {
     throw new Error(`${key} must be an array`);
   }
   return value;
+}
+
+function requiredNumber(input: Record<string, unknown>, key: string): number {
+  const value = input[key];
+  if (typeof value !== "number") {
+    throw new Error(`${key} must be a number`);
+  }
+  return value;
+}
+
+function requiredReviewIssues(input: Record<string, unknown>, key: string): ContentReviewIssue[] {
+  return requiredArray(input, key) as ContentReviewIssue[];
+}
+
+function optionalReviewVerdict(value: unknown): ContentReviewVerdict | undefined {
+  const verdict = optionalString(value);
+  return verdict ? (verdict as ContentReviewVerdict) : undefined;
 }
 
 function optionalString(value: unknown): string | undefined {

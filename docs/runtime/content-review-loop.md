@@ -8,10 +8,47 @@ Default source-backed self-study courses use Codex as a content reviewer before 
 2. Call `learning_agent.prepare_content_review` with `maxRounds=3`.
 3. Codex acts as `content-review-agent`: critique first, revise second.
 4. Republish the revised `coursePack` and `lessons`.
-5. Repeat until the third round completes or the tool returns `review_complete`.
-6. Use the third-round revised bundle for imagegen batch generation and final preview.
+5. Call `learning_agent.record_content_review_report` for that round.
+6. Repeat until the third round completes or `prepare_content_review` returns `review_complete`.
+7. Use the third-round revised bundle for imagegen batch generation and final preview.
 
 Learners should not approve review artifacts. They should see the preview URL, course shape, compact quality summary, and remaining high-level risks only.
+
+## Review Report
+
+After each revision round, Codex must record a compact reviewer report:
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "learning_agent.record_content_review_report",
+    "arguments": {
+      "runId": "<run-id>",
+      "round": 1,
+      "reviewerVerdict": "revise",
+      "summary": "本轮修复了模板化标题，但部分来源页知识密度仍偏低。",
+      "issues": [
+        {
+          "lessonId": "<lesson-id>",
+          "pageId": "<page-id>",
+          "severity": "major",
+          "category": "density",
+          "finding": "页面只给出抽象判断，缺少来源中的具体约束关系。",
+          "recommendation": "补充来源概念之间的条件、例子和失效边界。"
+        }
+      ]
+    }
+  }
+}
+```
+
+MCP records:
+
+- `round-###-content-review-report.json`: reviewer verdict, issues, measured metrics, and delta.
+- `content-review-state.json`: latest round, latest verdict, latest metrics, latest delta, and final verdict after round 3.
+
+Useful metrics include template label count, missing imagegen asset count, generic title count, low-density page count, source-anchored page count, and source-trace page count. The metric delta is the practical signal that review is improving content instead of only adding process.
 
 ## Review Focus
 

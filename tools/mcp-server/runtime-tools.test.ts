@@ -21,6 +21,7 @@ describe("LearningAgentRuntimeTools", () => {
         "learning_agent.generate_grounded_course",
         "learning_agent.publish_learning_course",
         "learning_agent.prepare_content_review",
+        "learning_agent.record_content_review_report",
         "learning_agent.create_imagegen_manifest",
         "learning_agent.record_imagegen_asset",
         "learning_agent.validate_imagegen_assets",
@@ -557,6 +558,53 @@ describe("LearningAgentRuntimeTools", () => {
       maxRounds: 3,
       codexInstruction: expect.stringContaining("内容审核")
     });
+  });
+
+  test("record_content_review_report writes reviewer metrics through tool handlers", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
+    const tools = new LearningAgentRuntimeTools(root);
+    await writeContentReviewFixture(root, "mcp-content-review-report");
+
+    const result = await tools.callTool("learning_agent.record_content_review_report", {
+      runId: "mcp-content-review-report",
+      round: 1,
+      reviewerVerdict: "revise",
+      summary: "模板化标题和缺图需要修。",
+      issues: [
+        {
+          lessonId: "lesson-a",
+          pageId: "page-01",
+          severity: "major",
+          category: "template_language",
+          finding: "仍有模板化栏目。",
+          recommendation: "改成内容专属栏目。"
+        }
+      ]
+    });
+
+    expect(result).toMatchObject({
+      status: "review_report_recorded",
+      runId: "mcp-content-review-report",
+      round: 1,
+      reviewerVerdict: "revise",
+      metrics: {
+        pageCount: 1,
+        missingImagegenAssetCount: 1
+      }
+    });
+    await expect(
+      readFile(
+        path.join(
+          root,
+          "runs",
+          "mcp-content-review-report",
+          "quality",
+          "content-review",
+          "round-001-content-review-report.json"
+        ),
+        "utf8"
+      )
+    ).resolves.toContain("模板化标题和缺图需要修");
   });
 
   test("imagegen batch tools create manifest, record assets, and validate preview images", async () => {

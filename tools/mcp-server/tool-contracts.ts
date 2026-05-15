@@ -10,6 +10,7 @@ export type LearningAgentToolName =
   | "learning_agent.publish_learning_course"
   | "learning_agent.calibrate_learning_course"
   | "learning_agent.prepare_content_review"
+  | "learning_agent.record_content_review_report"
   | "learning_agent.create_imagegen_manifest"
   | "learning_agent.record_imagegen_asset"
   | "learning_agent.validate_imagegen_assets"
@@ -59,6 +60,24 @@ const courseIntentSchema = { type: "string", enum: [...courseIntentValues] };
 const stringArraySchema = { type: "array", items: { type: "string" } };
 const arraySchema = { type: "array", items: { type: "object" } };
 const looseObjectSchema = { type: "object" };
+const contentReviewVerdictSchema = { type: "string", enum: ["pass", "revise", "block"] };
+const contentReviewIssuesSchema = {
+  type: "array",
+  items: objectSchema(
+    {
+      lessonId: stringSchema,
+      pageId: stringSchema,
+      severity: { type: "string", enum: ["critical", "major", "minor"] },
+      category: {
+        type: "string",
+        enum: ["density", "source_fidelity", "structure", "image_text_fit", "template_language", "learner_readability"]
+      },
+      finding: stringSchema,
+      recommendation: stringSchema
+    },
+    ["severity", "category", "finding", "recommendation"]
+  )
+};
 
 export const learningAgentToolContracts: LearningAgentToolContract[] = [
   {
@@ -157,6 +176,21 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
     description:
       "Learner-facing quality tool. Create the next Codex-facing content review brief for a published learning course, so Codex can critique and revise content before final imagegen publishing.",
     inputSchema: objectSchema({ runId: stringSchema, maxRounds: numberSchema, minScore: numberSchema }, ["runId"])
+  },
+  {
+    name: "learning_agent.record_content_review_report",
+    description:
+      "Learner-facing quality tool. Record a Codex content-review report after a revision round, including reviewer verdict, concrete issues, measured content metrics, and delta from the previous round.",
+    inputSchema: objectSchema(
+      {
+        runId: stringSchema,
+        round: numberSchema,
+        reviewerVerdict: contentReviewVerdictSchema,
+        summary: stringSchema,
+        issues: contentReviewIssuesSchema
+      },
+      ["runId", "round", "summary", "issues"]
+    )
   },
   {
     name: "learning_agent.create_imagegen_manifest",
@@ -349,6 +383,7 @@ const learnerToolNames = [
   "learning_agent.publish_learning_course",
   "learning_agent.calibrate_learning_course",
   "learning_agent.prepare_content_review",
+  "learning_agent.record_content_review_report",
   "learning_agent.create_imagegen_manifest",
   "learning_agent.record_imagegen_asset",
   "learning_agent.validate_imagegen_assets",
