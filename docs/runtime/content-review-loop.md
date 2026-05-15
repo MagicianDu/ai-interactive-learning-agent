@@ -51,6 +51,13 @@ MCP 会记录：
 - `round-###-content-review-report.json`：reviewer verdict、issues、度量指标和 delta。
 - `content-review-state.json`：最新轮次、最新 verdict、最新指标、最新 delta，以及第三轮后的 final verdict。
 
+`prepare_content_review` 生成的 brief 也会携带：
+
+- `currentMetrics`：当前课程包的所有自动指标。
+- `automaticFindings`：由 MCP 从非零语义指标生成的自动问题清单。
+
+Codex 开始审核时应先处理 `automaticFindings`，再做人工内容判断。
+
 指标包括：
 
 - `templateLabelCount`：模板化栏目标题数量。

@@ -150,6 +150,8 @@ export class ContentReviewService {
     const lessonPaths = await this.listLessonPaths(input.runId);
     const lessons = await Promise.all(lessonPaths.map((lessonPath) => this.readPreviewJson(input.runId, `lessons/${lessonPath}`)));
     const quality = await this.readQuality(input.runId);
+    const currentMetrics = await this.collectMetrics(input.runId);
+    const automaticFindings = buildAutomaticFindings(currentMetrics);
     const reviewBrief = {
       runId: input.runId,
       round,
@@ -179,6 +181,8 @@ export class ContentReviewService {
         issueCategories: Array.from(ISSUE_CATEGORIES),
         issueSeverities: Array.from(ISSUE_SEVERITIES)
       },
+      currentMetrics,
+      automaticFindings,
       coursePack,
       lessons,
       quality
@@ -410,6 +414,7 @@ function buildCodexInstruction(round: number, maxRounds: number, reviewBriefPath
     `读取 review brief: ${reviewBriefPath}`,
     "你现在扮演 content-review-agent，先给 Codex 挑刺，再输出修订后的 coursePack/lessons。",
     "重点检查：知识密度、来源具体性、图文匹配、模板化标题、学生是否能自学。",
+    "优先处理 review brief 中的 currentMetrics 与 automaticFindings；这些是 MCP 自动发现的语义质量风险。",
     "不要改 coursePack.units、unit page counts、sourceAnchorIds，除非当前来源锚点明显错误。",
     "修订和重新 publish 后，调用 learning_agent.record_content_review_report 记录 reviewerVerdict、问题列表、指标和 delta。",
     round === maxRounds ? "这是第 3 轮：只产出可发布版本，去掉审核批注和过程性语言。" : "修订后调用 learning_agent.publish_learning_course，再进入下一轮审核。"
@@ -659,6 +664,61 @@ function diffMetrics(
     mechanismDepthWeakPageCount: current.mechanismDepthWeakPageCount - previous.mechanismDepthWeakPageCount,
     issueCount: currentIssueCount - previousIssueCount
   };
+}
+
+function buildAutomaticFindings(metrics: ContentReviewMetrics): Array<{
+  metric: keyof ContentReviewMetrics;
+  value: number;
+  severity: ContentReviewIssueSeverity;
+  finding: string;
+  recommendation: string;
+}> {
+  const findings: Array<{
+    metric: keyof ContentReviewMetrics;
+    value: number;
+    severity: ContentReviewIssueSeverity;
+    finding: string;
+    recommendation: string;
+  }> = [];
+
+  if (metrics.genericSourceTraceSupportCount > 0) {
+    findings.push({
+      metric: "genericSourceTraceSupportCount",
+      value: metrics.genericSourceTraceSupportCount,
+      severity: "major",
+      finding: "存在泛化 sourceTrace.supports，来源锚点没有说明具体支撑哪条命题、例子或边界。",
+      recommendation: "把 sourceTrace.supports 改成页面命题级的具体来源说明。"
+    });
+  }
+  if (metrics.staleVisualPromptCount > 0) {
+    findings.push({
+      metric: "staleVisualPromptCount",
+      value: metrics.staleVisualPromptCount,
+      severity: "major",
+      finding: "存在缺失或标题式旧模板 image prompt，图像生成无法跟随当前知识机制。",
+      recommendation: "重写 imagePrompt，描述中间视觉区应画出的机制、关系或边界。"
+    });
+  }
+  if (metrics.titleDuplicatedInImagePromptCount > 0) {
+    findings.push({
+      metric: "titleDuplicatedInImagePromptCount",
+      value: metrics.titleDuplicatedInImagePromptCount,
+      severity: "minor",
+      finding: "存在直接包含页面标题的 image prompt，容易生成重复标题而不是教学图像。",
+      recommendation: "去掉页面标题复述，改用少量短标签和机制画面描述。"
+    });
+  }
+  if (metrics.mechanismDepthWeakPageCount > 0) {
+    findings.push({
+      metric: "mechanismDepthWeakPageCount",
+      value: metrics.mechanismDepthWeakPageCount,
+      severity: "major",
+      finding: "存在机制板书内容项过少的页面，可能缺少条件、机制、例子或边界。",
+      recommendation: "补齐左右栏具体内容项，让学生能看到判断链路和失效边界。"
+    });
+  }
+
+  return findings;
 }
 
 async function readJsonIfExists(filePath: string): Promise<unknown> {

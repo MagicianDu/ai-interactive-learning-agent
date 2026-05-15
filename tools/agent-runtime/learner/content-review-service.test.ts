@@ -41,6 +41,47 @@ describe("ContentReviewService", () => {
     expect(JSON.stringify(brief)).toContain("quality.page.source-synthesis-weak");
   });
 
+  test("includes current semantic metrics and automatic findings in review briefs", async () => {
+    const root = await fixtureRoot("brief-semantic-gaps");
+    await writeSemanticGapLesson(root, "brief-semantic-gaps");
+
+    const result = await new ContentReviewService(root).prepareReview({ runId: "brief-semantic-gaps" });
+
+    if (result.status !== "revision_required") {
+      throw new Error(`expected revision_required, got ${result.status}`);
+    }
+    const brief = JSON.parse(await readFile(result.reviewBriefPath, "utf8")) as Record<string, unknown>;
+
+    expect(brief).toMatchObject({
+      currentMetrics: {
+        pageCount: 3,
+        genericSourceTraceSupportCount: 1,
+        staleVisualPromptCount: 1,
+        titleDuplicatedInImagePromptCount: 1,
+        mechanismDepthWeakPageCount: 1
+      },
+      automaticFindings: expect.arrayContaining([
+        expect.objectContaining({
+          metric: "genericSourceTraceSupportCount",
+          severity: "major"
+        }),
+        expect.objectContaining({
+          metric: "staleVisualPromptCount",
+          severity: "major"
+        }),
+        expect.objectContaining({
+          metric: "titleDuplicatedInImagePromptCount",
+          severity: "minor"
+        }),
+        expect.objectContaining({
+          metric: "mechanismDepthWeakPageCount",
+          severity: "major"
+        })
+      ])
+    });
+    expect(result.codexInstruction).toContain("automaticFindings");
+  });
+
   test("increments review rounds from previously written briefs", async () => {
     const root = await fixtureRoot("review-rounds");
     const service = new ContentReviewService(root);
