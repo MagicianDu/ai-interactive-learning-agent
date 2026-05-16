@@ -109,6 +109,30 @@ describe("ContentReviewService", () => {
     });
   });
 
+  test("automatic findings flag content taste problems beyond structural compliance", async () => {
+    const root = await fixtureRoot("taste-gaps");
+    await writeTasteGapLesson(root, "taste-gaps");
+
+    const result = await new ContentReviewService(root).prepareReview({ runId: "taste-gaps" });
+
+    if (result.status !== "revision_required") {
+      throw new Error(`expected revision_required, got ${result.status}`);
+    }
+    const brief = JSON.parse(await readFile(result.reviewBriefPath, "utf8")) as Record<string, unknown>;
+
+    expect(brief).toMatchObject({
+      currentMetrics: {
+        boilerplateLearnerPhraseCount: 3,
+        repeatedBoardSectionLabelCount: 6
+      },
+      automaticFindings: expect.arrayContaining([
+        expect.objectContaining({ metric: "boilerplateLearnerPhraseCount", severity: "major" }),
+        expect.objectContaining({ metric: "repeatedBoardSectionLabelCount", severity: "major" })
+      ])
+    });
+    expect(JSON.stringify(brief)).toContain("内容品味");
+  });
+
   test("increments review rounds from previously written briefs", async () => {
     const root = await fixtureRoot("review-rounds");
     const service = new ContentReviewService(root);
@@ -518,6 +542,46 @@ async function writeQualityGateGapLesson(root: string, runId: string): Promise<v
             }
           }
         ]
+      },
+      null,
+      2
+    )}\n`,
+    "utf8"
+  );
+}
+
+async function writeTasteGapLesson(root: string, runId: string): Promise<void> {
+  await mkdir(path.join(root, "runs", runId, "preview", "images", "lesson-a"), { recursive: true });
+  for (const pageId of ["page-01", "page-02", "page-03"]) {
+    await writeFile(path.join(root, "runs", runId, "preview", "images", "lesson-a", `${pageId}-imagegen-v1.png`), "png", "utf8");
+  }
+  await writeFile(
+    path.join(root, "runs", runId, "preview", "lessons", "lesson-a.json"),
+    `${JSON.stringify(
+      {
+        id: "lesson-a",
+        title: "品味审核样本",
+        displayMode: "textbook_deck",
+        pages: ["page-01", "page-02", "page-03"].map((pageId, index) => ({
+          id: pageId,
+          title: `具体知识命题 ${index + 1}`,
+          narrative: "这页有足够长度的中文解释，用来避免低密度误判，但仍保留明显的课程模板腔。",
+          sourceAnchorIds: ["book:p1"],
+          visualSpec: {
+            imageUrl: `/__learning-preview/${runId}/images/lesson-a/${pageId}-imagegen-v1.png`,
+            imageProvider: "imagegen",
+            imageAlt: "教学插图",
+            imagePrompt: "生成教学插图，表达条件、关系和边界。不要包含页面标题、底部总结、页面卡片原文、长段落文字、表格或 UI 文本框。"
+          },
+          knowledgeBoard: {
+            headline: `具体知识命题 ${index + 1}`,
+            coreProposition: "本页帮助你建立正确心智模型，但这句话没有给出可带走的知识判断。",
+            leftColumn: [{ label: "为什么重要", items: ["具体条件 A 会改变判断 B", "变量 C 会影响执行顺序"] }],
+            rightColumn: [{ label: "如何判断", items: ["例子说明 A 到 B", "边界说明 D 时不成立"] }],
+            sourceTrace: [{ anchorId: "book:p1", supports: "来源说明条件 A、变量 C 和边界 D 的关系。" }],
+            bottomLine: "真正要带走的是条件、变量和边界之间的判断关系。"
+          }
+        }))
       },
       null,
       2

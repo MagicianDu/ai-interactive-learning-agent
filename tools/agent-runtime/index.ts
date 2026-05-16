@@ -25,6 +25,16 @@ export type {
   ValidateImagegenAssetsInput,
   ValidateImagegenAssetsResult
 } from "./learner/imagegen-asset-batch-service.js";
+export { PreviewLayoutSmokeService, summarizePreviewLayoutMeasurements } from "./learner/preview-layout-smoke-service.js";
+export type {
+  PreviewLayoutMeasurement,
+  PreviewLayoutSmokeIssue,
+  PreviewLayoutSmokeReport,
+  PreviewLayoutSmokeTarget,
+  PreviewLayoutViewport,
+  RunPreviewLayoutSmokeInput,
+  RunPreviewLayoutSmokeWithMeasurementsInput
+} from "./learner/preview-layout-smoke-service.js";
 export { AuthoringQualityComparisonService } from "./learner/authoring-quality-comparison.js";
 export { AuthoringContextService } from "./learner/authoring-context-service.js";
 export { GroundedCourseService } from "./learner/grounded-course-service.js";

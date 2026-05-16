@@ -1,4 +1,5 @@
 import { access, copyFile, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import path from "node:path";
 
 import { AgentRuntimeError } from "../errors.js";
@@ -61,6 +62,7 @@ export type ImagegenAssetValidationIssue = {
     | "imagegen.asset.prompt-unsafe"
     | "imagegen.asset.prompt-guard-missing"
     | "imagegen.asset.prompt-duplicates-page-text"
+    | "imagegen.asset.duplicate-image-content"
     | "imagegen.asset.url-not-preview"
     | "imagegen.asset.visual-spec-missing";
   lessonId: string;
@@ -137,6 +139,7 @@ export class ImagegenAssetBatchService {
     assertSafeRunId(input.runId);
     const lessons = await this.readLessons(input.runId);
     const issues: ImagegenAssetValidationIssue[] = [];
+    const imageContentCandidates: Array<{ lessonId: string; pageId: string; imagePath: string }> = [];
     let checkedPageCount = 0;
 
     for (const { lessonId, lesson } of lessons) {
@@ -159,8 +162,14 @@ export class ImagegenAssetBatchService {
           continue;
         }
         issues.push(...(await this.validateVisualSpec(input.runId, lessonId, pageId, page, visualSpec)));
+        const imageUrl = stringValue(visualSpec.imageUrl) ?? "";
+        const imagePath = imageUrlToPreviewPath(this.previewRoot(input.runId), input.runId, imageUrl);
+        if (imagePath && (await pathExists(imagePath))) {
+          imageContentCandidates.push({ lessonId, pageId, imagePath });
+        }
       }
     }
+    issues.push(...(await duplicateImageContentIssues(imageContentCandidates)));
 
     return {
       status: issues.length > 0 ? "failed" : "passed",
@@ -459,6 +468,29 @@ function containsLearnerText(prompt: string, learnerText: string): boolean {
 
 function normalizeForDuplication(value: string): string {
   return value.normalize("NFKC").replace(/[\s，。；：、,.!?！？:;'"“”‘’()[\]（）【】《》<>]/gu, "").toLocaleLowerCase();
+}
+
+async function duplicateImageContentIssues(
+  candidates: Array<{ lessonId: string; pageId: string; imagePath: string }>
+): Promise<ImagegenAssetValidationIssue[]> {
+  const seen = new Map<string, { lessonId: string; pageId: string }>();
+  const issues: ImagegenAssetValidationIssue[] = [];
+  for (const candidate of candidates) {
+    const digest = createHash("sha256").update(await readFile(candidate.imagePath)).digest("hex");
+    const first = seen.get(digest);
+    if (!first) {
+      seen.set(digest, { lessonId: candidate.lessonId, pageId: candidate.pageId });
+      continue;
+    }
+    issues.push({
+      issueId: "imagegen.asset.duplicate-image-content",
+      lessonId: candidate.lessonId,
+      pageId: candidate.pageId,
+      reason: `The image asset duplicates ${first.lessonId}/${first.pageId}; every learner-facing page needs an independent teaching illustration.`,
+      requiredFix: "Generate a page-specific imagegen illustration for this page instead of reusing a unit-level or previous-page image."
+    });
+  }
+  return issues;
 }
 
 async function pathExists(filePath: string): Promise<boolean> {

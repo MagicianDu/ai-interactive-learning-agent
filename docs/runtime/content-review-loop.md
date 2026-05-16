@@ -70,6 +70,8 @@ Codex 开始审核时应先处理 `automaticFindings`，再做人工内容判断
 - `staleVisualPromptCount`：缺失或仍使用标题式旧模板的图片 prompt 数量。
 - `titleDuplicatedInImagePromptCount`：图片 prompt 直接包含页面标题的数量。
 - `mechanismDepthWeakPageCount`：机制板书左右栏内容项不足的页面数量。
+- `boilerplateLearnerPhraseCount`：出现“本页帮助你…”“建立心智模型”等模板腔的页面数量。
+- `repeatedBoardSectionLabelCount`：同一课程内反复复用的板书栏目名数量。
 
 delta 是判断 review 是否真的提升内容质量的主要信号，而不是只增加流程感。
 
@@ -81,6 +83,8 @@ delta 是判断 review 是否真的提升内容质量的主要信号，而不是
 - `staleVisualPromptCount`：统计缺失 image prompt，或仍使用 `只表达“<title>”`、`核心知识关系：<title>` 这类标题式旧模板的页面。
 - `titleDuplicatedInImagePromptCount`：统计 image prompt 直接包含页面标题的页面。
 - `mechanismDepthWeakPageCount`：统计左右栏具体内容项少于 4 条的页面；这类页面通常不足以支撑学生自学所需的条件、机制、例子和边界。
+- `boilerplateLearnerPhraseCount`：统计把页面写成“学习活动说明”而不是“知识判断”的模板腔页面。典型坏味道包括“本页帮助你建立心智模型”“快速理解核心内容”等。
+- `repeatedBoardSectionLabelCount`：统计同一 lesson 内出现 3 次及以上的板书栏目名。重复栏目名即使不是禁用模板词，也通常意味着页面仍按固定模板填空。
 
 ## 三轮审核重点
 
@@ -102,6 +106,7 @@ delta 是判断 review 是否真的提升内容质量的主要信号，而不是
 - 每页教会一个具体知识判断。
 - 右侧文字密度足够，但仍可读。
 - 栏目标题是内容专属小标题。
+- 删除“本页帮助你…”这类课程模板腔，直接写知识命题、条件、例子和边界。
 - image prompt 描述中间视觉区应该画出的机制，并禁止长段落、表格和 UI 面板。
 
 ## Review 后的 Imagegen 批处理
@@ -116,4 +121,28 @@ delta 是判断 review 是否真的提升内容质量的主要信号，而不是
 6. 如果校验失败，重新生成或重新记录受影响页面图片，再次校验。
 
 最终预览只能包含 imagegen PNG/WebP 资产。SVG 占位、缺失文件、不安全 prompt，
-或允许长段落、表格、UI 面板的 prompt 都会阻塞验收。
+或允许长段落、表格、UI 面板的 prompt 都会阻塞验收。不同页面还必须使用独立教学插图；
+如果只是把同一张图片复制到不同页面路径，`validate_imagegen_assets` 会通过图片内容哈希拦截。
+
+## Layout Smoke
+
+最终给学习者预览前，建议在本机 dev server 已启动时执行：
+
+```bash
+npm run smoke:layout -- --runId <run-id> --desktop-only
+```
+
+该检查会遍历 `coursePack.units` 下的每个单元和每一页，写入：
+
+```text
+runs/<run-id>/quality/layout-smoke/layout-smoke-report.json
+```
+
+当前 layout smoke 会拦截：
+
+- 页面整体出现垂直或水平滚动。
+- 页面图片缺失或未加载。
+- 浏览器控制台错误。
+- `knowledge-board`、正文区或主内容容器出现内容溢出。
+
+如果检查失败，先修页面内容量、图文比例、图片资源或响应式尺寸，再把预览交给学习者。

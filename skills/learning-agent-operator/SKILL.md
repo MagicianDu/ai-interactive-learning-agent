@@ -86,7 +86,7 @@ Default publishing writes clean preview JSON under `runs/<run-id>/preview/` and 
 {"method":"tools/call","params":{"name":"learning_agent.record_content_review_report","arguments":{"runId":"<run-id>","round":1,"reviewerVerdict":"revise","summary":"<compact reviewer summary>","issues":[]}}}
 ```
 
-If `prepare_content_review` returns `revision_required`, Codex should read the review brief, inspect `currentMetrics` and `automaticFindings` first, then act as `content-review-agent`, critique the course, revise the `coursePack` and `lessons`, and call `learning_agent.publish_learning_course` again. After each republish, call `record_content_review_report` with concrete issues and a reviewer verdict. MCP records measured metrics and round-to-round deltas; Codex should use those deltas to verify that template labels, missing imagegen assets, generic titles, low-density pages, generic sourceTrace supports, stale visual prompts, title-duplicating image prompts, and weak mechanism-depth pages are decreasing. The third-round revised bundle is the one that proceeds to imagegen batch validation. Do not ask the learner to approve review artifacts.
+If `prepare_content_review` returns `revision_required`, Codex should read the review brief, inspect `currentMetrics` and `automaticFindings` first, then act as `content-review-agent`, critique the course, revise the `coursePack` and `lessons`, and call `learning_agent.publish_learning_course` again. After each republish, call `record_content_review_report` with concrete issues and a reviewer verdict. MCP records measured metrics and round-to-round deltas; Codex should use those deltas to verify that template labels, missing imagegen assets, generic titles, low-density pages, generic sourceTrace supports, stale visual prompts, title-duplicating image prompts, weak mechanism-depth pages, boilerplate learner phrases, and repeated board section labels are decreasing. The third-round revised bundle is the one that proceeds to imagegen batch validation. Do not ask the learner to approve review artifacts.
 
 5. Create, record, and validate imagegen assets:
 
@@ -97,6 +97,8 @@ If `prepare_content_review` returns `revision_required`, Codex should read the r
 ```
 
 Codex should loop through the manifest, call imagegen for each item, record every generated PNG/WebP, and fix any validation failures before showing the learner the final preview.
+
+Each page must use an independent teaching image. Do not reuse one unit-level image across all pages; `learning_agent.validate_imagegen_assets` blocks duplicate image content even when copied to different preview file paths. When a dev server is running, run `npm run smoke:layout -- --runId <run-id> --desktop-only` before handoff to catch page scroll, missing images, console errors, and content overflow.
 
 6. When quality is failed or source/structure/learner warnings remain, create a calibration brief for Codex and revise before preview:
 

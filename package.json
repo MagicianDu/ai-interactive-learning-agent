@@ -43,6 +43,7 @@
     "source:regression": "tsx tools/agent-runtime/learner/real-source-regression-cli.ts",
     "seed:check": "tsx scripts/beta-seed-check.ts",
     "smoke:playwright": "tsx scripts/playwright-smoke.ts",
+    "smoke:layout": "tsx tools/agent-runtime/learner/preview-layout-smoke-cli.ts",
     "release:check": "npm run test:ci && npm run test:regression && npm run seed:check && npm run codex:mcp:check && npm run smoke:playwright"
   },
   "dependencies": {

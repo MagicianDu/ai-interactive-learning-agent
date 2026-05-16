@@ -59,6 +59,8 @@ export type ContentReviewMetrics = {
   staleVisualPromptCount: number;
   titleDuplicatedInImagePromptCount: number;
   mechanismDepthWeakPageCount: number;
+  boilerplateLearnerPhraseCount: number;
+  repeatedBoardSectionLabelCount: number;
 };
 
 export type ContentReviewMetricDelta = ContentReviewMetrics & {
@@ -127,6 +129,14 @@ const GENERIC_SOURCE_TRACE_SUPPORT_PATTERNS = [
   /支撑这个命题/u,
   /给出证据/u
 ];
+const BOILERPLATE_LEARNER_PHRASE_PATTERNS = [
+  /本页(帮助|带你|让你|会|将)/u,
+  /建立(正确|完整|清晰)?心智模型/u,
+  /掌握核心内容/u,
+  /快速理解/u,
+  /更好地理解/u
+];
+const REPEATED_BOARD_LABEL_THRESHOLD = 3;
 
 export class ContentReviewService {
   constructor(private readonly workspaceRoot = process.cwd()) {}
@@ -166,6 +176,7 @@ export class ContentReviewService {
         "挑刺优先：指出内容泛、跳步、低密度、模板化、图文不匹配的位置。",
         "学生自学优先：每页必须能让学生获得一个明确知识判断。",
         "来源优先：source-backed 页面必须讲出来源材料的具体概念或关系。",
+        "内容品味优先：删除课程模板腔、重复栏目名和不给知识判断的自我说明。",
         "第三轮产出优先：第 3 轮只保留可发布内容，不保留批注过程。"
       ],
       reviewerOutputContract: {
@@ -274,13 +285,16 @@ export class ContentReviewService {
       genericSourceTraceSupportCount: 0,
       staleVisualPromptCount: 0,
       titleDuplicatedInImagePromptCount: 0,
-      mechanismDepthWeakPageCount: 0
+      mechanismDepthWeakPageCount: 0,
+      boilerplateLearnerPhraseCount: 0,
+      repeatedBoardSectionLabelCount: 0
     };
 
     for (const lesson of lessons) {
       if (!isRecord(lesson) || !Array.isArray(lesson.pages)) {
         continue;
       }
+      const boardLabelsInLesson: string[] = [];
       for (const page of lesson.pages) {
         if (!isRecord(page)) {
           continue;
@@ -313,7 +327,10 @@ export class ContentReviewService {
         if (mechanismDepthWeak(page)) {
           metrics.mechanismDepthWeakPageCount += 1;
         }
+        metrics.boilerplateLearnerPhraseCount += countBoilerplateLearnerPhrases(page);
+        boardLabelsInLesson.push(...boardSectionLabels(page));
       }
+      metrics.repeatedBoardSectionLabelCount += countRepeatedBoardSectionLabels(boardLabelsInLesson);
     }
 
     return metrics;
@@ -600,6 +617,50 @@ function mechanismDepthWeak(page: Record<string, unknown>): boolean {
   return countBoardItems(knowledgeBoard.leftColumn) + countBoardItems(knowledgeBoard.rightColumn) < MECHANISM_DEPTH_MIN_ITEM_COUNT;
 }
 
+function countBoilerplateLearnerPhrases(page: Record<string, unknown>): number {
+  const values: string[] = [];
+  collectText(page.narrative, values);
+  const knowledgeBoard = isRecord(page.knowledgeBoard) ? page.knowledgeBoard : undefined;
+  if (knowledgeBoard) {
+    collectText(knowledgeBoard.coreProposition, values);
+    collectText(knowledgeBoard.bottomLine, values);
+    collectColumnText(knowledgeBoard.leftColumn, values);
+    collectColumnText(knowledgeBoard.rightColumn, values);
+  }
+  const joined = values.join("\n");
+  return BOILERPLATE_LEARNER_PHRASE_PATTERNS.some((pattern) => pattern.test(joined)) ? 1 : 0;
+}
+
+function boardSectionLabels(page: Record<string, unknown>): string[] {
+  const knowledgeBoard = isRecord(page.knowledgeBoard) ? page.knowledgeBoard : undefined;
+  if (!knowledgeBoard) {
+    return [];
+  }
+  const labels: string[] = [];
+  for (const columnName of ["leftColumn", "rightColumn"]) {
+    const column = knowledgeBoard[columnName];
+    if (!Array.isArray(column)) {
+      continue;
+    }
+    for (const section of column) {
+      if (isRecord(section) && typeof section.label === "string" && section.label.trim().length > 0) {
+        labels.push(section.label.trim());
+      }
+    }
+  }
+  return labels;
+}
+
+function countRepeatedBoardSectionLabels(labels: string[]): number {
+  const counts = new Map<string, number>();
+  for (const label of labels) {
+    counts.set(label, (counts.get(label) ?? 0) + 1);
+  }
+  return Array.from(counts.values())
+    .filter((count) => count >= REPEATED_BOARD_LABEL_THRESHOLD)
+    .reduce((sum, count) => sum + count, 0);
+}
+
 function countBoardItems(value: unknown): number {
   if (!Array.isArray(value)) {
     return 0;
@@ -662,6 +723,8 @@ function diffMetrics(
     staleVisualPromptCount: current.staleVisualPromptCount - previous.staleVisualPromptCount,
     titleDuplicatedInImagePromptCount: current.titleDuplicatedInImagePromptCount - previous.titleDuplicatedInImagePromptCount,
     mechanismDepthWeakPageCount: current.mechanismDepthWeakPageCount - previous.mechanismDepthWeakPageCount,
+    boilerplateLearnerPhraseCount: current.boilerplateLearnerPhraseCount - previous.boilerplateLearnerPhraseCount,
+    repeatedBoardSectionLabelCount: current.repeatedBoardSectionLabelCount - previous.repeatedBoardSectionLabelCount,
     issueCount: currentIssueCount - previousIssueCount
   };
 }
@@ -753,6 +816,24 @@ function buildAutomaticFindings(metrics: ContentReviewMetrics): Array<{
       recommendation: "补齐左右栏具体内容项，让学生能看到判断链路和失效边界。"
     });
   }
+  if (metrics.boilerplateLearnerPhraseCount > 0) {
+    findings.push({
+      metric: "boilerplateLearnerPhraseCount",
+      value: metrics.boilerplateLearnerPhraseCount,
+      severity: "major",
+      finding: "存在课程模板腔或自我说明式句子，页面在描述学习活动而不是直接交付知识判断。",
+      recommendation: "删除“本页帮助你…”“建立心智模型”等空泛句，改成条件、机制、例子或边界的具体判断。"
+    });
+  }
+  if (metrics.repeatedBoardSectionLabelCount > 0) {
+    findings.push({
+      metric: "repeatedBoardSectionLabelCount",
+      value: metrics.repeatedBoardSectionLabelCount,
+      severity: "major",
+      finding: "同一课程内多个页面重复使用相同板书栏目名，模板味过重，削弱自学材料的知识辨识度。",
+      recommendation: "把重复栏目改成与每页命题直接相关的内容专属小标题。"
+    });
+  }
 
   return findings;
 }
@@ -782,7 +863,9 @@ function isContentReviewMetrics(value: unknown): value is ContentReviewMetrics {
     typeof value.genericSourceTraceSupportCount === "number" &&
     typeof value.staleVisualPromptCount === "number" &&
     typeof value.titleDuplicatedInImagePromptCount === "number" &&
-    typeof value.mechanismDepthWeakPageCount === "number"
+    typeof value.mechanismDepthWeakPageCount === "number" &&
+    typeof value.boilerplateLearnerPhraseCount === "number" &&
+    typeof value.repeatedBoardSectionLabelCount === "number"
   );
 }
 

@@ -145,6 +145,40 @@ describe("ImagegenAssetBatchService", () => {
       expect.arrayContaining([expect.objectContaining({ issueId: "imagegen.asset.prompt-duplicates-page-text", pageId: "page-01" })])
     );
   });
+
+  test("validate blocks reusing the same generated image content across different pages", async () => {
+    const root = await imageFixtureRoot("duplicate-image-content");
+    const lessonPath = path.join(root, "runs", "duplicate-image-content", "preview", "lessons", "lesson-a.json");
+    const lesson = JSON.parse(await readFile(lessonPath, "utf8")) as { pages: Array<Record<string, unknown>> };
+    lesson.pages[1] = {
+      ...lesson.pages[1],
+      visualSpec: {
+        imageUrl: "/__learning-preview/duplicate-image-content/images/lesson-a/page-02-imagegen-v1.png",
+        imageProvider: "imagegen",
+        imagePrompt:
+          "生成一张中文教学插图，只表达张量在坐标变化下保持物理关系；可以使用短标签帮助理解；不要包含页面标题、底部总结、页面卡片原文、长段落文字、表格或 UI 文本框。",
+        imageAlt: "张量和坐标变化"
+      }
+    };
+    await writeFile(lessonPath, `${JSON.stringify(lesson, null, 2)}\n`, "utf8");
+    await mkdir(path.join(root, "runs", "duplicate-image-content", "preview", "images", "lesson-a"), { recursive: true });
+    const sameImageBytes = Buffer.from([137, 80, 78, 71, 1, 2, 3, 4]);
+    await writeFile(
+      path.join(root, "runs", "duplicate-image-content", "preview", "images", "lesson-a", "page-01-imagegen-v1.png"),
+      sameImageBytes
+    );
+    await writeFile(
+      path.join(root, "runs", "duplicate-image-content", "preview", "images", "lesson-a", "page-02-imagegen-v1.png"),
+      sameImageBytes
+    );
+
+    const result = await new ImagegenAssetBatchService(root).validateAssets({ runId: "duplicate-image-content" });
+
+    expect(result.status).toBe("failed");
+    expect(result.issues).toEqual(
+      expect.arrayContaining([expect.objectContaining({ issueId: "imagegen.asset.duplicate-image-content", pageId: "page-02" })])
+    );
+  });
 });
 
 async function imageFixtureRoot(runId: string): Promise<string> {
@@ -180,7 +214,7 @@ async function imageFixtureRoot(runId: string): Promise<string> {
               kind: "diagram",
               description: "测量和坐标的关系",
               keyElements: ["测量", "坐标"],
-              imageUrl: "/__learning-preview/image-course/images/lesson-a/page-01-imagegen-v1.png",
+              imageUrl: `/__learning-preview/${runId}/images/lesson-a/page-01-imagegen-v1.png`,
               imageAlt: "测量、坐标和几何量之间的关系",
               imageProvider: "imagegen",
               imagePrompt:
@@ -196,7 +230,7 @@ async function imageFixtureRoot(runId: string): Promise<string> {
             title: "张量语言保留坐标变化下的不变量",
             narrative: "中文说明。",
             visualSpec: {
-              imageUrl: "/__learning-preview/image-course/images/lesson-a/page-02.svg",
+              imageUrl: `/__learning-preview/${runId}/images/lesson-a/page-02.svg`,
               imageAlt: "张量和坐标变化",
               imageProvider: "imagegen",
               imagePrompt:

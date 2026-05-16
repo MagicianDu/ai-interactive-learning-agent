@@ -59,6 +59,9 @@ placeholder.
 - Source images may be used as references only when allowed and useful; the
   final asset is still an imagegen-generated teaching illustration and must not
   be presented as an original source figure.
+- Each page needs its own teaching image. Reusing the same generated image
+  across multiple pages is not acceptable even if the file is copied to
+  different preview paths.
 
 ## Runtime Boundary
 
@@ -81,7 +84,9 @@ Codex content-review round:
    `visualSpec`.
 4. `learning_agent.validate_imagegen_assets` blocks missing files, SVG
    references, missing `imageProvider: "imagegen"`, unsafe prompts, and prompts
-   without explicit guards against long prose, tables, and UI text boxes.
+   without explicit guards against long prose, tables, and UI text boxes. It
+   also blocks duplicate image content across pages by hashing the recorded
+   preview assets.
 
 This workflow is semi-automatic by design: Codex still makes the visual design
 decision and calls imagegen, while MCP keeps paths, manifests, and validation
