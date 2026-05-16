@@ -82,6 +82,33 @@ describe("ContentReviewService", () => {
     expect(result.codexInstruction).toContain("automaticFindings");
   });
 
+  test("automatic findings cover all zero-tolerance quality gate metrics", async () => {
+    const root = await fixtureRoot("brief-quality-gates");
+    await writeQualityGateGapLesson(root, "brief-quality-gates");
+
+    const result = await new ContentReviewService(root).prepareReview({ runId: "brief-quality-gates" });
+
+    if (result.status !== "revision_required") {
+      throw new Error(`expected revision_required, got ${result.status}`);
+    }
+    const brief = JSON.parse(await readFile(result.reviewBriefPath, "utf8")) as Record<string, unknown>;
+
+    expect(brief).toMatchObject({
+      currentMetrics: {
+        templateLabelCount: 1,
+        missingImagegenAssetCount: 1,
+        genericTitleCount: 1,
+        lowDensityPageCount: 1
+      },
+      automaticFindings: expect.arrayContaining([
+        expect.objectContaining({ metric: "templateLabelCount", severity: "major" }),
+        expect.objectContaining({ metric: "missingImagegenAssetCount", severity: "major" }),
+        expect.objectContaining({ metric: "genericTitleCount", severity: "major" }),
+        expect.objectContaining({ metric: "lowDensityPageCount", severity: "major" })
+      ])
+    });
+  });
+
   test("increments review rounds from previously written briefs", async () => {
     const root = await fixtureRoot("review-rounds");
     const service = new ContentReviewService(root);
@@ -454,6 +481,42 @@ async function writeSemanticGapLesson(root: string, runId: string): Promise<void
             leftItems: ["一个机制"],
             rightItems: ["一个例子"]
           })
+        ]
+      },
+      null,
+      2
+    )}\n`,
+    "utf8"
+  );
+}
+
+async function writeQualityGateGapLesson(root: string, runId: string): Promise<void> {
+  await writeFile(
+    path.join(root, "runs", runId, "preview", "lessons", "lesson-a.json"),
+    `${JSON.stringify(
+      {
+        id: "lesson-a",
+        title: "质量门禁样本",
+        displayMode: "textbook_deck",
+        pages: [
+          {
+            id: "page-01",
+            title: "直观模型",
+            narrative: "短。",
+            sourceAnchorIds: ["book:p1"],
+            visualSpec: {
+              imageAlt: "缺图样本",
+              imagePrompt: "生成教学插图。不要长段文字，不要表格，不要 UI 文本框。"
+            },
+            knowledgeBoard: {
+              headline: "直观模型",
+              coreProposition: "短。",
+              leftColumn: [{ label: "机制链", items: ["一个机制"] }],
+              rightColumn: [{ label: "例子与边界", items: ["例如一个场景", "边界是另一个场景"] }],
+              sourceTrace: [{ anchorId: "book:p1", supports: "来源说明该直观模型。" }],
+              bottomLine: "短。"
+            }
+          }
         ]
       },
       null,

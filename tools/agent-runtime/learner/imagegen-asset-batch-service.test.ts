@@ -28,6 +28,9 @@ describe("ImagegenAssetBatchService", () => {
       imageUrl: "/__learning-preview/image-course/images/lesson-a/page-01-imagegen-v1.png",
       prompt: expect.stringContaining("不要包含长段落文字、表格或 UI 文本框")
     });
+    expect(manifest.items[0]?.prompt).not.toContain("测量把几何概念变成可比较的量");
+    expect(manifest.items[0]?.prompt).toContain("不要重复页面标题");
+    expect(manifest.items[0]?.prompt).toContain("不要重复底部总结");
   });
 
   test("records a generated image and rewrites the preview lesson visualSpec", async () => {
@@ -114,6 +117,32 @@ describe("ImagegenAssetBatchService", () => {
         expect.objectContaining({ issueId: "imagegen.asset.prompt-unsafe", pageId: "page-01" }),
         expect.objectContaining({ issueId: "imagegen.asset.prompt-guard-missing", pageId: "page-02" })
       ])
+    );
+  });
+
+  test("validate blocks prompts that duplicate learner-facing page titles", async () => {
+    const root = await imageFixtureRoot("duplicated-title");
+    const lessonPath = path.join(root, "runs", "duplicated-title", "preview", "lessons", "lesson-a.json");
+    const lesson = JSON.parse(await readFile(lessonPath, "utf8")) as { pages: Array<Record<string, unknown>> };
+    lesson.pages[0] = {
+      ...lesson.pages[0],
+      visualSpec: {
+        imageUrl: "/__learning-preview/duplicated-title/images/lesson-a/page-01-imagegen-v1.png",
+        imageProvider: "imagegen",
+        imagePrompt:
+          "生成一张中文教学插图，画面大字写出：测量把几何概念变成可比较的量。不要包含长段落文字、表格或 UI 文本框；不要重复页面标题、底部总结或页面卡片原文。",
+        imageAlt: "错误重复标题的图片"
+      }
+    };
+    await writeFile(lessonPath, `${JSON.stringify(lesson, null, 2)}\n`, "utf8");
+    await mkdir(path.join(root, "runs", "duplicated-title", "preview", "images", "lesson-a"), { recursive: true });
+    await writeFile(path.join(root, "runs", "duplicated-title", "preview", "images", "lesson-a", "page-01-imagegen-v1.png"), "png", "utf8");
+
+    const result = await new ImagegenAssetBatchService(root).validateAssets({ runId: "duplicated-title" });
+
+    expect(result.status).toBe("failed");
+    expect(result.issues).toEqual(
+      expect.arrayContaining([expect.objectContaining({ issueId: "imagegen.asset.prompt-duplicates-page-text", pageId: "page-01" })])
     );
   });
 });

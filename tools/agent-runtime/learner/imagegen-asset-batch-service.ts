@@ -60,6 +60,7 @@ export type ImagegenAssetValidationIssue = {
     | "imagegen.asset.provider-missing"
     | "imagegen.asset.prompt-unsafe"
     | "imagegen.asset.prompt-guard-missing"
+    | "imagegen.asset.prompt-duplicates-page-text"
     | "imagegen.asset.url-not-preview"
     | "imagegen.asset.visual-spec-missing";
   lessonId: string;
@@ -157,7 +158,7 @@ export class ImagegenAssetBatchService {
           });
           continue;
         }
-        issues.push(...(await this.validateVisualSpec(input.runId, lessonId, pageId, visualSpec)));
+        issues.push(...(await this.validateVisualSpec(input.runId, lessonId, pageId, page, visualSpec)));
       }
     }
 
@@ -178,8 +179,8 @@ export class ImagegenAssetBatchService {
     assertSafeId(pageId, "pageId");
     const pageTitle = stringValue(page.title) ?? pageId;
     const visualSpec = isRecord(page.visualSpec) ? page.visualSpec : {};
-    const imageAlt = stringValue(visualSpec.imageAlt) ?? buildImageAlt(pageTitle, page);
-    const prompt = defaultPrompt(pageTitle, imageAlt);
+    const imageAlt = stringValue(visualSpec.imageAlt) ?? buildImageAlt(page);
+    const prompt = defaultPrompt(sanitizePromptInput(imageAlt, pageTitle, bottomLineForPage(page)));
     const imageUrl = `/__learning-preview/${runId}/images/${lessonId}/${pageId}-imagegen-v1.png`;
     return {
       lessonId,
@@ -197,6 +198,7 @@ export class ImagegenAssetBatchService {
     runId: string,
     lessonId: string,
     pageId: string,
+    page: Record<string, unknown>,
     visualSpec: Record<string, unknown>
   ): Promise<ImagegenAssetValidationIssue[]> {
     const issues: ImagegenAssetValidationIssue[] = [];
@@ -251,6 +253,17 @@ export class ImagegenAssetBatchService {
         pageId,
         reason: promptIssue.reason,
         requiredFix: promptIssue.requiredFix
+      });
+    }
+
+    const duplicatedPromptText = duplicatedLearnerTextInPrompt(imagePrompt, page);
+    if (duplicatedPromptText) {
+      issues.push({
+        issueId: "imagegen.asset.prompt-duplicates-page-text",
+        lessonId,
+        pageId,
+        reason: `The imagegen prompt repeats learner-facing page text: ${duplicatedPromptText}.`,
+        requiredFix: "Rewrite the prompt to describe the visual mechanism with short labels instead of copying the page title or bottom-line sentence."
       });
     }
 
@@ -341,14 +354,23 @@ function isPreviewLesson(value: unknown): value is PreviewLesson {
   return isRecord(value) && typeof value.id === "string" && Array.isArray(value.pages);
 }
 
-function defaultPrompt(pageTitle: string, imageAlt: string): string {
-  return `生成一张中文 Web Deck 教学插图，只表达“${pageTitle}”这一页的核心知识关系：${imageAlt}。可以使用短标签、方向词或局部标注帮助理解；不要包含长段落文字、表格或 UI 文本框；不要重复页面标题、底部总结或页面卡片原文。`;
+function defaultPrompt(imageAlt: string): string {
+  return `生成一张中文 Web Deck 教学插图，画出这一页的核心知识关系：${imageAlt}。可以使用短标签、方向词或局部标注帮助理解；不要包含长段落文字、表格或 UI 文本框；不要重复页面标题；不要重复底部总结；不要重复页面卡片原文。`;
 }
 
-function buildImageAlt(pageTitle: string, page: Record<string, unknown>): string {
+function buildImageAlt(page: Record<string, unknown>): string {
   const board = isRecord(page.knowledgeBoard) ? page.knowledgeBoard : undefined;
   const coreProposition = board ? stringValue(board.coreProposition) : undefined;
-  return coreProposition ?? `解释“${pageTitle}”的关键知识关系`;
+  return coreProposition ?? "解释本页的关键知识关系";
+}
+
+function bottomLineForPage(page: Record<string, unknown>): string | undefined {
+  const board = isRecord(page.knowledgeBoard) ? page.knowledgeBoard : undefined;
+  return board ? stringValue(board.bottomLine) : undefined;
+}
+
+function sanitizePromptInput(value: string, pageTitle: string, bottomLine: string | undefined): string {
+  return [pageTitle, bottomLine].filter((text): text is string => Boolean(text)).reduce((result, text) => result.replaceAll(text, ""), value).trim();
 }
 
 function imageUrlToPreviewPath(previewRoot: string, runId: string, imageUrl: string): string | undefined {
@@ -376,7 +398,9 @@ const unsafeAllowPattern =
 const requiredImagePromptGuards: Array<{ label: string; pattern: RegExp }> = [
   { label: "长段落或大段文字", pattern: /(长段落|大段文字|长篇文字|long\s*prose|paragraph)/iu },
   { label: "表格", pattern: /(表格|table)/iu },
-  { label: "UI 文本框或面板", pattern: /(UI\s*文本框|UI\s*面板|用户界面|文本框|text\s*panel|text\s*box)/iu }
+  { label: "UI 文本框或面板", pattern: /(UI\s*文本框|UI\s*面板|用户界面|文本框|text\s*panel|text\s*box)/iu },
+  { label: "页面标题", pattern: /(页面标题|page\s*title)/iu },
+  { label: "底部总结", pattern: /(底部总结|bottom\s*line|bottomLine)/iu }
 ];
 
 function validateImagePromptSafety(prompt: string): ImagePromptSafetyIssue | undefined {
@@ -413,6 +437,28 @@ function allowsUnsafeImageArtifact(prompt: string): boolean {
   return prompt
     .split(/[。；;.!！?？\n]/u)
     .some((clause) => unsafeAllowPattern.test(clause) && !negationPattern.test(clause));
+}
+
+function duplicatedLearnerTextInPrompt(prompt: string, page: Record<string, unknown>): string | undefined {
+  const pageTitle = stringValue(page.title);
+  const bottomLine = bottomLineForPage(page);
+  if (pageTitle && containsLearnerText(prompt, pageTitle)) {
+    return "page title";
+  }
+  if (bottomLine && containsLearnerText(prompt, bottomLine)) {
+    return "bottom line";
+  }
+  return undefined;
+}
+
+function containsLearnerText(prompt: string, learnerText: string): boolean {
+  const normalizedPrompt = normalizeForDuplication(prompt);
+  const normalizedText = normalizeForDuplication(learnerText);
+  return normalizedText.length >= 6 && normalizedPrompt.includes(normalizedText);
+}
+
+function normalizeForDuplication(value: string): string {
+  return value.normalize("NFKC").replace(/[\s，。；：、,.!?！？:;'"“”‘’()[\]（）【】《》<>]/gu, "").toLocaleLowerCase();
 }
 
 async function pathExists(filePath: string): Promise<boolean> {

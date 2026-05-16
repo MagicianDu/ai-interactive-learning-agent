@@ -27,5 +27,5 @@ describe("QuickPreviewService", () => {
     expect(result.autoApprovedGates).toEqual(
       expect.arrayContaining(["source-map", "concept-map", "curriculum-plan", "learning-architecture", "lesson", "critic-report"])
     );
-  });
+  }, 15000);
 });

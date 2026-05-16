@@ -681,6 +681,42 @@ function buildAutomaticFindings(metrics: ContentReviewMetrics): Array<{
     recommendation: string;
   }> = [];
 
+  if (metrics.templateLabelCount > 0) {
+    findings.push({
+      metric: "templateLabelCount",
+      value: metrics.templateLabelCount,
+      severity: "major",
+      finding: "存在模板化栏目标题，页面仍暴露 authoring 模板而不是内容专属板书。",
+      recommendation: "把栏目标题改成与本页知识命题直接相关的小标题，避免机制链、正式术语、例子/证据等通用标签。"
+    });
+  }
+  if (metrics.missingImagegenAssetCount > 0) {
+    findings.push({
+      metric: "missingImagegenAssetCount",
+      value: metrics.missingImagegenAssetCount,
+      severity: "major",
+      finding: "存在缺失 imagegen PNG/WebP 教学插图或仍使用 SVG/非 imagegen provider 的页面。",
+      recommendation: "为每页补齐 visualSpec.imageUrl、imageProvider:imagegen 和安全 imagePrompt，最终进入 imagegen 资产批处理。"
+    });
+  }
+  if (metrics.genericTitleCount > 0) {
+    findings.push({
+      metric: "genericTitleCount",
+      value: metrics.genericTitleCount,
+      severity: "major",
+      finding: "存在泛化页面标题，学习者无法从标题看出本页知识判断。",
+      recommendation: "把页面标题改成内容命题或真实学习问题，不使用直观模型、机制链路、来源证据等页面角色。"
+    });
+  }
+  if (metrics.lowDensityPageCount > 0) {
+    findings.push({
+      metric: "lowDensityPageCount",
+      value: metrics.lowDensityPageCount,
+      severity: "major",
+      finding: "存在低知识密度页面，正文和板书不足以支撑学生自学。",
+      recommendation: "补入具体机制、条件、例子、边界或对比，让每页至少交付一个可带走的判断。"
+    });
+  }
   if (metrics.genericSourceTraceSupportCount > 0) {
     findings.push({
       metric: "genericSourceTraceSupportCount",

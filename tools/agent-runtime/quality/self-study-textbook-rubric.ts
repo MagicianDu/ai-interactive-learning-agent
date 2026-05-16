@@ -132,6 +132,12 @@ function evaluatePage(
   if (hasAuthoringScaffoldLanguage(page)) {
     boardIssues.push({ kind: "weak", item: "authoring scaffold language" });
   }
+  if (hasTitleHeadlineDuplication(page)) {
+    boardIssues.push({ kind: "weak", item: "title/headline duplication" });
+  }
+  if (hasBottomLineTitleDuplication(page)) {
+    boardIssues.push({ kind: "weak", item: "bottomLine repeats title" });
+  }
   if (extractScaffoldTitleRole(page.title)) {
     boardIssues.push({ kind: "weak", item: "page-role title" });
   }
@@ -206,6 +212,26 @@ function hasAuthoringScaffoldLanguage(page: Record<string, unknown>): boolean {
     .filter((value): value is string => typeof value === "string")
     .join("\n");
   return authoringScaffoldPatterns.some((pattern) => pattern.test(text));
+}
+
+function hasTitleHeadlineDuplication(page: Record<string, unknown>): boolean {
+  if (typeof page.title !== "string" || !isRecord(page.knowledgeBoard) || typeof page.knowledgeBoard.headline !== "string") {
+    return false;
+  }
+  return sameLearnerText(page.title, page.knowledgeBoard.headline);
+}
+
+function hasBottomLineTitleDuplication(page: Record<string, unknown>): boolean {
+  if (typeof page.title !== "string" || !isRecord(page.knowledgeBoard) || typeof page.knowledgeBoard.bottomLine !== "string") {
+    return false;
+  }
+  return sameLearnerText(page.title, page.knowledgeBoard.bottomLine);
+}
+
+function sameLearnerText(first: string, second: string): boolean {
+  const normalizedFirst = normalizeBoardText(first);
+  const normalizedSecond = normalizeBoardText(second);
+  return normalizedFirst.length >= 6 && normalizedFirst === normalizedSecond;
 }
 
 function pageResultKey(lessonId: string, pageId: string): string {

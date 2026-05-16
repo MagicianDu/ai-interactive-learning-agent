@@ -111,6 +111,26 @@ describe("evaluateSelfStudyTextbookRubric", () => {
     expect(result.pageResults[0]?.weakItems).toEqual(expect.arrayContaining(["authoring scaffold language"]));
   });
 
+  test("fails exact duplication between page title and board headline", () => {
+    const lesson = selfStudyLesson();
+    lesson.pages[0]!.knowledgeBoard.headline = lesson.pages[0]!.title;
+
+    const result = evaluateSelfStudyTextbookRubric([lesson]);
+
+    expect(result.status).toBe("failed");
+    expect(result.pageResults[0]?.weakItems).toEqual(expect.arrayContaining(["title/headline duplication"]));
+  });
+
+  test("fails bottom lines that only repeat the page title", () => {
+    const lesson = selfStudyLesson();
+    lesson.pages[0]!.knowledgeBoard.bottomLine = lesson.pages[0]!.title;
+
+    const result = evaluateSelfStudyTextbookRubric([lesson]);
+
+    expect(result.status).toBe("failed");
+    expect(result.pageResults[0]?.weakItems).toEqual(expect.arrayContaining(["bottomLine repeats title"]));
+  });
+
   test("fails page-role titles even before they repeat across units", () => {
     const lesson = selfStudyLesson();
     lesson.pages[0]!.title = "Prompt Chaining：先看失败";
