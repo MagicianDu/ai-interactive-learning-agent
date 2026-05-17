@@ -157,6 +157,51 @@ describe("CourseProductionPipelineService", () => {
       }
     });
   });
+
+  test("does not hand off preview when layout smoke report failed", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "course-production-"));
+    const service = new CourseProductionPipelineService(root);
+    await service.start(courseProductionInput("layout-blocked"));
+    await writePipelineReadyExceptLayout(root, "layout-blocked", "failed");
+    await service.recordEvent({
+      runId: "layout-blocked",
+      eventKind: "course_published",
+      summary: "Initial course bundle published.",
+      artifactPaths: ["runs/layout-blocked/preview/course-pack.json"]
+    });
+
+    const next = await service.nextAction({ runId: "layout-blocked" });
+
+    expect(next).toMatchObject({
+      status: "action_required",
+      stage: "needs_layout_fix",
+      nextAction: { kind: "fix_layout" }
+    });
+  });
+
+  test("hands off preview when content review, imagegen, and layout smoke all pass", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "course-production-"));
+    const service = new CourseProductionPipelineService(root);
+    await service.start(courseProductionInput("layout-pass"));
+    await writePipelineReadyExceptLayout(root, "layout-pass", "passed");
+    await service.recordEvent({
+      runId: "layout-pass",
+      eventKind: "course_published",
+      summary: "Initial course bundle published.",
+      artifactPaths: ["runs/layout-pass/preview/course-pack.json"]
+    });
+
+    const next = await service.nextAction({ runId: "layout-pass" });
+
+    expect(next).toMatchObject({
+      status: "preview_ready",
+      stage: "preview_ready",
+      nextAction: {
+        kind: "handoff_preview",
+        previewUrl: "http://127.0.0.1:5173/#/preview/layout-pass"
+      }
+    });
+  });
 });
 
 function courseProductionInput(runId: string) {
@@ -213,6 +258,44 @@ async function writePublishedCourse(root: string, runId: string): Promise<void> 
           { id: "p1", title: "第一页", knowledgeBoard: { coreProposition: "概念 A", bottomLine: "理解 A" } },
           { id: "p2", title: "第二页", knowledgeBoard: { coreProposition: "概念 B", bottomLine: "理解 B" } }
         ]
+      },
+      null,
+      2
+    )
+  );
+}
+
+async function writePipelineReadyExceptLayout(root: string, runId: string, layoutStatus: "passed" | "failed"): Promise<void> {
+  await writePublishedCourse(root, runId);
+  await writeReviewState(root, runId, passingReviewState());
+  await mkdir(path.join(root, "runs", runId, "quality", "imagegen"), { recursive: true });
+  await writeFile(
+    path.join(root, "runs", runId, "quality", "imagegen", "imagegen-batch-state.json"),
+    JSON.stringify(
+      {
+        runId,
+        totalItems: 2,
+        items: ["p1", "p2"].map((pageId) => ({
+          lessonId: "lesson-a",
+          pageId,
+          imagePrompt: `Visualize ${pageId}. No long prose, no tables, no UI text boxes.`,
+          imageUrl: `/__learning-preview/${runId}/images/lesson-a/${pageId}-imagegen-v1.png`,
+          targetAssetPath: path.join(root, "runs", runId, "preview", "images", "lesson-a", `${pageId}-imagegen-v1.png`),
+          status: "succeeded",
+          retryCount: 0
+        }))
+      },
+      null,
+      2
+    )
+  );
+  await mkdir(path.join(root, "runs", runId, "quality", "layout-smoke"), { recursive: true });
+  await writeFile(
+    path.join(root, "runs", runId, "quality", "layout-smoke", "layout-smoke-report.json"),
+    JSON.stringify(
+      {
+        status: layoutStatus,
+        issues: layoutStatus === "passed" ? [] : [{ issueId: "layout.page.vertical-scroll" }]
       },
       null,
       2

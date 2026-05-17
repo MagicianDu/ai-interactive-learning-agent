@@ -2,8 +2,10 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { AgentRuntimeError } from "../errors.js";
+import { isRecord } from "../quality/validation-result.js";
 import { ContentReviewLoopService } from "./content-review-loop-service.js";
 import { type ImagegenBatchItem, ImagegenBatchStateService } from "./imagegen-batch-state-service.js";
+import type { PreviewLayoutSmokeIssue } from "./preview-layout-smoke-service.js";
 
 export type CourseProductionStage =
   | "needs_authoring"
@@ -62,6 +64,17 @@ export type CourseProductionNextAction =
       manifestPath: string;
       pendingItems: ImagegenBatchItem[];
       failedItems: ImagegenBatchItem[];
+      codexInstruction: string;
+    }
+  | {
+      kind: "run_layout_smoke";
+      command: string;
+      codexInstruction: string;
+    }
+  | {
+      kind: "fix_layout";
+      reportPath: string;
+      issues: PreviewLayoutSmokeIssue[];
       codexInstruction: string;
     }
   | {
@@ -198,9 +211,53 @@ export class CourseProductionPipelineService {
                   pendingItems: batch.pendingItems,
                   codexInstruction:
                     "Generate one independent imagegen teaching illustration for each pending item, then record it through learning_agent.record_imagegen_batch_item. Do not reuse images across pages."
-                }
+          }
         };
       }
+      const layout = await this.readLayoutSmokeReport(state.runId);
+      if (!layout) {
+        return {
+          status: "action_required",
+          runId: state.runId,
+          stage: "layout_smoke",
+          statePath: this.statePath(state.runId),
+          nextAction: {
+            kind: "run_layout_smoke",
+            command: `npm run smoke:layout -- --runId ${state.runId} --desktop-only`,
+            codexInstruction: "Run the layout smoke command. If it fails, fix page layout or content density before showing the preview."
+          }
+        };
+      }
+      if (layout.status !== "passed") {
+        return {
+          status: "action_required",
+          runId: state.runId,
+          stage: "needs_layout_fix",
+          statePath: this.statePath(state.runId),
+          nextAction: {
+            kind: "fix_layout",
+            reportPath: `runs/${state.runId}/quality/layout-smoke/layout-smoke-report.json`,
+            issues: layout.issues,
+            codexInstruction: "Fix every layout smoke issue, republish if needed, then rerun layout smoke."
+          }
+        };
+      }
+      return {
+        status: "preview_ready",
+        runId: state.runId,
+        stage: "preview_ready",
+        statePath: this.statePath(state.runId),
+        nextAction: {
+          kind: "handoff_preview",
+          previewUrl: `http://127.0.0.1:5173/#/preview/${state.runId}`,
+          qualitySummary: "内容审核、imagegen 资产校验和 layout smoke 均已通过。",
+          evidencePaths: [
+            `runs/${state.runId}/quality/content-review/content-review-state.json`,
+            `runs/${state.runId}/quality/imagegen/imagegen-batch-state.json`,
+            `runs/${state.runId}/quality/layout-smoke/layout-smoke-report.json`
+          ]
+        }
+      };
     }
     return {
       status: "action_required",
@@ -239,6 +296,26 @@ export class CourseProductionPipelineService {
 
   private statePath(runId: string): string {
     return path.join(this.workspaceRoot, "runs", runId, "quality", "production-pipeline", "pipeline-state.json");
+  }
+
+  private async readLayoutSmokeReport(runId: string): Promise<{ status: string; issues: PreviewLayoutSmokeIssue[] } | undefined> {
+    try {
+      const parsed = JSON.parse(
+        await readFile(path.join(this.workspaceRoot, "runs", runId, "quality", "layout-smoke", "layout-smoke-report.json"), "utf8")
+      ) as unknown;
+      if (!isRecord(parsed)) {
+        return undefined;
+      }
+      return {
+        status: typeof parsed.status === "string" ? parsed.status : "",
+        issues: Array.isArray(parsed.issues) ? (parsed.issues as PreviewLayoutSmokeIssue[]) : []
+      };
+    } catch (error) {
+      if (isRecord(error) && error.code === "ENOENT") {
+        return undefined;
+      }
+      throw error;
+    }
   }
 }
 
