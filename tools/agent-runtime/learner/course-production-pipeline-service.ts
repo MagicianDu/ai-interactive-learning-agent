@@ -202,15 +202,20 @@ export class CourseProductionPipelineService {
                   manifestPath: `runs/${state.runId}/quality/imagegen/imagegen-prompt-manifest.json`,
                   pendingItems: batch.pendingItems,
                   failedItems: batch.failedItems,
-                  codexInstruction:
-                    "Regenerate failed imagegen items, record them through learning_agent.record_imagegen_batch_item, then validate assets again. Do not reuse images across pages."
+                  codexInstruction: [
+                    "Regenerate failed imagegen items, then validate assets again.",
+                    ...batch.executionChecklist,
+                    `Failed item summary: ${batch.retrySummary.reasons.join("; ") || "none"}.`
+                  ].join("\n")
                 }
               : {
                   kind: "generate_imagegen_assets",
                   manifestPath: `runs/${state.runId}/quality/imagegen/imagegen-prompt-manifest.json`,
                   pendingItems: batch.pendingItems,
-                  codexInstruction:
-                    "Generate one independent imagegen teaching illustration for each pending item, then record it through learning_agent.record_imagegen_batch_item. Do not reuse images across pages."
+                  codexInstruction: [
+                    "Generate one independent imagegen teaching illustration for each pending item.",
+                    ...batch.executionChecklist
+                  ].join("\n")
           }
         };
       }

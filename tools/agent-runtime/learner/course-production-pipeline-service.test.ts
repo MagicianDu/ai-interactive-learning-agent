@@ -150,6 +150,7 @@ describe("CourseProductionPipelineService", () => {
       stage: "imagegen_batch",
       nextAction: {
         kind: "generate_imagegen_assets",
+        codexInstruction: expect.stringContaining("Call imagegen with the imagePrompt for lesson-a/p1"),
         pendingItems: [
           { lessonId: "lesson-a", pageId: "p1" },
           { lessonId: "lesson-a", pageId: "p2" }

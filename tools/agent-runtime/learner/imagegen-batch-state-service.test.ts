@@ -19,6 +19,24 @@ describe("ImagegenBatchStateService", () => {
     expect(result).toMatchObject({
       status: "batch_started",
       totalItems: 2,
+      nextItem: {
+        lessonId: "lesson-a",
+        pageId: "p1",
+        imagePrompt: "Visualize concept A. No long prose, no tables, no UI text boxes."
+      },
+      executionChecklist: expect.arrayContaining([
+        expect.stringContaining("Call imagegen"),
+        expect.stringContaining("Save the generated PNG/WebP"),
+        expect.stringContaining("record_imagegen_batch_item")
+      ]),
+      retrySummary: {
+        failedCount: 0,
+        reasons: []
+      },
+      evidencePaths: [
+        "runs/image-batch/quality/imagegen/imagegen-prompt-manifest.json",
+        "runs/image-batch/quality/imagegen/imagegen-batch-state.json"
+      ],
       pendingItems: [
         { lessonId: "lesson-a", pageId: "p1", status: "pending" },
         { lessonId: "lesson-a", pageId: "p2", status: "pending" }
@@ -41,7 +59,19 @@ describe("ImagegenBatchStateService", () => {
       status: "failed",
       failureReason: "image repeated page title"
     });
-    expect(failed.pendingItems[0]).toMatchObject({ status: "failed", retryCount: 1 });
+    expect(failed).toMatchObject({
+      nextItem: {
+        lessonId: "lesson-a",
+        pageId: "p1",
+        status: "failed",
+        retryCount: 1,
+        failureReason: "image repeated page title"
+      },
+      retrySummary: {
+        failedCount: 1,
+        reasons: ["lesson-a/p1: image repeated page title"]
+      }
+    });
 
     const png = path.join(root, "generated.png");
     await writeFile(png, "png-data", "utf8");
@@ -55,7 +85,12 @@ describe("ImagegenBatchStateService", () => {
     expect(succeeded).toMatchObject({
       status: "batch_complete",
       completedItems: 1,
-      failedItems: []
+      failedItems: [],
+      nextItem: undefined,
+      retrySummary: {
+        failedCount: 0,
+        reasons: []
+      }
     });
     const lesson = JSON.parse(
       await readFile(path.join(root, "runs", "image-record", "preview", "lessons", "lesson-a.json"), "utf8")

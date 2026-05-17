@@ -31,6 +31,13 @@ export type ImagegenBatchStateResult = {
   completedItems: number;
   pendingItems: ImagegenBatchItem[];
   failedItems: ImagegenBatchItem[];
+  nextItem: ImagegenBatchItem | undefined;
+  executionChecklist: string[];
+  retrySummary: {
+    failedCount: number;
+    reasons: string[];
+  };
+  evidencePaths: string[];
   statePath: string;
 };
 
@@ -140,6 +147,7 @@ export class ImagegenBatchStateService {
   private toResult(state: ImagegenBatchState, status: ImagegenBatchStateResult["status"]): ImagegenBatchStateResult {
     const pendingItems = state.items.filter((item) => item.status !== "succeeded");
     const failedItems = state.items.filter((item) => item.status === "failed");
+    const nextItem = failedItems[0] ?? pendingItems[0];
     return {
       status,
       runId: state.runId,
@@ -147,6 +155,16 @@ export class ImagegenBatchStateService {
       completedItems: state.items.filter((item) => item.status === "succeeded").length,
       pendingItems,
       failedItems,
+      nextItem,
+      executionChecklist: buildExecutionChecklist(nextItem),
+      retrySummary: {
+        failedCount: failedItems.length,
+        reasons: failedItems.map((item) => `${item.lessonId}/${item.pageId}: ${item.failureReason ?? "unknown failure"}`)
+      },
+      evidencePaths: [
+        `runs/${state.runId}/quality/imagegen/imagegen-prompt-manifest.json`,
+        `runs/${state.runId}/quality/imagegen/imagegen-batch-state.json`
+      ],
       statePath: this.statePath(state.runId)
     };
   }
@@ -187,4 +205,16 @@ function assertSafeRunId(runId: string): void {
   if (!RUN_ID_PATTERN.test(runId)) {
     throw new AgentRuntimeError("runId must match /^[a-z][a-z0-9-]{0,63}$/", "INVALID_RUN_CONFIG");
   }
+}
+
+function buildExecutionChecklist(nextItem: ImagegenBatchItem | undefined): string[] {
+  if (!nextItem) {
+    return ["All imagegen items have been recorded. Run learning_agent.validate_imagegen_assets before layout smoke."];
+  }
+  return [
+    `Call imagegen with the imagePrompt for ${nextItem.lessonId}/${nextItem.pageId}.`,
+    "Save the generated PNG/WebP to a local temporary file.",
+    "Call learning_agent.record_imagegen_batch_item with status=succeeded and sourceImagePath, or status=failed with a concrete failureReason.",
+    "Do not reuse images across pages; regenerate if the image repeats the page title, bottom line, table, or UI panel."
+  ];
 }
