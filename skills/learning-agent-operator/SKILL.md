@@ -109,6 +109,8 @@ Codex should loop through the manifest, call imagegen for each item, record ever
 
 Each page must use an independent teaching image. Do not reuse one unit-level image across all pages; `learning_agent.validate_imagegen_assets` blocks duplicate image content even when copied to different preview file paths. When a dev server is running, run `npm run smoke:layout -- --runId <run-id> --desktop-only` before handoff to catch page scroll, missing images, console errors, and content overflow.
 
+In the one-shot production pipeline, prefer the `nextItem` and `executionChecklist` returned by `learning_agent.next_course_production_action` over manually inspecting the manifest. They tell Codex which page image to generate next, how to record the result, and how to handle retry failures without asking the learner to approve image artifacts.
+
 6. When quality is failed or source/structure/learner warnings remain, create a calibration brief for Codex and revise before preview:
 
 ```json
@@ -140,6 +142,8 @@ Use `apply_learning_revision.changedPages` and `qualityAfter`, then confirm `get
 ```
 
 When `qualityReport.status=failed`, do not export in the default learner flow. Revise the affected lesson/page from `topIssues` and call `learning_agent.publish_learning_course` again. `expertOverrideReason` is only for maintainer/debug exports.
+
+For production-quality regression, run `npm run quality:production` after at least two generated runs for the same source have content review, imagegen, and layout evidence. This is an operator gate, not a learner-facing step.
 
 ## Learner-Facing Response Shape
 

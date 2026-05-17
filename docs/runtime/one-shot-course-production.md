@@ -39,16 +39,36 @@ Do not show these artifacts unless the learner explicitly asks for expert detail
 - `author_course_bundle`: Codex authors and publishes the initial bundle.
 - `run_content_review`: Codex calls `learning_agent.prepare_content_review`, critiques the course, revises it, republishes, then records a concrete review report.
 - `revise_from_content_review`: Codex fixes the listed content-review blockers before imagegen.
-- `generate_imagegen_assets`: Codex calls imagegen for every pending page and records each result with `learning_agent.record_imagegen_batch_item`.
-- `fix_imagegen_assets`: Codex regenerates failed images and records them again.
+- `generate_imagegen_assets`: Codex uses the returned `nextItem` and `executionChecklist`, calls imagegen for the page-specific prompt, saves the PNG/WebP, and records the result with `learning_agent.record_imagegen_batch_item`.
+- `fix_imagegen_assets`: Codex uses `retrySummary` to regenerate failed images and records them again.
 - `run_layout_smoke`: Codex runs the returned `npm run smoke:layout` command.
 - `fix_layout`: Codex fixes pages named in the layout report and reruns smoke.
 - `handoff_preview`: Codex returns the preview URL and quality summary to the learner.
+
+## Production Benchmark
+
+`CourseProductionBenchmarkService` is an operator-side gate for repeated real-source production runs. It reads existing run artifacts only; it does not generate courses.
+
+For each source target, the benchmark expects at least two production repeats. Each run must have:
+
+- `course-quality-report.json` score >= 90.
+- content review state with at least 3 completed rounds and latest verdict `pass`.
+- imagegen batch state with every item `succeeded`.
+- layout smoke report with status `passed`.
+
+Use:
+
+```bash
+npm run quality:production
+```
+
+This command currently verifies the benchmark fixture. For real seed-user validation, create a small wrapper or test target that points to the repeated run IDs for the same source.
 
 ## Commands
 
 ```bash
 npm run pipeline:fixture
+npm run quality:production
 npm run smoke:layout -- --runId <run-id> --desktop-only
 ```
 

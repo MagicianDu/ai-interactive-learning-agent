@@ -88,6 +88,9 @@ describe("skill and MCP contracts", () => {
     expect(sourceToCourse).toContain("blog");
     expect(sourceToCourse).toContain("contentBlueprint.units[*].pageBlueprints");
     expect(operator).toContain("contentBlueprint.units[*].pageBlueprints");
+    expect(sourceToCourse).toContain("executionChecklist");
+    expect(sourceToCourse).toContain("nextItem");
+    expect(operator).toContain("quality:production");
     expectContainsInOrder(sourceToCourse, learnerDefaultTools);
 
     expect(feedbackRevision).toContain("name: learner-feedback-revision");
