@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { AgentRuntimeError } from "../errors.js";
+import { ContentReviewLoopService } from "./content-review-loop-service.js";
 
 export type CourseProductionStage =
   | "needs_authoring"
@@ -38,6 +39,18 @@ export type CourseProductionNextAction =
       codexInstruction: string;
     }
   | {
+      kind: "run_content_review";
+      reviewRound: number;
+      briefPath: string;
+      codexInstruction: string;
+    }
+  | {
+      kind: "revise_from_content_review";
+      reviewRound: number;
+      requiredFixes: string[];
+      codexInstruction: string;
+    }
+  | {
       kind: "handoff_preview";
       previewUrl: string;
       qualitySummary: string;
@@ -49,6 +62,13 @@ export type CourseProductionEvent = {
   summary: string;
   artifactPaths: string[];
   createdAt: string;
+};
+
+export type RecordCourseProductionEventInput = {
+  runId: string;
+  eventKind: string;
+  summary: string;
+  artifactPaths: string[];
 };
 
 export type CourseProductionState = StartCourseProductionInput & {
@@ -107,6 +127,41 @@ export class CourseProductionPipelineService {
         }
       };
     }
+    if (hasEvent(state, "course_published")) {
+      const review = await new ContentReviewLoopService(this.workspaceRoot).evaluate({
+        runId: state.runId,
+        maxRounds: state.defaults.reviewRounds,
+        minQualityScore: state.defaults.minQualityScore
+      });
+      if (review.status === "review_required") {
+        return {
+          status: "action_required",
+          runId: state.runId,
+          stage: "content_review",
+          statePath: this.statePath(state.runId),
+          nextAction: {
+            kind: "run_content_review",
+            reviewRound: review.nextReviewRound,
+            briefPath: `runs/${state.runId}/quality/content-review/round-${String(review.nextReviewRound).padStart(3, "0")}-content-review.json`,
+            codexInstruction: review.codexInstruction
+          }
+        };
+      }
+      if (review.status === "revision_required") {
+        return {
+          status: "action_required",
+          runId: state.runId,
+          stage: "needs_content_revision",
+          statePath: this.statePath(state.runId),
+          nextAction: {
+            kind: "revise_from_content_review",
+            reviewRound: state.defaults.reviewRounds,
+            requiredFixes: [review.blockingReason],
+            codexInstruction: review.codexInstruction
+          }
+        };
+      }
+    }
     return {
       status: "action_required",
       runId: state.runId,
@@ -114,6 +169,22 @@ export class CourseProductionPipelineService {
       statePath: this.statePath(state.runId),
       nextAction: authorCourseBundleAction(state)
     };
+  }
+
+  async recordEvent(input: RecordCourseProductionEventInput): Promise<CourseProductionState> {
+    assertSafeRunId(input.runId);
+    const state = await this.readState(input.runId);
+    state.events.push({
+      eventKind: input.eventKind,
+      summary: input.summary,
+      artifactPaths: input.artifactPaths,
+      createdAt: new Date().toISOString()
+    });
+    if (input.eventKind === "course_published") {
+      state.stage = "content_review";
+    }
+    await this.writeState(state);
+    return state;
   }
 
   private async readState(runId: string): Promise<CourseProductionState> {
@@ -153,6 +224,10 @@ function difficultyLabel(value: CourseProductionDefaults["difficulty"]): string 
     return "专家";
   }
   return "入门";
+}
+
+function hasEvent(state: CourseProductionState, eventKind: string): boolean {
+  return state.events.some((event) => event.eventKind === eventKind);
 }
 
 function assertSafeRunId(runId: string): void {

@@ -43,8 +43,14 @@ export type {
   CourseProductionNextAction,
   CourseProductionStage,
   CourseProductionState,
+  RecordCourseProductionEventInput,
   StartCourseProductionInput
 } from "./learner/course-production-pipeline-service.js";
+export { ContentReviewLoopService } from "./learner/content-review-loop-service.js";
+export type {
+  ContentReviewLoopResult,
+  EvaluateContentReviewLoopInput
+} from "./learner/content-review-loop-service.js";
 export { AuthoringQualityComparisonService } from "./learner/authoring-quality-comparison.js";
 export { AuthoringContextService } from "./learner/authoring-context-service.js";
 export { GroundedCourseService } from "./learner/grounded-course-service.js";
