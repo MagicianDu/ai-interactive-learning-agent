@@ -74,6 +74,15 @@ npm run smoke:layout -- --runId <run-id> --desktop-only
 
 ## Verification Record
 
+Quality production mainline completed on 2026-05-17:
+
+- `npm run test:ci`: passed.
+- `npm run test:regression`: passed.
+- `npm run codex:mcp:check`: passed.
+- `npm run pipeline:fixture`: passed.
+- `npm run quality:production`: passed.
+- `git diff --check`: passed.
+
 Completed on 2026-05-17:
 
 - `npm run test:ci`: passed.

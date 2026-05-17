@@ -1,6 +1,6 @@
 # Quality Production Mainline Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 把真实资料到高质量 Web Deck 的主干生产能力做成可回归、可门禁、可由 Codex 顺滑执行的流程。
 
@@ -44,7 +44,7 @@
 - Create: `tools/agent-runtime/learner/course-production-benchmark-service.test.ts`
 - Modify: `tools/agent-runtime/index.ts`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Create tests that build temp `runs/<runId>` folders with:
 
@@ -67,7 +67,7 @@ npm test -- --run tools/agent-runtime/learner/course-production-benchmark-servic
 
 Expected: FAIL because the service does not exist.
 
-- [ ] **Step 2: Implement service**
+- [x] **Step 2: Implement service**
 
 Service API:
 
@@ -87,7 +87,7 @@ export class CourseProductionBenchmarkService {
 
 The service reads existing run artifacts only. It does not generate content.
 
-- [ ] **Step 3: Verify and commit**
+- [x] **Step 3: Verify and commit**
 
 Run:
 
@@ -110,7 +110,7 @@ git commit -m "feat: add course production benchmark gate"
 - Modify: `tools/agent-runtime/learner/content-review-service.test.ts`
 - Modify: `tools/mcp-server/tool-contracts.ts`
 
-- [ ] **Step 1: Write failing test**
+- [x] **Step 1: Write failing test**
 
 Add a content-review fixture with pages that look structurally valid but low taste:
 
@@ -136,7 +136,7 @@ npm test -- --run tools/agent-runtime/learner/content-review-service.test.ts
 
 Expected: FAIL because metrics do not exist.
 
-- [ ] **Step 2: Implement metrics and issue categories**
+- [x] **Step 2: Implement metrics and issue categories**
 
 Add categories:
 
@@ -145,7 +145,7 @@ Add categories:
 
 Keep existing categories compatible. Metrics should be deterministic and based on preview JSON only.
 
-- [ ] **Step 3: Verify and commit**
+- [x] **Step 3: Verify and commit**
 
 Run:
 
@@ -168,7 +168,7 @@ git commit -m "feat: strengthen content taste review metrics"
 - Modify: `tools/agent-runtime/learner/imagegen-batch-state-service.test.ts`
 - Modify: `tools/agent-runtime/learner/course-production-pipeline-service.ts`
 
-- [ ] **Step 1: Write failing test**
+- [x] **Step 1: Write failing test**
 
 Expected batch result includes:
 
@@ -185,11 +185,11 @@ npm test -- --run tools/agent-runtime/learner/imagegen-batch-state-service.test.
 
 Expected: FAIL because fields are missing.
 
-- [ ] **Step 2: Implement summary fields**
+- [x] **Step 2: Implement summary fields**
 
 Add fields without changing existing status names. Pipeline action should include checklist text in `codexInstruction`.
 
-- [ ] **Step 3: Verify and commit**
+- [x] **Step 3: Verify and commit**
 
 Run:
 
@@ -213,7 +213,7 @@ git commit -m "feat: add imagegen batch execution summary"
 - Modify: `docs/runtime/one-shot-course-production.md`
 - Modify: `package.json`
 
-- [ ] **Step 1: Write failing contract/docs test if needed**
+- [x] **Step 1: Write failing contract/docs test if needed**
 
 Run current contract test first:
 
@@ -228,7 +228,7 @@ If the current assertions do not cover the new protocol, update the test to requ
 - final handoff calls `learning_agent.get_learning_preview`.
 - imagegen batch execution summary is mentioned.
 
-- [ ] **Step 2: Update docs and scripts**
+- [x] **Step 2: Update docs and scripts**
 
 Add `quality:production` script:
 
@@ -238,7 +238,7 @@ Add `quality:production` script:
 
 Docs should describe the benchmark evidence and Codex user flow in Chinese.
 
-- [ ] **Step 3: Verify and commit**
+- [x] **Step 3: Verify and commit**
 
 Run:
 
@@ -261,7 +261,7 @@ git commit -m "docs: script codex production workflow"
 **Files:**
 - Modify: this plan file, mark completed items.
 
-- [ ] **Step 1: Run full checks**
+- [x] **Step 1: Run full checks**
 
 ```bash
 npm run test:ci
@@ -274,7 +274,7 @@ git diff --check
 
 Expected: all pass.
 
-- [ ] **Step 2: Update verification record and commit**
+- [x] **Step 2: Update verification record and commit**
 
 Record the verification in `docs/runtime/one-shot-course-production.md` and this plan.
 
