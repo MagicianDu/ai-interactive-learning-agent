@@ -15,6 +15,9 @@ describe("LearningAgentRuntimeTools", () => {
       expect.arrayContaining([
         "learning_agent.create_learning_project",
         "learning_agent.prepare_learning_course",
+        "learning_agent.start_course_production",
+        "learning_agent.next_course_production_action",
+        "learning_agent.record_course_production_event",
         "learning_agent.list_learning_projects",
         "learning_agent.archive_learning_project",
         "learning_agent.get_authoring_context",
@@ -25,6 +28,8 @@ describe("LearningAgentRuntimeTools", () => {
         "learning_agent.create_imagegen_manifest",
         "learning_agent.record_imagegen_asset",
         "learning_agent.validate_imagegen_assets",
+        "learning_agent.start_imagegen_batch",
+        "learning_agent.record_imagegen_batch_item",
         "learning_agent.compare_authoring_quality",
         "learning_agent.create_quality_revision",
         "learning_agent.get_learning_preview",
@@ -638,6 +643,59 @@ describe("LearningAgentRuntimeTools", () => {
       checkedPageCount: 1,
       issues: []
     });
+  });
+
+  test("course production tools start and return next action", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
+    const tools = new LearningAgentRuntimeTools(root);
+
+    const start = await tools.callTool("learning_agent.start_course_production", {
+      runId: "mcp-pipeline",
+      sourceKind: "book",
+      learnerRequest: "中文研究生自学课程，总览 + topic。",
+      targetMode: "student_self_study_textbook",
+      defaults: {
+        difficulty: "graduate",
+        strategy: "overview_plus_topic",
+        overviewPages: 10,
+        topicPages: 8,
+        topicCount: 4,
+        reviewRounds: 3,
+        minQualityScore: 90
+      }
+    });
+
+    expect(start).toMatchObject({
+      status: "production_started",
+      nextAction: { kind: "author_course_bundle" }
+    });
+
+    const next = await tools.callTool("learning_agent.next_course_production_action", { runId: "mcp-pipeline" });
+    expect(next).toMatchObject({
+      status: "action_required",
+      nextAction: { kind: "author_course_bundle" }
+    });
+  });
+
+  test("imagegen batch state tools start and record item status", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
+    const tools = new LearningAgentRuntimeTools(root);
+    await writeImagegenFixture(root, "mcp-imagegen-state");
+    const generatedPath = path.join(root, "generated-state.png");
+    await writeFile(generatedPath, Buffer.from([137, 80, 78, 71]));
+
+    await tools.callTool("learning_agent.create_imagegen_manifest", { runId: "mcp-imagegen-state" });
+    const started = await tools.callTool("learning_agent.start_imagegen_batch", { runId: "mcp-imagegen-state" });
+    const recorded = await tools.callTool("learning_agent.record_imagegen_batch_item", {
+      runId: "mcp-imagegen-state",
+      lessonId: "lesson-a",
+      pageId: "page-01",
+      status: "succeeded",
+      sourceImagePath: generatedPath
+    });
+
+    expect(started).toMatchObject({ status: "batch_started", totalItems: 1 });
+    expect(recorded).toMatchObject({ status: "batch_complete", completedItems: 1 });
   });
 
   test("exports a preview-ready learning course through tool handlers", async () => {

@@ -11,9 +11,11 @@ import {
   CalibrationService,
   CodexManualAdapter,
   ContentReviewService,
+  CourseProductionPipelineService,
   CoursePackService,
   createRunConfigFromArgs,
   ImagegenAssetBatchService,
+  ImagegenBatchStateService,
   LessonPromotionService,
   LearningCoursePublisher,
   GroundedCourseService,
@@ -63,6 +65,12 @@ export class LearningAgentRuntimeTools {
         return this.createLearningProject(input);
       case "learning_agent.prepare_learning_course":
         return this.prepareLearningCourse(input);
+      case "learning_agent.start_course_production":
+        return this.startCourseProduction(input);
+      case "learning_agent.next_course_production_action":
+        return this.nextCourseProductionAction(input);
+      case "learning_agent.record_course_production_event":
+        return this.recordCourseProductionEvent(input);
       case "learning_agent.list_learning_projects":
         return this.listLearningProjects(input);
       case "learning_agent.archive_learning_project":
@@ -85,6 +93,10 @@ export class LearningAgentRuntimeTools {
         return this.recordImagegenAsset(input);
       case "learning_agent.validate_imagegen_assets":
         return this.validateImagegenAssets(input);
+      case "learning_agent.start_imagegen_batch":
+        return this.startImagegenBatch(input);
+      case "learning_agent.record_imagegen_batch_item":
+        return this.recordImagegenBatchItem(input);
       case "learning_agent.compare_authoring_quality":
         return this.compareAuthoringQuality(input);
       case "learning_agent.create_quality_revision":
@@ -168,6 +180,33 @@ export class LearningAgentRuntimeTools {
       selectedChapters: optionalStringArray(options.selectedChapters),
       selectedTopics: optionalStringArray(options.selectedTopics),
       maxAnchors: optionalNumber(options.maxAnchors)
+    });
+  }
+
+  private async startCourseProduction(input: unknown): Promise<unknown> {
+    const options = expectRecord(input);
+    return new CourseProductionPipelineService(this.workspaceRoot).start({
+      runId: requiredString(options, "runId"),
+      sourceKind: requiredSourceKind(options),
+      learnerRequest: requiredString(options, "learnerRequest"),
+      targetMode: requiredTargetMode(options),
+      defaults: requiredCourseProductionDefaults(options)
+    });
+  }
+
+  private async nextCourseProductionAction(input: unknown): Promise<unknown> {
+    return new CourseProductionPipelineService(this.workspaceRoot).nextAction({
+      runId: requiredString(expectRecord(input), "runId")
+    });
+  }
+
+  private async recordCourseProductionEvent(input: unknown): Promise<unknown> {
+    const options = expectRecord(input);
+    return new CourseProductionPipelineService(this.workspaceRoot).recordEvent({
+      runId: requiredString(options, "runId"),
+      eventKind: requiredString(options, "eventKind"),
+      summary: requiredString(options, "summary"),
+      artifactPaths: requiredStringArray(options, "artifactPaths")
     });
   }
 
@@ -269,6 +308,36 @@ export class LearningAgentRuntimeTools {
     return new ImagegenAssetBatchService(this.workspaceRoot).validateAssets({
       runId: requiredString(options, "runId")
     });
+  }
+
+  private async startImagegenBatch(input: unknown): Promise<unknown> {
+    return new ImagegenBatchStateService(this.workspaceRoot).start({
+      runId: requiredString(expectRecord(input), "runId")
+    });
+  }
+
+  private async recordImagegenBatchItem(input: unknown): Promise<unknown> {
+    const options = expectRecord(input);
+    const status = requiredString(options, "status");
+    if (status === "succeeded") {
+      return new ImagegenBatchStateService(this.workspaceRoot).recordItem({
+        runId: requiredString(options, "runId"),
+        lessonId: requiredString(options, "lessonId"),
+        pageId: requiredString(options, "pageId"),
+        status,
+        sourceImagePath: requiredString(options, "sourceImagePath")
+      });
+    }
+    if (status === "failed") {
+      return new ImagegenBatchStateService(this.workspaceRoot).recordItem({
+        runId: requiredString(options, "runId"),
+        lessonId: requiredString(options, "lessonId"),
+        pageId: requiredString(options, "pageId"),
+        status,
+        failureReason: requiredString(options, "failureReason")
+      });
+    }
+    throw new Error("status must be succeeded or failed");
   }
 
   private async compareAuthoringQuality(input: unknown): Promise<unknown> {
@@ -573,6 +642,9 @@ function isLearningAgentToolName(name: string): name is LearningAgentToolName {
   return [
     "learning_agent.create_learning_project",
     "learning_agent.prepare_learning_course",
+    "learning_agent.start_course_production",
+    "learning_agent.next_course_production_action",
+    "learning_agent.record_course_production_event",
     "learning_agent.list_learning_projects",
     "learning_agent.archive_learning_project",
     "learning_agent.get_authoring_context",
@@ -584,6 +656,8 @@ function isLearningAgentToolName(name: string): name is LearningAgentToolName {
     "learning_agent.create_imagegen_manifest",
     "learning_agent.record_imagegen_asset",
     "learning_agent.validate_imagegen_assets",
+    "learning_agent.start_imagegen_batch",
+    "learning_agent.record_imagegen_batch_item",
     "learning_agent.compare_authoring_quality",
     "learning_agent.create_quality_revision",
     "learning_agent.get_learning_preview",
@@ -637,12 +711,73 @@ function requiredArray(input: Record<string, unknown>, key: string): unknown[] {
   return value;
 }
 
+function requiredStringArray(input: Record<string, unknown>, key: string): string[] {
+  const value = requiredArray(input, key);
+  if (!value.every((item): item is string => typeof item === "string" && item.trim().length > 0)) {
+    throw new Error(`${key} must be an array of non-empty strings`);
+  }
+  return value.map((item) => item.trim());
+}
+
 function requiredNumber(input: Record<string, unknown>, key: string): number {
   const value = input[key];
   if (typeof value !== "number") {
     throw new Error(`${key} must be a number`);
   }
   return value;
+}
+
+function requiredSourceKind(input: Record<string, unknown>): "book" | "paper" | "patent" | "blog" | "notes" | "topic" {
+  const value = requiredString(input, "sourceKind");
+  if (value === "book" || value === "paper" || value === "patent" || value === "blog" || value === "notes" || value === "topic") {
+    return value;
+  }
+  throw new Error("sourceKind must be book, paper, patent, blog, notes, or topic");
+}
+
+function requiredTargetMode(input: Record<string, unknown>): "student_self_study_textbook" | "professor_web_deck" {
+  const value = requiredString(input, "targetMode");
+  if (value === "student_self_study_textbook" || value === "professor_web_deck") {
+    return value;
+  }
+  throw new Error("targetMode must be student_self_study_textbook or professor_web_deck");
+}
+
+function requiredCourseProductionDefaults(input: Record<string, unknown>): {
+  difficulty: "beginner" | "undergraduate" | "graduate" | "expert";
+  strategy: "overview_plus_topic" | "chapter_guided" | "topic_guided";
+  overviewPages: number;
+  topicPages: number;
+  topicCount: number;
+  reviewRounds: number;
+  minQualityScore: number;
+} {
+  const defaults = expectRecord(input.defaults);
+  return {
+    difficulty: requiredProductionDifficulty(defaults),
+    strategy: requiredProductionStrategy(defaults),
+    overviewPages: requiredNumber(defaults, "overviewPages"),
+    topicPages: requiredNumber(defaults, "topicPages"),
+    topicCount: requiredNumber(defaults, "topicCount"),
+    reviewRounds: requiredNumber(defaults, "reviewRounds"),
+    minQualityScore: requiredNumber(defaults, "minQualityScore")
+  };
+}
+
+function requiredProductionDifficulty(input: Record<string, unknown>): "beginner" | "undergraduate" | "graduate" | "expert" {
+  const value = requiredString(input, "difficulty");
+  if (value === "beginner" || value === "undergraduate" || value === "graduate" || value === "expert") {
+    return value;
+  }
+  throw new Error("difficulty must be beginner, undergraduate, graduate, or expert");
+}
+
+function requiredProductionStrategy(input: Record<string, unknown>): "overview_plus_topic" | "chapter_guided" | "topic_guided" {
+  const value = requiredString(input, "strategy");
+  if (value === "overview_plus_topic" || value === "chapter_guided" || value === "topic_guided") {
+    return value;
+  }
+  throw new Error("strategy must be overview_plus_topic, chapter_guided, or topic_guided");
 }
 
 function requiredReviewIssues(input: Record<string, unknown>, key: string): ContentReviewIssue[] {

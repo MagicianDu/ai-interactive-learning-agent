@@ -3,6 +3,9 @@ import { courseIntentValues } from "../agent-runtime/learner/course-intent.js";
 export type LearningAgentToolName =
   | "learning_agent.create_learning_project"
   | "learning_agent.prepare_learning_course"
+  | "learning_agent.start_course_production"
+  | "learning_agent.next_course_production_action"
+  | "learning_agent.record_course_production_event"
   | "learning_agent.list_learning_projects"
   | "learning_agent.archive_learning_project"
   | "learning_agent.get_authoring_context"
@@ -14,6 +17,8 @@ export type LearningAgentToolName =
   | "learning_agent.create_imagegen_manifest"
   | "learning_agent.record_imagegen_asset"
   | "learning_agent.validate_imagegen_assets"
+  | "learning_agent.start_imagegen_batch"
+  | "learning_agent.record_imagegen_batch_item"
   | "learning_agent.compare_authoring_quality"
   | "learning_agent.create_quality_revision"
   | "learning_agent.get_learning_preview"
@@ -78,6 +83,19 @@ const contentReviewIssuesSchema = {
     ["severity", "category", "finding", "recommendation"]
   )
 };
+const courseProductionDefaultsSchema = objectSchema(
+  {
+    difficulty: { type: "string", enum: ["beginner", "undergraduate", "graduate", "expert"] },
+    strategy: { type: "string", enum: ["overview_plus_topic", "chapter_guided", "topic_guided"] },
+    overviewPages: numberSchema,
+    topicPages: numberSchema,
+    topicCount: numberSchema,
+    reviewRounds: numberSchema,
+    minQualityScore: numberSchema
+  },
+  ["difficulty", "strategy", "overviewPages", "topicPages", "topicCount", "reviewRounds", "minQualityScore"]
+);
+const imagegenBatchItemStatusSchema = { type: "string", enum: ["succeeded", "failed"] };
 
 export const learningAgentToolContracts: LearningAgentToolContract[] = [
   {
@@ -123,6 +141,36 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
         maxAnchors: numberSchema
       },
       ["request"]
+    )
+  },
+  {
+    name: "learning_agent.start_course_production",
+    description:
+      "Learner-facing pipeline tool. Start a one-shot course production run from a natural-language learner request and return the next Codex action without exposing internal artifacts.",
+    inputSchema: objectSchema(
+      {
+        runId: stringSchema,
+        sourceKind: stringSchema,
+        learnerRequest: stringSchema,
+        targetMode: { type: "string", enum: ["student_self_study_textbook", "professor_web_deck"] },
+        defaults: courseProductionDefaultsSchema
+      },
+      ["runId", "sourceKind", "learnerRequest", "targetMode", "defaults"]
+    )
+  },
+  {
+    name: "learning_agent.next_course_production_action",
+    description:
+      "Learner-facing pipeline tool. Inspect production state and return the next Codex action across content review, imagegen batch, layout smoke, or final preview handoff.",
+    inputSchema: objectSchema({ runId: stringSchema }, ["runId"])
+  },
+  {
+    name: "learning_agent.record_course_production_event",
+    description:
+      "Internal pipeline tool. Record a Codex-completed course production event such as course_published, review_recorded, images_recorded, or layout_smoke_passed.",
+    inputSchema: objectSchema(
+      { runId: stringSchema, eventKind: stringSchema, summary: stringSchema, artifactPaths: stringArraySchema },
+      ["runId", "eventKind", "summary", "artifactPaths"]
     )
   },
   {
@@ -212,6 +260,28 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
     description:
       "Learner-facing asset tool. Validate that the current preview uses imagegen PNG/WebP assets and safe prompts rather than missing files, SVG placeholders, or text-heavy image prompts.",
     inputSchema: objectSchema({ runId: stringSchema }, ["runId"])
+  },
+  {
+    name: "learning_agent.start_imagegen_batch",
+    description:
+      "Learner-facing asset tool. Create or resume imagegen batch state from the manifest and return pending page-level image generation items.",
+    inputSchema: objectSchema({ runId: stringSchema }, ["runId"])
+  },
+  {
+    name: "learning_agent.record_imagegen_batch_item",
+    description:
+      "Learner-facing asset tool. Record success or failure for one imagegen batch item and update retry/progress state.",
+    inputSchema: objectSchema(
+      {
+        runId: stringSchema,
+        lessonId: stringSchema,
+        pageId: stringSchema,
+        status: imagegenBatchItemStatusSchema,
+        sourceImagePath: stringSchema,
+        failureReason: stringSchema
+      },
+      ["runId", "lessonId", "pageId", "status"]
+    )
   },
   {
     name: "learning_agent.compare_authoring_quality",
@@ -378,6 +448,9 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
 
 const learnerToolNames = [
   "learning_agent.prepare_learning_course",
+  "learning_agent.start_course_production",
+  "learning_agent.next_course_production_action",
+  "learning_agent.record_course_production_event",
   "learning_agent.list_learning_projects",
   "learning_agent.archive_learning_project",
   "learning_agent.publish_learning_course",
@@ -387,6 +460,8 @@ const learnerToolNames = [
   "learning_agent.create_imagegen_manifest",
   "learning_agent.record_imagegen_asset",
   "learning_agent.validate_imagegen_assets",
+  "learning_agent.start_imagegen_batch",
+  "learning_agent.record_imagegen_batch_item",
   "learning_agent.get_learning_preview",
   "learning_agent.revise_learning_course",
   "learning_agent.apply_learning_revision",
