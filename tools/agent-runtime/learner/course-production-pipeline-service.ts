@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { AgentRuntimeError } from "../errors.js";
 import { ContentReviewLoopService } from "./content-review-loop-service.js";
+import { type ImagegenBatchItem, ImagegenBatchStateService } from "./imagegen-batch-state-service.js";
 
 export type CourseProductionStage =
   | "needs_authoring"
@@ -48,6 +49,19 @@ export type CourseProductionNextAction =
       kind: "revise_from_content_review";
       reviewRound: number;
       requiredFixes: string[];
+      codexInstruction: string;
+    }
+  | {
+      kind: "generate_imagegen_assets";
+      manifestPath: string;
+      pendingItems: ImagegenBatchItem[];
+      codexInstruction: string;
+    }
+  | {
+      kind: "fix_imagegen_assets";
+      manifestPath: string;
+      pendingItems: ImagegenBatchItem[];
+      failedItems: ImagegenBatchItem[];
       codexInstruction: string;
     }
   | {
@@ -159,6 +173,32 @@ export class CourseProductionPipelineService {
             requiredFixes: [review.blockingReason],
             codexInstruction: review.codexInstruction
           }
+        };
+      }
+      const batch = await new ImagegenBatchStateService(this.workspaceRoot).readOrStart({ runId: state.runId });
+      if (batch.status !== "batch_complete") {
+        return {
+          status: "action_required",
+          runId: state.runId,
+          stage: batch.failedItems.length > 0 ? "needs_imagegen_retry" : "imagegen_batch",
+          statePath: this.statePath(state.runId),
+          nextAction:
+            batch.failedItems.length > 0
+              ? {
+                  kind: "fix_imagegen_assets",
+                  manifestPath: `runs/${state.runId}/quality/imagegen/imagegen-prompt-manifest.json`,
+                  pendingItems: batch.pendingItems,
+                  failedItems: batch.failedItems,
+                  codexInstruction:
+                    "Regenerate failed imagegen items, record them through learning_agent.record_imagegen_batch_item, then validate assets again. Do not reuse images across pages."
+                }
+              : {
+                  kind: "generate_imagegen_assets",
+                  manifestPath: `runs/${state.runId}/quality/imagegen/imagegen-prompt-manifest.json`,
+                  pendingItems: batch.pendingItems,
+                  codexInstruction:
+                    "Generate one independent imagegen teaching illustration for each pending item, then record it through learning_agent.record_imagegen_batch_item. Do not reuse images across pages."
+                }
         };
       }
     }

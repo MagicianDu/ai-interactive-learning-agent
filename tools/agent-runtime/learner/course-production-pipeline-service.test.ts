@@ -129,6 +129,34 @@ describe("CourseProductionPipelineService", () => {
       }
     });
   });
+
+  test("returns imagegen batch action after content review passes", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "course-production-"));
+    const service = new CourseProductionPipelineService(root);
+    await service.start(courseProductionInput("pipeline-imagegen"));
+    await writePublishedCourse(root, "pipeline-imagegen");
+    await service.recordEvent({
+      runId: "pipeline-imagegen",
+      eventKind: "course_published",
+      summary: "Initial course bundle published.",
+      artifactPaths: ["runs/pipeline-imagegen/preview/course-pack.json"]
+    });
+    await writeReviewState(root, "pipeline-imagegen", passingReviewState());
+
+    const next = await service.nextAction({ runId: "pipeline-imagegen" });
+
+    expect(next).toMatchObject({
+      status: "action_required",
+      stage: "imagegen_batch",
+      nextAction: {
+        kind: "generate_imagegen_assets",
+        pendingItems: [
+          { lessonId: "lesson-a", pageId: "p1" },
+          { lessonId: "lesson-a", pageId: "p2" }
+        ]
+      }
+    });
+  });
 });
 
 function courseProductionInput(runId: string) {
@@ -153,4 +181,41 @@ async function writeReviewState(root: string, runId: string, state: Record<strin
   const dir = path.join(root, "runs", runId, "quality", "content-review");
   await mkdir(dir, { recursive: true });
   await writeFile(path.join(dir, "content-review-state.json"), JSON.stringify(state, null, 2));
+}
+
+function passingReviewState(): Record<string, unknown> {
+  return {
+    completedRounds: 3,
+    latestVerdict: "pass",
+    latestScore: 93,
+    reports: [
+      { round: 1, concreteIssueCount: 4 },
+      { round: 2, concreteIssueCount: 3 },
+      { round: 3, concreteIssueCount: 2 }
+    ]
+  };
+}
+
+async function writePublishedCourse(root: string, runId: string): Promise<void> {
+  const previewRoot = path.join(root, "runs", runId, "preview");
+  await mkdir(path.join(previewRoot, "lessons"), { recursive: true });
+  await writeFile(
+    path.join(previewRoot, "course-pack.json"),
+    JSON.stringify({ id: runId, title: "课程", units: [{ unitId: "unit-overview", lessonId: "lesson-a" }] }, null, 2)
+  );
+  await writeFile(
+    path.join(previewRoot, "lessons", "lesson-a.json"),
+    JSON.stringify(
+      {
+        id: "lesson-a",
+        displayMode: "textbook_deck",
+        pages: [
+          { id: "p1", title: "第一页", knowledgeBoard: { coreProposition: "概念 A", bottomLine: "理解 A" } },
+          { id: "p2", title: "第二页", knowledgeBoard: { coreProposition: "概念 B", bottomLine: "理解 B" } }
+        ]
+      },
+      null,
+      2
+    )
+  );
 }

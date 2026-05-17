@@ -51,6 +51,14 @@ export type {
   ContentReviewLoopResult,
   EvaluateContentReviewLoopInput
 } from "./learner/content-review-loop-service.js";
+export { ImagegenBatchStateService } from "./learner/imagegen-batch-state-service.js";
+export type {
+  ImagegenBatchItem,
+  ImagegenBatchItemStatus,
+  ImagegenBatchState,
+  ImagegenBatchStateResult,
+  RecordImagegenBatchItemInput
+} from "./learner/imagegen-batch-state-service.js";
 export { AuthoringQualityComparisonService } from "./learner/authoring-quality-comparison.js";
 export { AuthoringContextService } from "./learner/authoring-context-service.js";
 export { GroundedCourseService } from "./learner/grounded-course-service.js";
