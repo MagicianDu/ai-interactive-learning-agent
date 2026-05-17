@@ -31,6 +31,8 @@ export type ContentReviewVerdict = "pass" | "revise" | "block";
 export type ContentReviewIssueSeverity = "critical" | "major" | "minor";
 export type ContentReviewIssueCategory =
   | "density"
+  | "knowledge_density"
+  | "content_taste"
   | "source_fidelity"
   | "structure"
   | "image_text_fit"
@@ -61,6 +63,10 @@ export type ContentReviewMetrics = {
   mechanismDepthWeakPageCount: number;
   boilerplateLearnerPhraseCount: number;
   repeatedBoardSectionLabelCount: number;
+  titleCorePropositionOverlapCount: number;
+  bottomLineRepeatsTitleCount: number;
+  genericImageIntentCount: number;
+  weakKnowledgeClaimCount: number;
 };
 
 export type ContentReviewMetricDelta = ContentReviewMetrics & {
@@ -92,6 +98,8 @@ const REVIEW_VERDICTS = new Set<ContentReviewVerdict>(["pass", "revise", "block"
 const ISSUE_SEVERITIES = new Set<ContentReviewIssueSeverity>(["critical", "major", "minor"]);
 const ISSUE_CATEGORIES = new Set<ContentReviewIssueCategory>([
   "density",
+  "knowledge_density",
+  "content_taste",
   "source_fidelity",
   "structure",
   "image_text_fit",
@@ -137,6 +145,12 @@ const BOILERPLATE_LEARNER_PHRASE_PATTERNS = [
   /更好地理解/u
 ];
 const REPEATED_BOARD_LABEL_THRESHOLD = 3;
+const GENERIC_IMAGE_INTENT_PATTERNS = [
+  /^教学插图$/u,
+  /^解释本页的关键知识关系$/u,
+  /^用于解释.*的教学插图$/u,
+  /表达条件、关系和边界/u
+];
 
 export class ContentReviewService {
   constructor(private readonly workspaceRoot = process.cwd()) {}
@@ -287,7 +301,11 @@ export class ContentReviewService {
       titleDuplicatedInImagePromptCount: 0,
       mechanismDepthWeakPageCount: 0,
       boilerplateLearnerPhraseCount: 0,
-      repeatedBoardSectionLabelCount: 0
+      repeatedBoardSectionLabelCount: 0,
+      titleCorePropositionOverlapCount: 0,
+      bottomLineRepeatsTitleCount: 0,
+      genericImageIntentCount: 0,
+      weakKnowledgeClaimCount: 0
     };
 
     for (const lesson of lessons) {
@@ -328,6 +346,18 @@ export class ContentReviewService {
           metrics.mechanismDepthWeakPageCount += 1;
         }
         metrics.boilerplateLearnerPhraseCount += countBoilerplateLearnerPhrases(page);
+        if (titleCorePropositionOverlap(page)) {
+          metrics.titleCorePropositionOverlapCount += 1;
+        }
+        if (bottomLineRepeatsTitle(page)) {
+          metrics.bottomLineRepeatsTitleCount += 1;
+        }
+        if (genericImageIntent(page)) {
+          metrics.genericImageIntentCount += 1;
+        }
+        if (weakKnowledgeClaim(page)) {
+          metrics.weakKnowledgeClaimCount += 1;
+        }
         boardLabelsInLesson.push(...boardSectionLabels(page));
       }
       metrics.repeatedBoardSectionLabelCount += countRepeatedBoardSectionLabels(boardLabelsInLesson);
@@ -631,6 +661,54 @@ function countBoilerplateLearnerPhrases(page: Record<string, unknown>): number {
   return BOILERPLATE_LEARNER_PHRASE_PATTERNS.some((pattern) => pattern.test(joined)) ? 1 : 0;
 }
 
+function titleCorePropositionOverlap(page: Record<string, unknown>): boolean {
+  const title = typeof page.title === "string" ? page.title : "";
+  const knowledgeBoard = isRecord(page.knowledgeBoard) ? page.knowledgeBoard : undefined;
+  const coreProposition = knowledgeBoard && typeof knowledgeBoard.coreProposition === "string" ? knowledgeBoard.coreProposition : "";
+  return normalizedTextOverlaps(title, coreProposition);
+}
+
+function bottomLineRepeatsTitle(page: Record<string, unknown>): boolean {
+  const title = typeof page.title === "string" ? page.title : "";
+  const knowledgeBoard = isRecord(page.knowledgeBoard) ? page.knowledgeBoard : undefined;
+  const bottomLine = knowledgeBoard && typeof knowledgeBoard.bottomLine === "string" ? knowledgeBoard.bottomLine : "";
+  return normalizedTextOverlaps(title, bottomLine);
+}
+
+function genericImageIntent(page: Record<string, unknown>): boolean {
+  const visualSpec = isRecord(page.visualSpec) ? page.visualSpec : undefined;
+  if (!visualSpec) {
+    return true;
+  }
+  const imageAlt = typeof visualSpec.imageAlt === "string" ? visualSpec.imageAlt.trim() : "";
+  const imagePrompt = typeof visualSpec.imagePrompt === "string" ? visualSpec.imagePrompt.trim() : "";
+  return [imageAlt, imagePrompt].some((value) => GENERIC_IMAGE_INTENT_PATTERNS.some((pattern) => pattern.test(value)));
+}
+
+function weakKnowledgeClaim(page: Record<string, unknown>): boolean {
+  const knowledgeBoard = isRecord(page.knowledgeBoard) ? page.knowledgeBoard : undefined;
+  const coreProposition = knowledgeBoard && typeof knowledgeBoard.coreProposition === "string" ? knowledgeBoard.coreProposition : "";
+  return (
+    titleCorePropositionOverlap(page) ||
+    bottomLineRepeatsTitle(page) ||
+    BOILERPLATE_LEARNER_PHRASE_PATTERNS.some((pattern) => pattern.test(coreProposition)) ||
+    normalizeForComparison(coreProposition).length < 18
+  );
+}
+
+function normalizedTextOverlaps(left: string, right: string): boolean {
+  const normalizedLeft = normalizeForComparison(left);
+  const normalizedRight = normalizeForComparison(right);
+  if (normalizedLeft.length < 4 || normalizedRight.length < 4) {
+    return false;
+  }
+  return normalizedLeft === normalizedRight || normalizedLeft.includes(normalizedRight) || normalizedRight.includes(normalizedLeft);
+}
+
+function normalizeForComparison(value: string): string {
+  return value.normalize("NFKC").replace(/[\s，。；：、,.!?！？:;'"“”‘’()[\]（）【】《》<>]/gu, "").toLocaleLowerCase();
+}
+
 function boardSectionLabels(page: Record<string, unknown>): string[] {
   const knowledgeBoard = isRecord(page.knowledgeBoard) ? page.knowledgeBoard : undefined;
   if (!knowledgeBoard) {
@@ -725,6 +803,10 @@ function diffMetrics(
     mechanismDepthWeakPageCount: current.mechanismDepthWeakPageCount - previous.mechanismDepthWeakPageCount,
     boilerplateLearnerPhraseCount: current.boilerplateLearnerPhraseCount - previous.boilerplateLearnerPhraseCount,
     repeatedBoardSectionLabelCount: current.repeatedBoardSectionLabelCount - previous.repeatedBoardSectionLabelCount,
+    titleCorePropositionOverlapCount: current.titleCorePropositionOverlapCount - previous.titleCorePropositionOverlapCount,
+    bottomLineRepeatsTitleCount: current.bottomLineRepeatsTitleCount - previous.bottomLineRepeatsTitleCount,
+    genericImageIntentCount: current.genericImageIntentCount - previous.genericImageIntentCount,
+    weakKnowledgeClaimCount: current.weakKnowledgeClaimCount - previous.weakKnowledgeClaimCount,
     issueCount: currentIssueCount - previousIssueCount
   };
 }
@@ -834,6 +916,42 @@ function buildAutomaticFindings(metrics: ContentReviewMetrics): Array<{
       recommendation: "把重复栏目改成与每页命题直接相关的内容专属小标题。"
     });
   }
+  if (metrics.titleCorePropositionOverlapCount > 0) {
+    findings.push({
+      metric: "titleCorePropositionOverlapCount",
+      value: metrics.titleCorePropositionOverlapCount,
+      severity: "major",
+      finding: "存在标题和核心命题重复的页面，标题区和正文没有形成新的知识推进。",
+      recommendation: "标题保留学习问题或命题，核心命题必须补出因果、条件、机制或边界，避免复读标题。"
+    });
+  }
+  if (metrics.bottomLineRepeatsTitleCount > 0) {
+    findings.push({
+      metric: "bottomLineRepeatsTitleCount",
+      value: metrics.bottomLineRepeatsTitleCount,
+      severity: "major",
+      finding: "存在底部总结复读标题的页面，学习者读到最后没有获得压缩后的判断。",
+      recommendation: "把 bottomLine 改成可记忆的判断句：什么条件下成立、为什么成立、何时失效。"
+    });
+  }
+  if (metrics.genericImageIntentCount > 0) {
+    findings.push({
+      metric: "genericImageIntentCount",
+      value: metrics.genericImageIntentCount,
+      severity: "major",
+      finding: "存在泛化图片意图，imageAlt 或 imagePrompt 只说教学插图，没有说明要画出的知识关系。",
+      recommendation: "为每页写出具体画面：对象、关系、方向、变化或边界，让 imagegen 生成真正服务自学的图。"
+    });
+  }
+  if (metrics.weakKnowledgeClaimCount > 0) {
+    findings.push({
+      metric: "weakKnowledgeClaimCount",
+      value: metrics.weakKnowledgeClaimCount,
+      severity: "major",
+      finding: "存在弱知识命题：页面在讲学习意图或复述标题，而不是直接交付可迁移的知识判断。",
+      recommendation: "提升知识密度：每页至少写清一个关键链路、一个成立条件和一个容易误用的边界。"
+    });
+  }
 
   return findings;
 }
@@ -865,7 +983,11 @@ function isContentReviewMetrics(value: unknown): value is ContentReviewMetrics {
     typeof value.titleDuplicatedInImagePromptCount === "number" &&
     typeof value.mechanismDepthWeakPageCount === "number" &&
     typeof value.boilerplateLearnerPhraseCount === "number" &&
-    typeof value.repeatedBoardSectionLabelCount === "number"
+    typeof value.repeatedBoardSectionLabelCount === "number" &&
+    typeof value.titleCorePropositionOverlapCount === "number" &&
+    typeof value.bottomLineRepeatsTitleCount === "number" &&
+    typeof value.genericImageIntentCount === "number" &&
+    typeof value.weakKnowledgeClaimCount === "number"
   );
 }
 

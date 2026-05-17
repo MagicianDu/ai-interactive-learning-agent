@@ -123,14 +123,23 @@ describe("ContentReviewService", () => {
     expect(brief).toMatchObject({
       currentMetrics: {
         boilerplateLearnerPhraseCount: 3,
-        repeatedBoardSectionLabelCount: 6
+        repeatedBoardSectionLabelCount: 6,
+        titleCorePropositionOverlapCount: 1,
+        bottomLineRepeatsTitleCount: 1,
+        genericImageIntentCount: 3,
+        weakKnowledgeClaimCount: 3
       },
       automaticFindings: expect.arrayContaining([
         expect.objectContaining({ metric: "boilerplateLearnerPhraseCount", severity: "major" }),
-        expect.objectContaining({ metric: "repeatedBoardSectionLabelCount", severity: "major" })
+        expect.objectContaining({ metric: "repeatedBoardSectionLabelCount", severity: "major" }),
+        expect.objectContaining({ metric: "titleCorePropositionOverlapCount", severity: "major" }),
+        expect.objectContaining({ metric: "bottomLineRepeatsTitleCount", severity: "major" }),
+        expect.objectContaining({ metric: "genericImageIntentCount", severity: "major" }),
+        expect.objectContaining({ metric: "weakKnowledgeClaimCount", severity: "major" })
       ])
     });
     expect(JSON.stringify(brief)).toContain("内容品味");
+    expect(JSON.stringify(brief)).toContain("知识密度");
   });
 
   test("increments review rounds from previously written briefs", async () => {
@@ -565,7 +574,7 @@ async function writeTasteGapLesson(root: string, runId: string): Promise<void> {
         pages: ["page-01", "page-02", "page-03"].map((pageId, index) => ({
           id: pageId,
           title: `具体知识命题 ${index + 1}`,
-          narrative: "这页有足够长度的中文解释，用来避免低密度误判，但仍保留明显的课程模板腔。",
+          narrative: "本页帮助你建立正确心智模型。这页有足够长度的中文解释，用来避免低密度误判，但仍保留明显的课程模板腔。",
           sourceAnchorIds: ["book:p1"],
           visualSpec: {
             imageUrl: `/__learning-preview/${runId}/images/lesson-a/${pageId}-imagegen-v1.png`,
@@ -575,11 +584,12 @@ async function writeTasteGapLesson(root: string, runId: string): Promise<void> {
           },
           knowledgeBoard: {
             headline: `具体知识命题 ${index + 1}`,
-            coreProposition: "本页帮助你建立正确心智模型，但这句话没有给出可带走的知识判断。",
+            coreProposition:
+              index === 0 ? "具体知识命题 1" : "本页帮助你建立正确心智模型，但这句话没有给出可带走的知识判断。",
             leftColumn: [{ label: "为什么重要", items: ["具体条件 A 会改变判断 B", "变量 C 会影响执行顺序"] }],
             rightColumn: [{ label: "如何判断", items: ["例子说明 A 到 B", "边界说明 D 时不成立"] }],
             sourceTrace: [{ anchorId: "book:p1", supports: "来源说明条件 A、变量 C 和边界 D 的关系。" }],
-            bottomLine: "真正要带走的是条件、变量和边界之间的判断关系。"
+            bottomLine: index === 1 ? "具体知识命题 2" : "真正要带走的是条件、变量和边界之间的判断关系。"
           }
         }))
       },

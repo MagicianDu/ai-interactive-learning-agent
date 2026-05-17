@@ -75,7 +75,16 @@ const contentReviewIssuesSchema = {
       severity: { type: "string", enum: ["critical", "major", "minor"] },
       category: {
         type: "string",
-        enum: ["density", "source_fidelity", "structure", "image_text_fit", "template_language", "learner_readability"]
+        enum: [
+          "density",
+          "knowledge_density",
+          "content_taste",
+          "source_fidelity",
+          "structure",
+          "image_text_fit",
+          "template_language",
+          "learner_readability"
+        ]
       },
       finding: stringSchema,
       recommendation: stringSchema
