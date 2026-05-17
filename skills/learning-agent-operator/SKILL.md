@@ -59,7 +59,16 @@ Ask at most three clarification questions. If the learner already gave source, a
 
 ## Default Learner Workflow
 
-Use this flow for normal Codex/Claude-style natural language operation. It should produce a previewable learning course without asking the learner to approve source maps, concept maps, curriculum plans, or other internal artifacts. Codex should author the course content; MCP should provide context, validate, and publish.
+Use this flow for normal Codex/Claude-style natural language operation. It should produce a previewable learning course without asking the learner to approve source maps, concept maps, curriculum plans, review briefs, image manifests, batch state, layout reports, or other internal artifacts. Codex should author and revise the course content; MCP should provide context, validate, track production state, and publish.
+
+For source-backed `student_self_study_textbook`, use the one-shot course production pipeline by default:
+
+1. Ask at most one learner-facing clarification round for missing difficulty, page budget, and organization strategy. If the learner has no preference, use graduate difficulty for advanced technical sources, `overview_plus_topic`, 10 overview pages, 8 pages per topic, 3-5 topics, 3 content-review rounds, and min quality score 90.
+2. Call `learning_agent.prepare_learning_course` to create the project and authoring context, then call `learning_agent.start_course_production` with the chosen defaults.
+3. Author and publish the initial `coursePack` and `lessons` according to the returned `author_course_bundle` action.
+4. Call `learning_agent.record_course_production_event` after publishing.
+5. Repeatedly call `learning_agent.next_course_production_action` and complete the returned Codex action. This action may ask Codex to run content review, revise content, generate imagegen assets, fix image assets, run layout smoke, fix layout, or hand off the final preview.
+6. Only show the learner the final preview when the next action is `handoff_preview`.
 
 1. Prepare a learner-facing project and authoring context in one call:
 
