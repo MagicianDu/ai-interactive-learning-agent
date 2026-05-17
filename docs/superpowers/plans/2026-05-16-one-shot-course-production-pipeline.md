@@ -1835,7 +1835,7 @@ npm test -- --run tools/agent-runtime/learner/course-production-pipeline-service
 
 Expected: pass.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add tools/agent-runtime/learner/one-shot-production-fixture.test.ts package.json
@@ -1848,7 +1848,7 @@ git commit -m "test: add one-shot course production fixture"
 - Modify: `docs/runtime/one-shot-course-production.md`
 - Modify: this plan file to record completion status.
 
-- [ ] **Step 1: Run full checks**
+- [x] **Step 1: Run full checks**
 
 Run:
 
@@ -1870,9 +1870,9 @@ Expected:
 - layout smoke passes on `self-study-agentic-design-patterns-quality-v1`.
 - `git diff --check` passes.
 
-- [ ] **Step 2: Update docs with verification record**
+- [x] **Step 2: Update docs with verification record**
 
-Append to `docs/runtime/one-shot-course-production.md`:
+Recorded in `docs/runtime/one-shot-course-production.md`:
 
 ```md
 ## Verification Record
@@ -1881,10 +1881,11 @@ Append to `docs/runtime/one-shot-course-production.md`:
 - `npm run test:regression`: passed.
 - `npm run codex:mcp:check`: passed.
 - `npm run pipeline:fixture`: passed.
-- `npm run smoke:layout -- --runId self-study-agentic-design-patterns-quality-v1 --desktop-only`: passed.
+- `npm run smoke:layout -- --runId self-study-agentic-design-patterns-quality-v1 --desktop-only`: passed, checked 34 preview pages.
+- `git diff --check`: passed.
 ```
 
-- [ ] **Step 3: Commit final verification docs**
+- [x] **Step 3: Commit final verification docs**
 
 ```bash
 git add docs/runtime/one-shot-course-production.md docs/superpowers/plans/2026-05-16-one-shot-course-production-pipeline.md

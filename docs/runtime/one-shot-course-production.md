@@ -54,11 +54,11 @@ npm run smoke:layout -- --runId <run-id> --desktop-only
 
 ## Verification Record
 
-The implementation must finish with:
+Completed on 2026-05-17:
 
-- `npm run test:ci`
-- `npm run test:regression`
-- `npm run codex:mcp:check`
-- `npm run pipeline:fixture`
-- `npm run smoke:layout -- --runId self-study-agentic-design-patterns-quality-v1 --desktop-only`
-- `git diff --check`
+- `npm run test:ci`: passed.
+- `npm run test:regression`: passed.
+- `npm run codex:mcp:check`: passed.
+- `npm run pipeline:fixture`: passed.
+- `npm run smoke:layout -- --runId self-study-agentic-design-patterns-quality-v1 --desktop-only`: passed, checked 34 preview pages.
+- `git diff --check`: passed.
