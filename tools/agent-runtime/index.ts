@@ -46,6 +46,13 @@ export type {
   RecordCourseProductionEventInput,
   StartCourseProductionInput
 } from "./learner/course-production-pipeline-service.js";
+export { CourseProductionBenchmarkService } from "./learner/course-production-benchmark-service.js";
+export type {
+  CourseProductionBenchmarkReport,
+  CourseProductionBenchmarkRun,
+  CourseProductionBenchmarkTarget,
+  CourseProductionBenchmarkTargetReport
+} from "./learner/course-production-benchmark-service.js";
 export { ContentReviewLoopService } from "./learner/content-review-loop-service.js";
 export type {
   ContentReviewLoopResult,
