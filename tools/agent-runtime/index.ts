@@ -35,6 +35,16 @@ export type {
   RunPreviewLayoutSmokeInput,
   RunPreviewLayoutSmokeWithMeasurementsInput
 } from "./learner/preview-layout-smoke-service.js";
+export { CourseProductionPipelineService } from "./learner/course-production-pipeline-service.js";
+export type {
+  CourseProductionActionResult,
+  CourseProductionDefaults,
+  CourseProductionEvent,
+  CourseProductionNextAction,
+  CourseProductionStage,
+  CourseProductionState,
+  StartCourseProductionInput
+} from "./learner/course-production-pipeline-service.js";
 export { AuthoringQualityComparisonService } from "./learner/authoring-quality-comparison.js";
 export { AuthoringContextService } from "./learner/authoring-context-service.js";
 export { GroundedCourseService } from "./learner/grounded-course-service.js";
