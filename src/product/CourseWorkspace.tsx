@@ -41,7 +41,7 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
   const [selectedCoursePackId, setSelectedCoursePackId] = useState(defaultCoursePack?.id ?? "");
   const [selectedLessonId, setSelectedLessonId] = useState(defaultCoursePackLessonId ?? defaultLesson?.id ?? "");
   const [selectedPageIndex, setSelectedPageIndex] = useState(currentRoute.pageIndex ?? 0);
-  const [activeView, setActiveView] = useState<WorkspaceView>("deck");
+  const [activeView, setActiveView] = useState<WorkspaceView>(() => (hasExplicitLearningRoute(readCurrentProductRoute()) ? "deck" : "library"));
   const [, setLearningProgress] = useState(() => loadLearningProgress());
   const selectedLesson = workspaceLessons.find((lesson) => lesson.id === selectedLessonId)?.lesson ?? defaultLesson?.lesson;
   const selectedCoursePack = workspaceCoursePacks.find((entry) => entry.id === selectedCoursePackId)?.coursePack;
@@ -71,7 +71,13 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
   }, []);
 
   useEffect(() => {
-    const syncRoute = () => setCurrentRoute(readCurrentProductRoute());
+    const syncRoute = () => {
+      const nextRoute = readCurrentProductRoute();
+      setCurrentRoute(nextRoute);
+      if (hasExplicitLearningRoute(nextRoute)) {
+        setActiveView("deck");
+      }
+    };
     window.addEventListener("hashchange", syncRoute);
     window.addEventListener("popstate", syncRoute);
     return () => {
@@ -512,11 +518,20 @@ function viewLabel(view: WorkspaceView): string {
 }
 
 function pickDefaultCoursePack(coursePacks: CoursePackRegistryEntry[], preferredCourseId: string | undefined): CoursePackRegistryEntry | undefined {
-  return coursePacks.find((entry) => entry.id === preferredCourseId) ?? coursePacks.find((entry) => entry.id === "demo-course-pack") ?? coursePacks[0];
+  return (
+    coursePacks.find((entry) => entry.id === preferredCourseId) ??
+    coursePacks.find((entry) => entry.projectStatus !== "sample") ??
+    coursePacks.find((entry) => entry.id === "demo-agentic-design-grounded") ??
+    coursePacks[0]
+  );
 }
 
 function pickDefaultUnit(coursePack: CoursePackRegistryEntry["coursePack"] | undefined, preferredUnitId: string | undefined) {
   return coursePack?.units.find((unit) => unit.unitId === preferredUnitId && unit.lessonId);
+}
+
+function hasExplicitLearningRoute(route: ReturnType<typeof readCurrentProductRoute>): boolean {
+  return Boolean(route.courseId || route.previewRunId);
 }
 
 function mergeCoursePacks(base: CoursePackRegistryEntry[], generated: CoursePackRegistryEntry[]): CoursePackRegistryEntry[] {

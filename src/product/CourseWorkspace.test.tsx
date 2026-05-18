@@ -22,15 +22,16 @@ describe("CourseWorkspace", () => {
     window.history.replaceState(null, "", "#/");
   });
 
-  test("opens directly into the learner lesson instead of developer panels", () => {
+  test("opens the learner project library by default instead of a developer demo route", () => {
     render(<CourseWorkspace coursePacks={coursePackRegistry} lessons={lessonRegistry} />);
 
-    expect(screen.getAllByText(/第 1 \//).length).toBeGreaterThan(0);
-    expect(screen.getAllByText("智能体工作流公开示例：总览课").length).toBeGreaterThan(0);
+    expect(screen.getByText("选择要继续学习的课程")).toBeInTheDocument();
     expect(screen.getByText("当前学习单元")).toBeInTheDocument();
-    expect(screen.getByText(/策略：/)).toBeInTheDocument();
+    expect(screen.getByText("视图：项目库")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "课程结构" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "来源依据" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "项目库" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByRole("button", { name: "下一页" })).not.toBeInTheDocument();
     expect(screen.queryByLabelText("生成进度")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("分享和导出")).not.toBeInTheDocument();
     expect(screen.queryByText("把技术资料变成可交互的中文学习体验")).not.toBeInTheDocument();
@@ -188,6 +189,7 @@ describe("CourseWorkspace", () => {
 
   test("updates the stable hash route when the learner changes page", async () => {
     const user = userEvent.setup();
+    window.history.replaceState(null, "", defaultLearningRoute());
     render(<CourseWorkspace coursePacks={coursePackRegistry} lessons={lessonRegistry} />);
 
     await user.click(screen.getByRole("button", { name: "下一页" }));
@@ -197,6 +199,7 @@ describe("CourseWorkspace", () => {
 
   test("opens the learner project library without replacing the default learning flow", async () => {
     const user = userEvent.setup();
+    window.history.replaceState(null, "", defaultLearningRoute());
     render(<CourseWorkspace coursePacks={coursePackRegistry} lessons={lessonRegistry} />);
 
     expect(screen.queryByText("选择要继续学习的课程")).not.toBeInTheDocument();
@@ -222,6 +225,7 @@ describe("CourseWorkspace", () => {
 
   test("opens source grounding as a course-aware learner page", async () => {
     const user = userEvent.setup();
+    window.history.replaceState(null, "", defaultLearningRoute());
     render(<CourseWorkspace coursePacks={coursePackRegistry} lessons={lessonRegistry} />);
 
     await user.click(screen.getByRole("button", { name: "来源依据" }));
@@ -234,6 +238,7 @@ describe("CourseWorkspace", () => {
 
   test("hides sidebar learning telemetry while preserving local page visits", async () => {
     const user = userEvent.setup();
+    window.history.replaceState(null, "", defaultLearningRoute());
     render(<CourseWorkspace coursePacks={coursePackRegistry} lessons={lessonRegistry} />);
 
     expect(screen.queryByText("完成进度")).not.toBeInTheDocument();
@@ -282,6 +287,10 @@ describe("CourseWorkspace", () => {
   });
 
 });
+
+function defaultLearningRoute(): string {
+  return "#/course/demo-agentic-design-grounded/unit/unit-overview/page/1";
+}
 
 function jsonResponse(value: unknown): Response {
   return new Response(JSON.stringify(value), {
