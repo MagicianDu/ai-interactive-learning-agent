@@ -6,7 +6,7 @@ import type { LessonRegistryEntry } from "../lessons/registry";
 import { CanvasMapRenderer } from "../renderers/CanvasMapRenderer";
 import { LearningProductRenderer } from "../renderers/LearningProductRenderer";
 import { WebDeckRenderer } from "../renderers/WebDeckRenderer";
-import { fetchGeneratedPreview, type GeneratedPreviewLoadResult } from "./generated-preview";
+import { fetchGeneratedPreview, fetchLatestGeneratedPreviewRunId, type GeneratedPreviewLoadResult } from "./generated-preview";
 import {
   loadLearningProgress,
   recordPageVisit,
@@ -85,6 +85,34 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
       window.removeEventListener("popstate", syncRoute);
     };
   }, []);
+
+  useEffect(() => {
+    if (currentRoute.previewRunId) {
+      return;
+    }
+    const routedCoursePack = currentRoute.courseId ? coursePacks.find((entry) => entry.id === currentRoute.courseId) : undefined;
+    const shouldOpenLatestPreview = !currentRoute.courseId || routedCoursePack?.projectStatus === "sample";
+    if (!shouldOpenLatestPreview) {
+      return;
+    }
+
+    let cancelled = false;
+    fetchLatestGeneratedPreviewRunId().then((runId) => {
+      if (cancelled || !runId) {
+        return;
+      }
+      const nextHash = buildProductRoute({ previewRunId: runId, pageIndex: 0 });
+      if (typeof window !== "undefined" && window.location.hash !== nextHash) {
+        window.history.replaceState(null, "", nextHash);
+      }
+      setCurrentRoute(parseProductRoute(nextHash));
+      setActiveView("deck");
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [coursePacks, currentRoute.courseId, currentRoute.previewRunId]);
 
   useEffect(() => {
     const previewRunId = currentRoute.previewRunId;

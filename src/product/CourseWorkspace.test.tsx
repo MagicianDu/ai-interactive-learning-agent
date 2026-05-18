@@ -39,6 +39,42 @@ describe("CourseWorkspace", () => {
     expect(screen.queryByText("设置")).not.toBeInTheDocument();
   });
 
+  test("opens the latest generated preview by default when the local preview index is available", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(mockGeneratedPreviewFetch({
+      "fresh-preview": {
+        courseTitle: "最新生成课程包",
+        lessonTitle: "最新生成总览课",
+        pageTitle: "最新生成第一页",
+        imageUrl: "/__learning-preview/fresh-preview/images/fresh-preview-overview/page-01-imagegen-v1.png"
+      }
+    }, { latestRunId: "fresh-preview" }));
+
+    render(<CourseWorkspace coursePacks={coursePackRegistry} lessons={lessonRegistry} />);
+
+    expect((await screen.findAllByText("最新生成第一页")).length).toBeGreaterThan(0);
+    expect(screen.getByRole("img", { name: "最新生成插图" })).toBeInTheDocument();
+    expect(screen.queryByText("选择要继续学习的课程")).not.toBeInTheDocument();
+    expect(window.location.hash).toBe("#/preview/fresh-preview/unit/unit-overview/page/1");
+  });
+
+  test("upgrades legacy sample course routes to the latest generated preview when available", async () => {
+    window.history.replaceState(null, "", "#/course/demo-course-pack/unit/unit-overview/page/1");
+    vi.spyOn(globalThis, "fetch").mockImplementation(mockGeneratedPreviewFetch({
+      "fresh-preview": {
+        courseTitle: "最新生成课程包",
+        lessonTitle: "最新生成总览课",
+        pageTitle: "最新生成第一页",
+        imageUrl: "/__learning-preview/fresh-preview/images/fresh-preview-overview/page-01-imagegen-v1.png"
+      }
+    }, { latestRunId: "fresh-preview" }));
+
+    render(<CourseWorkspace coursePacks={coursePackRegistry} lessons={lessonRegistry} />);
+
+    expect((await screen.findAllByText("最新生成第一页")).length).toBeGreaterThan(0);
+    expect(screen.getByRole("img", { name: "最新生成插图" })).toBeInTheDocument();
+    expect(window.location.hash).toBe("#/preview/fresh-preview/unit/unit-overview/page/1");
+  });
+
   test("uses a fixed learning viewport without body vertical scroll", () => {
     render(<CourseWorkspace coursePacks={coursePackRegistry} lessons={lessonRegistry} />);
 
@@ -300,10 +336,31 @@ function jsonResponse(value: unknown): Response {
 }
 
 function mockGeneratedPreviewFetch(
-  previews: Record<string, { courseTitle: string; lessonTitle: string; pageTitle: string }>
+  previews: Record<string, { courseTitle: string; lessonTitle: string; pageTitle: string; imageUrl?: string }>,
+  options: { latestRunId?: string } = {}
 ): typeof fetch {
   return async (input) => {
     const url = String(input);
+    if (url === "/__learning-preview/index.json") {
+      const latestRunId = options.latestRunId;
+      if (!latestRunId) {
+        return jsonResponse({ previews: [] });
+      }
+      const latest = previews[latestRunId];
+      if (!latest) {
+        throw new Error(`unexpected latest preview run: ${latestRunId}`);
+      }
+      return jsonResponse({
+        previews: [
+          {
+            runId: latestRunId,
+            courseTitle: latest.courseTitle,
+            updatedAt: "2026-05-18T00:00:00.000Z"
+          }
+        ]
+      });
+    }
+
     const match = /^\/__learning-preview\/(?<runId>[a-z0-9-]+)\/(?<assetPath>.+)$/u.exec(url);
     if (!match?.groups) {
       throw new Error(`unexpected fetch: ${url}`);
@@ -349,6 +406,7 @@ function mockGeneratedPreviewFetch(
       return jsonResponse({
         id: `${match.groups.runId}-overview`,
         title: preview.lessonTitle,
+        displayMode: "textbook_deck",
         audience: "中文学习者",
         config: { targetPageCount: 1 },
         prerequisites: ["能阅读中文技术材料"],
@@ -359,7 +417,40 @@ function mockGeneratedPreviewFetch(
             type: "summary_card",
             title: preview.pageTitle,
             learningGoal: "压缩模型",
-            narrative: "用中文总结结构。"
+            narrative: "用中文总结结构。",
+            ...(preview.imageUrl
+              ? {
+                  visualSpec: {
+                    kind: "diagram",
+                    description: "最新生成插图",
+                    keyElements: ["问题", "机制", "边界"],
+                    imageUrl: preview.imageUrl,
+                    imageAlt: "最新生成插图",
+                    imageProvider: "imagegen"
+                  },
+                  knowledgeBoard: {
+                    boardKind: "synthesis_board",
+                    headline: "最新生成知识板书",
+                    coreProposition: "最新生成内容应该优先进入学习页。",
+                    leftColumn: [
+                      {
+                        label: "判断",
+                        items: ["入口应读取最新 preview，而不是旧样例。"],
+                        emphasis: "mechanism"
+                      }
+                    ],
+                    rightColumn: [
+                      {
+                        label: "证据",
+                        items: ["页面带有 imagegen 图片。"],
+                        emphasis: "example"
+                      }
+                    ],
+                    sourceTrace: [],
+                    bottomLine: "本地最新 preview 是学习入口的优先内容。"
+                  }
+                }
+              : {})
           }
         ],
         misconceptions: [],

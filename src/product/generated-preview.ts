@@ -32,6 +32,14 @@ export type GeneratedPreviewLoadResult = {
   revisionHistory: RevisionHistoryItem[];
 };
 
+type PreviewIndex = {
+  previews?: Array<{
+    runId?: unknown;
+    courseTitle?: unknown;
+    updatedAt?: unknown;
+  }>;
+};
+
 export async function fetchGeneratedPreview(runId: string): Promise<GeneratedPreviewLoadResult> {
   const manifest = await fetchJson<PreviewManifest>(previewAssetUrl(runId, "manifest.json"));
   const coursePack = await fetchJson<CoursePack>(previewAssetUrl(runId, manifest.coursePackPath));
@@ -62,8 +70,17 @@ export async function fetchGeneratedPreview(runId: string): Promise<GeneratedPre
   };
 }
 
+export async function fetchLatestGeneratedPreviewRunId(): Promise<string | undefined> {
+  try {
+    const index = await fetchJson<PreviewIndex>("/__learning-preview/index.json");
+    return index.previews?.map((preview) => preview.runId).find(isPreviewRunId);
+  } catch {
+    return undefined;
+  }
+}
+
 function previewAssetUrl(runId: string, relativePath: string): string {
-  if (!/^[a-z][a-z0-9-]{0,63}$/u.test(runId)) {
+  if (!isPreviewRunId(runId)) {
     throw new Error("preview runId is invalid");
   }
   const normalizedPath = normalizePreviewPath(relativePath);
@@ -107,6 +124,10 @@ function isPreviewQualityReport(value: unknown): value is GeneratedPreviewQualit
 
 function isPreviewQualityStatus(value: unknown): value is GeneratedPreviewQualityReport["status"] {
   return value === "passed" || value === "warning" || value === "failed";
+}
+
+function isPreviewRunId(value: unknown): value is string {
+  return typeof value === "string" && /^[a-z][a-z0-9-]{0,63}$/u.test(value);
 }
 
 function optionalString(value: unknown): string | undefined {
