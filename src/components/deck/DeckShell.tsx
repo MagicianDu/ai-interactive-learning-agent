@@ -58,21 +58,10 @@ export function DeckShell({ initialPageIndex = 0, lesson, onPageChange, renderPa
 
   return (
     <div className="h-full min-h-0 overflow-hidden bg-[#f4f7fb] text-ink">
-      <main className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)]">
-        <header className="border-b border-line bg-white/95 shadow-sm">
-          <div className="flex min-h-14 items-center justify-end px-3 py-2 lg:min-h-16 lg:px-5 lg:py-3">
-            <PageNavigation
-              canGoBack={canGoBack}
-              canGoForward={canGoForward}
-              onBack={() => goTo(displayedIndex - 1)}
-              onForward={() => goTo(displayedIndex + 1)}
-            />
-          </div>
-        </header>
-
+      <main className="relative h-full min-h-0 overflow-hidden">
         <section
           aria-live="polite"
-          className="min-h-0 overflow-hidden"
+          className="h-full min-h-0 overflow-hidden"
           data-testid="deck-page-stage"
         >
           {total > 0 ? (
@@ -86,6 +75,19 @@ export function DeckShell({ initialPageIndex = 0, lesson, onPageChange, renderPa
             </div>
           )}
         </section>
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-4 z-20 flex justify-center px-4"
+          data-testid="deck-navigation-overlay"
+        >
+          <div className="pointer-events-auto">
+            <PageNavigation
+              canGoBack={canGoBack}
+              canGoForward={canGoForward}
+              onBack={() => goTo(displayedIndex - 1)}
+              onForward={() => goTo(displayedIndex + 1)}
+            />
+          </div>
+        </div>
       </main>
     </div>
   );

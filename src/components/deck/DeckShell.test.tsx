@@ -61,6 +61,30 @@ describe("DeckShell", () => {
     expect(screen.getByRole("button", { name: "下一页" })).toBeDisabled();
   });
 
+  test("renders page navigation as a bottom translucent overlay instead of a top header", () => {
+    render(
+      <DeckShell
+        lesson={twoPageLesson}
+        renderPage={(currentIndex) => (
+          <article>
+            <h2>{twoPageLesson.pages[currentIndex].title}</h2>
+          </article>
+        )}
+      />,
+    );
+
+    expect(screen.queryByRole("banner")).not.toBeInTheDocument();
+    expect(screen.getByTestId("deck-navigation-overlay")).toHaveClass("absolute", "bottom-4", "z-20");
+    expect(screen.getByRole("navigation", { name: "课程翻页" })).toHaveClass(
+      "bg-transparent",
+      "hover:bg-white/60",
+      "focus-within:bg-white/60",
+      "backdrop-blur-0",
+      "hover:backdrop-blur-md"
+    );
+    expect(screen.getByRole("button", { name: "下一页" })).toHaveClass("bg-transparent", "opacity-25", "hover:bg-accent/90");
+  });
+
   test("wraps each page in a viewport fit container instead of a scroll container", () => {
     render(
       <DeckShell

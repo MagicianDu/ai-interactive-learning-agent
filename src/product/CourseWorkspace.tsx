@@ -138,6 +138,15 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
         }
         setSelectedPageIndex(currentRoute.pageIndex ?? 0);
         setActiveView("deck");
+        const canonicalRoute = buildProductRoute({
+          previewRunId: preview.previewRunId,
+          unitId: nextUnit?.unitId,
+          pageIndex: currentRoute.pageIndex ?? 0
+        });
+        if (typeof window !== "undefined" && window.location.hash !== canonicalRoute) {
+          window.history.replaceState(null, "", canonicalRoute);
+          setCurrentRoute(parseProductRoute(canonicalRoute));
+        }
       })
       .catch((error: unknown) => {
         if (cancelled) {
@@ -189,15 +198,7 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
 
   const safePageIndex = selectedLesson ? Math.min(selectedPageIndex, Math.max(selectedLesson.pages.length - 1, 0)) : 0;
   const currentPage = selectedLesson?.pages[safePageIndex];
-  const currentPageContext = {
-    title: currentPage?.title ?? "课程页面",
-    learningGoal: currentPage?.learningGoal ?? "继续学习当前单元",
-    pageNumber: safePageIndex + 1,
-    totalPages: selectedLesson?.pages.length ?? 0,
-    sourceAnchorIds: currentPage?.sourceAnchorIds ?? []
-  };
   const selectedCoursePackUnit = selectedCoursePack?.units.find((unit) => unit.lessonId === selectedLesson?.id);
-  const selectedGeneratedPreview = generatedPreview?.coursePackEntry.id === selectedCoursePackId ? generatedPreview : undefined;
 
   useEffect(() => {
     if (!selectedCoursePackId || !selectedLesson?.id || !currentPage?.id) {
@@ -260,21 +261,12 @@ export function CourseWorkspace({ lessons, coursePacks }: CourseWorkspaceProps) 
           />
         </div>
 
-        <main className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden" data-testid="learning-main-viewport">
-          <WorkspaceStatusStrip
-            activeView={activeView}
-            coursePack={selectedCoursePack}
-            pageNumber={currentPageContext.pageNumber}
-            publishNotes={selectedGeneratedPreview?.publishNotes}
-            qualityReport={selectedGeneratedPreview?.qualityReport}
-            selectedUnit={selectedCoursePackUnit}
-            totalPages={currentPageContext.totalPages}
-          />
-          <div className="min-h-0 overflow-hidden">
+        <main className="h-full min-h-0 overflow-hidden" data-testid="learning-main-viewport">
+          <div className="h-full min-h-0 overflow-hidden" data-testid="learning-view-viewport">
             {renderWorkspaceView({
               activeView,
               coursePacks: workspaceCoursePacks,
-              currentPageSourceAnchorIds: currentPageContext.sourceAnchorIds,
+              currentPageSourceAnchorIds: currentPage?.sourceAnchorIds ?? [],
               lessons: workspaceLessons,
               onSelectCourse: selectCoursePack,
               onSelectLesson: selectLesson,
@@ -382,56 +374,6 @@ function renderWorkspaceView(input: RenderWorkspaceViewInput) {
   );
 }
 
-function WorkspaceStatusStrip({
-  activeView,
-  coursePack,
-  pageNumber,
-  publishNotes,
-  qualityReport,
-  selectedUnit,
-  totalPages
-}: {
-  activeView: WorkspaceView;
-  coursePack: CoursePackRegistryEntry["coursePack"] | undefined;
-  pageNumber: number;
-  publishNotes?: string;
-  qualityReport?: GeneratedPreviewLoadResult["qualityReport"];
-  selectedUnit: CoursePackRegistryEntry["coursePack"]["units"][number] | undefined;
-  totalPages: number;
-}) {
-  return (
-    <section
-      className="hidden border-b border-slate-200 bg-white px-4 py-3 lg:block"
-      data-testid="workspace-status-strip"
-    >
-      <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-xs font-bold uppercase text-slate-500">当前学习单元</p>
-          <h2 className="truncate text-sm font-bold text-slate-950">{selectedUnit?.title ?? coursePack?.title ?? "独立课程"}</h2>
-        </div>
-        <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-600">
-          <span className="rounded-full bg-slate-100 px-2.5 py-1">视图：{viewLabel(activeView)}</span>
-          <span className="rounded-full bg-slate-100 px-2.5 py-1">
-            第 {pageNumber}/{totalPages} 页
-          </span>
-          <span className="rounded-full bg-slate-100 px-2.5 py-1">来源：{coursePack?.sourceKind ?? "topic"}</span>
-          <span className="rounded-full bg-slate-100 px-2.5 py-1">策略：{coursePack?.strategy ?? "single_lesson"}</span>
-          {qualityReport ? (
-            <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">
-              质量：{qualityReport.status} · {qualityReport.score}
-            </span>
-          ) : null}
-          {publishNotes ? (
-            <span className="max-w-72 truncate rounded-full bg-sky-50 px-2.5 py-1 text-sky-700" title={publishNotes}>
-              发布：{publishNotes}
-            </span>
-          ) : null}
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function SourcePanel({
   anchorIds,
   coursePack,
@@ -528,21 +470,6 @@ function SourceList({ anchorIds, emptyText, title }: { anchorIds: string[]; empt
       </div>
     </section>
   );
-}
-
-function viewLabel(view: WorkspaceView): string {
-  const labels: Record<WorkspaceView, string> = {
-    assessment: "练习",
-    deck: "学习",
-    library: "项目库",
-    map: "知识地图",
-    playground: "实验",
-    sources: "来源依据",
-    structure: "课程结构",
-    teacher: "教师",
-    tutor: "导师"
-  };
-  return labels[view];
 }
 
 function pickDefaultCoursePack(coursePacks: CoursePackRegistryEntry[], preferredCourseId: string | undefined): CoursePackRegistryEntry | undefined {

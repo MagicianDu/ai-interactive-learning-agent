@@ -26,8 +26,8 @@ describe("CourseWorkspace", () => {
     render(<CourseWorkspace coursePacks={coursePackRegistry} lessons={lessonRegistry} />);
 
     expect(screen.getByText("选择要继续学习的课程")).toBeInTheDocument();
-    expect(screen.getByText("当前学习单元")).toBeInTheDocument();
-    expect(screen.getByText("视图：项目库")).toBeInTheDocument();
+    expect(screen.queryByText("当前学习单元")).not.toBeInTheDocument();
+    expect(screen.queryByText("视图：项目库")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "课程结构" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "来源依据" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "项目库" })).toHaveAttribute("aria-pressed", "true");
@@ -80,7 +80,8 @@ describe("CourseWorkspace", () => {
 
     expect(screen.getByTestId("learning-main-viewport")).toHaveClass("overflow-hidden");
     expect(screen.getByTestId("desktop-learning-sidebar")).toHaveClass("hidden", "lg:block");
-    expect(screen.getByTestId("workspace-status-strip")).toHaveClass("hidden", "lg:block");
+    expect(screen.getByTestId("learning-view-viewport")).toHaveClass("h-full", "overflow-hidden");
+    expect(screen.queryByTestId("workspace-status-strip")).not.toBeInTheDocument();
     expect(getComputedStyle(document.body).overflow).toBe("hidden");
     expect(document.body.scrollHeight).toBeLessThanOrEqual(window.innerHeight);
   });
@@ -187,8 +188,8 @@ describe("CourseWorkspace", () => {
 
     expect((await screen.findAllByText("公开示例：课程包")).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/第 2 \//).length).toBeGreaterThan(0);
-    expect(screen.getByText("质量：passed · 96")).toBeInTheDocument();
-    expect(screen.getByText("发布：revision-002: 补充来源依据和学习反馈。")).toBeInTheDocument();
+    expect(screen.queryByText("质量：passed · 96")).not.toBeInTheDocument();
+    expect(screen.queryByText("发布：revision-002: 补充来源依据和学习反馈。")).not.toBeInTheDocument();
     expect(screen.queryByText("修订历史")).not.toBeInTheDocument();
     expect(screen.queryByText("revision-002")).not.toBeInTheDocument();
     expect(screen.queryByText("第 2 页补充来源依据。")).not.toBeInTheDocument();
