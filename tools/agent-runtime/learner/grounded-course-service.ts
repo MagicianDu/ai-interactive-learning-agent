@@ -385,9 +385,11 @@ function buildLesson({
 }): Record<string, unknown> {
   const safeAnchors = sourceAnchorIds.length > 0 ? sourceAnchorIds : ensureAnchorIds([], config);
   const difficulty = difficultyProfile(teachingDifficultyLevel(config));
+  const sourceDepth = sourceDepthProfile(config.sourceKind, unitTitle);
   return {
     id,
     title,
+    displayMode: "textbook_deck",
     audience: config.audience,
     difficultyLevel: difficulty.level,
     academicLabel: difficulty.label,
@@ -407,9 +409,12 @@ function buildLesson({
     learningObjectives: [
       `解释${unitTitle}的核心问题和来源依据`,
       `用可视化结构说明${concepts[0] ?? "核心概念"}如何发挥作用`,
+      `用正式术语和定义区分${concepts[0] ?? "核心概念"}、证据链与适用边界`,
+      ...(sourceDepth ? [sourceDepth.objective] : []),
       difficulty.objective,
       "通过行动、反馈和迁移任务检查理解是否可靠"
     ],
+    ...(sourceDepth ? { sourceReadingGuide: sourceDepth.guide } : {}),
     pages: buildPages({ unitTitle, concepts, sourceTerms, sourceAnchorIds: safeAnchors, targetPageCount, revision, difficulty }),
     misconceptions: [
       {
@@ -427,6 +432,7 @@ function buildLesson({
     ],
     summary: [
       `${unitTitle} 的学习重点是先建立来源地图，再进入机制。本单元定位为${difficulty.label}。`,
+      ...(sourceDepth ? [sourceDepth.summaryLine] : []),
       difficulty.summaryLine,
       "每个可靠解释都应该连接来源锚点、因果链和适用边界。",
       "能在新材料中复用这套判断方式，才说明心智模型真正形成。"
@@ -453,7 +459,7 @@ function buildPages({
 }): Array<Record<string, unknown>> {
   const revisionLine = revision ? "已根据最新反馈降低术语密度，并增加新手行动提示。" : "";
   const basePages: Array<Record<string, unknown>> = [
-    page("page-01", "problem_scene", `${unitTitle}：先看学习问题`, "识别这份资料最需要解决的理解问题", `${unitTitle} 不能只被压缩成摘要；学习者需要看见问题、机制和边界。${difficulty.openingFrame}${revisionLine}`, sourceAnchorIds, {
+    page("page-01", "problem_scene", `${compactSubject(unitTitle)}：定位问题`, "识别这份资料最需要解决的理解问题", `${unitTitle} 不能只被压缩成摘要；学习者需要看见问题、机制和边界。${difficulty.openingFrame}${revisionLine}`, sourceAnchorIds, {
       visual: true
     }, difficulty, sourceTerms),
     page("page-02", "intuition_visual", "先画来源地图，再进入细节", "用地图直觉理解总览课", `把资料看成一张地图：先知道核心区域，再决定深入 ${concepts[0] ?? "核心概念"}。${difficulty.intuitionFrame}`, sourceAnchorIds, {
@@ -531,17 +537,23 @@ function page(
     title,
     learningGoal,
     narrative: groundedNarrative,
+    knowledgeBoard: buildKnowledgeBoard({
+      pageId: id,
+      title,
+      type,
+      learningGoal,
+      narrative: groundedNarrative,
+      sourceAnchorIds,
+      sourceTerms,
+      difficulty
+    }),
     sourceAnchorIds,
-    ...(options.visual
-      ? {
-          visualSpec: {
-            kind: "diagram",
-            description: difficulty.visualDescription,
-            keyElements: ["来源依据", "核心机制", "学习动作", "反馈", "迁移", ...difficulty.visualKeyElements],
-            ...imagegenTeachingAsset(id, title, difficulty.visualDescription)
-          }
-        }
-      : {}),
+    visualSpec: {
+      kind: "diagram",
+      description: visualDescriptionForPage(type, difficulty),
+      keyElements: ["来源依据", "核心机制", "学习动作", "反馈", "迁移", ...difficulty.visualKeyElements],
+      ...imagegenTeachingAsset(id, title, visualDescriptionForPage(type, difficulty))
+    },
     ...(options.interaction ? { interactionSpec: interactionSpec(options.interaction, difficulty) } : {}),
     ...(options.assessment ? assessmentFields(options.assessment, difficulty) : {}),
     ...(options.code
@@ -555,12 +567,150 @@ function page(
   };
 }
 
+function visualDescriptionForPage(type: string, difficulty: DifficultyProfile): string {
+  switch (type) {
+    case "quiz":
+      return `${difficulty.visualDescription}，突出问题、选择、反馈之间的判断路径。`;
+    case "misconception_check":
+      return `${difficulty.visualDescription}，突出错误直觉、来源证据和修正模型之间的对照。`;
+    case "transfer_challenge":
+      return `${difficulty.visualDescription}，突出从当前论文命题迁移到相邻应用场景的边界。`;
+    case "code_walkthrough":
+      return `${difficulty.visualDescription}，突出把来源阅读转成可执行步骤和检查点。`;
+    default:
+      return difficulty.visualDescription;
+  }
+}
+
+function buildKnowledgeBoard({
+  pageId,
+  title,
+  type,
+  learningGoal,
+  narrative,
+  sourceAnchorIds,
+  sourceTerms,
+  difficulty
+}: {
+  pageId: string;
+  title: string;
+  type: string;
+  learningGoal: string;
+  narrative: string;
+  sourceAnchorIds: string[];
+  sourceTerms: string[];
+  difficulty: DifficultyProfile;
+}): Record<string, unknown> {
+  const subject = compactSubject(title);
+  const terms = sourceTerms.filter((term) => term.trim().length > 0).slice(0, 3);
+  const termText = terms.length > 0 ? terms.join("、") : "论文中的关键术语";
+  const primaryAnchor = sourceAnchorIds[0] ?? "source-unknown";
+  const boardRole = boardRoleForPageType(type);
+  const sectionSubject = `${subject}${pageId.replace(/^page-/u, " #")}`;
+  return {
+    headline: `${boardRole}：把“${subject}”放回来源和机制中理解`,
+    coreProposition: `${learningGoal}。${narrative} 对研究论文学习来说，关键不是记住一句结论，而是说明该结论由哪个来源片段支撑、经过什么机制成立、在哪些条件下会失效。`,
+    leftColumn: [
+      {
+        label: `${subject}的判断入口`,
+        items: [
+          `${subject} 先作为一个可解释命题处理，而不是作为孤立术语背诵。`,
+          `把它连接到 ${termText}，学习者才能知道这页在整篇论文中的位置。`
+        ]
+      },
+      {
+        label: `${sectionSubject}的推理链路`,
+        items: [
+          "先找来源主张，再抽出中间机制，最后检查这个机制能解释哪些现象。",
+          `${difficulty.label}层级需要额外追问：这个机制依赖哪些假设，证据是否足以支持泛化。`
+        ]
+      }
+    ],
+    rightColumn: [
+      {
+        label: `${subject}的证据边界`,
+        items: [
+          `证据：本页至少回到 ${primaryAnchor}，避免把论文观点改写成无来源泛谈。`,
+          `边界：如果只能复述 ${subject}，却说不出适用条件，就还没有形成可迁移理解。`
+        ]
+      },
+      {
+        label: `${sectionSubject}的自检问题`,
+        items: [
+          `例子：用自己的话说明 ${subject} 如何影响一个 agent 架构决策。`,
+          "反例：找一个该机制不该使用或证据不足的场景，检验理解是否过度外推。"
+        ]
+      }
+    ],
+    sourceTrace: sourceAnchorIds.slice(0, 3).map((anchorId) => ({
+      anchorId,
+      supports: `支持本页关于“${subject}”的来源、机制或边界判断。`
+    })),
+    bottomLine: "可靠理解不是复述标题，而是把来源依据、机制链路和适用边界压缩成一个可迁移判断。"
+  };
+}
+
+function compactSubject(title: string): string {
+  const parts = title.split(/[：:]/u).map((part) => part.trim()).filter(Boolean);
+  return (parts.at(-1) ?? title).replace(/^总览/u, "总体结构").slice(0, 28);
+}
+
+function boardRoleForPageType(type: string): string {
+  switch (type) {
+    case "problem_scene":
+      return "问题定位";
+    case "intuition_visual":
+      return "直觉入口";
+    case "structure_diagram":
+      return "结构判断";
+    case "interactive_model":
+      return "行动校验";
+    case "quiz":
+      return "理解检查";
+    case "misconception_check":
+      return "误区辨析";
+    case "transfer_challenge":
+      return "迁移判断";
+    case "summary_card":
+      return "压缩记忆";
+    case "code_walkthrough":
+      return "执行协议";
+    default:
+      return "知识板书";
+  }
+}
+
+type SourceDepthProfile = {
+  objective: string;
+  summaryLine: string;
+  guide: Record<string, string>;
+};
+
+function sourceDepthProfile(sourceKind: string | undefined, unitTitle: string): SourceDepthProfile | undefined {
+  if (sourceKind !== "paper") {
+    return undefined;
+  }
+  return {
+    objective: `按论文精读路径区分${unitTitle}中的研究问题、论文贡献、方法机制、证据链/评估、局限/威胁和迁移边界`,
+    summaryLine: `论文精读线索：先定位研究问题，再判断论文贡献、方法机制、证据链/评估、局限/威胁和迁移边界。`,
+    guide: {
+      researchQuestion: `研究问题：${unitTitle}试图解决什么 agent 推理或协作难题。`,
+      contributionClaim: `论文贡献：作者声称相对既有 agent 架构推进了哪类能力或分工。`,
+      methodMechanism: `方法机制：拆出 Talker、Reasoner、记忆、工具和反馈之间的结构关系。`,
+      evidencePath: `证据链/评估：追踪论文用什么实验、评估或案例支撑贡献 claim。`,
+      limitationThreat: `局限/威胁：标出方法假设、失效条件、外推风险和证据不足之处。`,
+      transferBoundary: `迁移边界：判断哪些结论能迁移到新 agent 系统，哪些只在原设定下成立。`
+    }
+  };
+}
+
 function imagegenTeachingAsset(pageId: string, title: string, visualDescription: string): Record<string, string> {
+  const visualIntent = `${visualDescription}；围绕“${compactSubject(title)}”画出对象、关系、方向和边界，不复刻页面标题文字`;
   return {
     imageUrl: `https://generated.invalid/teaching-images/${encodeURIComponent(pageId)}.png`,
-    imageAlt: `${title}的教学插图`,
+    imageAlt: visualIntent,
     imageProvider: "imagegen",
-    imagePrompt: `生成一张中文 Web Deck 教学插图，主题是“${title}”。画面只表达：${visualDescription}。可以使用短标签、方向词或局部标注帮助理解；不要包含页面标题、底部总结、长段落文字、表格、页面卡片原文或 UI 文本框。`
+    imagePrompt: `生成一张中文 Web Deck 教学插图，画出这一页独有的视觉结构：${visualIntent}。可以使用短标签、方向词或局部标注帮助理解；构图、主体关系和视觉隐喻必须明显区别于同课程其他页面；不要包含页面标题、底部总结、长段落文字、表格、页面卡片原文或 UI 文本框；不要生成右侧 UI 面板。`
   };
 }
 
@@ -867,7 +1017,7 @@ function difficultyProfile(level: TeachingDifficultyLevel): DifficultyProfile {
         visualKeyElements: ["先修概念", "正式术语", "知识节点", "关键链路"],
         protocol: "1. 标注先修概念\n2. 引入正式术语\n3. 连接来源证据\n4. 画出关键链路\n5. 标出边界案例",
         pathAction: "选择先看先修概念、关键链路还是讨论题",
-        pathPurpose: "训练学习者把来源材料组织成大学高年级/研究生课程的知识链路。",
+        pathPurpose: "训练学习者比较不同路径如何改变知识结构、关键链路和后续迁移判断。",
         primaryPathLabel: "先看先修概念",
         primaryPathTitle: "适合高阶课程起步",
         primaryPathFeedback: "先修概念能帮助正式术语落地，避免把课程写成泛泛科普。",

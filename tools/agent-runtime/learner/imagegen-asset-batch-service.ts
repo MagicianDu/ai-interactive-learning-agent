@@ -61,7 +61,9 @@ export type ImagegenAssetValidationIssue = {
     | "imagegen.asset.provider-missing"
     | "imagegen.asset.prompt-unsafe"
     | "imagegen.asset.prompt-guard-missing"
+    | "imagegen.asset.prompt-generic-intent"
     | "imagegen.asset.prompt-duplicates-page-text"
+    | "imagegen.asset.duplicate-prompt-intent"
     | "imagegen.asset.duplicate-image-content"
     | "imagegen.asset.url-not-preview"
     | "imagegen.asset.visual-spec-missing";
@@ -88,7 +90,7 @@ export class ImagegenAssetBatchService {
     assertSafeRunId(input.runId);
     const lessons = await this.readLessons(input.runId);
     const items = lessons.flatMap(({ lessonId, lesson }) =>
-      lesson.pages.map((page) => this.buildManifestItem(input.runId, lessonId, page))
+      lesson.pages.map((page) => this.buildManifestItem(input.runId, lessonId, page, stringValue(lesson.title)))
     );
     const manifestPath = await this.writeManifest(input.runId, {
       runId: input.runId,
@@ -140,6 +142,7 @@ export class ImagegenAssetBatchService {
     const lessons = await this.readLessons(input.runId);
     const issues: ImagegenAssetValidationIssue[] = [];
     const imageContentCandidates: Array<{ lessonId: string; pageId: string; imagePath: string }> = [];
+    const promptCandidates: Array<{ lessonId: string; pageId: string; prompt: string }> = [];
     let checkedPageCount = 0;
 
     for (const { lessonId, lesson } of lessons) {
@@ -162,6 +165,10 @@ export class ImagegenAssetBatchService {
           continue;
         }
         issues.push(...(await this.validateVisualSpec(input.runId, lessonId, pageId, page, visualSpec)));
+        const imagePrompt = stringValue(visualSpec.imagePrompt);
+        if (imagePrompt) {
+          promptCandidates.push({ lessonId, pageId, prompt: imagePrompt });
+        }
         const imageUrl = stringValue(visualSpec.imageUrl) ?? "";
         const imagePath = imageUrlToPreviewPath(this.previewRoot(input.runId), input.runId, imageUrl);
         if (imagePath && (await pathExists(imagePath))) {
@@ -169,6 +176,7 @@ export class ImagegenAssetBatchService {
         }
       }
     }
+    issues.push(...duplicatePromptIntentIssues(promptCandidates));
     issues.push(...(await duplicateImageContentIssues(imageContentCandidates)));
 
     return {
@@ -179,7 +187,7 @@ export class ImagegenAssetBatchService {
     };
   }
 
-  private buildManifestItem(runId: string, lessonId: string, page: Record<string, unknown>): ImagegenManifestItem {
+  private buildManifestItem(runId: string, lessonId: string, page: Record<string, unknown>, lessonTitle: string | undefined): ImagegenManifestItem {
     const pageId = stringValue(page.id);
     if (!pageId) {
       throw new AgentRuntimeError(`lesson ${lessonId} contains a page without id`, "INVALID_LESSON");
@@ -187,9 +195,9 @@ export class ImagegenAssetBatchService {
     assertSafeId(lessonId, "lessonId");
     assertSafeId(pageId, "pageId");
     const pageTitle = stringValue(page.title) ?? pageId;
-    const visualSpec = isRecord(page.visualSpec) ? page.visualSpec : {};
-    const imageAlt = stringValue(visualSpec.imageAlt) ?? buildImageAlt(page);
-    const prompt = defaultPrompt(sanitizePromptInput(imageAlt, pageTitle, bottomLineForPage(page)));
+    const promptIntent = buildImagePromptIntent(page, pageTitle, lessonTitle);
+    const imageAlt = buildImageAlt(page, pageTitle, promptIntent);
+    const prompt = defaultPrompt(promptIntent);
     const imageUrl = `/__learning-preview/${runId}/images/${lessonId}/${pageId}-imagegen-v1.png`;
     return {
       lessonId,
@@ -355,6 +363,7 @@ export class ImagegenAssetBatchService {
 
 type PreviewLesson = {
   id: string;
+  title?: string;
   displayMode?: string;
   pages: Array<Record<string, unknown>>;
 };
@@ -363,14 +372,139 @@ function isPreviewLesson(value: unknown): value is PreviewLesson {
   return isRecord(value) && typeof value.id === "string" && Array.isArray(value.pages);
 }
 
-function defaultPrompt(imageAlt: string): string {
-  return `生成一张中文 Web Deck 教学插图，画出这一页的核心知识关系：${imageAlt}。可以使用短标签、方向词或局部标注帮助理解；不要包含长段落文字、表格或 UI 文本框；不要重复页面标题；不要重复底部总结；不要重复页面卡片原文。`;
+function defaultPrompt(promptIntent: string): string {
+  return `生成一张中文 Web Deck 教学插图，画出这一页独有的视觉结构：${promptIntent}。可以使用短标签、方向词或局部标注帮助理解；构图、主体关系和视觉隐喻必须明显区别于同课程其他页面；不要包含长段落文字、表格或 UI 文本框；不要生成右侧 UI 面板；不要重复页面标题；不要重复底部总结；不要重复页面卡片原文。`;
 }
 
-function buildImageAlt(page: Record<string, unknown>): string {
+function buildImageAlt(page: Record<string, unknown>, pageTitle: string, promptIntent: string): string {
+  const visualSpec = isRecord(page.visualSpec) ? page.visualSpec : undefined;
+  const explicitImageAlt = visualSpec ? stringValue(visualSpec.imageAlt) : undefined;
+  if (explicitImageAlt && !isTitleDerivedImageAlt(explicitImageAlt, pageTitle) && !isGenericImageIntent(explicitImageAlt)) {
+    return sanitizePromptInput(explicitImageAlt, pageTitle, bottomLineForPage(page));
+  }
+  const description = visualSpec ? stringValue(visualSpec.description) : undefined;
+  if (description && !isGenericImageIntent(description)) {
+    return sanitizePromptInput(description, pageTitle, bottomLineForPage(page));
+  }
+  return promptIntent;
+}
+
+function buildImagePromptIntent(page: Record<string, unknown>, pageTitle: string, lessonTitle: string | undefined): string {
+  const bottomLine = bottomLineForPage(page);
+  const visualSpec = isRecord(page.visualSpec) ? page.visualSpec : undefined;
   const board = isRecord(page.knowledgeBoard) ? page.knowledgeBoard : undefined;
-  const coreProposition = board ? stringValue(board.coreProposition) : undefined;
-  return coreProposition ?? "解释本页的关键知识关系";
+  const pageType = stringValue(page.type) ?? "knowledge";
+  const pageRole = visualRoleForPageType(pageType);
+  const unitSubject = lessonTitle ? `单元主题：${unitSubjectFromLessonTitle(lessonTitle)}` : undefined;
+
+  const candidates = [
+    unitSubject,
+    stringValue(page.learningGoal),
+    board ? stringValue(board.coreProposition) : undefined,
+    stringValue(page.narrative),
+    visualSpec ? stringValue(visualSpec.description) : undefined,
+    extractKeyElements(visualSpec).join("、"),
+    board ? collectBoardLabels(board).join("、") : undefined,
+  ]
+    .map((value) => (value ? sanitizePromptInput(value, pageTitle, bottomLine) : undefined))
+    .filter((value): value is string => Boolean(value && !isGenericImageIntent(value)));
+
+  const intent = compactPromptIntent([pageRole, ...candidates]);
+  if (!isGenericImageIntent(intent)) {
+    return intent;
+  }
+
+  return `${pageRole}；${unitSubject ?? `围绕${compactSubjectFromTitle(pageTitle)}`}呈现对象、关系、方向和边界，不复刻标题文字`;
+}
+
+function unitSubjectFromLessonTitle(lessonTitle: string): string {
+  const parts = lessonTitle.split(/[：:]/u).map((part) => part.trim()).filter(Boolean);
+  return (parts.at(-1) ?? lessonTitle).slice(0, 28);
+}
+
+function visualRoleForPageType(pageType: string): string {
+  switch (pageType) {
+    case "problem_scene":
+      return "画成问题定位图，突出研究问题、方法机制和证据边界的判断入口";
+    case "intuition_visual":
+      return "画成来源地图，突出原文片段、核心术语和学习路径之间的空间关系";
+    case "structure_diagram":
+      return "画成结构关系图，突出问题、机制、证据和边界四类节点如何互相约束";
+    case "interactive_model":
+      return "画成决策路径图，突出学习者选择、观察结果和修正反馈之间的分叉";
+    case "quiz":
+      return "画成判断漏斗，突出候选理解如何经过证据和边界筛选";
+    case "misconception_check":
+      return "画成误区对照图，突出错误直觉与修正模型的差异";
+    case "transfer_challenge":
+      return "画成迁移桥，突出从原文命题迁移到新场景时哪些条件保持、哪些条件失效";
+    case "summary_card":
+      return "画成压缩记忆图，突出最小可迁移判断如何由来源、机制和边界组成";
+    case "code_walkthrough":
+      return "画成执行协议图，突出阅读步骤、检查点和失败回退";
+    default:
+      return "画成知识关系图，突出对象、关系、方向和边界";
+  }
+}
+
+function collectBoardLabels(board: Record<string, unknown>): string[] {
+  return ["leftColumn", "rightColumn"]
+    .flatMap((key) => (Array.isArray(board[key]) ? board[key] : []))
+    .filter(isRecord)
+    .map((section) => stringValue(section.label))
+    .filter((value): value is string => Boolean(value))
+    .slice(0, 4);
+}
+
+function extractKeyElements(visualSpec: Record<string, unknown> | undefined): string[] {
+  if (!visualSpec || !Array.isArray(visualSpec.keyElements)) {
+    return [];
+  }
+  return visualSpec.keyElements.filter((value): value is string => typeof value === "string" && value.trim().length > 0).slice(0, 6);
+}
+
+function compactPromptIntent(parts: string[]): string {
+  const unique: string[] = [];
+  for (const part of parts) {
+    const cleaned = part.replace(/\s+/gu, " ").replace(/[。；;,.，、\s]+$/gu, "").trim();
+    if (cleaned.length === 0) {
+      continue;
+    }
+    if (unique.some((existing) => normalizeForDuplication(existing).includes(normalizeForDuplication(cleaned)))) {
+      continue;
+    }
+    unique.push(cleaned.length > 80 ? `${cleaned.slice(0, 80)}…` : cleaned);
+  }
+  return unique.slice(0, 4).join("；");
+}
+
+function compactSubjectFromTitle(title: string): string {
+  const parts = title.split(/[：:]/u).map((part) => part.trim()).filter(Boolean);
+  return (parts.at(-1) ?? title).slice(0, 18);
+}
+
+function isTitleDerivedImageAlt(imageAlt: string, pageTitle: string): boolean {
+  const stripped = sanitizePromptInput(imageAlt, pageTitle, undefined);
+  return isGenericImageIntent(stripped) || /^的?教学插图$/u.test(stripped);
+}
+
+function isGenericImageIntent(value: string): boolean {
+  const normalized = normalizeForDuplication(value);
+  if (normalized.length < 6) {
+    return true;
+  }
+  return (
+    normalized === "教学插图" ||
+    normalized === "中文教学插图" ||
+    normalized === "的教学插图" ||
+    normalized === "解释本页的关键知识关系" ||
+    normalized === "本页核心知识点" ||
+    normalized === "画出这一页的核心知识关系" ||
+    normalized.includes("展示来源结构行动和反馈之间的关系") ||
+    normalized.includes("按大学高年级研究生课程组织中文图示") ||
+    /核心知识关系的?教学插图/u.test(normalized) ||
+    /这一页独有的视觉结构的?教学插图/u.test(normalized)
+  );
 }
 
 function bottomLineForPage(page: Record<string, unknown>): string | undefined {
@@ -395,7 +529,7 @@ function imageUrlToPreviewPath(previewRoot: string, runId: string, imageUrl: str
 }
 
 type ImagePromptSafetyIssue = {
-  issueId: "imagegen.asset.prompt-unsafe" | "imagegen.asset.prompt-guard-missing";
+  issueId: "imagegen.asset.prompt-unsafe" | "imagegen.asset.prompt-guard-missing" | "imagegen.asset.prompt-generic-intent";
   reason: string;
   requiredFix: string;
 };
@@ -413,6 +547,15 @@ const requiredImagePromptGuards: Array<{ label: string; pattern: RegExp }> = [
 ];
 
 function validateImagePromptSafety(prompt: string): ImagePromptSafetyIssue | undefined {
+  if (isGenericPromptIntent(prompt)) {
+    return {
+      issueId: "imagegen.asset.prompt-generic-intent",
+      reason: "The imagegen prompt collapses to a generic teaching-illustration intent, so different pages can receive the same visual template.",
+      requiredFix:
+        "Rewrite the prompt with a page-specific visual structure: the objects to draw, the relation between them, direction/change, and the boundary to emphasize."
+    };
+  }
+
   if (allowsUnsafeImageArtifact(prompt)) {
     return {
       issueId: "imagegen.asset.prompt-unsafe",
@@ -446,6 +589,17 @@ function allowsUnsafeImageArtifact(prompt: string): boolean {
   return prompt
     .split(/[。；;.!！?？\n]/u)
     .some((clause) => unsafeAllowPattern.test(clause) && !negationPattern.test(clause));
+}
+
+function isGenericPromptIntent(prompt: string): boolean {
+  const normalized = normalizeForDuplication(prompt);
+  return (
+    /核心知识关系的?教学插图/u.test(normalized) ||
+    /独有的视觉结构的?教学插图/u.test(normalized) ||
+    /只表达本页核心知识点/u.test(normalized) ||
+    /只表达核心知识点/u.test(normalized) ||
+    /生成教学插图表达条件关系和边界/u.test(normalized)
+  );
 }
 
 function duplicatedLearnerTextInPrompt(prompt: string, page: Record<string, unknown>): string | undefined {
@@ -491,6 +645,39 @@ async function duplicateImageContentIssues(
     });
   }
   return issues;
+}
+
+function duplicatePromptIntentIssues(candidates: Array<{ lessonId: string; pageId: string; prompt: string }>): ImagegenAssetValidationIssue[] {
+  const seen = new Map<string, { lessonId: string; pageId: string }>();
+  const issues: ImagegenAssetValidationIssue[] = [];
+  for (const candidate of candidates) {
+    const signature = normalizePromptIntentSignature(candidate.prompt);
+    if (!signature) {
+      continue;
+    }
+    const first = seen.get(signature);
+    if (!first) {
+      seen.set(signature, { lessonId: candidate.lessonId, pageId: candidate.pageId });
+      continue;
+    }
+    issues.push({
+      issueId: "imagegen.asset.duplicate-prompt-intent",
+      lessonId: candidate.lessonId,
+      pageId: candidate.pageId,
+      reason: `The imagegen prompt intent duplicates ${first.lessonId}/${first.pageId}; prompts that differ only by page id or generic guards produce repeated image templates.`,
+      requiredFix: "Give this page a distinct prompt intent with its own visual metaphor, objects, relation, direction/change, or boundary."
+    });
+  }
+  return issues;
+}
+
+function normalizePromptIntentSignature(prompt: string): string | undefined {
+  const intent = prompt
+    .split(/[。；;.!！?？\n]/u)
+    .filter((clause) => !negationPattern.test(clause))
+    .join("");
+  const normalized = normalizeForDuplication(intent).replace(/page\d+/giu, "").replace(/unitoverview/giu, "");
+  return normalized.length >= 18 ? normalized : undefined;
 }
 
 async function pathExists(filePath: string): Promise<boolean> {

@@ -174,7 +174,7 @@ describe("WebDeckRenderer", () => {
     expect(
       screen.getByRole("heading", { level: 2, name: "问题引入：为什么全表扫描慢？" }),
     ).toBeInTheDocument();
-    expect(screen.getAllByText("第 1 / 10 页")).toHaveLength(2);
+    expect(screen.getAllByText("第 1 / 10 页")).toHaveLength(1);
   });
 
   test("renders a shorter lesson with a matching configured target count", () => {
@@ -190,9 +190,9 @@ describe("WebDeckRenderer", () => {
 
     render(<WebDeckRenderer lesson={shorterLesson} />);
 
-    expect(screen.getAllByText("第 1 / 6 页")).toHaveLength(2);
-    expect(screen.getByRole("button", { name: "跳转到第 6 页" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "跳转到第 7 页" })).not.toBeInTheDocument();
+    expect(screen.getAllByText("第 1 / 6 页")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "下一页" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /跳转到第/i })).not.toBeInTheDocument();
   });
 
   test("keeps incomplete generated page specs learner-facing", () => {
@@ -320,7 +320,7 @@ describe("WebDeckRenderer", () => {
     render(<WebDeckRenderer lesson={weylLesson} initialPageIndex={5} />);
 
     expect(screen.getByRole("heading", { level: 2, name: "广义相对论把引力放进 metric" })).toBeInTheDocument();
-    expect(screen.getAllByText("第 6 / 6 页")).toHaveLength(2);
+    expect(screen.getAllByText("第 6 / 6 页")).toHaveLength(1);
 
     const visualRegion = screen.getByLabelText("知识板书视觉区");
     const textRail = screen.getByLabelText("知识板书正文区");
@@ -420,11 +420,11 @@ describe("WebDeckRenderer", () => {
       />
     );
 
-    expect(screen.getAllByText("第 2 / 10 页")).toHaveLength(2);
+    expect(screen.getAllByText("第 2 / 10 页")).toHaveLength(1);
 
     await user.click(screen.getByRole("button", { name: "下一页" }));
 
     expect(onPageChange).toHaveBeenCalledWith(2);
-    expect(screen.getAllByText("第 3 / 10 页")).toHaveLength(2);
+    expect(screen.getAllByText("第 3 / 10 页")).toHaveLength(1);
   });
 });

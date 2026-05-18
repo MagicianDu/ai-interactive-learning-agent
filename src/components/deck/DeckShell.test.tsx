@@ -35,7 +35,7 @@ const twoPageLesson: Lesson = {
 };
 
 describe("DeckShell", () => {
-  test("uses lesson page count for the label and navigation", async () => {
+  test("keeps navigation without repeating lesson title or page count", async () => {
     const user = userEvent.setup();
 
     render(
@@ -49,17 +49,15 @@ describe("DeckShell", () => {
       />,
     );
 
-    expect(screen.getByText("第 1 / 2 页")).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /跳转到第/i })).toHaveLength(2);
-    expect(screen.getByRole("button", { name: "跳转到第 1 页" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "跳转到第 2 页" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "跳转到第 10 页" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Two page test lesson")).not.toBeInTheDocument();
+    expect(screen.queryByText("Test learners.")).not.toBeInTheDocument();
+    expect(screen.queryByText("第 1 / 2 页")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "First page" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "下一页" }));
 
     expect(screen.getByRole("heading", { name: "Second page" })).toBeInTheDocument();
-    expect(screen.getByText("第 2 / 2 页")).toBeInTheDocument();
+    expect(screen.queryByText("第 2 / 2 页")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "下一页" })).toBeDisabled();
   });
 

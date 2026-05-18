@@ -188,3 +188,71 @@ npx tsx -e "import { CourseProductionBenchmarkService } from './tools/agent-runt
 1. 对 `self-study-agentic-design-patterns-quality-v1` 执行 imagegen batch 重发：每页独立教学插图，修复 30 个 duplicate-image-content 问题。
 2. 对 Talker-Reasoner 论文新建当前标准 run：`student_self_study_textbook`，总览 + 研究问题 + 架构机制 + 证据边界 + 局限条件。
 3. 每个真实 source 至少保留两次 production repeat，再进入 `CourseProductionBenchmarkService`。
+
+## 2026-05-18 更新
+
+### 书籍 run 已补齐生产门禁
+
+Run ID: `self-study-agentic-design-patterns-quality-v1`
+
+本轮修复了真实书籍 run 的图片重复问题，并补齐 imagegen batch state。
+
+验收结果：
+
+- Content review: 第 3 轮 `pass`
+- Course quality: `passed`, score `100`
+- Imagegen asset validation: `passed`, checked pages `34`, issues `0`
+- Imagegen batch state: `34/34` succeeded
+- Layout smoke: `passed`, checked pages `34`, issues `0`
+- Production benchmark run-level status: `passed`
+
+Production benchmark target-level status 仍为 `warning`，唯一原因是当前同一 source 只有 1 次 production repeat；benchmark 规则要求至少 2 次重复生产。
+
+### 重要观察
+
+1. 书籍 run 现在已经能证明当前生产门禁能拦住并修复真实 duplicate-image-content 问题。
+2. `ImagegenBatchStateService.recordItem` 当前只记录 manifest 中已有的 `imagePrompt`，不会记录 Codex 调用 imagegen 时实际使用的更严格 prompt。后续应扩展记录契约，保存实际生成 prompt、生成方式和人工/自动筛选结论。
+3. 论文 run `talker-reasoner-paper-authored-v5-20260507` 仍是旧结构，不能因为旧 `course-quality-report` 为 100 就视为通过当前 self-study production 标准。下一步仍应重发 Talker-Reasoner 论文的当前标准 run。
+
+### 论文 run 已重发为当前标准
+
+Run ID: `talker-reasoner-paper-current-v10`
+
+本轮用同一份 Talker-Reasoner 论文重新生成当前标准自学 Web Deck，并修复了两类生成器问题：
+
+- 论文来源必须显式包含研究问题、论文贡献、方法机制、证据链/评估、局限/威胁和迁移边界。
+- 首页标题不能使用“学习问题”等页面角色词，也不能把完整长单元标题塞进页面标题。
+
+课程形态：
+
+- Source kind: `paper`
+- Course shape: 6 units / 48 pages
+- Units: 1 个总览单元 + 5 个核心 topic 单元
+- Difficulty: `upper_undergraduate_or_graduate`
+
+验收结果：
+
+- Course quality: `passed`, score `100`, issues `0`
+- Content review: 第 3 轮 `pass`
+- Content review metrics:
+  - Pages: `48`
+  - `templateLabelCount`: `0`
+  - `missingImagegenAssetCount`: `0`
+  - `lowDensityPageCount`: `0`
+  - `sourceAnchoredPageCount`: `48`
+  - `sourceTracePageCount`: `48`
+  - `repeatedBoardSectionLabelCount`: `0`
+  - `bottomLineRepeatsTitleCount`: `0`
+  - `weakKnowledgeClaimCount`: `0`
+- Imagegen asset validation: `passed`, checked pages `48`, issues `0`
+- Imagegen batch state: `48/48` succeeded
+- Layout smoke: `passed`, checked pages `48`, issues `0`
+- Production benchmark run-level status: `passed`
+
+Production benchmark overall status 当前为 `warning`，不是因为 run 失败，而是因为每个真实 source 目前只有 1 次 production repeat；benchmark 规则要求每个 source 至少 2 次重复生产。
+
+### 当前剩余边界
+
+1. 真实书籍和真实论文的单次 production run 已通过，但还没有完成每个 source 2 次重复生产。
+2. `targetTotalPages` 当前没有作为总页数硬上限生效；`overview_plus_topic` 会按 `unitPages * units` 生成总页数，本轮论文为 6 * 8 = 48 页。
+3. 当前 batch state 能校验每页独立 PNG 资产、路径、provider 和 prompt guard，但还需要继续扩展图片生成 provenance：记录实际 imagegen prompt、生成方式、模型/工具来源和筛选结论。

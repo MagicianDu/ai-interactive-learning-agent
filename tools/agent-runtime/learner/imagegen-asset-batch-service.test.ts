@@ -29,6 +29,8 @@ describe("ImagegenAssetBatchService", () => {
       prompt: expect.stringContaining("不要包含长段落文字、表格或 UI 文本框")
     });
     expect(manifest.items[0]?.prompt).not.toContain("测量把几何概念变成可比较的量");
+    expect(manifest.items[0]?.prompt).toContain("测量和坐标的关系");
+    expect(manifest.items[0]?.prompt).not.toContain("核心知识关系：的教学插图");
     expect(manifest.items[0]?.prompt).toContain("不要重复页面标题");
     expect(manifest.items[0]?.prompt).toContain("不要重复底部总结");
   });
@@ -100,14 +102,14 @@ describe("ImagegenAssetBatchService", () => {
       visualSpec: {
         imageUrl: "/__learning-preview/unsafe-prompts/images/lesson-a/page-02-imagegen-v1.png",
         imageProvider: "imagegen",
-        imagePrompt: "生成一张中文教学插图，只表达核心知识点，可以使用短标签帮助理解。",
+        imagePrompt: "生成一张中文教学插图，画出测量过程中的几何对象、坐标轴和量化关系，可以使用短标签帮助理解。",
         imageAlt: "缺少约束的图片"
       }
     };
     await writeFile(lessonPath, `${JSON.stringify(lesson, null, 2)}\n`, "utf8");
     await mkdir(path.join(root, "runs", "unsafe-prompts", "preview", "images", "lesson-a"), { recursive: true });
     await writeFile(path.join(root, "runs", "unsafe-prompts", "preview", "images", "lesson-a", "page-01-imagegen-v1.png"), "png", "utf8");
-    await writeFile(path.join(root, "runs", "unsafe-prompts", "preview", "images", "lesson-a", "page-02-imagegen-v1.png"), "png", "utf8");
+    await writeFile(path.join(root, "runs", "unsafe-prompts", "preview", "images", "lesson-a", "page-02-imagegen-v1.png"), "png-2", "utf8");
 
     const result = await new ImagegenAssetBatchService(root).validateAssets({ runId: "unsafe-prompts" });
 
@@ -143,6 +145,60 @@ describe("ImagegenAssetBatchService", () => {
     expect(result.status).toBe("failed");
     expect(result.issues).toEqual(
       expect.arrayContaining([expect.objectContaining({ issueId: "imagegen.asset.prompt-duplicates-page-text", pageId: "page-01" })])
+    );
+  });
+
+  test("validate blocks generic image prompt intent", async () => {
+    const root = await imageFixtureRoot("generic-prompt");
+    const lessonPath = path.join(root, "runs", "generic-prompt", "preview", "lessons", "lesson-a.json");
+    const lesson = JSON.parse(await readFile(lessonPath, "utf8")) as { pages: Array<Record<string, unknown>> };
+    lesson.pages[0] = {
+      ...lesson.pages[0],
+      visualSpec: {
+        imageUrl: "/__learning-preview/generic-prompt/images/lesson-a/page-01-imagegen-v1.png",
+        imageProvider: "imagegen",
+        imagePrompt:
+          "生成一张中文 Web Deck 教学插图，画出这一页的核心知识关系：的教学插图。可以使用短标签、方向词或局部标注帮助理解；不要包含长段落文字、表格或 UI 文本框；不要重复页面标题；不要重复底部总结；不要重复页面卡片原文。",
+        imageAlt: "教学插图"
+      }
+    };
+    await writeFile(lessonPath, `${JSON.stringify(lesson, null, 2)}\n`, "utf8");
+    await mkdir(path.join(root, "runs", "generic-prompt", "preview", "images", "lesson-a"), { recursive: true });
+    await writeFile(path.join(root, "runs", "generic-prompt", "preview", "images", "lesson-a", "page-01-imagegen-v1.png"), "png", "utf8");
+
+    const result = await new ImagegenAssetBatchService(root).validateAssets({ runId: "generic-prompt" });
+
+    expect(result.status).toBe("failed");
+    expect(result.issues).toEqual(
+      expect.arrayContaining([expect.objectContaining({ issueId: "imagegen.asset.prompt-generic-intent", pageId: "page-01" })])
+    );
+  });
+
+  test("validate blocks duplicated prompt intent across pages", async () => {
+    const root = await imageFixtureRoot("duplicate-prompt-intent");
+    const lessonPath = path.join(root, "runs", "duplicate-prompt-intent", "preview", "lessons", "lesson-a.json");
+    const lesson = JSON.parse(await readFile(lessonPath, "utf8")) as { pages: Array<Record<string, unknown>> };
+    const duplicatedPrompt =
+      "生成一张中文 Web Deck 教学插图，画出这一页独有的视觉结构：画成证据筛选路径，突出来源主张、中间机制和适用边界之间的判断顺序。可以使用短标签、方向词或局部标注帮助理解；构图、主体关系和视觉隐喻必须明显区别于同课程其他页面；不要包含长段落文字、表格或 UI 文本框；不要重复页面标题；不要重复底部总结；不要重复页面卡片原文。";
+    lesson.pages = lesson.pages.map((page, index) => ({
+      ...page,
+      visualSpec: {
+        imageUrl: `/__learning-preview/duplicate-prompt-intent/images/lesson-a/page-0${index + 1}-imagegen-v1.png`,
+        imageProvider: "imagegen",
+        imagePrompt: duplicatedPrompt,
+        imageAlt: `证据筛选路径 ${index + 1}`
+      }
+    }));
+    await writeFile(lessonPath, `${JSON.stringify(lesson, null, 2)}\n`, "utf8");
+    await mkdir(path.join(root, "runs", "duplicate-prompt-intent", "preview", "images", "lesson-a"), { recursive: true });
+    await writeFile(path.join(root, "runs", "duplicate-prompt-intent", "preview", "images", "lesson-a", "page-01-imagegen-v1.png"), "png-1", "utf8");
+    await writeFile(path.join(root, "runs", "duplicate-prompt-intent", "preview", "images", "lesson-a", "page-02-imagegen-v1.png"), "png-2", "utf8");
+
+    const result = await new ImagegenAssetBatchService(root).validateAssets({ runId: "duplicate-prompt-intent" });
+
+    expect(result.status).toBe("failed");
+    expect(result.issues).toEqual(
+      expect.arrayContaining([expect.objectContaining({ issueId: "imagegen.asset.duplicate-prompt-intent", pageId: "page-02" })])
     );
   });
 
