@@ -2,7 +2,7 @@
 
 This protocol defines how Codex, Claude, or a similar agent authors Chinese learning courses after `learning_agent.prepare_learning_course` returns source semantics, course planning, and content blueprint data.
 
-The goal is not to summarize material into slides. The goal is to reconstruct the source into a university-grade learning experience that builds transferable mental models.
+The current default goal follows `docs/current-product-spec.zh-CN.md`: reconstruct the source into a student self-study academic Web Deck. It is not a teacher deck, quiz lesson, classroom plan, or page-template filling task.
 
 ## Default Flow
 
@@ -13,6 +13,14 @@ The goal is not to summarize material into slides. The goal is to reconstruct th
 5. If a deterministic draft exists, call `learning_agent.compare_authoring_quality`.
 6. Use `qualityReport.topIssues`, comparison `remainingGaps`, and comparison `revisionInstructions` to revise before export.
 
+For source-heavy materials, do not default to exhaustive coverage. Prefer a compact course pack:
+
+- one overview unit
+- three to five high-value focused topic units
+- stop when the learner can already form a stable mental model from the current package
+
+Do not expand only for the sake of completion when later units mostly repeat the same judgment pattern.
+
 ## Page Contract
 
 Every page must perform one explicit mental-model move.
@@ -21,12 +29,17 @@ For `student_self_study_textbook`, `contentBlueprint.units[*].pageBlueprints[*].
 may be `codex_designed`. Treat that as an authoring slot, not a page
 template. Codex or Claude should choose the actual page type, knowledge role,
 and sequence from the source material. The hard constraints are page budget,
-source grounding, one-screen density, unique `knowledgeBoard` content, examples
-or boundaries, and student-facing language.
+source grounding, one-screen density, unique academic claims, image-backed explanation,
+examples or boundaries, and student-facing language.
 Visible titles must be content propositions or real learner questions. Do not
 use page-role labels such as "直观模型", "机制链路", or "来源证据" as titles,
 and do not expose authoring scaffold phrases such as "本页围绕..." or
 "本页从...入手".
+
+Do not expose rubric or reviewer language such as "学习者需要看见问题、机制和边界",
+"大学高年级/研究生课程层级需要额外追问", or "对研究论文学习来说，关键不是记住一句结论".
+Do not use semantic-template section labels such as "X 的判断入口", "X 的推理链路",
+"X 的证据边界", or "X 的自检问题".
 
 For each page, Codex should check:
 
@@ -57,6 +70,25 @@ Weak source synthesis:
 - a paper lesson explains a method but omits evidence and limitations
 - a patent lesson explains the idea but does not distinguish claim boundary from embodiment
 - a blog lesson lists steps but does not identify failure modes or decision points
+
+## Student Self-Study Authoring Heuristics
+
+Use the `talker-reasoner-paper-current-v11` style as the acceptance reference for source-backed self-study pages:
+
+- Write as a student-facing academic note, not as a teacher speaking script.
+- Each page should make one knowledge move and then defend it with source, mechanism, example, or boundary.
+- The visible page should feel like "reading a compact textbook page", not "executing a lesson template".
+- Topic units should usually be denser than overview units: fewer meta sentences, more direct judgments.
+- If the source is a paper, pages should naturally surface research question, contribution claim, method mechanism, evidence path, limitation, and transfer boundary across the unit. Do not dump them as rigid headings on every page.
+- `knowledgeBoard.rightColumn` should almost always contain an explicit example, evidence, boundary, limitation, or failure-mode move. If the right column only paraphrases the left column, the page is too weak for self-study.
+- Add short formal markers when needed, such as `正式术语：` or `案例分析：`, but only when they increase academic precision rather than turning into visible scaffolding.
+
+Do not let a focused topic unit regress into:
+
+- generic "this page matters" wording
+- repeated overview-level framing
+- empty architecture praise
+- content that could apply to any paper with only nouns swapped
 
 ## Difficulty Contract
 
@@ -124,5 +156,7 @@ Common fixes:
 - weak source synthesis: connect source terms, evidence, examples, and limitations to the page
 - shallow academic depth: add prerequisites, formal terms, assumptions, critique, and homework-style transfer
 - decorative interaction: replace it with prediction, decision, comparison, or parameter manipulation plus explanatory feedback
+
+When a course already has one strong overview and three to five strong focused units, ask whether further expansion adds new mental-model value. If not, stop and preserve quality instead of scaling low-value pages.
 
 Do not ask the learner to approve internal artifacts. Summarize only the preview URL, course shape, quality status, top issues, and next action.

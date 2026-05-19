@@ -91,3 +91,16 @@ Codex content-review round:
 This workflow is semi-automatic by design: Codex still makes the visual design
 decision and calls imagegen, while MCP keeps paths, manifests, and validation
 deterministic.
+
+## Practical Acceptance Notes
+
+Use the following practical defaults for current student self-study Web Decks:
+
+- Save the final learner-facing asset under `runs/<run-id>/preview/images/<lesson-id>/page-XX-imagegen-v1.png` unless there is a strong reason to use another preview-safe format.
+- The page should consume the local preview asset directly through `visualSpec.imageUrl`; do not leave image files only in temporary model output folders.
+- Treat image prompt guards as hard publish requirements, not style advice. The prompt should explicitly forbid:
+  - `长段落文字`
+  - `表格`
+  - `UI 文本框` or `UI 面板`
+- A good prompt should also state that the image is for knowledge explanation and should not repeat the page title, page正文, or bottom-line sentence.
+- If a small course pack already has one strong overview plus a few strong topic units, finish the image batch for those units first. Do not postpone usable visuals until a hypothetical "complete course pack" exists.
