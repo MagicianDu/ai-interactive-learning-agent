@@ -1,5 +1,7 @@
 # Initial MVP Plan
 
+> 历史说明：这是早期数据库索引互动 MVP 计划，不是当前默认产品规范。当前默认生成以 `docs/current-product-spec.zh-CN.md` 为准；本文件只用于理解项目起点或开发互动样例。
+
 Topic:
 
 ```text
@@ -56,4 +58,3 @@ It should not be:
 - Index tradeoff checker works.
 - Quizzes and checks provide explanatory feedback.
 - Lesson content is loaded from structured data.
-

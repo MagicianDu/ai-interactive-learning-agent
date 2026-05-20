@@ -104,8 +104,9 @@ function courseIntentGlobalRules(courseIntent: CourseIntent | undefined): string
       "Codex/Claude 自主设计每页的知识角色和内容顺序；contentBlueprint 只给页数、来源、覆盖范围和质量约束，不是固定模板。",
       "标题必须是内容命题或学习者真正会问的问题；不要用页面角色当标题，例如“直观模型”“机制链路”“来源证据”。",
       "不要写“本页围绕...讲一个可自学知识片段”“本页从...入手”等 authoring scaffold 句；这些是内部写作过程，不是学生要学的内容。",
-      "每页优先产出 page.knowledgeBoard；headline 是学习者问题或知识命题，coreProposition 是本页要讲清楚的答案。",
-      "leftColumn 放概念、机制、因果链、定义或推导；rightColumn 放例子、反例、来源证据或适用边界。",
+      "不要把 rubric、质量标准、教学设计说明或 reviewer 语言写进学生页面。",
+      "每页优先产出 page.knowledgeBoard；headline 是学习者问题或知识命题，coreProposition 是本页要讲清楚的答案；leftColumn/rightColumn 是内部承载结构，不是固定可见栏目模板。",
+      "每页至少交付一个来源驱动的学术判断：明确命题、机制或概念区分、证据依据和适用边界。",
       "同一 lesson 内不要复制同一套 headline、coreProposition、左右栏或 bottomLine；每页必须推进独立知识节点或关键链路。",
       "不要出现本讲定位、课堂讨论、教授讲义、课后作业、教学目标、教学设计、识别本页中的作用等教师视角话术。",
       "如果内容放不下一屏，必须拆成多页；不要通过长段落或纵向滚动承载密度。",
@@ -267,7 +268,7 @@ function mustIncludeSemanticHints(semanticHints: UnitSemanticHints | undefined):
     return [];
   }
   return [
-    ...(semanticHints.keyTerms.length > 0 ? [`来源术语：${semanticHints.keyTerms.join("、")}`] : []),
+    ...(semanticHints.keyTerms.length > 0 ? [`自然写入这些来源术语，不要输出为“来源术语：”栏目：${semanticHints.keyTerms.join("、")}`] : []),
     ...(semanticHints.evidenceHints.length > 0 ? ["来源证据链"] : []),
     ...(semanticHints.limitationHints.length > 0 ? ["来源局限边界"] : [])
   ];
@@ -310,11 +311,11 @@ function selfStudyTemplatesForPageCount(targetPageCount: number): PageTemplate[]
   return Array.from({ length: Math.max(1, targetPageCount) }, () =>
     selfStudyTemplate(
       "codex_designed",
-      "Codex/Claude 自主设计本页的知识角色：根据来源材料决定本页讲哪个独立知识节点或关键链路，不复制固定页面模板。",
-      "读完后能说出本页的唯一命题、它和前后页的关系，以及至少一个例子、证据或边界。",
-      "由 Codex 根据来源选择图、表、代码、对比、机制链或纯板书；不要按固定模板硬套。",
+      "Codex/Claude 自主设计本页的知识角色：根据来源材料决定本页讲哪个独立知识节点、学术命题或关键链路，不复制固定页面模板。",
+      "读完后能说出本页唯一命题、它和前后页的关系，以及至少一个例子、证据或边界。",
+      "由 Codex 根据来源选择图片和紧凑解释；不要按固定模板硬套，不要把图表或板书栏目当成内容本身。",
       "bottomLine 必须给出本页唯一结论；如果和其他页相同，需要重写。",
-      ["unique page role", "独立知识节点", "关键链路", "非重复板书"]
+      ["unique academic claim", "独立知识节点", "关键链路", "非重复正文结构"]
     )
   );
 }

@@ -2,13 +2,16 @@
 
 One-shot course production turns a learner request into a preview-ready self-study Web Deck through one production state machine.
 
+Default content target follows `docs/current-product-spec.zh-CN.md`: student self-study academic Web Deck. The state machine must not optimize for merely completing artifacts, quiz/check pages, or teacher-facing lesson templates.
+
 ## Default Gates
 
 1. Course bundle is authored and published.
 2. Content review loop completes 3 concrete rounds or blocks.
-3. Imagegen batch records every page image and validates assets.
-4. Layout smoke passes for all preview pages.
-5. Final handoff returns only preview URL, quality summary, and evidence paths.
+3. Content taste gate blocks rubric leakage, semantic template labels, weak academic claims, and teacher-facing prose.
+4. Imagegen batch records every page image and validates assets.
+5. Layout smoke passes for all preview pages.
+6. Final handoff returns only preview URL, quality summary, and evidence paths.
 
 ## Learner-Facing Rule
 

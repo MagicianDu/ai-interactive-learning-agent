@@ -2,6 +2,8 @@
 
 Date: 2026-05-13
 
+> Historical note: this spec introduced `knowledgeBoard` for professor-style Web Decks. Current default generation follows `docs/current-product-spec.zh-CN.md`; `knowledgeBoard` is an internal authoring/rendering structure and must not leak as fixed learner-facing columns.
+
 ## Goal
 
 Upgrade `professor_lecture_deck` authoring from "one page equals one template

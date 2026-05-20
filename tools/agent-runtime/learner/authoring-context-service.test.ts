@@ -398,6 +398,8 @@ describe("AuthoringContextService", () => {
     expect(context.codexInstruction).toContain("标题必须是内容命题");
     expect(context.codexInstruction).toContain("不要用页面角色当标题");
     expect(context.codexInstruction).toContain("不要写“本页围绕");
+    expect(context.codexInstruction).toContain("不要把 rubric");
+    expect(context.codexInstruction).toContain("每页至少交付一个来源驱动的学术判断");
   });
 
   test("matches professor required page types to the requested 8-page blueprint", async () => {

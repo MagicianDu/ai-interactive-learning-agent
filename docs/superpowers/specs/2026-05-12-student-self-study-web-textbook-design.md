@@ -2,6 +2,8 @@
 
 Date: 2026-05-12
 
+> Historical note: this spec is directionally aligned with the current product, but the current authority is `docs/current-product-spec.zh-CN.md`. If this older design implies fixed templates, self-check blocks, or visible board columns, prefer the current spec.
+
 ## Goal
 
 Introduce a learner-first course intent for converting large source materials

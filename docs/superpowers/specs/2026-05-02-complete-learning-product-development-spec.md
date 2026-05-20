@@ -1,5 +1,7 @@
 # 完整学习产品开发 Spec
 
+> 历史说明：这是 2026-05-02 的完整产品愿景文档，包含互动、quiz、teacher、assessment 等长期能力。当前默认生成不得直接按本文档的早期完整产品要求执行；当前权威规范见 `docs/current-product-spec.zh-CN.md`。
+
 ## 1. 文档目的
 
 本文定义 AI Interactive Learning Agent 从当前 alpha 形态推进到完整学习产品所需的产品目标、用户路径、能力边界、数据对象、验收标准和开发阶段。
@@ -1018,4 +1020,3 @@ Seed-user 阶段应记录：
 9. 扩展 source regression，使其验证语义课程期待，而不只是 anchor 数量。
 
 这个顺序优先补齐真实用户可感知的产品完整性，再继续扩展更高级的 UI 形态。
-

@@ -1,5 +1,7 @@
 # Page Types
 
+> 历史说明：这些 page types 来自早期互动 lesson schema。当前默认学生自学型学术 Web Deck 不要求按这些页面类型排课；Codex/Claude 应根据来源材料自主设计每页知识角色。
+
 Each page should have one learning goal.
 
 ## problem_scene
@@ -41,4 +43,3 @@ Asks the learner to apply the same idea in a new but related context.
 ## summary_card
 
 Compresses the lesson into durable recall cues.
-

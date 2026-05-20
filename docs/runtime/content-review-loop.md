@@ -4,6 +4,8 @@
 MCP 负责生成 review brief、记录 report/state、计算指标；Codex 负责读 brief、
 挑刺、修订课程包并重新发布。
 
+内容审核的产品目标以 `docs/current-product-spec.zh-CN.md` 为准。审核必须优先判断页面是否像学生自学的学术教材，而不是只看结构完整、图片完整或流程完整。
+
 ## 默认流程
 
 1. 用 `learning_agent.publish_learning_course` 发布初稿课程。
@@ -72,6 +74,9 @@ Codex 开始审核时应先处理 `automaticFindings`，再做人工内容判断
 - `mechanismDepthWeakPageCount`：机制板书左右栏内容项不足的页面数量。
 - `boilerplateLearnerPhraseCount`：出现“本页帮助你…”“建立心智模型”等模板腔的页面数量。
 - `repeatedBoardSectionLabelCount`：同一课程内反复复用的板书栏目名数量。
+- `rubricPhraseLeakCount`：rubric、质量标准或 reviewer 语言漏出到学生页面的数量。
+- `semanticTemplateLabelCount`：语义化伪装模板栏目数量，例如“X 的判断入口 / X 的推理链路 / X 的证据边界 / X 的自检问题”。
+- `scaffoldHeadlinePatternCount`：固定 headline 骨架数量，例如“把 X 放回来源和机制中理解”。
 
 delta 是判断 review 是否真的提升内容质量的主要信号，而不是只增加流程感。
 
@@ -85,6 +90,9 @@ delta 是判断 review 是否真的提升内容质量的主要信号，而不是
 - `mechanismDepthWeakPageCount`：统计左右栏具体内容项少于 4 条的页面；这类页面通常不足以支撑学生自学所需的条件、机制、例子和边界。
 - `boilerplateLearnerPhraseCount`：统计把页面写成“学习活动说明”而不是“知识判断”的模板腔页面。典型坏味道包括“本页帮助你建立心智模型”“快速理解核心内容”等。
 - `repeatedBoardSectionLabelCount`：统计同一 lesson 内出现 3 次及以上的板书栏目名。重复栏目名即使不是禁用模板词，也通常意味着页面仍按固定模板填空。
+- `rubricPhraseLeakCount`：统计“学习者需要看见问题、机制和边界”“大学高年级/研究生课程层级需要额外追问”“对研究论文学习来说，关键不是记住一句结论”等内部质量话术。
+- `semanticTemplateLabelCount`：统计“定位问题的判断入口”“定位问题 #01 的推理链路”等新瓶装旧酒的模板栏目。
+- `scaffoldHeadlinePatternCount`：统计“把 X 放回来源和机制中理解”等固定 headline 模板。
 
 ## 三轮审核重点
 

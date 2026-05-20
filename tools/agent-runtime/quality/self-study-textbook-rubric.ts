@@ -64,7 +64,11 @@ const authoringScaffoldPatterns = [
   /本页从.+入手，把来源命题改写为学生可以直接使用的判断结构/u,
   /把来源命题改写为学生可以直接使用/u,
   /来源锚点.+用来约束本页结论/u,
-  /：为什么(?:先看失败|直观模型|结构与术语|机制链路|何时使用|来源证据|误区边界|最小接口|自检判断|迁移总结)/u
+  /：为什么(?:先看失败|直观模型|结构与术语|机制链路|何时使用|来源证据|误区边界|最小接口|自检判断|迁移总结)/u,
+  /学习者需要看见问题、机制和边界/u,
+  /大学高年级\/研究生课程(?:阶段|层级)?需要/u,
+  /对研究论文学习来说，关键不是记住一句结论/u,
+  /把“[^”]+”放回来源和机制中理解/u
 ];
 
 const exampleEvidenceBoundaryPattern = /例子|例如|反例|证据|来源|边界|不适用|失败|局限|case|example|evidence|boundary/i;
@@ -78,6 +82,13 @@ const genericBoardSectionLabels = new Set([
   "知识点",
   "说明"
 ]);
+
+const semanticTemplateSectionLabelPatterns = [
+  /^.+的判断入口$/u,
+  /^.+\s*#\d+的推理链路$/u,
+  /^.+的证据边界$/u,
+  /^.+\s*#\d+的自检问题$/u
+];
 
 export function evaluateSelfStudyTextbookRubric(lessons: unknown[]): SelfStudyTextbookRubricResult {
   const pageRecords = lessons.flatMap(collectLessonPageRecords);
@@ -273,7 +284,10 @@ function evaluateKnowledgeBoard(value: unknown): BoardIssue[] {
 
 function hasGenericSectionLabels(board: Record<string, unknown>): boolean {
   const labels = [...sectionLabels(board.leftColumn), ...sectionLabels(board.rightColumn)];
-  return labels.some((label) => genericBoardSectionLabels.has(normalizeSectionLabel(label)));
+  return labels.some((label) => {
+    const normalized = normalizeSectionLabel(label);
+    return genericBoardSectionLabels.has(normalized) || semanticTemplateSectionLabelPatterns.some((pattern) => pattern.test(normalized));
+  });
 }
 
 function sectionLabels(value: unknown): string[] {

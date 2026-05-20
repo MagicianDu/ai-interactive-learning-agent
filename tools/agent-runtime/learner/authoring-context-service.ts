@@ -391,10 +391,10 @@ function buildQualityContract(brief: AuthoringContextResult["brief"], contentBlu
           ? ["read_explanation", "trace_knowledge_link", "compare_boundary", "summarize_bottom_line"]
         : ["predict", "manipulate", "compare", "explain", "debug", "transfer"],
     pageRules: [
-      `页面应符合${levelLabel}的教材课件密度：有问题、概念、来源依据、关键链路、例子或边界，而不是只有解释性段落。`,
-      "每页只承载一个学习目标，正文应短，优先使用图、流程、状态变化或可操作模型。",
+      `页面应符合${levelLabel}的自学教材密度：有问题、概念、来源依据、关键链路、例子或边界，而不是只有解释性段落。`,
+      "每页只承载一个知识判断，正文应短，优先使用图片和紧凑解释支撑自学阅读。",
       "不要把一整章压缩进一页；内容过多时拆成多个 unit 或多页。",
-      "先从问题、情境、视觉模型和学习动作进入，再引入术语、公式、代码或定义。",
+      "术语、公式、代码或定义必须服务本页命题，不要把页面写成教学活动说明。",
       `每个 unit 目标页数为 ${brief.unitPages} 页；除非用户明确修改，不要随意缩短。`
     ],
     feedbackRules: [
@@ -428,6 +428,8 @@ function buildQualityContract(brief: AuthoringContextResult["brief"], contentBlu
               "source-backed 页面必须保留 page.sourceAnchorIds 和 knowledgeBoard.sourceTrace。",
               "确认每页能一屏读完；如果内容过长，拆成多页。",
               "确认每页至少有例子、反例、证据或边界之一。",
+              "不要把 rubric、质量标准、教学设计说明或 reviewer 语言写进学生页面。",
+              "每页至少交付一个来源驱动的学术判断：明确命题、机制或概念区分、证据依据和适用边界。",
               "不要出现本讲定位、课堂讨论、教授讲义、课后作业、教学目标、教学设计等教师视角模板词。"
             ]
         : [
@@ -607,7 +609,7 @@ function buildCodexInstruction(brief: AuthoringContextResult["brief"], unitCount
     brief.courseIntent === "professor_lecture_deck"
       ? "保持 title/narrative 作为兼容字段，但正式内容必须进入 page.knowledgeBoard；knowledgeBoard 字段为 headline、coreProposition、leftColumn、rightColumn、sourceTrace、bottomLine。内容逻辑按原文命题 -> 拆解 -> 证据 -> 重构组织。左栏用于概念、机制、定义或推导；右栏用于例子、反例、来源证据或边界；sourceTrace 记录 anchorId/supports，学生视图默认隐藏。"
       : brief.courseIntent === "student_self_study_textbook"
-        ? "保持 title/narrative 作为兼容摘要，但正式内容必须进入 page.knowledgeBoard；knowledgeBoard 字段为 headline、coreProposition、leftColumn、rightColumn、sourceTrace、bottomLine。标题必须是内容命题或学习者真正会问的问题，不要用页面角色当标题；不要写“本页围绕...讲一个可自学知识片段”“本页从...入手”等 authoring scaffold 句。headline 写学习者问题或知识命题，leftColumn 放概念/机制/因果链/定义，rightColumn 放例子/反例/证据/边界，bottomLine 给学生可复习结论。由 Codex/Claude 自主决定每页 page.type 和知识角色，不要套固定页序。"
+        ? "保持 title/narrative 作为兼容摘要，但正式内容必须进入 page.knowledgeBoard；knowledgeBoard 字段为 headline、coreProposition、leftColumn、rightColumn、sourceTrace、bottomLine。标题必须是内容命题或学习者真正会问的问题，不要用页面角色当标题；不要写“本页围绕...讲一个可自学知识片段”“本页从...入手”等 authoring scaffold 句。不要把 rubric、质量标准、教学设计说明或 reviewer 语言写进学生页面。headline 写学习者问题或知识命题，leftColumn/rightColumn 只是内部承载结构，不能显示成固定模板栏目；每页至少交付一个来源驱动的学术判断：明确命题、机制或概念区分、证据依据和适用边界。由 Codex/Claude 自主决定每页 page.type 和知识角色，不要套固定页序。"
       : undefined,
     ...(requiresResearchReadingContract(brief)
       ? ["这是一套论文精读课；每个相关 lesson 必须显式覆盖：研究问题、论文贡献、方法机制、实验/证据、局限/威胁、迁移判断。"]
@@ -636,7 +638,9 @@ function buildCodexInstruction(brief: AuthoringContextResult["brief"], unitCount
     `建议单元数：${unitCount}。`,
     brief.courseIntent === "professor_lecture_deck"
       ? "不要把资料压缩成摘要；每个页面要讲清一个知识节点或一条关键链路。"
-      : "不要把资料压缩成摘要；每个页面要围绕一个学习动作或心智模型推进。",
+      : brief.courseIntent === "student_self_study_textbook"
+        ? "不要把资料压缩成摘要；每个页面要像学术教材正文一样直接讲清一个来源主张、机制链路、概念区分、证据边界或迁移限制。"
+        : "不要把资料压缩成摘要；每个页面要围绕一个学习动作或心智模型推进。",
     "保留 sourceAnchorIds，并让反馈解释原因、机制和误区。"
   ].join("\n");
 }

@@ -1,5 +1,7 @@
 # Product Core
 
+> 当前默认目标以 `docs/current-product-spec.zh-CN.md` 为准：学生自学型学术 Web Deck。下面的互动、反馈、teacher/playground 等能力属于可选产品面，不是默认生成要求。
+
 The default product is a Chinese interactive learning loop:
 
 1. Clarify source, audience, difficulty, structure, and pages per unit.
@@ -12,7 +14,8 @@ The default product is a Chinese interactive learning loop:
 
 The core Web Deck can be authored with different course intents:
 
-- `build_mental_model`: default interactive learning path for mental model construction.
+- `student_self_study_textbook`: default. 学生自学型学术 Web Deck，内容密度、来源论证和图文讲解优先。
+- `build_mental_model`: optional interactive learning path for mental model construction.
 - `professor_lecture_deck`: optional professor-style university or graduate course deck, still rendered as a Web Deck. It does not generate or export PPTX or Slides files.
 
 Internal by default:

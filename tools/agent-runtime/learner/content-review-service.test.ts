@@ -142,6 +142,31 @@ describe("ContentReviewService", () => {
     expect(JSON.stringify(brief)).toContain("知识密度");
   });
 
+  test("automatic findings flag early-template regression disguised as self-study textbook prose", async () => {
+    const root = await fixtureRoot("early-template-regression");
+    await writeEarlyTemplateRegressionLesson(root, "early-template-regression");
+
+    const result = await new ContentReviewService(root).prepareReview({ runId: "early-template-regression" });
+
+    if (result.status !== "revision_required") {
+      throw new Error(`expected revision_required, got ${result.status}`);
+    }
+    const brief = JSON.parse(await readFile(result.reviewBriefPath, "utf8")) as Record<string, unknown>;
+
+    expect(brief).toMatchObject({
+      currentMetrics: {
+        rubricPhraseLeakCount: 3,
+        semanticTemplateLabelCount: 4,
+        scaffoldHeadlinePatternCount: 1
+      },
+      automaticFindings: expect.arrayContaining([
+        expect.objectContaining({ metric: "rubricPhraseLeakCount", severity: "major" }),
+        expect.objectContaining({ metric: "semanticTemplateLabelCount", severity: "major" }),
+        expect.objectContaining({ metric: "scaffoldHeadlinePatternCount", severity: "major" })
+      ])
+    });
+  });
+
   test("increments review rounds from previously written briefs", async () => {
     const root = await fixtureRoot("review-rounds");
     const service = new ContentReviewService(root);
@@ -592,6 +617,66 @@ async function writeTasteGapLesson(root: string, runId: string): Promise<void> {
             bottomLine: index === 1 ? "具体知识命题 2" : "真正要带走的是条件、变量和边界之间的判断关系。"
           }
         }))
+      },
+      null,
+      2
+    )}\n`,
+    "utf8"
+  );
+}
+
+async function writeEarlyTemplateRegressionLesson(root: string, runId: string): Promise<void> {
+  await mkdir(path.join(root, "runs", runId, "preview", "images", "lesson-a"), { recursive: true });
+  await writeFile(path.join(root, "runs", runId, "preview", "images", "lesson-a", "page-01-imagegen-v1.png"), "png", "utf8");
+  await writeFile(
+    path.join(root, "runs", runId, "preview", "lessons", "lesson-a.json"),
+    `${JSON.stringify(
+      {
+        id: "lesson-a",
+        title: "论文精读总览",
+        displayMode: "textbook_deck",
+        pages: [
+          {
+            id: "page-01",
+            title: "总体结构课：定位问题",
+            narrative:
+              "学习者需要看见问题、机制和边界。大学高年级/研究生课程阶段需要把资料问题放进先修概念框架。",
+            sourceAnchorIds: ["paper:p1"],
+            visualSpec: {
+              imageUrl: `/__learning-preview/${runId}/images/lesson-a/page-01-imagegen-v1.png`,
+              imageProvider: "imagegen",
+              imageAlt: "论文问题定位图",
+              imagePrompt: "画出研究问题、方法机制和证据边界的关系。不要长段文字，不要表格，不要 UI 文本框。"
+            },
+            knowledgeBoard: {
+              headline: "问题定位：把“定位问题”放回来源和机制中理解",
+              coreProposition:
+                "对研究论文学习来说，关键不是记住一句结论，而是说明该结论由哪个来源片段支撑、经过什么机制成立、在哪些条件下会失效。",
+              leftColumn: [
+                {
+                  label: "定位问题的判断入口",
+                  items: ["先把论文主张拆成研究问题。", "再把方法机制和证据边界放到同一条判断链。"]
+                },
+                {
+                  label: "定位问题 #01的推理链路",
+                  items: ["大学高年级/研究生课程层级需要额外追问：这个机制依赖哪些假设。", "证据是否足以支持泛化。"]
+                }
+              ],
+              rightColumn: [
+                {
+                  label: "定位问题的证据边界",
+                  items: ["证据：来源段落说明 paper 的研究问题。", "边界：不能把作者结论外推到所有 agent 架构。"]
+                },
+                {
+                  label: "定位问题 #01的自检问题",
+                  items: ["例子：用自己的话说明定位问题。", "反例：找一个证据不足的外推场景。"]
+                }
+              ],
+              sourceTrace: [{ anchorId: "paper:p1", supports: "来源段落给出论文研究问题。" }],
+              bottomLine: "可理解不是复述标题，而是把来源依据、机制链路和适用边界压缩成一个可迁移判断。"
+            }
+          }
+        ]
       },
       null,
       2

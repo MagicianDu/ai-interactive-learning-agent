@@ -111,6 +111,31 @@ describe("evaluateSelfStudyTextbookRubric", () => {
     expect(result.pageResults[0]?.weakItems).toEqual(expect.arrayContaining(["authoring scaffold language"]));
   });
 
+  test("fails rubric phrases and semantic template labels from early lesson-mode regressions", () => {
+    const lesson = selfStudyLesson();
+    lesson.pages[0]!.title = "总体结构课：定位问题";
+    lesson.pages[0]!.narrative =
+      "学习者需要看见问题、机制和边界。大学高年级/研究生课程阶段需要把资料问题放进先修概念框架。";
+    lesson.pages[0]!.knowledgeBoard.headline = "问题定位：把“定位问题”放回来源和机制中理解";
+    lesson.pages[0]!.knowledgeBoard.coreProposition =
+      "对研究论文学习来说，关键不是记住一句结论，而是说明该结论由哪个来源片段支撑、经过什么机制成立、在哪些条件下会失效。";
+    lesson.pages[0]!.knowledgeBoard.leftColumn = [
+      { label: "定位问题的判断入口", items: ["先拆研究问题。", "再看方法机制。"] },
+      { label: "定位问题 #01的推理链路", items: ["追问机制假设。", "判断证据能否泛化。"] }
+    ];
+    lesson.pages[0]!.knowledgeBoard.rightColumn = [
+      { label: "定位问题的证据边界", items: ["证据来自 paper:p1。", "边界是不能外推到所有 agent。"] },
+      { label: "定位问题 #01的自检问题", items: ["例子说明定位问题。", "反例说明证据不足。"] }
+    ];
+
+    const result = evaluateSelfStudyTextbookRubric([lesson]);
+
+    expect(result.status).toBe("failed");
+    expect(result.pageResults[0]?.weakItems).toEqual(
+      expect.arrayContaining(["authoring scaffold language", "template section labels"])
+    );
+  });
+
   test("fails exact duplication between page title and board headline", () => {
     const lesson = selfStudyLesson();
     lesson.pages[0]!.knowledgeBoard.headline = lesson.pages[0]!.title;

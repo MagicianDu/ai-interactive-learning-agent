@@ -1,5 +1,27 @@
 # AGENTS.md
 
+## 当前权威目标（2026-05-19）
+
+当前默认产品形态是 **学生自学型学术 Web Deck**，权威规范见：
+
+```text
+docs/current-product-spec.zh-CN.md
+```
+
+本文件下方保留了项目早期的互动课程、PPT-like lesson、quiz、misconception、transfer、teacher mode 等长期愿景和历史 MVP 约束。除非用户明确要求互动课、教师模式、测验课或 playground，这些内容不得覆盖当前默认目标。
+
+当前默认生成必须遵守：
+
+1. 面向学生自学，不面向教师授课。
+2. 页面像紧凑学术教材，不像课堂课件或教学设计稿。
+3. 每页至少交付一个来源驱动的学术判断：明确命题、机制或概念区分、证据依据和适用边界。
+4. 标题、中间正文、图片和底部总结不得互相复读。
+5. 不得把 rubric、质量标准、reviewer 语言或生成流程写进学生页面。
+6. 不得默认输出“判断入口 / 推理链路 / 证据边界 / 自检问题”等固定栏目。
+7. 图片由 Codex 内容设计后进入 imagegen 生成，页面消费图片资产；不要用 SVG、表格或程序化伪图示替代默认图片流程。
+
+旧文档、旧样例和旧 schema 如与上述目标冲突，按当前权威目标解释。
+
 ## Project Name
 
 AI Interactive Learning Agent

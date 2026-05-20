@@ -1,5 +1,11 @@
 # Roadmap
 
+Current default product authority:
+
+- `docs/current-product-spec.zh-CN.md`
+
+Earlier roadmap phases remain useful as long-term product options. They must not override the current default: student self-study academic Web Deck.
+
 For the current seed-ready product state, verified capabilities, and product gaps, see:
 
 - `docs/product/current-product-state.md`

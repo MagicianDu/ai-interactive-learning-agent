@@ -1,5 +1,7 @@
 # Quality Rubric
 
+> 历史说明：本文件来自早期互动 lesson MVP。当前默认生成以 `docs/current-product-spec.zh-CN.md` 为准。下列 quiz、interaction、transfer 等要求只在用户明确选择互动课程模式时作为硬要求；学生自学型学术 Web Deck 默认优先内容密度、来源论证、图文讲解和一屏阅读。
+
 Use this checklist before marking a lesson ready for implementation or release.
 
 ## Learning Path

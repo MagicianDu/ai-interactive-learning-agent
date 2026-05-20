@@ -264,6 +264,8 @@ describe("content-quality-blueprint", () => {
     expect(blueprint.globalRules.join("\n")).toContain("标题必须是内容命题");
     expect(blueprint.globalRules.join("\n")).toContain("不要用页面角色当标题");
     expect(blueprint.globalRules.join("\n")).toContain("不要写“本页围绕");
+    expect(blueprint.globalRules.join("\n")).toContain("不要把 rubric");
+    expect(blueprint.globalRules.join("\n")).toContain("来源驱动的学术判断");
     expect(blueprint.units[0]?.pageBlueprints).toHaveLength(10);
     expect(blueprint.units[0]?.pageBlueprints[0]).toMatchObject({
       pageType: "codex_designed",
@@ -277,7 +279,7 @@ describe("content-quality-blueprint", () => {
         "concrete explanation",
         "sourceTrace",
         "bottomLine",
-        "unique page role"
+        "unique academic claim"
       ])
     );
     expect(blueprint.units[0]?.pageBlueprints.map((page) => page.lectureRole ?? "")).not.toContain("course_framing");

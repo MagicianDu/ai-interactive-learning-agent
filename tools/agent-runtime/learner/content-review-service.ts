@@ -67,6 +67,9 @@ export type ContentReviewMetrics = {
   bottomLineRepeatsTitleCount: number;
   genericImageIntentCount: number;
   weakKnowledgeClaimCount: number;
+  rubricPhraseLeakCount: number;
+  semanticTemplateLabelCount: number;
+  scaffoldHeadlinePatternCount: number;
 };
 
 export type ContentReviewMetricDelta = ContentReviewMetrics & {
@@ -144,6 +147,20 @@ const BOILERPLATE_LEARNER_PHRASE_PATTERNS = [
   /快速理解/u,
   /更好地理解/u
 ];
+const RUBRIC_PHRASE_LEAK_PATTERNS = [
+  /学习者需要看见问题、机制和边界/u,
+  /大学高年级\/研究生课程(?:阶段|层级)?需要/u,
+  /对研究论文学习来说，关键不是记住一句结论/u,
+  /来源术语：/u,
+  /按大学高年级\/研究生课程/u
+];
+const SEMANTIC_TEMPLATE_LABEL_PATTERNS = [
+  /^.+的判断入口$/u,
+  /^.+\s*#\d+的推理链路$/u,
+  /^.+的证据边界$/u,
+  /^.+\s*#\d+的自检问题$/u
+];
+const SCAFFOLD_HEADLINE_PATTERNS = [/把“[^”]+”放回来源和机制中理解/u, /把"[^"]+"放回来源和机制中理解/u];
 const REPEATED_BOARD_LABEL_THRESHOLD = 3;
 const GENERIC_IMAGE_INTENT_PATTERNS = [
   /^教学插图$/u,
@@ -305,7 +322,10 @@ export class ContentReviewService {
       titleCorePropositionOverlapCount: 0,
       bottomLineRepeatsTitleCount: 0,
       genericImageIntentCount: 0,
-      weakKnowledgeClaimCount: 0
+      weakKnowledgeClaimCount: 0,
+      rubricPhraseLeakCount: 0,
+      semanticTemplateLabelCount: 0,
+      scaffoldHeadlinePatternCount: 0
     };
 
     for (const lesson of lessons) {
@@ -357,6 +377,11 @@ export class ContentReviewService {
         }
         if (weakKnowledgeClaim(page)) {
           metrics.weakKnowledgeClaimCount += 1;
+        }
+        metrics.rubricPhraseLeakCount += countRubricPhraseLeaks(page);
+        metrics.semanticTemplateLabelCount += countSemanticTemplateLabels(page);
+        if (scaffoldHeadlinePattern(page)) {
+          metrics.scaffoldHeadlinePatternCount += 1;
         }
         boardLabelsInLesson.push(...boardSectionLabels(page));
       }
@@ -575,6 +600,21 @@ function countTemplateLabels(page: Record<string, unknown>): number {
   return count;
 }
 
+function countRubricPhraseLeaks(page: Record<string, unknown>): number {
+  const joined = collectPageLearnerText(page).join("\n");
+  return RUBRIC_PHRASE_LEAK_PATTERNS.filter((pattern) => pattern.test(joined)).length;
+}
+
+function countSemanticTemplateLabels(page: Record<string, unknown>): number {
+  return boardSectionLabels(page).filter((label) => SEMANTIC_TEMPLATE_LABEL_PATTERNS.some((pattern) => pattern.test(label.trim()))).length;
+}
+
+function scaffoldHeadlinePattern(page: Record<string, unknown>): boolean {
+  const knowledgeBoard = isRecord(page.knowledgeBoard) ? page.knowledgeBoard : undefined;
+  const headline = knowledgeBoard && typeof knowledgeBoard.headline === "string" ? knowledgeBoard.headline : "";
+  return SCAFFOLD_HEADLINE_PATTERNS.some((pattern) => pattern.test(headline));
+}
+
 async function isMissingImagegenAsset(previewRoot: string, runId: string, page: Record<string, unknown>): Promise<boolean> {
   const visualSpec = isRecord(page.visualSpec) ? page.visualSpec : undefined;
   const imageUrl = typeof visualSpec?.imageUrl === "string" ? visualSpec.imageUrl : "";
@@ -648,17 +688,23 @@ function mechanismDepthWeak(page: Record<string, unknown>): boolean {
 }
 
 function countBoilerplateLearnerPhrases(page: Record<string, unknown>): number {
+  const joined = collectPageLearnerText(page).join("\n");
+  return BOILERPLATE_LEARNER_PHRASE_PATTERNS.some((pattern) => pattern.test(joined)) ? 1 : 0;
+}
+
+function collectPageLearnerText(page: Record<string, unknown>): string[] {
   const values: string[] = [];
+  collectText(page.title, values);
   collectText(page.narrative, values);
   const knowledgeBoard = isRecord(page.knowledgeBoard) ? page.knowledgeBoard : undefined;
   if (knowledgeBoard) {
+    collectText(knowledgeBoard.headline, values);
     collectText(knowledgeBoard.coreProposition, values);
     collectText(knowledgeBoard.bottomLine, values);
     collectColumnText(knowledgeBoard.leftColumn, values);
     collectColumnText(knowledgeBoard.rightColumn, values);
   }
-  const joined = values.join("\n");
-  return BOILERPLATE_LEARNER_PHRASE_PATTERNS.some((pattern) => pattern.test(joined)) ? 1 : 0;
+  return values;
 }
 
 function titleCorePropositionOverlap(page: Record<string, unknown>): boolean {
@@ -807,6 +853,9 @@ function diffMetrics(
     bottomLineRepeatsTitleCount: current.bottomLineRepeatsTitleCount - previous.bottomLineRepeatsTitleCount,
     genericImageIntentCount: current.genericImageIntentCount - previous.genericImageIntentCount,
     weakKnowledgeClaimCount: current.weakKnowledgeClaimCount - previous.weakKnowledgeClaimCount,
+    rubricPhraseLeakCount: current.rubricPhraseLeakCount - previous.rubricPhraseLeakCount,
+    semanticTemplateLabelCount: current.semanticTemplateLabelCount - previous.semanticTemplateLabelCount,
+    scaffoldHeadlinePatternCount: current.scaffoldHeadlinePatternCount - previous.scaffoldHeadlinePatternCount,
     issueCount: currentIssueCount - previousIssueCount
   };
 }
@@ -952,6 +1001,33 @@ function buildAutomaticFindings(metrics: ContentReviewMetrics): Array<{
       recommendation: "提升知识密度：每页至少写清一个关键链路、一个成立条件和一个容易误用的边界。"
     });
   }
+  if (metrics.rubricPhraseLeakCount > 0) {
+    findings.push({
+      metric: "rubricPhraseLeakCount",
+      value: metrics.rubricPhraseLeakCount,
+      severity: "major",
+      finding: "存在 rubric 或内部质量要求漏出到学生页面的问题，内容像教学设计说明而不是自学教材正文。",
+      recommendation: "删除“学习者需要…”“研究生课程需要…”“对研究论文学习来说…”等元话语，改写为来源主张、机制、证据和边界。"
+    });
+  }
+  if (metrics.semanticTemplateLabelCount > 0) {
+    findings.push({
+      metric: "semanticTemplateLabelCount",
+      value: metrics.semanticTemplateLabelCount,
+      severity: "major",
+      finding: "存在语义化伪装的模板栏目，例如“X 的判断入口 / X 的推理链路 / X 的证据边界 / X 的自检问题”。",
+      recommendation: "去掉固定栏目框架，按本页真实知识内容命名小标题，或直接写成自然的学术解释段落。"
+    });
+  }
+  if (metrics.scaffoldHeadlinePatternCount > 0) {
+    findings.push({
+      metric: "scaffoldHeadlinePatternCount",
+      value: metrics.scaffoldHeadlinePatternCount,
+      severity: "major",
+      finding: "存在“把 X 放回来源和机制中理解”这类 headline 模板，页面标题仍在暴露生成骨架。",
+      recommendation: "把 headline 改成具体学术命题或学生真正要理解的问题，不复用固定句式。"
+    });
+  }
 
   return findings;
 }
@@ -987,7 +1063,10 @@ function isContentReviewMetrics(value: unknown): value is ContentReviewMetrics {
     typeof value.titleCorePropositionOverlapCount === "number" &&
     typeof value.bottomLineRepeatsTitleCount === "number" &&
     typeof value.genericImageIntentCount === "number" &&
-    typeof value.weakKnowledgeClaimCount === "number"
+    typeof value.weakKnowledgeClaimCount === "number" &&
+    typeof value.rubricPhraseLeakCount === "number" &&
+    typeof value.semanticTemplateLabelCount === "number" &&
+    typeof value.scaffoldHeadlinePatternCount === "number"
   );
 }
 
