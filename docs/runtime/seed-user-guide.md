@@ -2,6 +2,8 @@
 
 这份指南面向第一批试用者和操作员，用来验证 AI Interactive Learning Agent 是否能把技术资料生成中文互动学习材料。
 
+直接发给种子用户的测试说明见 `docs/runtime/seed-user-beta-test-guide.zh-CN.md`。本文件偏向操作员和维护者。
+
 ## 1. 产品做什么
 
 AI Interactive Learning Agent 把书籍、论文、专利、博客、笔记和文档目录转成结构化学习项目。默认目标不是复述资料，而是生成总览课、核心 topic 课、可视化解释、互动练习、误区检查和迁移任务。
