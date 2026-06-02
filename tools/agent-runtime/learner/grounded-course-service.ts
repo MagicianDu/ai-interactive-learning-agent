@@ -81,6 +81,7 @@ export class GroundedCourseService {
     const project = await readLearnerProject(this.workspaceRoot, input.runId);
     const config = buildRunConfig(input.runId, project);
     const normalizedSources = await normalizeSources(config.sources);
+    assertUsableSourceAnchors(normalizedSources.anchors, normalizedSources.extractionWarnings);
     const sourceAnchorIds = ensureAnchorIds(
       normalizedSources.anchors.map((anchor) => anchor.anchorId),
       config
@@ -1151,6 +1152,24 @@ function ensureAnchorIds(anchorIds: string[], config: RunConfig): string[] {
   }
   const sourceId = config.sources[0]?.id ?? "source-001";
   return [`${sourceId}:root`];
+}
+
+function assertUsableSourceAnchors(anchors: SourceAnchor[], extractionWarnings: unknown[]): void {
+  if (anchors.length > 0) {
+    return;
+  }
+  const errorSummary = extractionWarnings
+    .filter(isRecord)
+    .map((warning) => {
+      const code = typeof warning.code === "string" ? warning.code : "source-extraction-warning";
+      const message = typeof warning.message === "string" ? warning.message : "";
+      return `${code}: ${message}`.trim();
+    })
+    .join("; ");
+  throw new AgentRuntimeError(
+    `source extraction produced no usable source anchors; cannot generate a source-grounded course${errorSummary ? ` (${errorSummary})` : ""}`,
+    "INVALID_RUN_CONFIG"
+  );
 }
 
 function uniqueStrings(values: string[]): string[] {

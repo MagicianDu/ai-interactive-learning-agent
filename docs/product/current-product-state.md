@@ -101,7 +101,7 @@ Current source regression output includes:
 - `semanticExpectations`
 - source anchor count and warning count
 
-Seed readiness fails if a source regression sample has `semanticStatus=failed`, `sourceEvidenceStatus=failed`, or missing source evidence status.
+Seed readiness fails if a source regression sample has `semanticStatus=failed`, `sourceEvidenceStatus=failed`, missing source evidence status, or a source-blocked grounded preview caused by no usable extracted anchors.
 
 ### Course Generation
 

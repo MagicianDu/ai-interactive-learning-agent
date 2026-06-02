@@ -67,6 +67,7 @@ const stringArraySchema = { type: "array", items: { type: "string" } };
 const arraySchema = { type: "array", items: { type: "object" } };
 const looseObjectSchema = { type: "object" };
 const contentReviewVerdictSchema = { type: "string", enum: ["pass", "revise", "block"] };
+const imagegenGeneratorSchema = { type: "string", enum: ["imagegen", "placeholder", "imported", "unknown"] };
 const contentReviewIssuesSchema = {
   type: "array",
   items: objectSchema(
@@ -289,7 +290,7 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
         lessonId: stringSchema,
         pageId: stringSchema,
         sourceImagePath: stringSchema,
-        generator: stringSchema,
+        generator: imagegenGeneratorSchema,
         recordedBy: stringSchema
       },
       ["runId", "lessonId", "pageId", "sourceImagePath"]
@@ -318,7 +319,7 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
         pageId: stringSchema,
         status: imagegenBatchItemStatusSchema,
         sourceImagePath: stringSchema,
-        generator: stringSchema,
+        generator: imagegenGeneratorSchema,
         recordedBy: stringSchema,
         failureReason: stringSchema
       },
@@ -536,4 +537,11 @@ export function learningAgentToolContractsForProfile(
     }
     return contract;
   });
+}
+
+export const learningAgentToolNames = learningAgentToolContracts.map((tool) => tool.name);
+const learningAgentToolNameSet = new Set<string>(learningAgentToolNames);
+
+export function isLearningAgentToolName(name: string): name is LearningAgentToolName {
+  return learningAgentToolNameSet.has(name);
 }

@@ -217,7 +217,7 @@ describe("source normalizer", () => {
     expect(normalized.extractionWarnings).toEqual([]);
   });
 
-  test("normalizes PDF sources with an explicit extraction warning", async () => {
+  test("does not invent placeholder anchors when PDF extraction fails", async () => {
     const normalized = await normalizeSourceRecord({
       id: "source-001",
       type: "file",
@@ -228,16 +228,12 @@ describe("source normalizer", () => {
       language: "zh-CN"
     });
 
-    expect(normalized.anchors).toEqual([
-      expect.objectContaining({
-        anchorId: "source-001:page-1",
-        locator: { kind: "page", page: 1 }
-      })
-    ]);
+    expect(normalized.anchors).toEqual([]);
+    expect(normalized.nodes).toEqual([expect.objectContaining({ id: "source-001:root", anchorIds: [], children: [] })]);
     expect(normalized.extractionWarnings).toEqual([
       expect.objectContaining({
         code: "pdf-text-extraction-unavailable",
-        severity: "warning"
+        severity: "error"
       })
     ]);
   });

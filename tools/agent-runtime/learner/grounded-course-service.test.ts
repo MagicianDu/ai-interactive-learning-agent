@@ -205,6 +205,24 @@ describe("GroundedCourseService", () => {
     );
   });
 
+  test("blocks source-grounded generation when PDF extraction produces no usable anchors", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "grounded-course-empty-pdf-"));
+    const sourcePath = path.join(root, "empty.pdf");
+    await writeFile(sourcePath, "%PDF-1.4\n%%EOF\n", "binary");
+    await new LearnerProjectService(root).createProject({
+      request: `请用 "${sourcePath}" 生成中文自学课程，面向中文学习者，教学难度为本科核心课程，每个单元 8 页。`,
+      runId: "grounded-empty-pdf",
+      sourcePath,
+      sourceKind: "book",
+      audience: "中文学习者",
+      unitPages: 8
+    });
+
+    await expect(new GroundedCourseService(root).generate({ runId: "grounded-empty-pdf" })).rejects.toThrow(
+      /no usable source anchors/u
+    );
+  });
+
   test("applies the latest learner feedback when regenerating a grounded course", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "grounded-course-feedback-"));
     const sourcePath = path.join(root, "rag-notes.md");

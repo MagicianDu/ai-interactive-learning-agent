@@ -28,7 +28,7 @@ export async function runPlaywrightSmoke(workspaceRoot: string = process.cwd()):
       page.on("pageerror", (error) => consoleErrors.push(error.message));
 
       await page.goto(`${baseUrl}/`, { waitUntil: "networkidle" });
-      await page.getByText("智能体工作流公开示例：课程包").first().waitFor({ timeout: 10_000 });
+      await page.getByRole("heading", { name: "Playwright公开预览：课程包" }).first().waitFor({ timeout: 10_000 });
 
       const previewPage = await browser.newPage();
       previewPage.on("console", (message) => {

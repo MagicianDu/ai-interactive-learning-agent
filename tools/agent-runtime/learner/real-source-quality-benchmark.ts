@@ -182,6 +182,7 @@ function isFailedSample(sample: RealSourceRegressionSampleResult): boolean {
   return (
     sample.status !== "project_ready" ||
     sample.groundedCourseStatus === "revision_required" ||
+    sample.groundedCourseStatus === "source_blocked" ||
     sample.semanticStatus === "failed" ||
     sample.sourceEvidenceStatus === "failed" ||
     sample.sourceGraphStatus === "failed"

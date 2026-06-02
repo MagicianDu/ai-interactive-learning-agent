@@ -44,7 +44,7 @@ describe("real source regression suite", () => {
     }
   });
 
-  test("creates learner projects and can optionally publish grounded course previews without private content", async () => {
+  test("creates learner projects and records source-blocked grounded previews without private content", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "learning-agent-real-source-regression-"));
     const localBook = path.join(root, "book.pdf");
     const localPaper = path.join(root, "paper.pdf");
@@ -98,32 +98,28 @@ describe("real source regression suite", () => {
       ]
     });
 
-    expect(result.summary).toEqual({ total: 3, ready: 3, groundedReady: 3, missingLocalSources: 0 });
+    expect(result.summary).toEqual({ total: 3, ready: 3, groundedReady: 1, missingLocalSources: 0 });
     expect(result.samples).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           id: "book-smoke",
           status: "project_ready",
-          groundedCourseStatus: "preview_ready",
-          generatedUnitCount: expect.any(Number),
-          semanticStatus: "passed",
-          sourceEvidenceStatus: "passed",
-          sourceGraphStatus: "passed",
-          sourceGraph: expect.objectContaining({
-            sourceUnitCount: expect.any(Number),
-            conceptCount: expect.any(Number),
-            misconceptionCount: expect.any(Number),
-            candidateInteractionCount: expect.any(Number)
+          groundedCourseStatus: "source_blocked",
+          groundedCourseBlocker: expect.objectContaining({
+            code: "INVALID_RUN_CONFIG",
+            message: expect.stringContaining("no usable source anchors")
           }),
-          missingConceptLabels: [],
-          sourceAnchorCount: expect.any(Number),
-          sourceEvidence: expect.objectContaining({
-            unsupportedPages: 0
-          }),
+          generatedUnitCount: 0,
+          semanticStatus: "failed",
+          sourceEvidenceStatus: undefined,
+          sourceGraphStatus: undefined,
+          missingConceptLabels: ["全局地图", "核心机制"],
+          sourceAnchorCount: 0,
+          sourceEvidence: undefined,
           semanticExpectations: {
             expectedConceptLabels: ["全局地图", "核心机制"],
-            matchedConceptLabels: ["全局地图", "核心机制"],
-            missingConceptLabels: []
+            matchedConceptLabels: [],
+            missingConceptLabels: ["全局地图", "核心机制"]
           },
           strategy: "chapter_guided",
           selectedChapters: ["第 1 章"],
@@ -132,24 +128,22 @@ describe("real source regression suite", () => {
         expect.objectContaining({
           id: "paper-smoke",
           status: "project_ready",
-          groundedCourseStatus: "preview_ready",
-          generatedUnitCount: expect.any(Number),
-          semanticStatus: "passed",
-          sourceEvidenceStatus: "passed",
-          sourceGraphStatus: "passed",
-          sourceGraph: expect.objectContaining({
-            conceptCount: expect.any(Number),
-            sourceUnitCount: expect.any(Number)
+          groundedCourseStatus: "source_blocked",
+          groundedCourseBlocker: expect.objectContaining({
+            code: "INVALID_RUN_CONFIG",
+            message: expect.stringContaining("no usable source anchors")
           }),
-          missingConceptLabels: [],
-          sourceAnchorCount: expect.any(Number),
-          sourceEvidence: expect.objectContaining({
-            unsupportedPages: 0
-          }),
+          generatedUnitCount: 0,
+          semanticStatus: "failed",
+          sourceEvidenceStatus: undefined,
+          sourceGraphStatus: undefined,
+          missingConceptLabels: ["研究问题", "方法结构", "证据边界"],
+          sourceAnchorCount: 0,
+          sourceEvidence: undefined,
           semanticExpectations: {
             expectedConceptLabels: ["研究问题", "方法结构", "证据边界"],
-            matchedConceptLabels: ["研究问题", "方法结构", "证据边界"],
-            missingConceptLabels: []
+            matchedConceptLabels: [],
+            missingConceptLabels: ["研究问题", "方法结构", "证据边界"]
           },
           strategy: "topic_guided",
           selectedTopics: ["method"],
@@ -183,12 +177,20 @@ describe("real source regression suite", () => {
       ])
     );
     for (const sample of result.samples) {
-      expect(sample.generatedUnitCount).toBeGreaterThanOrEqual(3);
-      expect(sample.semanticStatus).not.toBe("failed");
-      expect(sample.sourceEvidenceStatus).not.toBe("failed");
-      expect(sample.sourceGraphStatus).not.toBe("failed");
-      expect(sample.sourceGraph?.graphPath).toContain("source-graph");
-      expect(sample.sourceAnchorCount).toBeGreaterThan(0);
+      if (sample.groundedCourseStatus === "source_blocked") {
+        expect(sample.generatedUnitCount).toBe(0);
+        expect(sample.semanticStatus).toBe("failed");
+        expect(sample.sourceEvidenceStatus).toBeUndefined();
+        expect(sample.sourceGraphStatus).toBeUndefined();
+        expect(sample.sourceAnchorCount).toBe(0);
+      } else {
+        expect(sample.generatedUnitCount).toBeGreaterThanOrEqual(3);
+        expect(sample.semanticStatus).not.toBe("failed");
+        expect(sample.sourceEvidenceStatus).not.toBe("failed");
+        expect(sample.sourceGraphStatus).not.toBe("failed");
+        expect(sample.sourceGraph?.graphPath).toContain("source-graph");
+        expect(sample.sourceAnchorCount).toBeGreaterThan(0);
+      }
     }
     await expect(readFile(path.join(root, "runs", "regression-book-smoke", "learner-project.json"), "utf8")).resolves.toContain("chapter_guided");
   }, 15_000);

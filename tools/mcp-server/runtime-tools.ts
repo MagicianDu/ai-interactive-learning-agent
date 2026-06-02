@@ -31,13 +31,32 @@ import {
   RunStore
 } from "../agent-runtime/index.js";
 import type { ArtifactVersion } from "../agent-runtime/artifact-store.js";
-import type { ContentReviewIssue, ContentReviewVerdict } from "../agent-runtime/index.js";
-import { courseIntentValues, normalizeCourseIntent, type CourseIntent } from "../agent-runtime/learner/course-intent.js";
 import { ProjectRegistry } from "../agent-runtime/learner/project-registry.js";
 import { TargetedRevisionService } from "../agent-runtime/learner/targeted-revision-service.js";
 import { ExportBundleService } from "../agent-runtime/learner/export-bundle-service.js";
 import type { ApprovalGateId } from "../agent-runtime/types.js";
-import type { LearningAgentToolName } from "./tool-contracts.js";
+import {
+  expectRecord,
+  optionalBoolean,
+  optionalCalibrationFocus,
+  optionalCourseIntent,
+  optionalDifficultyLevel,
+  optionalImagegenGenerator,
+  optionalNumber,
+  optionalOutputMode,
+  optionalReviewVerdict,
+  optionalString,
+  optionalStringArray,
+  requiredArray,
+  requiredCourseProductionDefaults,
+  requiredNumber,
+  requiredReviewIssues,
+  requiredSourceKind,
+  requiredString,
+  requiredStringArray,
+  requiredTargetMode
+} from "./runtime-tool-input.js";
+import { isLearningAgentToolName } from "./tool-contracts.js";
 
 const gateToArtifact: Record<ApprovalGateId, string> = {
   "source-map": "source-map",
@@ -322,7 +341,7 @@ export class LearningAgentRuntimeTools {
       lessonId: requiredString(options, "lessonId"),
       pageId: requiredString(options, "pageId"),
       sourceImagePath: requiredString(options, "sourceImagePath"),
-      generator: optionalString(options.generator) as "imagegen" | "placeholder" | "imported" | "unknown" | undefined,
+      generator: optionalImagegenGenerator(options.generator),
       recordedBy: optionalString(options.recordedBy)
     });
   }
@@ -350,7 +369,7 @@ export class LearningAgentRuntimeTools {
         pageId: requiredString(options, "pageId"),
         status,
         sourceImagePath: requiredString(options, "sourceImagePath"),
-        generator: optionalString(options.generator) as "imagegen" | "placeholder" | "imported" | "unknown" | undefined,
+        generator: optionalImagegenGenerator(options.generator),
         recordedBy: optionalString(options.recordedBy)
       });
     }
@@ -664,220 +683,8 @@ export class LearningAgentRuntimeTools {
   }
 }
 
-function isLearningAgentToolName(name: string): name is LearningAgentToolName {
-  return [
-    "learning_agent.create_learning_project",
-    "learning_agent.run_one_shot_learning_course",
-    "learning_agent.prepare_learning_course",
-    "learning_agent.start_course_production",
-    "learning_agent.next_course_production_action",
-    "learning_agent.record_course_production_event",
-    "learning_agent.list_learning_projects",
-    "learning_agent.archive_learning_project",
-    "learning_agent.get_authoring_context",
-    "learning_agent.generate_grounded_course",
-    "learning_agent.publish_learning_course",
-    "learning_agent.calibrate_learning_course",
-    "learning_agent.prepare_content_review",
-    "learning_agent.record_content_review_report",
-    "learning_agent.create_imagegen_manifest",
-    "learning_agent.record_imagegen_asset",
-    "learning_agent.validate_imagegen_assets",
-    "learning_agent.start_imagegen_batch",
-    "learning_agent.record_imagegen_batch_item",
-    "learning_agent.compare_authoring_quality",
-    "learning_agent.create_quality_revision",
-    "learning_agent.get_learning_preview",
-    "learning_agent.generate_quick_preview",
-    "learning_agent.revise_learning_course",
-    "learning_agent.apply_learning_revision",
-    "learning_agent.export_learning_course",
-    "learning_agent.init_run",
-    "learning_agent.plan_run",
-    "learning_agent.init_from_plan",
-    "learning_agent.status",
-    "learning_agent.beta_status",
-    "learning_agent.run_until_gate",
-    "learning_agent.list_artifacts",
-    "learning_agent.read_artifact",
-    "learning_agent.submit_artifact",
-    "learning_agent.approve_gate",
-    "learning_agent.revise_gate",
-    "learning_agent.list_units",
-    "learning_agent.run_next",
-    "learning_agent.run_course",
-    "learning_agent.promote_units",
-    "learning_agent.promote_lesson"
-  ].includes(name);
-}
-
 function compareVersions(left: string, right: string): number {
   return Number(left.slice(1)) - Number(right.slice(1));
-}
-
-function expectRecord(value: unknown): Record<string, unknown> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    throw new Error("tool input must be an object");
-  }
-  return value as Record<string, unknown>;
-}
-
-function requiredString(input: Record<string, unknown>, key: string): string {
-  const value = input[key];
-  if (typeof value !== "string" || value.trim().length === 0) {
-    throw new Error(`${key} is required`);
-  }
-  return value.trim();
-}
-
-function requiredArray(input: Record<string, unknown>, key: string): unknown[] {
-  const value = input[key];
-  if (!Array.isArray(value)) {
-    throw new Error(`${key} must be an array`);
-  }
-  return value;
-}
-
-function requiredStringArray(input: Record<string, unknown>, key: string): string[] {
-  const value = requiredArray(input, key);
-  if (!value.every((item): item is string => typeof item === "string" && item.trim().length > 0)) {
-    throw new Error(`${key} must be an array of non-empty strings`);
-  }
-  return value.map((item) => item.trim());
-}
-
-function requiredNumber(input: Record<string, unknown>, key: string): number {
-  const value = input[key];
-  if (typeof value !== "number") {
-    throw new Error(`${key} must be a number`);
-  }
-  return value;
-}
-
-function requiredSourceKind(input: Record<string, unknown>): "book" | "paper" | "patent" | "blog" | "notes" | "topic" {
-  const value = requiredString(input, "sourceKind");
-  if (value === "book" || value === "paper" || value === "patent" || value === "blog" || value === "notes" || value === "topic") {
-    return value;
-  }
-  throw new Error("sourceKind must be book, paper, patent, blog, notes, or topic");
-}
-
-function requiredTargetMode(input: Record<string, unknown>): "student_self_study_textbook" | "professor_web_deck" {
-  const value = requiredString(input, "targetMode");
-  if (value === "student_self_study_textbook" || value === "professor_web_deck") {
-    return value;
-  }
-  throw new Error("targetMode must be student_self_study_textbook or professor_web_deck");
-}
-
-function requiredCourseProductionDefaults(input: Record<string, unknown>): {
-  difficulty: "beginner" | "undergraduate" | "graduate" | "expert";
-  strategy: "overview_plus_topic" | "chapter_guided" | "topic_guided";
-  overviewPages: number;
-  topicPages: number;
-  topicCount: number;
-  reviewRounds: number;
-  minQualityScore: number;
-} {
-  const defaults = expectRecord(input.defaults);
-  return {
-    difficulty: requiredProductionDifficulty(defaults),
-    strategy: requiredProductionStrategy(defaults),
-    overviewPages: requiredNumber(defaults, "overviewPages"),
-    topicPages: requiredNumber(defaults, "topicPages"),
-    topicCount: requiredNumber(defaults, "topicCount"),
-    reviewRounds: requiredNumber(defaults, "reviewRounds"),
-    minQualityScore: requiredNumber(defaults, "minQualityScore")
-  };
-}
-
-function requiredProductionDifficulty(input: Record<string, unknown>): "beginner" | "undergraduate" | "graduate" | "expert" {
-  const value = requiredString(input, "difficulty");
-  if (value === "beginner" || value === "undergraduate" || value === "graduate" || value === "expert") {
-    return value;
-  }
-  throw new Error("difficulty must be beginner, undergraduate, graduate, or expert");
-}
-
-function requiredProductionStrategy(input: Record<string, unknown>): "overview_plus_topic" | "chapter_guided" | "topic_guided" {
-  const value = requiredString(input, "strategy");
-  if (value === "overview_plus_topic" || value === "chapter_guided" || value === "topic_guided") {
-    return value;
-  }
-  throw new Error("strategy must be overview_plus_topic, chapter_guided, or topic_guided");
-}
-
-function requiredReviewIssues(input: Record<string, unknown>, key: string): ContentReviewIssue[] {
-  return requiredArray(input, key) as ContentReviewIssue[];
-}
-
-function optionalReviewVerdict(value: unknown): ContentReviewVerdict | undefined {
-  const verdict = optionalString(value);
-  return verdict ? (verdict as ContentReviewVerdict) : undefined;
-}
-
-function optionalString(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
-}
-
-function optionalDifficultyLevel(value: unknown): "introductory" | "undergraduate_core" | "upper_undergraduate_or_graduate" | "research" | undefined {
-  const normalized = optionalString(value);
-  if (
-    normalized === "introductory" ||
-    normalized === "undergraduate_core" ||
-    normalized === "upper_undergraduate_or_graduate" ||
-    normalized === "research"
-  ) {
-    return normalized;
-  }
-  return undefined;
-}
-
-function optionalCourseIntent(value: unknown): CourseIntent | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-  const normalized = normalizeCourseIntent(value);
-  if (normalized) {
-    return normalized;
-  }
-  throw new Error(`courseIntent must be ${courseIntentValues.join(" or ")}`);
-}
-
-function optionalOutputMode(value: unknown): "preview" | "source" | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-  if (value === "preview" || value === "source") {
-    return value;
-  }
-  throw new Error("outputMode must be preview or source");
-}
-
-function optionalStringArray(value: unknown): string[] | undefined {
-  if (!Array.isArray(value)) {
-    return undefined;
-  }
-  const normalized = value.map((item) => (typeof item === "string" ? item.trim() : "")).filter((item) => item.length > 0);
-  return normalized.length > 0 ? normalized : undefined;
-}
-
-function optionalCalibrationFocus(value: unknown): Array<"structure" | "source" | "learner"> | undefined {
-  if (!Array.isArray(value)) {
-    return undefined;
-  }
-  const normalized = value.filter((item): item is "structure" | "source" | "learner" =>
-    item === "structure" || item === "source" || item === "learner"
-  );
-  return normalized.length > 0 ? normalized : undefined;
-}
-
-function optionalNumber(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
-}
-
-function optionalBoolean(value: unknown): boolean | undefined {
-  return typeof value === "boolean" ? value : undefined;
 }
 
 function requiredGate(input: Record<string, unknown>): ApprovalGateId {

@@ -2,6 +2,7 @@ import { access, readFile } from "node:fs/promises";
 
 import { GroundedCourseService } from "./grounded-course-service.js";
 import { difficultyLabel, LearnerProjectService, type TeachingDifficultyLevel } from "./learner-project-service.js";
+import { AgentRuntimeError } from "../errors.js";
 import type { SourceEvidenceStatus, SourceEvidenceSummary } from "../quality/source-evidence-analyzer.js";
 
 export type RealSourceRegressionSemanticStatus = "passed" | "warning" | "failed";
@@ -39,7 +40,11 @@ export type RealSourceRegressionSampleResult = {
   sourcePath: string;
   sourceAvailable: boolean;
   status: "project_ready" | "clarification_required";
-  groundedCourseStatus?: "preview_ready" | "revision_required";
+  groundedCourseStatus?: "preview_ready" | "revision_required" | "source_blocked";
+  groundedCourseBlocker?: {
+    code: AgentRuntimeError["code"];
+    message: string;
+  };
   sourceAnchorCount?: number;
   sourceIngestWarningCount?: number;
   strategy: string;
@@ -193,10 +198,13 @@ export async function runRealSourceRegressionSuite(
       selectedChapters: sample.selectedChapters,
       selectedTopics: sample.selectedTopics
     });
-    const groundedCourse =
+    const groundedCourseResult =
       options.generateGroundedCourse && project.status === "project_ready"
-        ? await groundedCourseService.generate({ runId })
+        ? await generateGroundedCoursePreview(groundedCourseService, runId)
         : undefined;
+    const groundedCourse = groundedCourseResult?.groundedCourse;
+    const groundedCourseBlocker = groundedCourseResult?.blocker;
+    const groundedCourseStatus = groundedCourse?.status ?? (groundedCourseBlocker ? "source_blocked" : undefined);
     const semanticExpectations = await buildSemanticExpectations(sample.sourceKind, groundedCourse?.sourceIngest.artifactPath);
     const generatedUnitCount = groundedCourse?.status === "preview_ready" ? groundedCourse.lessonPaths.length : 0;
     const missingConceptLabels = semanticExpectations.missingConceptLabels;
@@ -216,8 +224,9 @@ export async function runRealSourceRegressionSuite(
       sourcePath: sample.sourcePath,
       sourceAvailable,
       status: project.status,
-      groundedCourseStatus: groundedCourse?.status,
-      sourceAnchorCount: groundedCourse?.sourceIngest.anchorCount,
+      groundedCourseStatus,
+      ...(groundedCourseBlocker ? { groundedCourseBlocker } : {}),
+      sourceAnchorCount: groundedCourseBlocker ? 0 : groundedCourse?.sourceIngest.anchorCount,
       sourceIngestWarningCount: groundedCourse?.sourceIngest.warningCount,
       strategy: project.brief.strategy,
       selectedChapters: project.brief.selectedChapters,
@@ -268,6 +277,42 @@ export async function runRealSourceRegressionSuite(
     },
     samples: results
   };
+}
+
+async function generateGroundedCoursePreview(
+  service: GroundedCourseService,
+  runId: string
+): Promise<
+  | {
+      groundedCourse: Awaited<ReturnType<GroundedCourseService["generate"]>>;
+      blocker?: undefined;
+    }
+  | {
+      groundedCourse?: undefined;
+      blocker: NonNullable<RealSourceRegressionSampleResult["groundedCourseBlocker"]>;
+    }
+> {
+  try {
+    return { groundedCourse: await service.generate({ runId }) };
+  } catch (error) {
+    if (isSourceExtractionBlocker(error)) {
+      return {
+        blocker: {
+          code: error.code,
+          message: error.message
+        }
+      };
+    }
+    throw error;
+  }
+}
+
+function isSourceExtractionBlocker(error: unknown): error is AgentRuntimeError {
+  return (
+    error instanceof AgentRuntimeError &&
+    error.code === "INVALID_RUN_CONFIG" &&
+    error.message.includes("source extraction produced no usable source anchors")
+  );
 }
 
 export function resolveSemanticStatus(input: {

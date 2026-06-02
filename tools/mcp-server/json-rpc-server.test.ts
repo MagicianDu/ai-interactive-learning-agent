@@ -176,6 +176,26 @@ describe("MCP JSON-RPC server", () => {
     });
   });
 
+  test("imagegen asset schemas constrain generator provenance values", async () => {
+    const tools = new LearningAgentRuntimeTools(await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-rpc-")));
+
+    const response = await handleMcpRequest({ jsonrpc: "2.0", id: "tools", method: "tools/list" }, tools);
+    const listedTools = (response as { result: { tools: Array<{ name: string; inputSchema: Record<string, unknown> }> } }).result.tools;
+    const recordAssetTool = listedTools.find((tool) => tool.name === "learning_agent.record_imagegen_asset");
+    const recordBatchTool = listedTools.find((tool) => tool.name === "learning_agent.record_imagegen_batch_item");
+
+    expect(recordAssetTool?.inputSchema).toMatchObject({
+      properties: {
+        generator: { enum: ["imagegen", "placeholder", "imported", "unknown"] }
+      }
+    });
+    expect(recordBatchTool?.inputSchema).toMatchObject({
+      properties: {
+        generator: { enum: ["imagegen", "placeholder", "imported", "unknown"] }
+      }
+    });
+  });
+
   test("init_run schema exposes target total pages", async () => {
     const tools = new LearningAgentRuntimeTools(await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-rpc-")));
 

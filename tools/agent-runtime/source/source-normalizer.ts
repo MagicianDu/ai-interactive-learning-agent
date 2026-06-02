@@ -119,19 +119,12 @@ async function normalizeFileSource(source: SourceRecord): Promise<NormalizedSour
       return normalizePdfSource(source, pages);
     }
 
-    return buildDocument(source, [
-      createSourceAnchor({
-        sourceId: source.id,
-        label: "Page 1",
-        locator: { kind: "page", page: 1 },
-        notes: "PDF placeholder anchor; full text extraction is not implemented in this slice."
-      })
-    ], [], [
+    return buildDocument(source, [], [], [
       {
         sourceId: source.id,
         code: "pdf-text-extraction-unavailable",
-        message: "PDF page-level placeholder anchor was created; full PDF text extraction remains future work.",
-        severity: "warning"
+        message: "PDF text extraction produced no readable source anchors; source-backed generation must stop or provide extractable text.",
+        severity: "error"
       }
     ]);
   }

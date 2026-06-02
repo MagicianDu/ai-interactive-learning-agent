@@ -105,8 +105,8 @@ For all source types:
 
 - `get_authoring_context` must return `authoring_context_ready` for the default high-quality learner-first path.
 - `publish_learning_course` must return `preview_ready` for Codex-authored bundles.
-- `generate_grounded_course` must return `preview_ready` for deterministic draft regression.
-- If source anchors are missing, the expected result is `revision_required`.
+- `generate_grounded_course` must return `preview_ready` for deterministic draft regression when extractable source anchors exist.
+- If source anchors are missing inside a generated bundle, the expected result is `revision_required`; if source extraction produces no usable anchors, regression reports `groundedCourseStatus=source_blocked`.
 - `source:regression` reports `generatedUnitCount`, `semanticStatus`, `sourceEvidenceStatus`, `sourceEvidence`, `missingConceptLabels`, and `semanticExpectations` for each source kind.
 - `source:regression` reports `sourceGraphStatus` and source graph artifact paths for each grounded source kind.
 - `seed:check` fails if any source regression item has `semanticStatus=failed`, `sourceEvidenceStatus=failed`, or missing source evidence status.

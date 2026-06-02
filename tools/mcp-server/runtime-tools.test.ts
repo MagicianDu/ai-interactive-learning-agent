@@ -7,7 +7,7 @@ import { describe, expect, test } from "vitest";
 import { ArtifactStore } from "../agent-runtime/artifact-store.js";
 import { RunStore } from "../agent-runtime/run-store.js";
 import { LearningAgentRuntimeTools } from "./runtime-tools.js";
-import { learningAgentToolContracts } from "./tool-contracts.js";
+import { isLearningAgentToolName, learningAgentToolContracts, learningAgentToolNames } from "./tool-contracts.js";
 
 describe("LearningAgentRuntimeTools", () => {
   test("declares stable learning agent tool contracts", () => {
@@ -56,6 +56,12 @@ describe("LearningAgentRuntimeTools", () => {
         "learning_agent.promote_lesson"
       ])
     );
+  });
+
+  test("derives runtime tool-name checks from the contract list", () => {
+    expect(learningAgentToolNames).toEqual(learningAgentToolContracts.map((tool) => tool.name));
+    expect(isLearningAgentToolName("learning_agent.run_one_shot_learning_course")).toBe(true);
+    expect(isLearningAgentToolName("learning_agent.missing")).toBe(false);
   });
 
   test("plans and initializes a run from natural language through tool handlers", async () => {
@@ -708,6 +714,21 @@ describe("LearningAgentRuntimeTools", () => {
       checkedPageCount: 1,
       issues: []
     });
+  });
+
+  test("rejects invalid imagegen generator values at the runtime boundary", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
+    const tools = new LearningAgentRuntimeTools(root);
+
+    await expect(
+      tools.callTool("learning_agent.record_imagegen_asset", {
+        runId: "mcp-imagegen-invalid-generator",
+        lessonId: "lesson-a",
+        pageId: "page-01",
+        sourceImagePath: path.join(root, "missing.png"),
+        generator: "fake-generator"
+      })
+    ).rejects.toThrow(/generator must be one of/u);
   });
 
   test("course production tools start and return next action", async () => {

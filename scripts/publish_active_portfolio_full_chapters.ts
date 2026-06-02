@@ -36,15 +36,58 @@ type UnitPage = {
   bottomLine: string;
 };
 
-const runId = "active-portfolio-book-full-chapters-v1";
-const sourcePdf = "/Users/dm/Documents/1.书籍资料/BOOKS/主动投资组合管理：创造高收益并控制风险的量化投资方法 原书第2版(高清).pdf";
-const fullTextPath = "runs/active-portfolio-book-full-source/full.txt";
-const normalizedSourceDir = "runs/active-portfolio-book-full-normalized-source";
+const scriptOptions = readScriptOptions(process.argv.slice(2), process.env);
+const runId = scriptOptions.runId;
+const sourcePdf = scriptOptions.sourcePdf;
+const fullTextPath = scriptOptions.fullTextPath;
+const normalizedSourceDir = scriptOptions.normalizedSourceDir;
 
 const chapterStartLines = [
   603, 934, 2161, 4093, 5066, 6658, 7619, 8595, 9710, 11085, 12455, 13378, 14713, 15783, 17591, 18388, 19642, 21039,
   22009, 22759, 23232, 23474
 ];
+
+type ScriptOptions = {
+  runId: string;
+  sourcePdf: string;
+  fullTextPath: string;
+  normalizedSourceDir: string;
+};
+
+function readScriptOptions(argv: string[], env: NodeJS.ProcessEnv): ScriptOptions {
+  return {
+    runId: readStringOption(argv, "run-id", env.ACTIVE_PORTFOLIO_RUN_ID) ?? "active-portfolio-book-full-chapters-v1",
+    sourcePdf: requiredStringOption(argv, "source-pdf", env.ACTIVE_PORTFOLIO_SOURCE_PDF),
+    fullTextPath:
+      readStringOption(argv, "full-text", env.ACTIVE_PORTFOLIO_FULL_TEXT) ?? "runs/active-portfolio-book-full-source/full.txt",
+    normalizedSourceDir:
+      readStringOption(argv, "normalized-source-dir", env.ACTIVE_PORTFOLIO_NORMALIZED_SOURCE_DIR) ??
+      "runs/active-portfolio-book-full-normalized-source"
+  };
+}
+
+function requiredStringOption(argv: string[], name: string, envValue: string | undefined): string {
+  const value = readStringOption(argv, name, envValue);
+  if (!value) {
+    const envName = `ACTIVE_PORTFOLIO_${name.toUpperCase().replace(/-/gu, "_")}`;
+    throw new Error(`Missing --${name}. Set --${name}=<path> or ${envName}=<path>.`);
+  }
+  return value;
+}
+
+function readStringOption(argv: string[], name: string, envValue: string | undefined): string | undefined {
+  const prefix = `--${name}=`;
+  const equalsValue = argv.find((arg) => arg.startsWith(prefix))?.slice(prefix.length);
+  if (equalsValue?.trim()) {
+    return equalsValue.trim();
+  }
+  const index = argv.indexOf(`--${name}`);
+  const nextValue = index >= 0 ? argv[index + 1] : undefined;
+  if (nextValue && !nextValue.startsWith("--") && nextValue.trim()) {
+    return nextValue.trim();
+  }
+  return envValue?.trim() || undefined;
+}
 
 const chapters: ChapterMeta[] = [
   {
