@@ -415,7 +415,17 @@ function buildLesson({
       "通过行动、反馈和迁移任务检查理解是否可靠"
     ],
     ...(sourceDepth ? { sourceReadingGuide: sourceDepth.guide } : {}),
-    pages: buildPages({ unitTitle, concepts, sourceTerms, sourceAnchorIds: safeAnchors, targetPageCount, revision, difficulty }),
+    pages: buildPages({
+      runId: config.runId,
+      lessonId: id,
+      unitTitle,
+      concepts,
+      sourceTerms,
+      sourceAnchorIds: safeAnchors,
+      targetPageCount,
+      revision,
+      difficulty
+    }),
     misconceptions: [
       {
         id: "misconception-summary",
@@ -441,6 +451,8 @@ function buildLesson({
 }
 
 function buildPages({
+  runId,
+  lessonId,
   unitTitle,
   concepts,
   sourceTerms,
@@ -449,6 +461,8 @@ function buildPages({
   revision,
   difficulty
 }: {
+  runId: string;
+  lessonId: string;
   unitTitle: string;
   concepts: string[];
   sourceTerms: string[];
@@ -459,34 +473,34 @@ function buildPages({
 }): Array<Record<string, unknown>> {
   const revisionLine = revision ? "已根据最新反馈降低术语密度，并增加新手行动提示。" : "";
   const basePages: Array<Record<string, unknown>> = [
-    page("page-01", "problem_scene", `${compactSubject(unitTitle)}：定位问题`, "识别这份资料最需要解决的理解问题", `${unitTitle} 不能只被压缩成摘要；学习者需要看见问题、机制和边界。${difficulty.openingFrame}${revisionLine}`, sourceAnchorIds, {
+    page(runId, lessonId, "page-01", "problem_scene", `${compactSubject(unitTitle)}：定位问题`, "识别这份资料最需要解决的理解问题", `${unitTitle} 不能只被压缩成摘要；学习者需要看见问题、机制和边界。${difficulty.openingFrame}${revisionLine}`, sourceAnchorIds, {
       visual: true
     }, difficulty, sourceTerms),
-    page("page-02", "intuition_visual", "先画来源地图，再进入细节", "用地图直觉理解总览课", `把资料看成一张地图：先知道核心区域，再决定深入 ${concepts[0] ?? "核心概念"}。${difficulty.intuitionFrame}`, sourceAnchorIds, {
+    page(runId, lessonId, "page-02", "intuition_visual", "先画来源地图，再进入细节", "用地图直觉理解总览课", `把资料看成一张地图：先知道核心区域，再决定深入 ${concepts[0] ?? "核心概念"}。${difficulty.intuitionFrame}`, sourceAnchorIds, {
       visual: true
     }, difficulty, sourceTerms),
-    page("page-03", "structure_diagram", "问题、机制、证据、边界", "看见可靠解释的结构", `可靠学习路径要把 ${concepts.slice(0, 3).join("、") || "核心概念"} 放进同一张结构图。${difficulty.structureFrame}`, sourceAnchorIds, {
+    page(runId, lessonId, "page-03", "structure_diagram", "问题、机制、证据、边界", "看见可靠解释的结构", `可靠学习路径要把 ${concepts.slice(0, 3).join("、") || "核心概念"} 放进同一张结构图。${difficulty.structureFrame}`, sourceAnchorIds, {
       visual: true
     }, difficulty, sourceTerms),
-    page("page-04", "interactive_model", "选择下一步学习路径", "通过选择理解学习顺序", difficulty.actionPrompt, sourceAnchorIds, {
+    page(runId, lessonId, "page-04", "interactive_model", "选择下一步学习路径", "通过选择理解学习顺序", difficulty.actionPrompt, sourceAnchorIds, {
       interaction: "path"
     }, difficulty, sourceTerms),
-    page("page-05", "interactive_model", "判断解释是否可靠", "用来源和反馈校验解释", `学习者判断一个说法是否既有来源依据，也说明了因果机制和适用边界。${difficulty.claimFrame}`, sourceAnchorIds, {
+    page(runId, lessonId, "page-05", "interactive_model", "判断解释是否可靠", "用来源和反馈校验解释", `学习者判断一个说法是否既有来源依据，也说明了因果机制和适用边界。${difficulty.claimFrame}`, sourceAnchorIds, {
       interaction: "claim"
     }, difficulty, sourceTerms),
-    page("page-06", "quiz", "哪种理解更可靠", "检查是否区分摘要和心智模型", `先做预测，再用反馈修正学习策略。${difficulty.assessmentFrame}`, sourceAnchorIds, {
+    page(runId, lessonId, "page-06", "quiz", "哪种理解更可靠", "检查是否区分摘要和心智模型", `先做预测，再用反馈修正学习策略。${difficulty.assessmentFrame}`, sourceAnchorIds, {
       assessment: "quiz"
     }, difficulty, sourceTerms),
-    page("page-07", "misconception_check", "误区：资料越长越难学", "识别资料长度误区", `难点通常不是页数，而是没有把概念、例子、边界和行动连接起来。${difficulty.misconceptionFrame}`, sourceAnchorIds, {
+    page(runId, lessonId, "page-07", "misconception_check", "误区：资料越长越难学", "识别资料长度误区", `难点通常不是页数，而是没有把概念、例子、边界和行动连接起来。${difficulty.misconceptionFrame}`, sourceAnchorIds, {
       assessment: "misconception"
     }, difficulty, sourceTerms),
-    page("page-08", "summary_card", "总览记忆卡", "压缩可迁移学习模型", `用五步记住这课：问题、来源、结构、行动、迁移。${difficulty.summaryLine}`, sourceAnchorIds, {
+    page(runId, lessonId, "page-08", "summary_card", "总览记忆卡", "压缩可迁移学习模型", `用五步记住这课：问题、来源、结构、行动、迁移。${difficulty.summaryLine}`, sourceAnchorIds, {
       visual: true
     }, difficulty, sourceTerms),
-    page("page-09", "code_walkthrough", "把资料变成执行协议", "把学习路径连接到可执行步骤", `用短协议描述：读取来源、抽概念、设计互动、检查反馈、发布网页。${difficulty.protocolFrame}`, sourceAnchorIds, {
+    page(runId, lessonId, "page-09", "code_walkthrough", "把学习路径连接到可执行步骤", "把学习路径连接到可执行步骤", `用短协议描述：读取来源、抽概念、设计互动、检查反馈、发布网页。${difficulty.protocolFrame}`, sourceAnchorIds, {
       code: true
     }, difficulty, sourceTerms),
-    page("page-10", "transfer_challenge", "迁移到下一份资料", "把同一心智模型迁移到新材料", difficulty.transferPrompt, sourceAnchorIds, {
+    page(runId, lessonId, "page-10", "transfer_challenge", "迁移到下一份资料", "把同一心智模型迁移到新材料", difficulty.transferPrompt, sourceAnchorIds, {
       assessment: "transfer"
     }, difficulty, sourceTerms)
   ];
@@ -497,6 +511,8 @@ function buildPages({
       const index = expanded.length + 1;
       expanded.splice(expanded.length - 1, 0, {
         ...page(
+          runId,
+          lessonId,
           `page-${String(index).padStart(2, "0")}`,
           "interactive_model",
           `补充练习 ${index - 9}`,
@@ -520,6 +536,8 @@ function buildPages({
 }
 
 function page(
+  runId: string,
+  lessonId: string,
   id: string,
   type: string,
   title: string,
@@ -552,7 +570,7 @@ function page(
       kind: "diagram",
       description: visualDescriptionForPage(type, difficulty),
       keyElements: ["来源依据", "核心机制", "学习动作", "反馈", "迁移", ...difficulty.visualKeyElements],
-      ...imagegenTeachingAsset(id, title, visualDescriptionForPage(type, difficulty))
+      ...imagegenTeachingAsset(runId, lessonId, id, title, visualDescriptionForPage(type, difficulty))
     },
     ...(options.interaction ? { interactionSpec: interactionSpec(options.interaction, difficulty) } : {}),
     ...(options.assessment ? assessmentFields(options.assessment, difficulty) : {}),
@@ -704,10 +722,16 @@ function sourceDepthProfile(sourceKind: string | undefined, unitTitle: string): 
   };
 }
 
-function imagegenTeachingAsset(pageId: string, title: string, visualDescription: string): Record<string, string> {
+function imagegenTeachingAsset(
+  runId: string,
+  lessonId: string,
+  pageId: string,
+  title: string,
+  visualDescription: string
+): Record<string, string> {
   const visualIntent = `${visualDescription}；围绕“${compactSubject(title)}”画出对象、关系、方向和边界，不复刻页面标题文字`;
   return {
-    imageUrl: `https://generated.invalid/teaching-images/${encodeURIComponent(pageId)}.png`,
+    imageUrl: `/__learning-preview/${runId}/images/${lessonId}/${encodeURIComponent(pageId)}-imagegen-v1.png`,
     imageAlt: visualIntent,
     imageProvider: "imagegen",
     imagePrompt: `生成一张中文 Web Deck 教学插图，画出这一页独有的视觉结构：${visualIntent}。可以使用短标签、方向词或局部标注帮助理解；构图、主体关系和视觉隐喻必须明显区别于同课程其他页面；不要包含页面标题、底部总结、长段落文字、表格、页面卡片原文或 UI 文本框；不要生成右侧 UI 面板。`

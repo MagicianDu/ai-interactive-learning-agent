@@ -24,6 +24,7 @@ Use this skill when the user asks Codex to generate, preview, revise, export, or
 - Keep all learner-facing lesson content中文优先.
 - Preserve source grounding with `sourceAnchorIds` at lesson or page level for source-backed courses.
 - Follow `docs/runtime/codex-authoring-protocol-v2.md` (Codex Authoring Protocol V2) before writing `coursePack` and `lessons`: every page needs a mental-model move, source synthesis, learner action or check, feedback mechanism, and `cognitivePurpose` when interactive.
+- In advanced authoring mode, use returned `sourceSemantics` and `contentBlueprint.units[*].pageBlueprints` as hard authoring constraints rather than optional hints.
 - Advanced authoring tools can record Source Graph V2 and Course Planning V2 artifacts for audit and downstream quality checks. These are not learner approvals in the default flow.
 - 不要让学习者审批内部 artifacts such as source maps, concept maps, curriculum plans, or critic reports in the default learner flow.
 
@@ -61,71 +62,31 @@ Ask at most three clarification questions. If the learner already gave source, a
 
 Use this flow for normal Codex/Claude-style natural language operation. It should produce a previewable learning course without asking the learner to approve source maps, concept maps, curriculum plans, review briefs, image manifests, batch state, layout reports, or other internal artifacts. Codex should author and revise the course content; MCP should provide context, validate, track production state, and publish.
 
-For source-backed `student_self_study_textbook`, use the one-shot course production pipeline by default:
+For source-backed `student_self_study_textbook`, use the natural-language one-shot learner tool by default:
 
-1. Ask at most one learner-facing clarification round for missing difficulty, page budget, and organization strategy. If the learner has no preference, use graduate difficulty for advanced technical sources, `overview_plus_topic`, 10 overview pages, 8 pages per topic, 3-5 topics, 3 content-review rounds, and min quality score 90.
-2. Call `learning_agent.prepare_learning_course` to create the project and authoring context, then call `learning_agent.start_course_production` with the chosen defaults.
-3. Author and publish the initial `coursePack` and `lessons` according to the returned `author_course_bundle` action.
-4. Call `learning_agent.record_course_production_event` after publishing.
-5. Repeatedly call `learning_agent.next_course_production_action` and complete the returned Codex action. This action may ask Codex to run content review, revise content, generate imagegen assets, fix image assets, run layout smoke, fix layout, or hand off the final preview.
-6. Only show the learner the final preview when the next action is `handoff_preview`.
+1. Ask at most one learner-facing clarification round for missing difficulty, page budget, and organization strategy. If the learner has no preference, use graduate difficulty for advanced technical sources, `overview_plus_topic`, and 8-10 pages per unit.
+2. Call `learning_agent.run_one_shot_learning_course`.
+3. If it returns `clarification_required`, ask only those learner-visible questions and call `learning_agent.run_one_shot_learning_course` again.
+4. If it returns `authoring_required`, use the returned `codexInstruction` immediately: Codex/Claude authors the course bundle and calls `learning_agent.publish_learning_course`.
+5. For learner-facing textbook decks, continue the image pipeline before treating the preview as final: `learning_agent.create_imagegen_manifest` -> `learning_agent.record_imagegen_asset` or batch tools -> `learning_agent.validate_imagegen_assets`. Do not leave `generated.invalid` URLs in published authored lessons.
+5. After publish succeeds, show only the preview URL, course shape, and compact quality summary to the learner.
+6. Use advanced authoring or operator mode only when the user explicitly asks to inspect artifacts, compare authored vs draft quality, or intervene in the production pipeline.
 
-1. Prepare a learner-facing project and authoring context in one call:
-
-```json
-{"method":"tools/call","params":{"name":"learning_agent.prepare_learning_course","arguments":{"request":"<Chinese natural-language course request>"}}}
-```
-
-If this returns `clarification_required`, ask only those learner-visible questions and call `learning_agent.prepare_learning_course` again.
-
-2. Use Codex Authoring Protocol V2 with the returned `sourceSemantics`, `coursePlan.strategyReason`, `coursePlan.estimatedTotalPages`, `coursePlan.sourceCoveragePlan`, `coursePlan.acceptanceExpectations`, `coursePlan.recommendedUnits[*].expectedInteractions/expectedAssessments/transferExpectation`, and `contentBlueprint.units[*].pageBlueprints` as authoring constraints. For `student_self_study_textbook`, `pageType=codex_designed` means Codex/Claude should design each page role from the source and must not copy a fixed template. Titles must be content propositions or real learner questions, not page-role labels such as "直观模型" or "机制链路"; avoid scaffold phrases such as "本页围绕..." and "本页从...入手". Every learner-facing page should include an imagegen-generated teaching image; `visualSpec.imagePrompt` must explicitly forbid long prose, tables, and UI text boxes, and the image should explain the knowledge point visually rather than duplicate the right-side text. `knowledgeBoard` section labels must be content-specific mini-headings, not reusable template labels such as "机制链", "正式术语", "例子 / 证据", or "边界案例". Read `docs/runtime/self-study-golden-samples.md` as the minimum quality bar. For long books, `unitPages` is per unit and `estimatedTotalPages` is the approximate whole-course page budget. If selected topics are present, author all recommended units in one `coursePack.units` bundle instead of generating one topic preview at a time. Do not paste source graph, course-plan, or content-blueprint artifacts to the learner unless they ask for expert details.
-
-3. Codex authors `coursePack` and `lessons`, then publishes:
+1. Run the learner-facing one-shot entry:
 
 ```json
-{"method":"tools/call","params":{"name":"learning_agent.publish_learning_course","arguments":{"runId":"<run-id>","coursePack":{},"lessons":[]}}}
+{"method":"tools/call","params":{"name":"learning_agent.run_one_shot_learning_course","arguments":{"request":"<Chinese natural-language course request>"}}}
 ```
 
-Default publishing writes clean preview JSON under `runs/<run-id>/preview/` and returns a compact `qualityReport`. Do not pass `outputMode=source` unless maintaining repository fixtures.
+If this returns `clarification_required`, ask only those learner-visible questions and call `learning_agent.run_one_shot_learning_course` again. If it returns `authoring_required`, immediately follow `next.codexInstruction`, author the course bundle, call `learning_agent.publish_learning_course`, then complete and validate the local preview image assets before reporting the preview as ready.
 
-4. For source-backed `student_self_study_textbook`, run up to three content-review rounds before final imagegen publishing:
-
-```json
-{"method":"tools/call","params":{"name":"learning_agent.prepare_content_review","arguments":{"runId":"<run-id>","maxRounds":3}}}
-{"method":"tools/call","params":{"name":"learning_agent.record_content_review_report","arguments":{"runId":"<run-id>","round":1,"reviewerVerdict":"revise","summary":"<compact reviewer summary>","issues":[]}}}
-```
-
-If `prepare_content_review` returns `revision_required`, Codex should read the review brief, inspect `currentMetrics` and `automaticFindings` first, then act as `content-review-agent`, critique the course, revise the `coursePack` and `lessons`, and call `learning_agent.publish_learning_course` again. After each republish, call `record_content_review_report` with concrete issues and a reviewer verdict. MCP records measured metrics and round-to-round deltas; Codex should use those deltas to verify that template labels, missing imagegen assets, generic titles, low-density pages, generic sourceTrace supports, stale visual prompts, title-duplicating image prompts, weak mechanism-depth pages, boilerplate learner phrases, and repeated board section labels are decreasing. The third-round revised bundle is the one that proceeds to imagegen batch validation. Do not ask the learner to approve review artifacts.
-
-5. Create, record, and validate imagegen assets:
-
-```json
-{"method":"tools/call","params":{"name":"learning_agent.create_imagegen_manifest","arguments":{"runId":"<run-id>"}}}
-{"method":"tools/call","params":{"name":"learning_agent.record_imagegen_asset","arguments":{"runId":"<run-id>","lessonId":"<lesson-id>","pageId":"<page-id>","sourceImagePath":"<generated-png-or-webp-path>"}}}
-{"method":"tools/call","params":{"name":"learning_agent.validate_imagegen_assets","arguments":{"runId":"<run-id>"}}}
-```
-
-Codex should loop through the manifest, call imagegen for each item, record every generated PNG/WebP, and fix any validation failures before showing the learner the final preview.
-
-Each page must use an independent teaching image. Do not reuse one unit-level image across all pages; `learning_agent.validate_imagegen_assets` blocks duplicate image content even when copied to different preview file paths. When a dev server is running, run `npm run smoke:layout -- --runId <run-id> --desktop-only` before handoff to catch page scroll, missing images, console errors, and content overflow.
-
-In the one-shot production pipeline, prefer the `nextItem` and `executionChecklist` returned by `learning_agent.next_course_production_action` over manually inspecting the manifest. They tell Codex which page image to generate next, how to record the result, and how to handle retry failures without asking the learner to approve image artifacts.
-
-6. When quality is failed or source/structure/learner warnings remain, create a calibration brief for Codex and revise before preview:
-
-```json
-{"method":"tools/call","params":{"name":"learning_agent.calibrate_learning_course","arguments":{"runId":"<run-id>"}}}
-```
-
-If this returns `revision_required`, Codex should revise only the targeted pages or units, call `learning_agent.publish_learning_course` again, and repeat until calibration completes or stops. Do not ask the learner to approve the calibration artifact.
-
-7. Open a learner-visible preview:
+2. Open a learner-visible preview:
 
 ```json
 {"method":"tools/call","params":{"name":"learning_agent.get_learning_preview","arguments":{"runId":"<run-id>"}}}
 ```
 
-8. When the learner gives feedback, revise and preview again:
+3. When the learner gives feedback, revise and preview again:
 
 ```json
 {"method":"tools/call","params":{"name":"learning_agent.revise_learning_course","arguments":{"runId":"<run-id>","feedback":"<learner feedback>"}}}
@@ -135,7 +96,7 @@ If this returns `revision_required`, Codex should revise only the targeted pages
 
 Use `apply_learning_revision.changedPages` and `qualityAfter`, then confirm `get_learning_preview.preview.revisionHistory` includes the new revision. This is the durable preview-based acceptance point: if the learner refreshes `#/preview/<run-id>`, the sidebar should still show the same learner-readable revision history.
 
-9. Export only after the visible preview matches the learner's request:
+4. Export only after the visible preview matches the learner's request:
 
 ```json
 {"method":"tools/call","params":{"name":"learning_agent.export_learning_course","arguments":{"runId":"<run-id>"}}}
@@ -160,7 +121,7 @@ After publish, preview, revision, or export, respond with only learner-actionabl
 
 Visual asset rule: before treating a learner-facing preview as final, Codex must generate every learner-facing visual through imagegen and provide `visualSpec.imageUrl`, `imageAlt`, `imageProvider: "imagegen"`, and `imagePrompt`. Do not ask MCP to invent SVG placeholders. The image should explain the middle visual idea only. Short labels are allowed when they improve comprehension, but the image must not duplicate the page title, bottom-line sentence, page-card text, long prose, tables, or UI text boxes.
 
-For the productized batch flow, Codex may publish with preview target image URLs from the manifest, then must call `learning_agent.record_imagegen_asset` and `learning_agent.validate_imagegen_assets` before treating the preview as final.
+For the productized batch flow, Codex may publish with preview target image URLs from the manifest, then must call `learning_agent.record_imagegen_asset` or `learning_agent.record_imagegen_batch_item` and `learning_agent.validate_imagegen_assets` before treating the preview as final. In Codex desktop, call the built-in `imagegen` tool for each batch page. The generated files land under `$CODEX_HOME/generated_images/<session-id>/`; keep those originals, and record each generated PNG/WebP into the preview pipeline with `generator=imagegen` and `recordedBy=codex-imagegen-<run-id>`. A visible `imageUrl` without a real file under `runs/<runId>/preview/images/...` is still incomplete, and provenance `unknown` is invalid for learner-facing preview.
 
 Do not paste large source maps, concept maps, curriculum plans, full critic reports, or raw nested JSON unless the user explicitly asks for expert/operator details.
 

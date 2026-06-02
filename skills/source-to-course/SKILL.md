@@ -9,7 +9,7 @@ Use this skill to turn learner-supplied material into a course request that the 
 
 ## Product Contract
 
-- Codex or Claude authors the final `coursePack` and `lessons` after `learning_agent.prepare_learning_course` in the default learner profile.
+- Codex or Claude authors the final grounded preview behind `learning_agent.run_one_shot_learning_course` in the default learner profile.
 - Keep learner-facing course output中文优先 unless the learner explicitly asks otherwise.
 - Preserve `sourceAnchorIds` for books, papers, patents, blogs, notes, folders, and other source-backed materials.
 - Advanced authoring tools can record Source Graph V2 and Course Planning V2 artifacts for expert audit, but learner mode should only receive course shape, preview, and quality summary.
@@ -38,7 +38,7 @@ Track selected chapters, selected topics, audience, teaching difficulty level, l
 
 All course visuals must follow the imagegen teaching illustration policy. Codex designs each page's visual idea, calls imagegen to generate the teaching image, saves the resulting PNG/WebP as a preview-consumable asset, and sets `visualSpec.imageUrl`, `imageAlt`, `imageProvider: "imagegen"`, and `imagePrompt` before treating the preview as final. Do not rely on MCP-generated SVG placeholders. Short labels are allowed when they improve comprehension, but the image must not duplicate the page title, bottom-line sentence, page-card text, or long text blocks. Every image prompt must explicitly forbid long prose, tables, and UI text boxes; the image should explain the knowledge point visually, not reproduce the right-side text rail. Each page needs an independent generated teaching image; do not reuse one unit-level image across multiple pages.
 
-For source-backed `student_self_study_textbook`, use the one-shot course production pipeline by default. Call `learning_agent.start_course_production`, then loop on `learning_agent.next_course_production_action` until it returns `handoff_preview`. The learner should not approve review briefs, review reports, image manifests, batch state, or layout reports. Codex handles content design, content-review revisions, imagegen generation, and layout fixes behind the scenes.
+For source-backed `student_self_study_textbook`, use `learning_agent.run_one_shot_learning_course` by default. The learner should not approve review briefs, review reports, image manifests, batch state, or layout reports. Codex handles content design, grounded generation, and publishing behind the scenes in the default path.
 
 For `student_self_study_textbook`, selected topics define the course scope. If the learner asks for "总览 + Prompt Chaining、Tool Use、Reflection" with `unitPages=10`, prepare one course pack with `unit-overview` plus three topic units, about 40 pages total. Do not create one temporary run per topic, and do not redistribute those selected units into the default 100-page whole-book budget unless the learner explicitly requested a total page count.
 
@@ -57,14 +57,17 @@ If the learner says "教授 PPT", "lecture slides", "大学课程讲义", or sim
 Call the learner-facing tools in this order for the default flow:
 
 ```json
-{"method":"tools/call","params":{"name":"learning_agent.prepare_learning_course","arguments":{"request":"<Chinese learner request with source path or URL, audience, difficulty level, strategy, and unitPages>"}}}
-{"method":"tools/call","params":{"name":"learning_agent.start_course_production","arguments":{"runId":"<run-id>","sourceKind":"book","learnerRequest":"<Chinese learner request>","targetMode":"student_self_study_textbook","defaults":{"difficulty":"graduate","strategy":"overview_plus_topic","overviewPages":10,"topicPages":8,"topicCount":4,"reviewRounds":3,"minQualityScore":90}}}}
-{"method":"tools/call","params":{"name":"learning_agent.publish_learning_course","arguments":{"runId":"<run-id>","coursePack":{},"lessons":[]}}}
-{"method":"tools/call","params":{"name":"learning_agent.record_course_production_event","arguments":{"runId":"<run-id>","eventKind":"course_published","summary":"Initial course bundle published.","artifactPaths":["runs/<run-id>/preview/course-pack.json"]}}}
-{"method":"tools/call","params":{"name":"learning_agent.next_course_production_action","arguments":{"runId":"<run-id>"}}}
+{"method":"tools/call","params":{"name":"learning_agent.run_one_shot_learning_course","arguments":{"request":"<Chinese learner request with source path or URL, audience, difficulty level, strategy, and unitPages>"}}}
+{"method":"tools/call","params":{"name":"learning_agent.publish_learning_course","arguments":{"runId":"<run-id>","coursePack":"<Codex-authored coursePack>","lessons":"<Codex-authored lessons>"}}}
+{"method":"tools/call","params":{"name":"learning_agent.create_imagegen_manifest","arguments":{"runId":"<run-id>"}}}
+{"method":"tools/call","params":{"name":"learning_agent.record_imagegen_asset","arguments":{"runId":"<run-id>","lessonId":"<lesson-id>","pageId":"<page-id>","sourceImagePath":"<local imagegen PNG/WebP path>","generator":"imagegen","recordedBy":"codex-imagegen-<run-id>"}}}
+{"method":"tools/call","params":{"name":"learning_agent.validate_imagegen_assets","arguments":{"runId":"<run-id>"}}}
+{"method":"tools/call","params":{"name":"learning_agent.get_learning_preview","arguments":{"runId":"<run-id>"}}}
 ```
 
-When `learning_agent.next_course_production_action` returns `run_content_review`, call `learning_agent.prepare_content_review`, revise the bundle as `content-review-agent`, republish, and call `learning_agent.record_content_review_report`. When it returns `generate_imagegen_assets` or `fix_imagegen_assets`, use the returned `nextItem` and `executionChecklist` as the Codex work order: call imagegen for that page-specific prompt, save the PNG/WebP, record it with `learning_agent.record_imagegen_batch_item`, then call `learning_agent.next_course_production_action` again. Do not show the raw manifest to the learner. When it returns `run_layout_smoke`, run the provided command. When it returns `fix_layout`, revise the affected pages and rerun smoke. `learning_agent.calibrate_learning_course` remains available for targeted quality-report-driven fixes, but the default self-study quality path is now the one-shot production pipeline. When the pipeline returns `handoff_preview`, call `learning_agent.get_learning_preview` and show only the learner-visible preview URL, course shape, and compact quality summary.
+If `learning_agent.run_one_shot_learning_course` returns `clarification_required`, ask only those learner-visible questions and call it again. If it returns `authoring_required`, immediately use the returned `codexInstruction` to author `coursePack` and `lessons`, then call `learning_agent.publish_learning_course`. For authored textbook decks, do not stop there: complete `learning_agent.create_imagegen_manifest`, `learning_agent.record_imagegen_asset` or the batch tools, and `learning_agent.validate_imagegen_assets` so every page points to a real local preview image under `/__learning-preview/<runId>/images/...`. Do not treat `generated.invalid` as a publishable image URL. After asset validation succeeds, show only the learner-visible preview URL, course shape, and compact quality summary. Use `learning_agent.calibrate_learning_course`, `prepare_content_review`, imagegen batch tools, or production-pipeline tools only in authoring/operator mode.
+
+When you switch into the production pipeline or imagegen batch path in authoring/operator mode, prefer the returned `nextItem` and `executionChecklist` instead of manually inferring the next page task. In Codex desktop, use the built-in `imagegen` tool directly; generated images are saved under `$CODEX_HOME/generated_images/<session-id>/`. Record each generated file through `learning_agent.record_imagegen_batch_item` with `status=succeeded`, `sourceImagePath`, `generator=imagegen`, and a concrete `recordedBy` value such as `codex-imagegen-<run-id>`. Do not stop after generating images in chat; the preview is not final until those files are copied into `runs/<runId>/preview/images/...`, provenance says `generator=imagegen`, `validate_imagegen_assets` passes, and the local image URLs return 200.
 
 Professor lecture Web Deck example:
 

@@ -10,8 +10,17 @@ The current default goal follows `docs/current-product-spec.zh-CN.md`: reconstru
 2. Read `sourceSemantics`, `coursePlan.recommendedUnits`, `coursePlan.sourceCoveragePlan`, `coursePlan.estimatedTotalPages`, and `contentBlueprint.units[*].pageBlueprints`.
 3. Author `coursePack` and `lessons` directly in Codex. MCP should validate and publish; it should not replace the large model's authoring work.
 4. Call `learning_agent.publish_learning_course`.
-5. If a deterministic draft exists, call `learning_agent.compare_authoring_quality`.
-6. Use `qualityReport.topIssues`, comparison `remainingGaps`, and comparison `revisionInstructions` to revise before export.
+5. Immediately create and complete the image pipeline for learner-facing pages: `learning_agent.create_imagegen_manifest` -> built-in Codex `imagegen` per page -> `learning_agent.record_imagegen_asset` or `learning_agent.record_imagegen_batch_item` with `generator=imagegen` -> `learning_agent.validate_imagegen_assets`.
+6. Only after the preview uses real local preview assets under `/__learning-preview/<runId>/images/...` should the run be treated as final learner-facing preview. Do not leave `generated.invalid` or any fake/external placeholder URL in published authored lessons.
+7. If a deterministic draft exists, call `learning_agent.compare_authoring_quality`.
+8. Use `qualityReport.topIssues`, comparison `remainingGaps`, and comparison `revisionInstructions` to revise before export.
+
+In Codex desktop, the built-in `imagegen` tool saves generated images under
+`$CODEX_HOME/generated_images/<session-id>/`. Keep those originals and record
+each generated PNG/WebP into the run through the MCP image tools. A visible
+`visualSpec.imageUrl` is not enough; the referenced file must exist under
+`runs/<runId>/preview/images/...`, provenance must say `generator: "imagegen"`,
+and `validate_imagegen_assets` plus layout smoke must pass before final handoff.
 
 For source-heavy materials, do not default to exhaustive coverage. Prefer a compact course pack:
 

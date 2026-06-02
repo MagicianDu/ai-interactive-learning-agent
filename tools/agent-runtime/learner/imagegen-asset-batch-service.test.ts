@@ -46,7 +46,9 @@ describe("ImagegenAssetBatchService", () => {
       runId: "image-course",
       lessonId: "lesson-a",
       pageId: "page-01",
-      sourceImagePath: generated
+      sourceImagePath: generated,
+      generator: "imagegen",
+      recordedBy: "vitest"
     });
 
     expect(result).toMatchObject({
@@ -62,7 +64,11 @@ describe("ImagegenAssetBatchService", () => {
     expect(lesson.pages[0]?.visualSpec).toMatchObject({
       imageProvider: "imagegen",
       imageUrl: "/__learning-preview/image-course/images/lesson-a/page-01-imagegen-v1.png",
-      imagePrompt: expect.stringContaining("不要包含长段落文字、表格或 UI 文本框")
+      imagePrompt: expect.stringContaining("不要包含长段落文字、表格或 UI 文本框"),
+      assetProvenance: {
+        generator: "imagegen",
+        recordedBy: "vitest"
+      }
     });
     const manifest = JSON.parse(
       await readFile(path.join(root, "runs", "image-course", "quality", "imagegen", "imagegen-prompt-manifest.json"), "utf8")
@@ -81,6 +87,42 @@ describe("ImagegenAssetBatchService", () => {
         expect.objectContaining({ issueId: "imagegen.asset.file-missing", pageId: "page-01" }),
         expect.objectContaining({ issueId: "imagegen.asset.svg-reference", pageId: "page-02" })
       ])
+    );
+  });
+
+  test("validate reports missing provenance for a preview image file", async () => {
+    const root = await imageFixtureRoot("missing-provenance");
+    await mkdir(path.join(root, "runs", "missing-provenance", "preview", "images", "lesson-a"), { recursive: true });
+    await writeFile(path.join(root, "runs", "missing-provenance", "preview", "images", "lesson-a", "page-01-imagegen-v1.png"), "png", "utf8");
+
+    const result = await new ImagegenAssetBatchService(root).validateAssets({ runId: "missing-provenance" });
+
+    expect(result.status).toBe("failed");
+    expect(result.issues).toEqual(
+      expect.arrayContaining([expect.objectContaining({ issueId: "imagegen.asset.provenance-missing", pageId: "page-01" })])
+    );
+  });
+
+  test("validate rejects placeholder assets even when a png file exists", async () => {
+    const root = await imageFixtureRoot("placeholder-asset");
+    const generated = path.join(root, "placeholder.png");
+    await writeFile(generated, Buffer.from([137, 80, 78, 71]));
+    const service = new ImagegenAssetBatchService(root);
+    await service.createManifest({ runId: "placeholder-asset" });
+    await service.recordAsset({
+      runId: "placeholder-asset",
+      lessonId: "lesson-a",
+      pageId: "page-01",
+      sourceImagePath: generated,
+      generator: "placeholder",
+      recordedBy: "placeholder-script"
+    });
+
+    const result = await service.validateAssets({ runId: "placeholder-asset" });
+
+    expect(result.status).toBe("failed");
+    expect(result.issues).toEqual(
+      expect.arrayContaining([expect.objectContaining({ issueId: "imagegen.asset.generator-not-imagegen", pageId: "page-01" })])
     );
   });
 

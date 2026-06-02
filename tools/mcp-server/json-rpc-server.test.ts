@@ -47,16 +47,10 @@ describe("MCP JSON-RPC server", () => {
     expect(response).toMatchObject({ jsonrpc: "2.0", id: 1 });
     const toolNames = toolNamesFromResponse(response);
     expect(toolNames).toEqual([
-      "learning_agent.prepare_learning_course",
-      "learning_agent.start_course_production",
-      "learning_agent.next_course_production_action",
-      "learning_agent.record_course_production_event",
+      "learning_agent.run_one_shot_learning_course",
       "learning_agent.list_learning_projects",
       "learning_agent.archive_learning_project",
       "learning_agent.publish_learning_course",
-      "learning_agent.calibrate_learning_course",
-      "learning_agent.prepare_content_review",
-      "learning_agent.record_content_review_report",
       "learning_agent.create_imagegen_manifest",
       "learning_agent.record_imagegen_asset",
       "learning_agent.validate_imagegen_assets",
@@ -80,6 +74,7 @@ describe("MCP JSON-RPC server", () => {
     expect(toolNames).toEqual(
       expect.arrayContaining([
         "learning_agent.prepare_learning_course",
+        "learning_agent.run_one_shot_learning_course",
         "learning_agent.plan_run",
         "learning_agent.read_artifact",
         "learning_agent.promote_units"
@@ -94,16 +89,10 @@ describe("MCP JSON-RPC server", () => {
     const toolNames = toolNamesFromResponse(response);
 
     expect(toolNames).toEqual([
-      "learning_agent.prepare_learning_course",
-      "learning_agent.start_course_production",
-      "learning_agent.next_course_production_action",
-      "learning_agent.record_course_production_event",
+      "learning_agent.run_one_shot_learning_course",
       "learning_agent.list_learning_projects",
       "learning_agent.archive_learning_project",
       "learning_agent.publish_learning_course",
-      "learning_agent.calibrate_learning_course",
-      "learning_agent.prepare_content_review",
-      "learning_agent.record_content_review_report",
       "learning_agent.create_imagegen_manifest",
       "learning_agent.record_imagegen_asset",
       "learning_agent.validate_imagegen_assets",
@@ -113,6 +102,13 @@ describe("MCP JSON-RPC server", () => {
       "learning_agent.revise_learning_course",
       "learning_agent.apply_learning_revision",
       "learning_agent.export_learning_course",
+      "learning_agent.prepare_learning_course",
+      "learning_agent.start_course_production",
+      "learning_agent.next_course_production_action",
+      "learning_agent.record_course_production_event",
+      "learning_agent.calibrate_learning_course",
+      "learning_agent.prepare_content_review",
+      "learning_agent.record_content_review_report",
       "learning_agent.create_learning_project",
       "learning_agent.get_authoring_context",
       "learning_agent.compare_authoring_quality",
@@ -144,7 +140,7 @@ describe("MCP JSON-RPC server", () => {
   test("prepare_learning_course schema exposes one-call learner inputs", async () => {
     const tools = new LearningAgentRuntimeTools(await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-rpc-")));
 
-    const response = await handleMcpRequest({ jsonrpc: "2.0", id: "tools", method: "tools/list" }, tools);
+    const response = await handleMcpRequest({ jsonrpc: "2.0", id: "tools", method: "tools/list" }, tools, "authoring");
     const listedTools = (response as { result: { tools: Array<{ name: string; inputSchema: Record<string, unknown> }> } }).result.tools;
     const prepareTool = listedTools.find((tool) => tool.name === "learning_agent.prepare_learning_course");
 
@@ -153,6 +149,25 @@ describe("MCP JSON-RPC server", () => {
         request: { type: "string" },
         difficultyLevel: { type: "string" },
         courseIntent: { type: "string", enum: ["build_mental_model", "professor_lecture_deck", "student_self_study_textbook"] },
+        unitPages: { type: "number" },
+        targetTotalPages: { type: "number" },
+        maxAnchors: { type: "number" }
+      },
+      required: ["request"]
+    });
+  });
+
+  test("run_one_shot_learning_course schema exposes one-shot learner inputs", async () => {
+    const tools = new LearningAgentRuntimeTools(await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-rpc-")));
+
+    const response = await handleMcpRequest({ jsonrpc: "2.0", id: "tools", method: "tools/list" }, tools);
+    const listedTools = (response as { result: { tools: Array<{ name: string; inputSchema: Record<string, unknown> }> } }).result.tools;
+    const oneShotTool = listedTools.find((tool) => tool.name === "learning_agent.run_one_shot_learning_course");
+
+    expect(oneShotTool?.inputSchema).toMatchObject({
+      properties: {
+        request: { type: "string" },
+        difficultyLevel: { type: "string" },
         unitPages: { type: "number" },
         targetTotalPages: { type: "number" },
         maxAnchors: { type: "number" }
@@ -582,7 +597,7 @@ describe("MCP JSON-RPC server", () => {
       jsonrpc: "2.0",
       id: 1,
       result: {
-        tools: expect.arrayContaining([expect.objectContaining({ name: "learning_agent.prepare_learning_course" })])
+        tools: expect.arrayContaining([expect.objectContaining({ name: "learning_agent.run_one_shot_learning_course" })])
       }
     });
     expect(JSON.parse(line ?? "{}").result.tools).not.toEqual(

@@ -63,7 +63,7 @@ describe("LearningCoursePublisher", () => {
     await expect(readFile(result.coursePackPath, "utf8")).resolves.toContain("\"id\": \"hash-course\"");
     await expect(readFile(result.lessonPaths[0] as string, "utf8")).resolves.toContain("\"id\": \"hash-table-overview\"");
     await expect(readFile(result.lessonPaths[0] as string, "utf8")).resolves.toContain(
-      "https://generated.invalid/teaching-images/p1.png"
+      "/__learning-preview/test-course/images/test-lesson/p1-imagegen-v1.png"
     );
     await expect(readFile(result.lessonPaths[0] as string, "utf8")).resolves.not.toContain(".svg");
     await expect(readFile(path.join(root, "runs", "hash-course", "preview", "images", "hash-table-overview", "p1.svg"), "utf8")).rejects.toMatchObject({
@@ -906,7 +906,7 @@ function lessonPage(
 
 function imagegenAsset(id: string): Record<string, string> {
   return {
-    imageUrl: `https://generated.invalid/teaching-images/${id}.png`,
+    imageUrl: `/__learning-preview/test-course/images/test-lesson/${id}-imagegen-v1.png`,
     imageAlt: `${id} 中文教学插图`,
     imageProvider: "imagegen",
     imagePrompt: `生成一张中文 Web Deck 教学插图，只表达 ${id} 的核心机制，可以使用短标签帮助理解；不要包含页面标题、底部总结、页面卡片原文、长段落文字、表格或 UI 文本框。`

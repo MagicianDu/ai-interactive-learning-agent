@@ -48,6 +48,8 @@ export type RecordImagegenBatchItemInput =
       pageId: string;
       status: "succeeded";
       sourceImagePath: string;
+      generator?: "imagegen" | "placeholder" | "imported" | "unknown";
+      recordedBy?: string;
     }
   | {
       runId: string;
@@ -68,9 +70,9 @@ export class ImagegenBatchStateService {
     const state: ImagegenBatchState = {
       runId: input.runId,
       totalItems: manifest.length,
-      items: manifest.map((item) => ({
+      items: manifest.map(({ manifestStatus, ...item }) => ({
         ...item,
-        status: "pending",
+        status: manifestStatus === "ready" ? "succeeded" : "pending",
         retryCount: 0
       }))
     };
@@ -107,7 +109,9 @@ export class ImagegenBatchStateService {
         runId: input.runId,
         lessonId: input.lessonId,
         pageId: input.pageId,
-        sourceImagePath: input.sourceImagePath
+        sourceImagePath: input.sourceImagePath,
+        generator: input.generator ?? "imagegen",
+        recordedBy: input.recordedBy
       });
       item.status = "succeeded";
       item.failureReason = undefined;
@@ -116,7 +120,9 @@ export class ImagegenBatchStateService {
     return this.toResult(state, isBatchComplete(state) ? "batch_complete" : "batch_in_progress");
   }
 
-  private async readManifest(runId: string): Promise<Array<Omit<ImagegenBatchItem, "status" | "retryCount" | "failureReason">>> {
+  private async readManifest(
+    runId: string
+  ): Promise<Array<Omit<ImagegenBatchItem, "status" | "retryCount" | "failureReason"> & { manifestStatus?: string }>> {
     const parsed = JSON.parse(await this.readOrCreateManifestText(runId)) as unknown;
     if (!isRecord(parsed) || !Array.isArray(parsed.items)) {
       throw new AgentRuntimeError("imagegen manifest must include items", "INVALID_RUN_CONFIG");
@@ -130,7 +136,8 @@ export class ImagegenBatchStateService {
         pageId: stringValue(item.pageId, "pageId"),
         imagePrompt: stringValue(item.prompt ?? item.imagePrompt, "prompt"),
         imageUrl: stringValue(item.imageUrl, "imageUrl"),
-        targetAssetPath: stringValue(item.targetAssetPath, "targetAssetPath")
+        targetAssetPath: stringValue(item.targetAssetPath, "targetAssetPath"),
+        manifestStatus: typeof item.status === "string" ? item.status : undefined
       };
     });
   }
@@ -213,8 +220,9 @@ function buildExecutionChecklist(nextItem: ImagegenBatchItem | undefined): strin
   }
   return [
     `Call imagegen with the imagePrompt for ${nextItem.lessonId}/${nextItem.pageId}.`,
-    "Save the generated PNG/WebP to a local temporary file.",
-    "Call learning_agent.record_imagegen_batch_item with status=succeeded and sourceImagePath, or status=failed with a concrete failureReason.",
+    "Use Codex built-in imagegen by default; generated files are saved under $CODEX_HOME/generated_images/....",
+    "Copy or record the generated PNG/WebP into the preview asset pipeline; do not leave it only in $CODEX_HOME.",
+    "Call learning_agent.record_imagegen_batch_item with status=succeeded, sourceImagePath, generator=imagegen, and recordedBy=codex-imagegen, or status=failed with a concrete failureReason.",
     "Do not reuse images across pages; regenerate if the image repeats the page title, bottom line, table, or UI panel."
   ];
 }

@@ -7,9 +7,11 @@ import { learningAgentToolContracts } from "./tool-contracts.js";
 
 const skillsRoot = path.join(process.cwd(), "skills");
 const learnerDefaultTools = [
-  "learning_agent.prepare_learning_course",
+  "learning_agent.run_one_shot_learning_course",
   "learning_agent.publish_learning_course",
-  "learning_agent.calibrate_learning_course",
+  "learning_agent.create_imagegen_manifest",
+  "learning_agent.record_imagegen_asset",
+  "learning_agent.validate_imagegen_assets",
   "learning_agent.get_learning_preview"
 ];
 const advancedAuthoringTools = [

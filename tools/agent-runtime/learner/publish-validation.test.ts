@@ -52,7 +52,7 @@ const validImagegenVisualSpec = {
   kind: "diagram",
   description: "用图解释核心关系。",
   keyElements: ["知识节点", "因果关系"],
-  imageUrl: "https://generated.invalid/teaching-images/page-01.png",
+  imageUrl: "/__learning-preview/valid-course/images/valid-lesson/page-01-imagegen-v1.png",
   imageAlt: "中文教学插图",
   imageProvider: "imagegen",
   imagePrompt:
@@ -220,6 +220,32 @@ describe("validatePublishBundle", () => {
           issueId: "publish.page.imagegen-asset-missing",
           pageId: "page-01",
           reason: expect.stringContaining("imagegen")
+        })
+      ])
+    );
+  });
+
+  it("fails when a textbook image still points at generated.invalid or another non-preview URL", () => {
+    const lesson = {
+      ...validLesson,
+      pages: [
+        {
+          ...validLesson.pages[0],
+          visualSpec: {
+            ...validImagegenVisualSpec,
+            imageUrl: "https://generated.invalid/teaching-images/page-01.png"
+          }
+        },
+        validLesson.pages[1]
+      ]
+    };
+
+    expect(validate({ lessons: [lesson] }).issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          issueId: "publish.page.imagegen-url-not-preview",
+          pageId: "page-01",
+          requiredFix: expect.stringContaining("/__learning-preview/<runId>/images/")
         })
       ])
     );

@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { AgentRuntimeError } from "../errors.js";
 import { isRecord } from "../quality/validation-result.js";
+import type { ImagegenAssetValidationIssue } from "./imagegen-asset-batch-service.js";
 import { ContentReviewLoopService } from "./content-review-loop-service.js";
 import { type ImagegenBatchItem, ImagegenBatchStateService } from "./imagegen-batch-state-service.js";
 import type { PreviewLayoutSmokeIssue } from "./preview-layout-smoke-service.js";
@@ -149,6 +150,7 @@ export class CourseProductionPipelineService {
           evidencePaths: [
             `runs/${state.runId}/quality/course-quality-report.json`,
             `runs/${state.runId}/quality/imagegen/imagegen-prompt-manifest.json`,
+            `runs/${state.runId}/quality/imagegen/imagegen-asset-validation.json`,
             `runs/${state.runId}/quality/layout-smoke/layout-smoke-report.json`
           ]
         }
@@ -216,6 +218,22 @@ export class CourseProductionPipelineService {
                     "Generate one independent imagegen teaching illustration for each pending item.",
                     ...batch.executionChecklist
                   ].join("\n")
+              }
+        };
+      }
+      const assetValidation = await this.readImagegenAssetValidationReport(state.runId);
+      if (!assetValidation || assetValidation.status !== "passed") {
+        return {
+          status: "action_required",
+          runId: state.runId,
+          stage: "needs_imagegen_retry",
+          statePath: this.statePath(state.runId),
+          nextAction: {
+            kind: "fix_imagegen_assets",
+            manifestPath: `runs/${state.runId}/quality/imagegen/imagegen-prompt-manifest.json`,
+            pendingItems: batch.pendingItems,
+            failedItems: batch.failedItems,
+            codexInstruction: imagegenAssetValidationInstruction(state.runId, assetValidation)
           }
         };
       }
@@ -259,6 +277,7 @@ export class CourseProductionPipelineService {
           evidencePaths: [
             `runs/${state.runId}/quality/content-review/content-review-state.json`,
             `runs/${state.runId}/quality/imagegen/imagegen-batch-state.json`,
+            `runs/${state.runId}/quality/imagegen/imagegen-asset-validation.json`,
             `runs/${state.runId}/quality/layout-smoke/layout-smoke-report.json`
           ]
         }
@@ -322,6 +341,28 @@ export class CourseProductionPipelineService {
       throw error;
     }
   }
+
+  private async readImagegenAssetValidationReport(
+    runId: string
+  ): Promise<{ status: string; issues: ImagegenAssetValidationIssue[] } | undefined> {
+    try {
+      const parsed = JSON.parse(
+        await readFile(path.join(this.workspaceRoot, "runs", runId, "quality", "imagegen", "imagegen-asset-validation.json"), "utf8")
+      ) as unknown;
+      if (!isRecord(parsed)) {
+        return undefined;
+      }
+      return {
+        status: typeof parsed.status === "string" ? parsed.status : "",
+        issues: Array.isArray(parsed.issues) ? (parsed.issues as ImagegenAssetValidationIssue[]) : []
+      };
+    } catch (error) {
+      if (isRecord(error) && error.code === "ENOENT") {
+        return undefined;
+      }
+      throw error;
+    }
+  }
 }
 
 function authorCourseBundleAction(input: Pick<StartCourseProductionInput, "defaults" | "learnerRequest">): CourseProductionNextAction {
@@ -350,6 +391,34 @@ function difficultyLabel(value: CourseProductionDefaults["difficulty"]): string 
 
 function hasEvent(state: CourseProductionState, eventKind: string): boolean {
   return state.events.some((event) => event.eventKind === eventKind);
+}
+
+function imagegenAssetValidationInstruction(
+  runId: string,
+  report: { status: string; issues: ImagegenAssetValidationIssue[] } | undefined
+): string {
+  if (!report) {
+    return [
+      "Run learning_agent.validate_imagegen_assets before layout smoke or preview handoff.",
+      `The required report is missing: runs/${runId}/quality/imagegen/imagegen-asset-validation.json.`,
+      "If validation fails, fix every reported image asset issue and rerun learning_agent.validate_imagegen_assets until status=passed."
+    ].join("\n");
+  }
+  return [
+    "Fix the imagegen asset validation issues, then rerun learning_agent.validate_imagegen_assets until status=passed.",
+    `Current validation status: ${report.status}.`,
+    `Issue summary: ${imagegenValidationIssueSummary(report.issues)}.`
+  ].join("\n");
+}
+
+function imagegenValidationIssueSummary(issues: ImagegenAssetValidationIssue[]): string {
+  if (issues.length === 0) {
+    return "no issues listed";
+  }
+  return issues
+    .slice(0, 8)
+    .map((issue) => `${issue.lessonId}/${issue.pageId} ${issue.issueId}`)
+    .join("; ");
 }
 
 function assertSafeRunId(runId: string): void {

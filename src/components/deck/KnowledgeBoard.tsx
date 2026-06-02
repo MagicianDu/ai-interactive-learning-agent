@@ -1,4 +1,5 @@
 import type { KnowledgeBoard as KnowledgeBoardData, VisualSpec } from "../../schemas/lesson.schema";
+import { useState } from "react";
 
 type KnowledgeBoardProps = {
   board: KnowledgeBoardData;
@@ -38,7 +39,8 @@ function isNonEmptyString(value: unknown): value is string {
 }
 
 function VisualPanel({ board, visualSpec }: { board: KnowledgeBoardData; visualSpec?: VisualSpec }) {
-  if (!isNonEmptyString(visualSpec?.imageUrl)) {
+  const [imageFailed, setImageFailed] = useState(false);
+  if (!isNonEmptyString(visualSpec?.imageUrl) || imageFailed) {
     return null;
   }
 
@@ -49,6 +51,7 @@ function VisualPanel({ board, visualSpec }: { board: KnowledgeBoardData; visualS
           alt={isNonEmptyString(visualSpec.imageAlt) ? visualSpec.imageAlt : board.headline}
           className="h-full w-full object-contain"
           src={visualSpec.imageUrl}
+          onError={() => setImageFailed(true)}
         />
       </div>
     </figure>

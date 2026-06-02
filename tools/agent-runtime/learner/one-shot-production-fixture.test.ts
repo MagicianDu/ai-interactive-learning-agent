@@ -5,6 +5,7 @@ import path from "node:path";
 import { describe, expect, test } from "vitest";
 
 import { CourseProductionPipelineService } from "./course-production-pipeline-service.js";
+import { ImagegenAssetBatchService } from "./imagegen-asset-batch-service.js";
 import { ImagegenBatchStateService } from "./imagegen-batch-state-service.js";
 
 describe("one-shot course production fixture", () => {
@@ -44,6 +45,7 @@ describe("one-shot course production fixture", () => {
       await writeFile(generated, `png-${pageId}`, "utf8");
       await batch.recordItem({ runId, lessonId: "lesson-a", pageId, status: "succeeded", sourceImagePath: generated });
     }
+    await new ImagegenAssetBatchService(root).validateAssets({ runId });
     await writePassingLayout(root, runId);
 
     const result = await pipeline.nextAction({ runId });
@@ -74,15 +76,23 @@ async function writePublishedFixture(root: string, runId: string): Promise<void>
         pages: [
           {
             id: "p1",
-            title: "第一页",
-            visualSpec: { imageAlt: "概念 A 的教学插图" },
-            knowledgeBoard: { coreProposition: "概念 A", bottomLine: "理解 A" }
+            title: "局部坐标如何限制测量",
+            visualSpec: {
+              imageAlt: "局部坐标尺规把曲面小邻域分成可比较的测量块",
+              description: "三层阶梯图：曲面小片、局部尺规、可比较测量块依次展开",
+              keyElements: ["曲面小片", "局部尺规", "测量块"]
+            },
+            knowledgeBoard: { coreProposition: "局部坐标先限制可比较范围，再允许测量。", bottomLine: "先确定局部尺规，再谈测量结果。" }
           },
           {
             id: "p2",
-            title: "第二页",
-            visualSpec: { imageAlt: "概念 B 的教学插图" },
-            knowledgeBoard: { coreProposition: "概念 B", bottomLine: "理解 B" }
+            title: "相邻向量为什么不能直接相减",
+            visualSpec: {
+              imageAlt: "两张相邻切平面之间用连接箭头标出运输路径和比较误差",
+              description: "对照天平图：两个切平面、运输箭头、比较误差三者形成分叉",
+              keyElements: ["相邻切平面", "运输箭头", "比较误差"]
+            },
+            knowledgeBoard: { coreProposition: "向量比较依赖运输规则，不能只看端点位置。", bottomLine: "先说明运输路径，再解释差值含义。" }
           }
         ]
       },

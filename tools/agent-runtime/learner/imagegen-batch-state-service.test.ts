@@ -5,13 +5,18 @@ import path from "node:path";
 import { describe, expect, test } from "vitest";
 
 import { ImagegenBatchStateService } from "./imagegen-batch-state-service.js";
+import { ImagegenAssetBatchService } from "./imagegen-asset-batch-service.js";
 
 describe("ImagegenBatchStateService", () => {
   test("creates pending batch items from existing imagegen manifest", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "imagegen-batch-state-"));
+    const promptA =
+      "Visualize concept A. 不要包含长段落文字、表格或 UI 文本框；不要生成右侧 UI 面板；不要重复页面标题；不要重复底部总结；不要重复页面卡片原文。";
+    const promptB =
+      "Visualize concept B. 不要包含长段落文字、表格或 UI 文本框；不要生成右侧 UI 面板；不要重复页面标题；不要重复底部总结；不要重复页面卡片原文。";
     await writeManifest(root, "image-batch", [
-      { lessonId: "lesson-a", pageId: "p1", prompt: "Visualize concept A. No long prose, no tables, no UI text boxes." },
-      { lessonId: "lesson-a", pageId: "p2", prompt: "Visualize concept B. No long prose, no tables, no UI text boxes." }
+      { lessonId: "lesson-a", pageId: "p1", prompt: promptA },
+      { lessonId: "lesson-a", pageId: "p2", prompt: promptB }
     ]);
 
     const result = await new ImagegenBatchStateService(root).start({ runId: "image-batch" });
@@ -22,12 +27,12 @@ describe("ImagegenBatchStateService", () => {
       nextItem: {
         lessonId: "lesson-a",
         pageId: "p1",
-        imagePrompt: "Visualize concept A. No long prose, no tables, no UI text boxes."
+        imagePrompt: promptA
       },
       executionChecklist: expect.arrayContaining([
         expect.stringContaining("Call imagegen"),
-        expect.stringContaining("Save the generated PNG/WebP"),
-        expect.stringContaining("record_imagegen_batch_item")
+        expect.stringContaining("$CODEX_HOME/generated_images"),
+        expect.stringContaining("generator=imagegen")
       ]),
       retrySummary: {
         failedCount: 0,
@@ -44,10 +49,49 @@ describe("ImagegenBatchStateService", () => {
     });
   });
 
+  test("does not reset manifest-ready items when starting a batch", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "imagegen-batch-state-"));
+    await writeManifest(root, "image-partial", [
+      {
+        lessonId: "lesson-a",
+        pageId: "p1",
+        prompt:
+          "Visualize completed concept. 不要包含长段落文字、表格或 UI 文本框；不要生成右侧 UI 面板；不要重复页面标题；不要重复底部总结；不要重复页面卡片原文。",
+        status: "ready"
+      },
+      {
+        lessonId: "lesson-a",
+        pageId: "p2",
+        prompt:
+          "Visualize pending concept. 不要包含长段落文字、表格或 UI 文本框；不要生成右侧 UI 面板；不要重复页面标题；不要重复底部总结；不要重复页面卡片原文。",
+        status: "missing_asset"
+      }
+    ]);
+
+    const result = await new ImagegenBatchStateService(root).start({ runId: "image-partial" });
+
+    expect(result).toMatchObject({
+      status: "batch_started",
+      totalItems: 2,
+      completedItems: 1,
+      nextItem: {
+        lessonId: "lesson-a",
+        pageId: "p2",
+        status: "pending"
+      },
+      pendingItems: [{ lessonId: "lesson-a", pageId: "p2", status: "pending" }]
+    });
+  });
+
   test("records succeeded and failed imagegen items with retry counts", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "imagegen-batch-state-"));
     await writeManifest(root, "image-record", [
-      { lessonId: "lesson-a", pageId: "p1", prompt: "Visualize concept A. No long prose, no tables, no UI text boxes." }
+      {
+        lessonId: "lesson-a",
+        pageId: "p1",
+        prompt:
+          "Visualize concept A. 不要包含长段落文字、表格或 UI 文本框；不要生成右侧 UI 面板；不要重复页面标题；不要重复底部总结；不要重复页面卡片原文。"
+      }
     ]);
     await writePreviewLesson(root, "image-record");
     const service = new ImagegenBatchStateService(root);
@@ -80,7 +124,8 @@ describe("ImagegenBatchStateService", () => {
       lessonId: "lesson-a",
       pageId: "p1",
       status: "succeeded",
-      sourceImagePath: png
+      sourceImagePath: png,
+      recordedBy: "batch-state-test"
     });
     expect(succeeded).toMatchObject({
       status: "batch_complete",
@@ -97,7 +142,16 @@ describe("ImagegenBatchStateService", () => {
     ) as Record<string, { visualSpec?: Record<string, unknown> }[]>;
     expect(lesson.pages[0]?.visualSpec).toMatchObject({
       imageProvider: "imagegen",
-      imageUrl: "/__learning-preview/image-record/images/lesson-a/p1-imagegen-v1.png"
+      imageUrl: "/__learning-preview/image-record/images/lesson-a/p1-imagegen-v1.png",
+      assetProvenance: {
+        generator: "imagegen",
+        recordedBy: "batch-state-test"
+      }
+    });
+    await expect(new ImagegenAssetBatchService(root).validateAssets({ runId: "image-record" })).resolves.toMatchObject({
+      status: "passed",
+      checkedPageCount: 1,
+      issues: []
     });
   });
 });
@@ -114,7 +168,7 @@ async function writeManifest(root: string, runId: string, items: Array<Record<st
         items: items.map((item) => ({
           pageTitle: item.pageId,
           imageAlt: item.pageId,
-          status: "missing_asset",
+          status: item.status ?? "missing_asset",
           ...item,
           targetAssetPath: path.join(root, "runs", runId, "preview", "images", item.lessonId, `${item.pageId}-imagegen-v1.png`),
           imageUrl: `/__learning-preview/${runId}/images/${item.lessonId}/${item.pageId}-imagegen-v1.png`

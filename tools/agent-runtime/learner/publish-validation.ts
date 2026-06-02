@@ -153,7 +153,8 @@ function validatePage(input: {
       ...validateImagegenTeachingAsset({
         page: input.page,
         coursePackId: input.coursePackId,
-        lessonId: input.lessonId
+        lessonId: input.lessonId,
+        runId: input.coursePackId
       })
     );
   }
@@ -169,6 +170,7 @@ function validateImagegenTeachingAsset(input: {
   page: CourseIRPage;
   coursePackId: string;
   lessonId: string;
+  runId: string;
 }): PublishValidationIssue[] {
   const issues: PublishValidationIssue[] = [];
   const imageUrl = input.page.visualImageUrl?.trim() ?? "";
@@ -192,6 +194,20 @@ function validateImagegenTeachingAsset(input: {
         "Generate a teaching image with imagegen, save it as a preview-consumable PNG/WebP asset, and set visualSpec.imageUrl, imageAlt, imageProvider: \"imagegen\", and imagePrompt. Do not rely on SVG placeholders."
     });
     return issues;
+  }
+
+  if (!isPreviewImageUrl(imageUrl)) {
+    issues.push({
+      issueId: "publish.page.imagegen-url-not-preview",
+      scope: "page",
+      severity: "error",
+      coursePackId: input.coursePackId,
+      lessonId: input.lessonId,
+      pageId: input.page.pageId,
+      reason: "The imagegen teaching image must point to the run preview asset directory, not a fake or external placeholder URL.",
+      requiredFix:
+        "Set visualSpec.imageUrl to /__learning-preview/<runId>/images/<lessonId>/<pageId>-imagegen-v1.png and record the local PNG/WebP asset through the imagegen batch tools."
+    });
   }
 
   const promptIssue = validateImagePromptSafety(imagePrompt);
@@ -251,6 +267,13 @@ function validateImagePromptSafety(prompt: string): ImagePromptSafetyIssue | und
   }
 
   return undefined;
+}
+
+function isPreviewImageUrl(imageUrl: string): boolean {
+  if (imageUrl.length === 0) {
+    return false;
+  }
+  return imageUrl.startsWith("/__learning-preview/") && imageUrl.includes("/images/") && !imageUrl.includes("..");
 }
 
 function hasNegatedPromptGuard(prompt: string, topicPattern: RegExp): boolean {

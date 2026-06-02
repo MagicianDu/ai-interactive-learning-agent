@@ -177,7 +177,7 @@ function generatedImageVisualSpec(id: string): Record<string, string | string[]>
     kind: "diagram",
     description: "中文教学插图",
     keyElements: ["知识点", "机制关系", "适用边界"],
-    imageUrl: `https://generated.invalid/teaching-images/${id}.png`,
+    imageUrl: `/__learning-preview/test-course/images/test-lesson/${id}-imagegen-v1.png`,
     imageAlt: `${id} 中文教学插图`,
     imageProvider: "imagegen",
     imagePrompt: `生成一张中文学习课程使用的教学插图，只表达 ${id} 页的核心机制，可以使用短标签帮助理解；不要包含页面标题、底部总结、页面卡片原文、长段落文字、表格或 UI 文本框。`
@@ -201,7 +201,7 @@ function page(
             kind: "diagram",
             description: "中文图示",
             keyElements: ["元素一", "元素二"],
-            imageUrl: `https://generated.invalid/teaching-images/${id}.png`,
+            imageUrl: `/__learning-preview/test-course/images/test-lesson/${id}-imagegen-v1.png`,
             imageAlt: `${id} 中文教学插图`,
             imageProvider: "imagegen",
             imagePrompt: `生成一张中文学习课程使用的教学插图，只表达 ${id} 页的核心机制，可以使用短标签帮助理解；不要包含页面标题、底部总结、页面卡片原文、长段落文字、表格或 UI 文本框。`

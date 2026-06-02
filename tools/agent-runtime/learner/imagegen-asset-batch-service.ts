@@ -14,6 +14,8 @@ export type RecordImagegenAssetInput = {
   lessonId: string;
   pageId: string;
   sourceImagePath: string;
+  generator?: "imagegen" | "placeholder" | "imported" | "unknown";
+  recordedBy?: string;
 };
 
 export type ValidateImagegenAssetsInput = {
@@ -57,6 +59,8 @@ export type RecordImagegenAssetResult = {
 export type ImagegenAssetValidationIssue = {
   issueId:
     | "imagegen.asset.file-missing"
+    | "imagegen.asset.provenance-missing"
+    | "imagegen.asset.generator-not-imagegen"
     | "imagegen.asset.svg-reference"
     | "imagegen.asset.provider-missing"
     | "imagegen.asset.prompt-unsafe"
@@ -78,6 +82,17 @@ export type ValidateImagegenAssetsResult = {
   runId: string;
   checkedPageCount: number;
   issues: ImagegenAssetValidationIssue[];
+  reportPath: string;
+};
+
+type ImageAssetProvenance = {
+  runId: string;
+  lessonId: string;
+  pageId: string;
+  generator: "imagegen" | "placeholder" | "imported" | "unknown";
+  recordedAt: string;
+  recordedBy: string;
+  sourceImagePath: string;
 };
 
 const RUN_ID_PATTERN = /^[a-z][a-z0-9-]{0,63}$/u;
@@ -117,7 +132,8 @@ export class ImagegenAssetBatchService {
 
     await mkdir(path.dirname(item.targetAssetPath), { recursive: true });
     await copyFile(input.sourceImagePath, item.targetAssetPath);
-    await this.updateLessonVisualSpec(input.runId, item);
+    const provenance = await this.writeProvenance(input);
+    await this.updateLessonVisualSpec(input.runId, item, provenance);
 
     const updatedManifest: ImagegenManifest = {
       ...manifest,
@@ -179,12 +195,17 @@ export class ImagegenAssetBatchService {
     issues.push(...duplicatePromptIntentIssues(promptCandidates));
     issues.push(...(await duplicateImageContentIssues(imageContentCandidates)));
 
-    return {
+    const reportPath = this.assetValidationPath(input.runId);
+    const result: ValidateImagegenAssetsResult = {
       status: issues.length > 0 ? "failed" : "passed",
       runId: input.runId,
       checkedPageCount,
-      issues
+      issues,
+      reportPath
     };
+    await mkdir(path.dirname(reportPath), { recursive: true });
+    await writeFile(reportPath, `${JSON.stringify(result, null, 2)}\n`, "utf8");
+    return result;
   }
 
   private buildManifestItem(runId: string, lessonId: string, page: Record<string, unknown>, lessonTitle: string | undefined): ImagegenManifestItem {
@@ -260,6 +281,27 @@ export class ImagegenAssetBatchService {
         reason: "The preview imageUrl is declared, but the corresponding image file does not exist.",
         requiredFix: "Generate the image with imagegen and record the local file path through learning_agent.record_imagegen_asset."
       });
+    } else {
+      const provenance = await this.readProvenance(runId, lessonId, pageId);
+      if (!provenance) {
+        issues.push({
+          issueId: "imagegen.asset.provenance-missing",
+          lessonId,
+          pageId,
+          reason: "The preview image file exists, but its provenance metadata is missing.",
+          requiredFix:
+            "Re-record the asset through learning_agent.record_imagegen_asset so the system can track whether it came from real imagegen output."
+        });
+      } else if (provenance.generator !== "imagegen") {
+        issues.push({
+          issueId: "imagegen.asset.generator-not-imagegen",
+          lessonId,
+          pageId,
+          reason: `The preview image was recorded as ${provenance.generator}, not as a real imagegen asset.`,
+          requiredFix:
+            "Replace this placeholder/imported asset with a real imagegen output and record it with generator=imagegen before treating the preview as final."
+        });
+      }
     }
 
     const promptIssue = validateImagePromptSafety(imagePrompt);
@@ -287,7 +329,7 @@ export class ImagegenAssetBatchService {
     return issues;
   }
 
-  private async updateLessonVisualSpec(runId: string, item: ImagegenManifestItem): Promise<void> {
+  private async updateLessonVisualSpec(runId: string, item: ImagegenManifestItem, provenance: ImageAssetProvenance): Promise<void> {
     const lessonPath = path.join(this.previewRoot(runId), "lessons", `${item.lessonId}.json`);
     const lesson = JSON.parse(await readFile(lessonPath, "utf8")) as unknown;
     if (!isRecord(lesson) || !Array.isArray(lesson.pages)) {
@@ -308,11 +350,47 @@ export class ImagegenAssetBatchService {
           imageUrl: item.imageUrl,
           imageAlt: item.imageAlt,
           imageProvider: "imagegen",
-          imagePrompt: item.prompt
+          imagePrompt: item.prompt,
+          assetProvenance: {
+            generator: provenance.generator,
+            recordedAt: provenance.recordedAt,
+            recordedBy: provenance.recordedBy
+          }
         }
       };
     });
     await writeFile(lessonPath, `${JSON.stringify({ ...lesson, pages }, null, 2)}\n`, "utf8");
+  }
+
+  private async writeProvenance(input: RecordImagegenAssetInput): Promise<ImageAssetProvenance> {
+    const provenance: ImageAssetProvenance = {
+      runId: input.runId,
+      lessonId: input.lessonId,
+      pageId: input.pageId,
+      generator: input.generator ?? "unknown",
+      recordedAt: new Date().toISOString(),
+      recordedBy: input.recordedBy?.trim() || "learning_agent.record_imagegen_asset",
+      sourceImagePath: input.sourceImagePath
+    };
+    const provenancePath = this.provenancePath(input.runId, input.lessonId, input.pageId);
+    await writeFile(provenancePath, `${JSON.stringify(provenance, null, 2)}\n`, "utf8");
+    return provenance;
+  }
+
+  private async readProvenance(
+    runId: string,
+    lessonId: string,
+    pageId: string
+  ): Promise<ImageAssetProvenance | undefined> {
+    const provenancePath = this.provenancePath(runId, lessonId, pageId);
+    try {
+      return JSON.parse(await readFile(provenancePath, "utf8")) as ImageAssetProvenance;
+    } catch (error) {
+      if (isFileNotFound(error)) {
+        return undefined;
+      }
+      throw error;
+    }
   }
 
   private async readOrCreateManifest(runId: string): Promise<ImagegenManifest> {
@@ -358,6 +436,14 @@ export class ImagegenAssetBatchService {
 
   private manifestPath(runId: string): string {
     return path.join(this.runRoot(runId), "quality", "imagegen", "imagegen-prompt-manifest.json");
+  }
+
+  private assetValidationPath(runId: string): string {
+    return path.join(this.runRoot(runId), "quality", "imagegen", "imagegen-asset-validation.json");
+  }
+
+  private provenancePath(runId: string, lessonId: string, pageId: string): string {
+    return path.join(this.previewRoot(runId), "images", lessonId, `${pageId}-imagegen-v1.provenance.json`);
   }
 }
 

@@ -14,6 +14,7 @@ describe("LearningAgentRuntimeTools", () => {
     expect(learningAgentToolContracts.map((tool) => tool.name)).toEqual(
       expect.arrayContaining([
         "learning_agent.create_learning_project",
+        "learning_agent.run_one_shot_learning_course",
         "learning_agent.prepare_learning_course",
         "learning_agent.start_course_production",
         "learning_agent.next_course_production_action",
@@ -103,6 +104,68 @@ describe("LearningAgentRuntimeTools", () => {
     expect(result).toMatchObject({
       status: "plan_written",
       runId: "operator-plan-still-supported"
+    });
+  });
+
+  test("one-shot learner tool asks only learner-answerable clarification questions when request is underspecified", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
+    const tools = new LearningAgentRuntimeTools(root);
+
+    const result = await tools.callTool("learning_agent.run_one_shot_learning_course", {
+      request: "根据一本书生成中文学习内容。",
+      runId: "one-shot-clarify"
+    });
+
+    expect(result).toMatchObject({
+      status: "clarification_required",
+      runId: "one-shot-clarify",
+      next: {
+        recommendedTool: "learning_agent.prepare_learning_course"
+      }
+    });
+  });
+
+  test("one-shot learner tool can generate a chapter-guided grounded preview in one call", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "learning-agent-mcp-"));
+    const tools = new LearningAgentRuntimeTools(root);
+    const sourcePath = path.join(root, "book.md");
+    await writeFile(
+      sourcePath,
+      [
+        "# 第一章 主动管理的基本命题",
+        "",
+        "主动管理依赖信息优势、组合构建与风险控制的共同作用。",
+        "",
+        "# 第二章 预测、约束与风险预算",
+        "",
+        "组合经理需要把预测转化为持仓，并在风险预算、交易成本和约束下平衡收益。"
+      ].join("\n"),
+      "utf8"
+    );
+
+    const result = await tools.callTool("learning_agent.run_one_shot_learning_course", {
+      request: "请根据这本书生成中文自学课程，按章节推进，先做第一章和第二章，面向有金融工程基础的研究生，每章 6 页。",
+      runId: "one-shot-book",
+      sourcePath,
+      sourceKind: "book",
+      audience: "有金融工程基础的研究生",
+      difficultyLevel: "upper_undergraduate_or_graduate",
+      unitPages: 6,
+      strategy: "chapter_guided",
+      selectedChapters: ["第一章", "第二章"]
+    });
+
+    expect(result).toMatchObject({
+      runId: "one-shot-book",
+      entrypoint: "learning_agent.run_one_shot_learning_course",
+      status: "authoring_required",
+      brief: {
+        strategy: "chapter_guided",
+        selectedChapters: ["第一章", "第二章"]
+      },
+      next: {
+        recommendedTool: "learning_agent.publish_learning_course"
+      }
     });
   });
 
@@ -624,7 +687,9 @@ describe("LearningAgentRuntimeTools", () => {
       runId: "mcp-imagegen",
       lessonId: "lesson-a",
       pageId: "page-01",
-      sourceImagePath: generatedPath
+      sourceImagePath: generatedPath,
+      generator: "imagegen",
+      recordedBy: "runtime-tools-test"
     });
     const validationResult = await tools.callTool("learning_agent.validate_imagegen_assets", { runId: "mcp-imagegen" });
 
@@ -691,11 +756,15 @@ describe("LearningAgentRuntimeTools", () => {
       lessonId: "lesson-a",
       pageId: "page-01",
       status: "succeeded",
-      sourceImagePath: generatedPath
+      sourceImagePath: generatedPath,
+      generator: "imagegen",
+      recordedBy: "runtime-tools-batch-test"
     });
+    const validation = await tools.callTool("learning_agent.validate_imagegen_assets", { runId: "mcp-imagegen-state" });
 
     expect(started).toMatchObject({ status: "batch_started", totalItems: 1 });
     expect(recorded).toMatchObject({ status: "batch_complete", completedItems: 1 });
+    expect(validation).toMatchObject({ status: "passed", checkedPageCount: 1, issues: [] });
   });
 
   test("exports a preview-ready learning course through tool handlers", async () => {
@@ -1059,7 +1128,7 @@ function page(id: string, type: string, kind: "visual" | "interaction" | "assess
         kind: "diagram",
         description: "中文图示",
         keyElements: ["元素一"],
-        imageUrl: `https://generated.invalid/teaching-images/${id}.png`,
+        imageUrl: `/__learning-preview/mcp-test/images/hash-table/${id}-imagegen-v1.png`,
         imageAlt: `${id} 中文教学插图`,
         imageProvider: "imagegen",
         imagePrompt: `生成一张中文教学插图，只表达 ${id} 页的核心机制，可以使用短标签帮助理解；不要包含页面标题、底部总结、页面卡片原文、长段落文字、表格或 UI 文本框。`

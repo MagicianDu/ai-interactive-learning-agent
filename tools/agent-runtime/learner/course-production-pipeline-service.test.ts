@@ -180,6 +180,30 @@ describe("CourseProductionPipelineService", () => {
     });
   });
 
+  test("does not hand off preview until imagegen asset validation has passed", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "course-production-"));
+    const service = new CourseProductionPipelineService(root);
+    await service.start(courseProductionInput("imagegen-validation-missing"));
+    await writePipelineReadyExceptLayout(root, "imagegen-validation-missing", "passed", { assetValidation: false });
+    await service.recordEvent({
+      runId: "imagegen-validation-missing",
+      eventKind: "course_published",
+      summary: "Initial course bundle published.",
+      artifactPaths: ["runs/imagegen-validation-missing/preview/course-pack.json"]
+    });
+
+    const next = await service.nextAction({ runId: "imagegen-validation-missing" });
+
+    expect(next).toMatchObject({
+      status: "action_required",
+      stage: "needs_imagegen_retry",
+      nextAction: {
+        kind: "fix_imagegen_assets",
+        codexInstruction: expect.stringContaining("validate_imagegen_assets")
+      }
+    });
+  });
+
   test("hands off preview when content review, imagegen, and layout smoke all pass", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "course-production-"));
     const service = new CourseProductionPipelineService(root);
@@ -266,7 +290,12 @@ async function writePublishedCourse(root: string, runId: string): Promise<void> 
   );
 }
 
-async function writePipelineReadyExceptLayout(root: string, runId: string, layoutStatus: "passed" | "failed"): Promise<void> {
+async function writePipelineReadyExceptLayout(
+  root: string,
+  runId: string,
+  layoutStatus: "passed" | "failed",
+  options: { assetValidation?: boolean } = {}
+): Promise<void> {
   await writePublishedCourse(root, runId);
   await writeReviewState(root, runId, passingReviewState());
   await mkdir(path.join(root, "runs", runId, "quality", "imagegen"), { recursive: true });
@@ -290,6 +319,21 @@ async function writePipelineReadyExceptLayout(root: string, runId: string, layou
       2
     )
   );
+  if (options.assetValidation !== false) {
+    await writeFile(
+      path.join(root, "runs", runId, "quality", "imagegen", "imagegen-asset-validation.json"),
+      JSON.stringify(
+        {
+          status: "passed",
+          runId,
+          checkedPageCount: 2,
+          issues: []
+        },
+        null,
+        2
+      )
+    );
+  }
   await mkdir(path.join(root, "runs", runId, "quality", "layout-smoke"), { recursive: true });
   await writeFile(
     path.join(root, "runs", runId, "quality", "layout-smoke", "layout-smoke-report.json"),

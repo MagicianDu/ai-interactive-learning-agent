@@ -5,11 +5,15 @@ type McpProfileToolLists = {
 };
 
 const learnerRequiredTools = [
-  "learning_agent.prepare_learning_course",
+  "learning_agent.run_one_shot_learning_course",
   "learning_agent.list_learning_projects",
   "learning_agent.archive_learning_project",
   "learning_agent.publish_learning_course",
-  "learning_agent.calibrate_learning_course",
+  "learning_agent.create_imagegen_manifest",
+  "learning_agent.record_imagegen_asset",
+  "learning_agent.validate_imagegen_assets",
+  "learning_agent.start_imagegen_batch",
+  "learning_agent.record_imagegen_batch_item",
   "learning_agent.get_learning_preview",
   "learning_agent.revise_learning_course",
   "learning_agent.apply_learning_revision",
@@ -18,10 +22,15 @@ const learnerRequiredTools = [
 
 const defaultForbiddenTools = [
   "learning_agent.create_learning_project",
+  "learning_agent.prepare_learning_course",
+  "learning_agent.start_course_production",
+  "learning_agent.next_course_production_action",
+  "learning_agent.record_course_production_event",
   "learning_agent.get_authoring_context",
   "learning_agent.generate_grounded_course",
   "learning_agent.compare_authoring_quality",
   "learning_agent.create_quality_revision",
+  "learning_agent.calibrate_learning_course",
   "learning_agent.generate_quick_preview",
   "learning_agent.plan_run",
   "learning_agent.init_from_plan",

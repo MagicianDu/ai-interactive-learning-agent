@@ -2,6 +2,7 @@ import { courseIntentValues } from "../agent-runtime/learner/course-intent.js";
 
 export type LearningAgentToolName =
   | "learning_agent.create_learning_project"
+  | "learning_agent.run_one_shot_learning_course"
   | "learning_agent.prepare_learning_course"
   | "learning_agent.start_course_production"
   | "learning_agent.next_course_production_action"
@@ -125,6 +126,29 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
         strategy: stringSchema,
         selectedChapters: stringArraySchema,
         selectedTopics: stringArraySchema
+      },
+      ["request"]
+    )
+  },
+  {
+    name: "learning_agent.run_one_shot_learning_course",
+    description:
+      "Learner-facing default tool. Turn one natural-language Chinese learning request into either learner-answerable clarification questions or a Codex-authored course-bundle authoring packet in one call.",
+    inputSchema: objectSchema(
+      {
+        request: stringSchema,
+        runId: stringSchema,
+        sourcePath: stringSchema,
+        sourceKind: stringSchema,
+        audience: stringSchema,
+        difficultyLevel: stringSchema,
+        courseIntent: courseIntentSchema,
+        unitPages: numberSchema,
+        targetTotalPages: numberSchema,
+        strategy: stringSchema,
+        selectedChapters: stringArraySchema,
+        selectedTopics: stringArraySchema,
+        maxAnchors: numberSchema
       },
       ["request"]
     )
@@ -260,7 +284,14 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
     description:
       "Learner-facing asset tool. Record one imagegen output file into the preview assets folder and update the corresponding lesson visualSpec.",
     inputSchema: objectSchema(
-      { runId: stringSchema, lessonId: stringSchema, pageId: stringSchema, sourceImagePath: stringSchema },
+      {
+        runId: stringSchema,
+        lessonId: stringSchema,
+        pageId: stringSchema,
+        sourceImagePath: stringSchema,
+        generator: stringSchema,
+        recordedBy: stringSchema
+      },
       ["runId", "lessonId", "pageId", "sourceImagePath"]
     )
   },
@@ -287,6 +318,8 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
         pageId: stringSchema,
         status: imagegenBatchItemStatusSchema,
         sourceImagePath: stringSchema,
+        generator: stringSchema,
+        recordedBy: stringSchema,
         failureReason: stringSchema
       },
       ["runId", "lessonId", "pageId", "status"]
@@ -456,16 +489,10 @@ export const learningAgentToolContracts: LearningAgentToolContract[] = [
 ];
 
 const learnerToolNames = [
-  "learning_agent.prepare_learning_course",
-  "learning_agent.start_course_production",
-  "learning_agent.next_course_production_action",
-  "learning_agent.record_course_production_event",
+  "learning_agent.run_one_shot_learning_course",
   "learning_agent.list_learning_projects",
   "learning_agent.archive_learning_project",
   "learning_agent.publish_learning_course",
-  "learning_agent.calibrate_learning_course",
-  "learning_agent.prepare_content_review",
-  "learning_agent.record_content_review_report",
   "learning_agent.create_imagegen_manifest",
   "learning_agent.record_imagegen_asset",
   "learning_agent.validate_imagegen_assets",
@@ -479,6 +506,13 @@ const learnerToolNames = [
 
 const authoringToolNames = [
   ...learnerToolNames,
+  "learning_agent.prepare_learning_course",
+  "learning_agent.start_course_production",
+  "learning_agent.next_course_production_action",
+  "learning_agent.record_course_production_event",
+  "learning_agent.calibrate_learning_course",
+  "learning_agent.prepare_content_review",
+  "learning_agent.record_content_review_report",
   "learning_agent.create_learning_project",
   "learning_agent.get_authoring_context",
   "learning_agent.compare_authoring_quality",

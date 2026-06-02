@@ -24,6 +24,7 @@ import {
   LearnerProjectService,
   ManualSubmissionService,
   MockRuntimeAdapter,
+  OneShotLearningCourseService,
   PrepareLearningCourseService,
   QuickPreviewService,
   RunPlanService,
@@ -63,6 +64,8 @@ export class LearningAgentRuntimeTools {
     switch (name) {
       case "learning_agent.create_learning_project":
         return this.createLearningProject(input);
+      case "learning_agent.run_one_shot_learning_course":
+        return this.runOneShotLearningCourse(input);
       case "learning_agent.prepare_learning_course":
         return this.prepareLearningCourse(input);
       case "learning_agent.start_course_production":
@@ -167,6 +170,25 @@ export class LearningAgentRuntimeTools {
   private async prepareLearningCourse(input: unknown): Promise<unknown> {
     const options = expectRecord(input);
     return new PrepareLearningCourseService(this.workspaceRoot).prepare({
+      request: requiredString(options, "request"),
+      runId: optionalString(options.runId),
+      sourcePath: optionalString(options.sourcePath),
+      sourceKind: optionalString(options.sourceKind),
+      audience: optionalString(options.audience),
+      difficultyLevel: optionalDifficultyLevel(options.difficultyLevel),
+      courseIntent: optionalCourseIntent(options.courseIntent),
+      unitPages: optionalNumber(options.unitPages),
+      targetTotalPages: optionalNumber(options.targetTotalPages),
+      strategy: optionalString(options.strategy),
+      selectedChapters: optionalStringArray(options.selectedChapters),
+      selectedTopics: optionalStringArray(options.selectedTopics),
+      maxAnchors: optionalNumber(options.maxAnchors)
+    });
+  }
+
+  private async runOneShotLearningCourse(input: unknown): Promise<unknown> {
+    const options = expectRecord(input);
+    return new OneShotLearningCourseService(this.workspaceRoot).run({
       request: requiredString(options, "request"),
       runId: optionalString(options.runId),
       sourcePath: optionalString(options.sourcePath),
@@ -299,7 +321,9 @@ export class LearningAgentRuntimeTools {
       runId: requiredString(options, "runId"),
       lessonId: requiredString(options, "lessonId"),
       pageId: requiredString(options, "pageId"),
-      sourceImagePath: requiredString(options, "sourceImagePath")
+      sourceImagePath: requiredString(options, "sourceImagePath"),
+      generator: optionalString(options.generator) as "imagegen" | "placeholder" | "imported" | "unknown" | undefined,
+      recordedBy: optionalString(options.recordedBy)
     });
   }
 
@@ -325,7 +349,9 @@ export class LearningAgentRuntimeTools {
         lessonId: requiredString(options, "lessonId"),
         pageId: requiredString(options, "pageId"),
         status,
-        sourceImagePath: requiredString(options, "sourceImagePath")
+        sourceImagePath: requiredString(options, "sourceImagePath"),
+        generator: optionalString(options.generator) as "imagegen" | "placeholder" | "imported" | "unknown" | undefined,
+        recordedBy: optionalString(options.recordedBy)
       });
     }
     if (status === "failed") {
@@ -641,6 +667,7 @@ export class LearningAgentRuntimeTools {
 function isLearningAgentToolName(name: string): name is LearningAgentToolName {
   return [
     "learning_agent.create_learning_project",
+    "learning_agent.run_one_shot_learning_course",
     "learning_agent.prepare_learning_course",
     "learning_agent.start_course_production",
     "learning_agent.next_course_production_action",
